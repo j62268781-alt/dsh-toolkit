@@ -23,6 +23,8 @@ import shell from "./modules/shell/index.js";
 import judgement from "./modules/judgement/lib/index.js";
 // mobile 只提供具名导出（name/inject/apply），没有 default，必须整模块导入。
 import * as mobile from "./modules/mobile/index.js";
+// browser 的默认导出是 Service 类（static inject=['tools']、static Config）。
+import agentBrowser from "./modules/browser/lib/index.js";
 
 /** 包名：改名时需与 package.json / cordis.patch.yml / profile 三处同步。 */
 export const name = "dsh-shell-kit";
@@ -44,4 +46,5 @@ export function apply(ctx, config = {}) {
   // mobile 是 { name, inject:['tools'], apply } 普通插件对象；它的 9 条路由
   // 仍由模块内部通过 ctx.inject(['webServer']) 注册（core/http.js 统一封装待做）。
   ctx.plugin(mobile, config.mobile ?? {});
+  ctx.plugin(agentBrowser, config.browser ?? {});
 }
