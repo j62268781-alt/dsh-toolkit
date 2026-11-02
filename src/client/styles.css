@@ -1,0 +1,1006 @@
+/**
+ * dsh-shell-kit — 皮肤样式表
+ * ============================================================================
+ *
+ * 目标：只换「结构」，不换「配色」。
+ *   · 结构：把 DSH 的侧栏拆成 Codex 那样的 52px icon rail + 工作区面板，
+ *           并收一档圆角、微调排版与间距；
+ *   · 配色：一个色号都不新引入，全部引用 DSH 自己的 `--dsw-*` 令牌。
+ *           于是浅色/深色、跟随系统、用户换第三方主题、DSH 自己改主题——皮肤
+ *           都自动跟随，不会出现「皮肤和系统主题打架」或者过时的问题。
+ *
+ * ── 为什么这套 CSS 能生效（机制，不是猜测）─────────────────────────────
+ *
+ * 1) 颜色、圆角、阴影都走 `--dsw-*` 设计令牌，客户端组件的样式全部消费它们
+ *    （`background:var(--dsw-alias-bg-base)`）。我们不改这些令牌，只消费。
+ *
+ * 2) 组件内部布局没有公开的 class 名（CSS Modules 带每版本哈希前缀，例如
+ *    `kB3qhq_root`）。因此次级修改只用两种稳定锚点：
+ *      · `<div data-slot="<seat>">` —— 槽位包裹层，名字是公开契约；
+ *      · `[class*="_localName"]` —— 子串选择器，跨版本仍能命中哈希类名。
+ *    一律 `>` 直连、不做宽泛后代选择器：`_root` / `_iconButton` 这类局部名在
+ *    别的组件里重名（WorkspaceBrowser 也有 `_root`、`_rail`、`_iconButton`），
+ *    后代选择器会误伤。
+ *
+ * 3) 样式表是客户端 bundle 在 apply 时自建 `<style data-plugin=…>` 插到 head
+ *    末尾的（与官方包同一通道），所以后注入即覆盖；插件被逐出时 `ctx.effect`
+ *    的 disposer 会把整张表摘掉。
+ *
+ * ── 边界 ────────────────────────────────────────────────────────────────
+ *
+ * 这是「样式接管」，不是「组件替换」：侧栏的 DOM 与交互仍由 ui-sidebar 渲染，
+ * 我们只是用 grid 把它重排。所以：
+ *   · 折叠态（点折叠按钮）原样交还给 DSH 自己的表现，不试图接管；
+ *   · panelList 图标化后标题文字被视觉隐藏（仍在无障碍树里），tooltip 由
+ *     `src/client/index.js` 的 installRailTitles() 用 JS 补；
+ *   · 换到没见过的版本时，哈希前缀变了不要紧，但要留意局部名是否改名。
+ */
+
+/* ════════════════════════════════════════════════════════════════════════
+ * 层 1 · 局部别名：把 DSH 的令牌接成皮肤要用的几个「表面」
+ * ────────────────────────────────────────────────────────────────────────
+ * 平台没有「rail 比面板深一档」这种概念，所以用 color-mix 从平台令牌现算：
+ *   · 浅色：sidebar-fill = bluish-50 (#f9fafb)，压暗 6% ≈ bluish-75；
+ *   · 深色：sidebar-fill = bluish-900 (#1b1b1c)，提亮 6% ≈ bluish-875。
+ * 定义在 body 上而不是侧栏 root 上：macOS 的通栏层（下一节）要把同一条色带
+ * 画到中央列的顶带上，跨列取值必须放在共同祖先。 */
+html body {
+  --cx-rail: color-mix(
+    in srgb,
+    var(--dsw-specific-sidebar-fill),
+    var(--dsw-alias-label-primary) 6%
+  );
+  /* 选中态统一成同一个「浅底方块」：home 入口和每个面板图标点击后长得一样。
+   * 原来用平台的 --dsw-specific-sidebar-nav-item-active，桌面端主题里不一定
+   * 定义 → 取不到值就是透明，表现为「点了没反应」。这里直接落到 alias 令牌，
+   * 两边都取得到。 */
+  --cx-rail-item-hover: var(--dsw-alias-interactive-bg-hover);
+  --cx-rail-item-active: var(--dsw-alias-interactive-bg-hover);
+  --cx-line: var(--dsw-alias-border-l3);
+}
+
+/* 圆角：这是唯一保留的「造型」差异（不是颜色）。DSH 默认
+ * xs4/sm8/md12/lg16/xl20/panel28 偏圆润，Codex 更像 3/6/8/12/14/20。
+ * 平台把它声明在 `:root{}` 里 —— 伪类比元素选择器权重高（0,1,0 > 0,0,1），
+ * 所以必须写 `html:root`（0,1,1）才压得住，光写 `html` 会静默失效。 */
+html:root {
+  --dsw-radius-xs: 3px;
+  --dsw-radius-sm: 6px;
+  --dsw-radius-md: 8px;
+  --dsw-radius-lg: 12px;
+  --dsw-radius-xl: 14px;
+  --dsw-radius-panel: 20px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * 层 2 · macOS 通栏：顶部一条定高底色带，与左侧 rail 连成一片
+ * ────────────────────────────────────────────────────────────────────────
+ * Codex 的窗口是「顶栏 + 左 rail 共用一块底色，其余全白」。DSH 在 darwin 上
+ * 是三段各画各的：frame 透明（露毛玻璃）、侧栏列是毛玻璃叠色、中央列是
+ * bg-base 白。于是顶部那条里左中右三种底色，看着是断开的。
+ *
+ * 做法：把「顶部色带 + 白色」画到三列各自的 background 上（三列都从 y=0 起，
+ * 所以一条定高的线性渐变就能拉齐），再把盖在中央列最上层的那层白底
+ * （会话根节点 `[data-slot="main.conversation"] > ._root`，background:
+ * bg-base）改成透明，让色带透上来。侧栏里 rail 那条 52px 竖带仍然由
+ * SidebarRoot 自己画，宽度和色带一致，两者在左上角无缝接成 L 形。
+ *
+ * 高度取 40px —— 这是会话页头里 **标题行** 的高度：页头 `_header` 是
+ * `min-height:76px; padding:10px 28px 0 20px` 的两行网格，第一行是标题行
+ * （`_titleRow`，min-height:30px）→ 10+30=40；第二行才是 tab 行（40–76）。
+ * 实测量到的标题文字在 18–31px、tab 文字在 53–64px，与这个划分吻合。色带
+ * 只盖住标题行，所以「对话 / 轨迹 / 上下文 …」那排 tab 落在白色上，属于内容
+ * 区而不是标题栏。要改高矮只改 --cx-band-h。
+ *
+ * 几点刻意的取舍：
+ *   · 色带以下：侧栏面板与中央列都用 bg-base（浅色即纯白），即用户要的
+ *     「工作区用白色」；rail 竖直方向仍保持色带色，L 形不断。
+ *   · 整个外壳里 **一根竖线都不画**：侧栏列/中央列之间的 border 与渐变线
+ *     全部去掉 —— 面板与对话区同色，本来也不需要分隔。
+ *   · 色带底边也不画线：色带是在页头中间断开的，加线会横穿页头。
+ *
+ * 触发条件写成 `:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))`：
+ * 桌面端由 Electron 壳在 <html> 上标 data-platform="darwin"，网页端没有这个
+ * 属性；而 `_topStrip`（红黄绿三灯那条）只有 macOS 桌面端才渲染，正好当兜底。
+ * 两者任一命中即可，网页端 / Windows 都不会误命中。
+ * ════════════════════════════════════════════════════════════════════════ */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"])) body {
+  --cx-band-h: 50px;
+  --cx-band-pad: 10px;
+  --cx-band: var(--cx-rail);
+  /* 卡片式布局参数：rail 52 + 面板 240 + 右缝 1.5 = 侧栏列宽 */
+  --cx-rail-w: 52px;
+  --cx-panel-w: 240px;
+  --cx-gap: 4px;
+  /* 标题与「窗口 chrome 让位带」之间额外的呼吸量。DSH 原生是
+   * clearance - 20px，收起态下 shell.leading 那排钮占 88–152，标题
+   * 从 140 起 —— 直接压进按钮区。加到 36px 后标题落在 176，
+   * 与按钮留出 24px。 */
+  --cx-title-air: 36px;
+  --cx-card-radius: 12px;
+  --cx-page-head-pad: 28px;
+}
+
+/* ── 外壳色：三列统一铺「rail 色」────────────────────────────────────
+ * 卡片式布局里，色带、栏间距、卡片外的缝隙都应该是同一种「外壳色」。
+ * 三列都从 y=0 起，各自铺一层纯色，天然连成一片 L 形 + 底部一条缝。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"])) [class*="_frame"] > [class*="_sidebarCol"],
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"])) [class*="_frame"] > [class*="_centerCol"],
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"])) [class*="_frame"] > [class*="_rightbarCol"] {
+  background-color: var(--cx-rail);
+  background-image: none;
+  border-left: none;
+  border-right: none;
+}
+
+/* ── 中央区的「通用白卡片」───────────────────────────────────────────
+ * 不只是会话页：插件、自动化任务等任何进入中央区的页面视图，都要长成同一张
+ * 白卡片（从色带下沿开始、12px 圆角、右/下各留 4px 外壳色）。
+ *
+ * 中央主槽位的包裹层是 `display: contents`（没有盒子），真正的页面视图是它的
+ * 子元素；会话页那层是 keyed 槽位 `[data-slot="main.conversation"]`（同样是
+ * contents），由下面「层 2」的专用规则处理，所以这里用 `:not([data-slot])`
+ * 把页面视图挑出来，不会误伤会话。
+ *
+ * 用 margin 而不是 padding：页面视图自己就是滚动容器，padding 会跟着滚动内容
+ * 一起动，margin 不会。圆角会给滚动容器也裁出圆角（Chromium 对 scroll
+ * container 同样生效），这样页面自己的白底也不会把卡片角补成直角。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"])) [data-slot="main"] > :not([data-slot]) {
+  /* 卡片仍然从色带下沿开始（上面那条色带空着，和会话页保持同一套版式）。 */
+  margin: var(--cx-band-h) var(--cx-gap) var(--cx-gap) 0;
+  /* 有些页面视图自己写了 width:100%，只靠 margin 会把右边缝挤没（100% 是
+     按容器算的，margin 再往下推就溢出了），所以再夹一道 max-width。 */
+  max-width: calc(100% - var(--cx-gap));
+  border-radius: var(--cx-card-radius);
+  background-color: var(--dsw-alias-bg-base);
+}
+
+/* 页面自己的标题区上内边距 76px 太大（卡片顶边已经在色带下沿，再叠 76px 标题
+ * 就离卡片顶 126px，显得空）。DSH 自己的页面（插件页 `_pageHead`、自动化任务
+ * `_pageHeading`）和第三方页面（如 dsh-context 的 `lc-ov-pagehead`）都是这一套
+ * 76px，所以用大小写不敏感的 `pagehead` 子串一次按住宅们，统一收到
+ * `--cx-page-head-pad`。特异性 (0,3,0) 高于它们自己的 `.xxx{padding-top:76px}`，
+ * 不需要 !important。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"])) [data-slot="main"] > :not([data-slot]) [class*="pagehead" i] {
+  padding-top: var(--cx-page-head-pad, 28px);
+}
+
+/* 拖拽手柄关掉：面板宽度是定死的（由 JS 把 frame 的第一条栅格轨锁成
+ * 52 + 240 + 1.5），留着它就只是在骗用户「可以拖」。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"])) [class*="_frame"] > [class*="_handle"] {
+  display: none;
+}
+
+/* ── 会话区 = 白卡片（圆角，右/下留缝）────────────────────────────────
+ * 卡片画在「会话根」上，而不是画在中央列上：内核 CSS 里会话根本身就是
+ * `overflow: hidden` 的裁剪容器（`_root{background:bg-base; overflow:hidden}`），
+ * 于是卡片圆角能把里面的正文 / 输入框一起裁成圆角 —— 这是圆角能「看起来」
+ * 生效的关键：只要有任何一层白底画到列边，直角就会盖住卡片圆角。
+ * 上半段留透明：色带（0 …--cx-band-h）仍由中央列画，页头标题落在色带上。 */
+
+/* 会话根节点原本整列铺一层 bg-base 白，会把中央列的色带盖掉 —— 改成透明，
+ * 白底由中央列自己画（同色令牌，第三方主题下依然一致）。 */
+/* 页头：把 10px 的 padding-top 收掉、改成标题行自己的上下等内边距 ——
+ * 于是「色带高度 = 10 + 标题行内容 + 10」，标题文字在色带里垂直居中，
+ * 而 tab 行正好从色带下边缘开始（落在白色上）。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"]) {
+  padding-top: 0;
+}
+
+/* 会话标题左侧的文件夹图标：跟工作区列表里那个"未选中文件夹"同形同色，
+ * 用 mask + 背景色画，形状是 16×16 描边文件夹（stroke-width 1，与 DSH
+ * 自己的图标集同规格）。只加在有会话的页头上，空会话的 headerBlank 不画。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"]):not([class*="_headerBlank"])
+  [class*="_crumbCurrent"]::before {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  vertical-align: -3px;
+  background-color: var(--dsw-alias-label-tertiary);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1'%3E%3Cpath d='M1.50439 3.11059C1.50439 2.55831 1.95211 2.1106 2.50439 2.1106H5.43389C5.67773 2.1106 5.91318 2.19969 6.09593 2.36113L7.71649 3.79265C7.89924 3.95409 8.1347 4.04319 8.3785 4.04319H13.4958C14.0481 4.04319 14.4958 4.4909 14.4958 5.04319V12.8894C14.4958 13.4417 14.0481 13.8894 13.4958 13.8894H2.50439C1.95211 13.8894 1.50439 13.4417 1.50439 12.8894V4.04319V3.11059Z'/%3E%3Cpath d='M3.63501 7.66614H12.3647'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1'%3E%3Cpath d='M1.50439 3.11059C1.50439 2.55831 1.95211 2.1106 2.50439 2.1106H5.43389C5.67773 2.1106 5.91318 2.19969 6.09593 2.36113L7.71649 3.79265C7.89924 3.95409 8.1347 4.04319 8.3785 4.04319H13.4958C14.0481 4.04319 14.4958 4.4909 14.4958 5.04319V12.8894C14.4958 13.4417 14.0481 13.8894 13.4958 13.8894H2.50439C1.95211 13.8894 1.50439 13.4417 1.50439 12.8894V4.04319V3.11059Z'/%3E%3Cpath d='M3.63501 7.66614H12.3647'/%3E%3C/svg%3E");
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 16px 16px;
+  mask-size: 16px 16px;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"])
+  [class*="_titleRow"] {
+  min-height: 30px;
+  padding-block: var(--cx-band-pad);
+  box-sizing: content-box;
+}
+
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"])) [data-slot="main.conversation"] > [class*="_root"] {
+  position: relative;
+  isolation: isolate;
+  margin-right: var(--cx-gap);
+  margin-bottom: var(--cx-gap);
+  /* 只裁下缘：上缘的圆角由 ::before 那张卡片自己画，根的上 12px 在色带里，
+     拿它去裁会把标题行贴边的像素切掉。 */
+  border-radius: 0 0 var(--cx-card-radius) var(--cx-card-radius);
+  overflow: hidden;
+  background: none;
+}
+
+/* 会话卡片本体：从色带下沿开始的一张 12px 圆角白卡。
+ * 画在根的 ::before 上（宿主 isolation + z-index:-1），于是它只在内容下面；
+ * 上缘的圆角靠它自己，下缘另由根的 overflow+radius 裁住内容。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"])) [data-slot="main.conversation"] > [class*="_root"]::before {
+  content: "";
+  position: absolute;
+  top: var(--cx-band-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: var(--cx-card-radius);
+  background: var(--dsw-alias-bg-base);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 标题行贴到卡片左缘（页头默认左内边距 20px，tab 行单独保留，于是两行
+ * 各自的位置都不变，只有标题跟着卡片的白色左边走）。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"]) {
+  padding-left: 0;
+}
+
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"])
+  [class*="_tabs"] {
+  padding-left: 20px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * 层 3 · 侧栏重排：52px icon rail + 工作区面板
+ * ────────────────────────────────────────────────────────────────────────
+ * SidebarRoot 的直接子节点顺序是固定的（源码 dsh-client-ui-sidebar:
+ *   div._root[.collapsed][.fading][.quietBars]
+ *     └─ div._topStrip      （仅 darwin，含折叠按钮）
+ *        div._logoRow       （brand.mark + brand.name）
+ *        button._newSession
+ *        nav._panelList
+ *        div._regionArea    （sidebar.workspaces 槽位）
+ *        div._footArea      （footer.action + settings）
+ *
+ * 我们用 grid 把它拍成两列若干行（折叠钮绝对定位在标题栏带里，不占网格）：
+ *
+ *          rail(52)   panel(1fr)
+ *  band ┌──────────────────────────────┐  ← 标题栏带（= rail 同色）
+ *       │  ▣                 brand …    │     三灯 / 折叠钮 / 会话标题
+ *       ├─────────┬────────────────────┤
+ *       │ 插件     │ 新会话（原生按钮）  │  ← 46px 品牌行 + 原生新建会话行
+ *       │ …        │ workspaces         │  ← 1fr
+ *       ├─────────┼────────────────────┤
+ *       │ 头像      │ footer(额度卡)      │  ← auto
+ *       └─────────┴────────────────────┘
+ *
+ * 三点取舍：
+ *   1) 折叠钮放在标题栏带里、红黄绿三灯右侧的**原生位置**（left 88px、28×28、
+ *      垂直居中）—— 与侧栏收起后 DSH 自己的 shell.leading 控件位置一致，
+ *      所以展开/收起时按钮不会跳。
+ *   2) 「新会话」保留 DSH 原生的按钮样式（38px 高、带边框、居中文案），只是
+ *      落进面板列（品牌行下面），不再改成 rail 里的 ＋ 图标。
+ *   3) 账户头像在 rail 底，与额度卡同一水平线（同一行）。实现靠
+ *      `_footArea{display:contents}` 把它的两个子节点（额度卡
+ *      `_footerActions` / 账户 `_settingsArea`）提升成 grid item，各占一格。
+ *
+ * rail 的底色画在 root 的 background 上（52px 色带，面板区留 transparent，
+ * 露出侧栏列自己画的底色），这样即使某个单元格是空的色带也连续。
+ * 折叠态用 `:not([class*="_collapsed"])` 排除，交还给 DSH 自己的表现。
+ *
+ * 顶部的让位高度用 `var(--cx-band-h)`：**不写死**。默认值只是兜底，运行时由
+ * client 插件里的 JS 量「会话标题行的下边缘」回写（页头两行里第一行就是标题
+ * 行），所以页头内边距/字号变了它跟着变。
+ * ════════════════════════════════════════════════════════════════════════ */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) {
+  /* 侧栏原本靠 padding 撑内边距，重排后由各列自己负责 */
+  --dsh-sidebar-inline-padding: 0px;
+  display: grid;
+  grid-template-columns: var(--cx-rail-w) var(--cx-panel-w);
+  grid-template-rows: 46px auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "nav     brand"
+    "nav     new"
+    "nav     region"
+    "account foot";
+  /* 顶部让位给 macOS 标题栏带（三灯 + 折叠钮）：内容让开，但 rail 的色带要
+     一直画到窗口顶边（background 覆盖 padding 区），看起来才是「从顶到底的
+     一整条 rail」。rail 与白色面板之间刻意「不画线」：只留一次颜色跳变，
+     线条会把这一整块重新切开。 */
+  padding: var(--cx-band-h) 0 0;
+  position: relative;
+  background: linear-gradient(
+    to right,
+    var(--cx-rail) 0 52px,
+    transparent 52px
+  );
+}
+
+/* root 本来带一个行内 width（= 用户偏好 280px）；列宽被我们锁成 293.5 之后
+ * 它只会让内容挤在左侧 280px 里，剩下的按键区露出来。压成 100% 一致。 */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) {
+  width: 100% !important;
+  /* 让 root 成为层叠上下文，面板卡片的 z-index:-1 才会「盖住根背景、垫在
+   * 内容下面」；否则负 z-index 会跑到列背景背后去。 */
+  isolation: isolate;
+}
+
+/* 工作区面板 = 白卡片：从 rail 右边开始，宽 240、右/下各留 1.5px 缝 */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only])::after {
+  content: "";
+  position: absolute;
+  top: var(--cx-band-h);
+  left: var(--cx-rail-w);
+  width: var(--cx-panel-w);
+  bottom: var(--cx-gap);
+  border-radius: var(--cx-card-radius);
+  background: var(--dsw-alias-bg-base);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* rail-only 下原生折叠钮在 [88,11]：视觉上还看得见（它 fixed 出了 52px 的列），
+ * 但层叠顺序在 sidebarCol 里，点击会被主区标题行吃掉（实测 elementFromPoint
+ * 拿到 kiGsTW_titleRow）。所以在这个坐标放一个体级透明热区按钮接住点击，
+ * 只画 hover 底色，图标仍由原生那颗显示。 */
+.sk-collapse-hit {
+  position: fixed;
+  left: 88px;
+  top: calc((var(--cx-band-h) - 28px) / 2);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  cursor: pointer;
+  z-index: 40;
+  display: none;
+}
+.sk-collapse-hit[data-show] {
+  display: block;
+}
+.sk-collapse-hit:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.sk-collapse-hit:focus-visible {
+  outline: 2px solid var(--dsw-alias-label-primary);
+  outline-offset: -2px;
+}
+
+/* ── rail-only：选中非 home 的图标时，侧栏收成纯图标栏 ─────────────────
+ * 用户要的行为：点房子 → 展开「工作区」列；点插件 / 自动化任务 → 工作区
+ * 让位，主区拿到那 240px。做法是给 root 打 data-sk-rail-only，JS 里
+ * installSidebarWidth() 同时把 frame 的首轨从 296px 改成 52px（= rail 宽度，
+ * 不留缝），这样主区卡片自己铺到 x=52，rail 的视觉宽度与 home 态完全一致。 */
+[data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] {
+  grid-template-columns: var(--cx-rail-w);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "nav" "account";
+}
+
+/* 品牌行 / 新会话 / 工作区列表 / 底部动作区在这一态全部让位，只留 rail 本身 */
+[data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_logoRow"],
+[data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_newSession"],
+[data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_regionArea"],
+[data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_footArea"] > [class*="_footerActions"] {
+  display: none;
+}
+
+/* 折叠钮在 rail-only 时**留在原地不动**：home 态它在 (left:88, 色带垂直居中)，
+ * 切到面板页时位置一模一样。
+ *
+ * 难点是它此时已经溢出 52px 的 rail 列、落在主区色带的水平范围里。DOM 顺序上
+ * centerCol 在 sidebarCol 之后绘制，所以绝对定位会被盖住（实测 elementFromPoint
+ * 拿到 centerCol、像素是纯色带色）。把定位换成 fixed：它的包含块变成视口、脱离
+ * 侧栏列，再给一个高于 centerCol 的 z-index，就既画得出来也点得到（实测命中
+ * 就是按钮本身）。z-index 只取 40 —— 够压住主区，又低于 DSH 的对话框/浮层。
+ *
+ * 折叠回 0px 后由 DSH 自己在 shell.leading（left:88）画展开钮，本规则不生效。 */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"])[data-sk-rail-only] > [class*="_topStrip"] {
+  position: fixed;
+  top: calc((var(--cx-band-h) - 28px) / 2);
+  left: 88px;
+  z-index: 40;
+}
+
+/* ── rail-only 时，会话标题不能落进 macOS 三灯区 ────────────────────────
+ * DSH 自己的做法：在 frame[data-sidebar-collapsed] 上把
+ *   --dsh-frame-leading-clearance: 160px（全屏 84px）
+ * 而会话标题行是
+ *   padding-inline-start: max(0px, calc(clearance - 20px))
+ * 我们只是把首轨写窄（DSH 认为侧栏没收起），这根 var 取不到 → 标题贴着卡片
+ * 左缘（52px）一直顶到红绿灯下面。这里补上同样的带宽，并把 rail 那 52px 从
+ * 内距里扣掉 —— 于是标题的绝对 x 与「整栏收起」时一致，切页面时不会横向跳动。
+ * 另外原生只留 20px（clearance - 20），收起态下那颗折叠钮几乎贴着标题，
+ * 所以两边都再加 --cx-title-air（20px）撑开呼吸。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [class*="_frame"]:has([data-sk-rail-only]) {
+  --dsh-frame-leading-clearance: 160px;
+}
+
+/* 收起态（DSH 原生 data-sidebar-collapsed）也按同一套加呼吸量；
+ * 必须带上状态选择器 —— 展开态没有让位带，标题要贴着卡片左缘。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [class*="_frame"][data-sidebar-collapsed]
+  [data-slot="main.conversation"]
+  [class*="_titleRow"] {
+  padding-inline-start: max(
+    0px,
+    calc(var(--dsh-frame-leading-clearance, 0px) - 20px + var(--cx-title-air))
+  );
+}
+
+html[data-fullscreen] [class*="_frame"]:has([data-sk-rail-only]) {
+  --dsh-frame-leading-clearance: 84px;
+}
+
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [class*="_frame"]:has([data-sk-rail-only])
+  [data-slot="main.conversation"]
+  [class*="_titleRow"] {
+  padding-inline-start: max(
+    0px,
+    calc(
+      var(--dsh-frame-leading-clearance, 0px) - 20px + var(--cx-title-air) - var(--cx-rail-w)
+    )
+  );
+}
+
+/* ── 卡片内部的「出血」元素，要跟着卡片缩进 4px ────────────────────────
+ * 卡片是伪元素，内容却是原生节点：有两处会主动画到列的边缘、把 4px 缝糊掉。
+ *   1) 页头的 border-bottom 横线：header 宽度 = 整列宽，线会横穿右侧缝隙；
+ *   2) 输入框所在的 composerSeat 是 position:absolute; bottom:0 + 渐变白底，
+ *      正好盖住底部缝隙。
+ * 各自让开 var(--cx-gap) 即可，不改任何布局。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"]) {
+  margin-right: 0;
+}
+
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"])) [data-slot="main.conversation"] [class*="_composerSeat"] {
+  bottom: 0;
+}
+
+/* ── 折叠按钮：放进 macOS 标题栏带（三灯右侧，与三灯同一条水平线）───────
+ * 原生 `_topStrip` 是一条 52px 高、justify-content:flex-end 的横条（贴侧栏
+ * 右上角）。这里把它改成绝对定位的小方块，落在三灯右边 —— 位置取 DSH 自己
+ * 收起侧栏时 shell.leading 里那颗钮的位置（left 88px / 28×28 / 垂直居中），
+ * 这样展开与收起两种状态下按钮不会跳。 */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_topStrip"] {
+  position: absolute;
+  top: calc((var(--cx-band-h) - 28px) / 2);
+  left: 88px;
+  width: auto;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  z-index: 2;
+  justify-content: flex-start;
+}
+
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_topStrip"] [class*="_iconButton"] {
+  width: 28px;
+  height: 28px;
+}
+
+/* ── 品牌行 ───────────────────────────────────────────────────────────── */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_logoRow"] {
+  grid-area: brand;
+  height: 46px;
+  margin: 0;
+  padding: 0 8px 0 10px;
+  justify-content: flex-start;
+}
+
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_logoRow"] [class*="_brandName"] {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* ── 新会话：保留 DSH 原生按钮（38px、带边框、居中文案），落进面板列 ─────
+ * 只做落位与左右内缩，样式全部沿用原生（不再改成 rail 里的 ＋ 图标）。 */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_newSession"] {
+  grid-area: new;
+  margin: 0 8px 8px 4px;
+}
+
+/* ── rail 中部：面板图标 ─────────────────────────────────────────────── */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] {
+  grid-area: nav;
+  align-self: start;
+  margin: 6px 0 0;
+  padding: 0 8px;
+  gap: 2px;
+}
+
+/* rail 图标放大 2px（DSH 原生 16px → 18px）。SVG 的 width/height 是属性，
+ * CSS 能直接压过去；行高 36px 不变，只是 glyph 更醒目。 */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > [class*="_panelRow"] > [class*="_panelGlyph"] svg {
+  width: 18px;
+  height: 18px;
+}
+
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > [class*="_panelRow"] {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  margin: 0 auto;
+  padding: 0;
+  border-radius: var(--dsw-radius-md);
+  justify-content: center;
+  gap: 0;
+}
+
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > [class*="_panelRow"]:hover {
+  background: var(--cx-rail-item-hover);
+}
+
+/* 激活项用平台自己的「侧栏导航激活色」，与 DSH 其它地方的选中态一致 */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > [class*="_panelRow"][class*="_panelActive"] {
+  background: var(--cx-rail-item-active);
+}
+
+/* 图标化：文字不 display:none，而是 clip 掉——保留无障碍树里的名字，
+ * 屏幕阅读器和「按名字点」的自动化仍能找到它们。 */
+/* ── rail 最上面的「工作区」入口（home 图标）─────────────────────────
+ * 按钮由 src/client/index.jsx 的 `installHomeRail()` 注入到面板列表最前面，
+ * 点击 = `ctx.layout.selectPanel(null)`（回到会话/工作区视图）。
+ * 样式和面板行同款：36×36、圆角 md、hover/active 都用 interactive-bg-hover，
+ * 下面再加一条 1px 分隔线把它和「插件 / 自动化任务 / …」分成两组。 */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home {
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0 auto;
+  padding: 0;
+  border: none;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  /* 和面板图标同一个描边色：DSH 的 `_panelRow` 本来就是 label-primary，
+   * 这里若用 label-secondary 会出现「只有房子是灰的」这种不一致。 */
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+}
+
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home:hover {
+  background: var(--cx-rail-item-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home[data-active="true"] {
+  background: var(--cx-rail-item-active);
+  color: var(--dsw-alias-label-primary);
+}
+
+.sk-home__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sk-home__glyph svg {
+  width: 18px;
+  height: 18px;
+}
+
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelTitle"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── 工作区（面板列）────────────────────────────────────────────────── */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] {
+  grid-area: region;
+  min-height: 0;
+  margin: 0;
+  padding: 0 6px 0 4px;
+  overflow: hidden;
+}
+
+/* 区域小标题：小字号、加宽字距、大写，接近 Codex 的 section label */
+[data-slot="sidebar"] [class*="_sectionHeader"] {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* ── 底部两格：rail 底 = 账户头像，右侧 = 额度卡 ─────────────────────────
+ * `_footArea` 只是 `_footerActions`(额度卡) + `_settingsArea`(账户) 的竖排壳，
+ * 把它 display:contents 化，两个子节点就直接成为 root grid 的 item，
+ * 于是一个落进 rail 底、一个落进面板底，占同一行、同一水平线。 */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] {
+  display: contents;
+}
+
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_footerActions"] {
+  grid-area: foot;
+  box-sizing: border-box;
+  padding: 0 8px 8px;
+  min-width: 0;
+}
+
+/* 账户：只留头像，名字 clip 掉（按钮有 aria-label="账号菜单"） */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] {
+  grid-area: account;
+  align-self: end;
+  padding: 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 账户触发器原生是「44px 高、整行铺满」的，塞进 52px rail 要收成 36×36 的圆钮 */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] {
+  width: 100%;
+  margin: 0;
+  justify-content: center;
+}
+
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_trigger"]:not([class*="_triggerRow"]) {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  padding: 0;
+  gap: 0;
+}
+
+/* 按钮外面还套了一层 inline-flex 的 anchor（实测 52px 宽、默认 flex-start 对齐）：
+ * 只把按钮收成 36px 不够 —— 它会在 anchor 里贴左，头像看着就歪到 rail 左缘了。
+ * 把 anchor 也居中，头像才回到 rail 正中（52px rail → 按钮 x 8..44，头像中心 26）。 */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_anchor"] {
+  justify-content: center;
+}
+
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_label"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── 工作区列表：不画滚动条 ─────────────────────────────────────────────
+ * 面板只有 240px，DSH 原生给列表留了一条 5px 滚动条 + `scrollbar-gutter:
+ * stable`（预算 gutter 宽度在 `--dsh-session-list-scrollbar-*` 里，padding-right
+ * 用它们算），行标题因此更早被截断。
+ *
+ * 这里把这几件事一起关掉：
+ *   1) 原生滚动条不画（`scrollbar-width: none` + WebKit 的 `::-webkit-scrollbar`）；
+ *   2) 不再预留 gutter（`scrollbar-gutter: auto`）；
+ *   3) 把 DSH 自己的两个宽度变量归零 —— 否则 `_list` 的 padding-right 仍然按 5px
+ *      算，右侧会多出一条空白，看着像"滚动条没了但位置还占着"。
+ *
+ * 只是**不画**，不是不能滚：滚轮 / 触控板 / 键盘仍然可以滚。 */
+[data-slot="sidebar"] > [class*="_root"] {
+  --dsh-session-list-scrollbar-width: 0px;
+  --dsh-session-list-scrollbar-offset: 0px;
+}
+
+[data-slot="sidebar"] > [class*="_root"] [class*="_list"] {
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
+}
+
+[data-slot="sidebar"] > [class*="_root"] [class*="_list"]::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* ── 右侧边栏 = 标题栏 + 白卡片 ─────────────────────────────────────────
+ * 右侧边栏走的是 dockkit：`[data-dockkit-pane]` 这个 section 自己铺满整列、
+ * 底色就是 bg-base（纯白），所以整列从窗口顶到底是一块白，和左边的卡片式
+ * 外壳接不上。
+ *
+ * 这里把 pane 的白底摘掉、改成一张卡片：
+ *   · pane 本身透明（露出右列的外壳色 + 顶部色带）；
+ *   · 卡片画在 pane 的 ::before 上，从色带下沿开始，右/下各留 4px；
+ *   · pane 的第一行是标题栏（tab strip，实测 38px = 10 padding + 28 按钮），
+ *     给它补一段 padding-bottom 正好到色带高度，标题就落在色带里，卡片
+ *     紧贴其下开始 —— 与会话区的「标题行在色带、正文在白卡」同一套版式。
+ *
+ * 全屏态（浏览器 tab 全屏）不套这套：那时 pane 就是整个窗口，卡片化没有意义。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [class*="_rightbarCol"]
+  [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
+  [data-dockkit-pane] {
+  background-color: transparent;
+  position: relative;
+  isolation: isolate;
+  /* dockkit 给每个 pane 画了一条 1px 左边框当分隔线（rgba(0,0,0,.16)），
+   * 卡片化之后这条线横穿色带与缝隙、在会话区右缘显形，去掉它 ——
+   * 卡片之间本来就隔着 4px 缝，不需要额外的线。 */
+  border-left: 0;
+}
+
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [class*="_rightbarCol"]
+  [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
+  [data-dockkit-pane]::before {
+  content: "";
+  position: absolute;
+  top: var(--cx-band-h);
+  left: 0;
+  right: var(--cx-gap);
+  bottom: var(--cx-gap);
+  border-radius: var(--cx-card-radius);
+  background: var(--dsw-alias-bg-base);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 内容层也要跟着卡片收边。pane 的 body 是「铺满整列」的滚动容器（实测从
+ * 色带下沿到窗口底、宽到窗口右缘），页面自己要是不透明（浏览器 iframe、
+ * 文件预览、任何带底色的页面），就会把卡片的四个圆角和右/下两条 4px 缝
+ * 一起盖掉 —— 看起来就是「右侧边栏没有圆角」。这里给 body 补上和卡片一致
+ * 的边距 + 圆角 + 裁剪，谁在里面画白底都被收进卡片里。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [class*="_rightbarCol"]
+  [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
+  [data-dockkit-pane]
+  > :last-child {
+  position: relative;
+  margin-right: var(--cx-gap);
+  margin-bottom: var(--cx-gap);
+  border-radius: var(--cx-card-radius);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* 标题栏补齐到色带高度：实测 38px（10px 上内边距 + 28px 按钮），
+ * 补 var(--cx-band-h) - 38px 的 padding-bottom，标题行就正好在色带内结束。 */
+:is(html[data-platform="darwin"], html:has([class*="_topStrip"]))
+  [class*="_rightbarCol"]
+  [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
+  [data-dockkit-pane]
+  > :first-child {
+  padding-bottom: calc(var(--cx-band-h) - 38px);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * 设置页 · 已归档的聊天（`settings.section` → id: archived-chats）
+ *
+ * 这一块**不受平台门控**：设置页在网页端和桌面端都要长一样，所以它不套
+ * `:is(html[data-platform="darwin"], …)` 那层条件。颜色全部取 DSH 令牌，
+ * 深浅色自动跟随。
+ * ══════════════════════════════════════════════════════════════════════ */
+
+.sk-arch {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.sk-arch__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sk-arch__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* 主按钮：与行内次按钮区分，用实心文字色描边，不做大面积填充 */
+.sk-arch__action {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--dsw-radius-sm);
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease;
+}
+
+.sk-arch__action:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.sk-arch__action:disabled,
+.sk-arch__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sk-arch__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sk-arch__search {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: var(--dsw-radius-md);
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.sk-arch__search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.sk-arch__search input::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.sk-arch__select {
+  height: 38px;
+  padding: 0 10px;
+  border-radius: var(--dsw-radius-md);
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sk-arch__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sk-arch__groupHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.sk-arch__icon {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.sk-arch__groupTitle {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-arch__groupCount {
+  margin-left: auto;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+}
+
+.sk-arch__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--dsw-radius-md);
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.sk-arch__rowMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sk-arch__rowTitle {
+  font-size: 13.5px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-arch__rowTime {
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.sk-arch__btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--dsw-radius-sm);
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sk-arch__btn:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.sk-arch__empty {
+  padding: 28px 0 8px;
+  text-align: center;
+}
+
+.sk-arch__emptyTitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.sk-arch__emptyHint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* 已归档的聊天：不可恢复的归档记录补充说明 */
+.sk-arch__note {
+  margin: 18px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-caption);
+}
+
+/* 删除按钮：危险动作用警示色，但只染文字，不染底色 —— 这一页不是主操作面。 */
+.sk-arch__btn--danger {
+  color: var(--dsw-alias-state-error-primary, var(--dsw-alias-label-secondary));
+}
+
+.sk-arch__btn--danger:hover:not(:disabled) {
+  background: var(--dsw-alias-state-error-primary-muted, var(--dsw-alias-interactive-bg-hover));
+}
+
+.sk-arch__note--error {
+  color: var(--dsw-alias-state-error-primary, var(--dsw-alias-label-secondary));
+}

@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="zh-CN" data-platform="darwin">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEEPSEEK HARNESS · 鲸鱼出水启动动画</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   鲸鱼出水 · 启动动画 demo
+   -----------------------------------------------------------------------
+   整段动画只用 CSS 关键帧 + 一点点 JS 做「就绪交接」，没有外部图片/字体，
+   所以可以把本文件按 <style> / <body> / <script> 三段原样搬进插件的
+   webserver/index-inject 注入行里（见 README「怎么变成真插件」）。
+
+   时间轴（毫秒）：
+     0     开场黑场，海面微亮
+     250   鲸鱼入水点炸开第一簇水花
+     400   鲸鱼出水，沿抛物线向左上飞出
+     1500  到达顶点，身体放平
+     2400  落回海面，第二簇水花 + 涟漪
+     1200  字标浮现（字距收拢、模糊散去）
+     1400  进度条自行推进到 88%
+     3600  demo 模拟「应用已就绪」→ 补满 100% + 闪光 + 淡出
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --sea-deep: #02080f;
+  --sea-mid: #061a2b;
+  --sea-top: #0d3a58;
+  --whale: #eef7ff;
+  --foam: #cbe6ff;
+  --accent: #6fbcff;
+  --hud: rgba(233, 244, 255, .92);
+  --hud-dim: rgba(197, 219, 240, .62);
+  --ease-out: cubic-bezier(.22, .68, .3, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  color: var(--hud);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── 舞台 ────────────────────────────────────────────────────────────── */
+.splash {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(120% 85% at 50% 118%, #12496c 0%, var(--sea-top) 26%,
+      var(--sea-mid) 52%, var(--sea-deep) 78%, #010509 100%);
+}
+
+/* 海面上方的一层薄雾 */
+.splash::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 40% 0;
+  background: radial-gradient(80% 70% at 50% 100%,
+    rgba(111, 188, 255, .13), transparent 70%);
+  pointer-events: none;
+}
+
+/* 水下透上来的辉光：从暗到亮、随呼吸停在中段 */
+.halo {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  width: min(78vw, 980px);
+  aspect-ratio: 1.9;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side,
+    rgba(126, 200, 255, .30), rgba(88, 160, 235, .10) 55%, transparent 72%);
+  filter: blur(18px);
+  animation: halo 3.6s var(--ease-out) both;
+}
+
+@keyframes halo {
+  0%   { opacity: 0; transform: scale(.82); }
+  45%  { opacity: 1; transform: scale(1); }
+  100% { opacity: .72; transform: scale(1.04); }
+}
+
+/* ── 海面 ────────────────────────────────────────────────────────────── */
+.sea {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 38vh;
+  z-index: 4;               /* 高于鲸鱼：鲸鱼沉到水下时被海面挡住 */
+  pointer-events: none;
+}
+
+.sea__fill {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 100%;
+  background: linear-gradient(to bottom,
+    rgba(30, 96, 146, 0) 0%, rgba(27, 90, 136, .55) 5%,
+    rgba(19, 68, 108, .88) 13%, rgba(12, 46, 74, .99) 26%,
+    #05131f 52%, #02080e 82%, #010508 100%);
+}
+
+.sea__wave {
+  position: absolute;
+  left: -25%;
+  width: 150%;
+  height: 100%;
+  display: block;
+}
+.sea__wave--back  { top: -1%; opacity: .38; animation: drift 11s ease-in-out infinite alternate; }
+.sea__wave--mid   { top: 1%;  opacity: .55; animation: drift 8.5s ease-in-out infinite alternate-reverse; }
+.sea__wave--front { top: 3%;   opacity: .95; animation: drift 6.4s ease-in-out infinite alternate; }
+
+.sea__wave path {
+  fill: #061a2b;
+  stroke: rgba(176, 222, 255, .30);
+  stroke-width: 1.1;
+  vector-effect: non-scaling-stroke;
+}
+.sea__wave--back  path { fill: #0c3550; stroke: rgba(170, 216, 255, .18); }
+.sea__wave--mid   path { fill: #08283f; stroke: rgba(176, 222, 255, .26); }
+.sea__wave--front path { stroke: rgba(198, 232, 255, .45); }
+
+@keyframes drift {
+  from { transform: translateX(-3.5%) translateY(0); }
+  to   { transform: translateX(3.5%) translateY(-1.4%); }
+}
+
+/* 水面那道亮线（月光反射） */
+.sea__mist {
+  position: absolute;
+  inset: -26px 0 auto 0;
+  height: 90px;
+  background: linear-gradient(to top, rgba(120, 186, 240, .16), transparent 78%);
+  filter: blur(7px);
+}
+
+.sea__shine {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: min(46vw, 560px);
+  height: 3px;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, rgba(190, 228, 255, .85), transparent);
+  filter: blur(2px);
+  animation: shine 3.6s var(--ease-out) both;
+}
+@keyframes shine { 0%, 12% { opacity: 0; } 55% { opacity: .9; } 100% { opacity: .5; } }
+
+/* ── 鲸鱼 ────────────────────────────────────────────────────────────── */
+.whale-track {
+  position: absolute;
+  left: 6vw;
+  bottom: 24vh;
+  z-index: 2;               /* 低于 .sea，海面才会盖住它 */
+  animation: whale-x 2.5s cubic-bezier(.32, .02, .62, 1) .3s both;
+}
+
+.whale-lift {
+  animation: whale-y 2.5s cubic-bezier(.38, .02, .45, 1) .3s both;
+}
+
+.whale-tilt {
+  animation: whale-tilt 2.5s cubic-bezier(.3, .02, .5, 1) .3s both;
+}
+
+.whale {
+  display: block;
+  width: clamp(150px, 18vw, 262px);
+  height: auto;
+  color: var(--whale);
+  /* 鲸鱼本来朝左，翻过来朝右飞。
+     必须翻转在元素自身上（transform），不能写在父级的 scale 属性上，
+     否则父级的 rotate 会被一并镜像，姿态方向会反。 */
+  transform: scaleX(-1);
+  filter:
+    drop-shadow(0 0 12px rgba(150, 210, 255, .55))
+    drop-shadow(0 0 42px rgba(96, 168, 255, .32));
+}
+
+/* 横向：匀速穿越画面 */
+@keyframes whale-x {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(62vw); }
+}
+
+/* 纵向：出水 → 顶点悬停 → 落回 */
+@keyframes whale-y {
+  0%   { transform: translateY(34vh); }
+  34%  { transform: translateY(-4vh); }
+  50%  { transform: translateY(-12vh); }
+  66%  { transform: translateY(-3vh); }
+  100% { transform: translateY(32vh); }
+}
+
+/* 姿态：出水时昂头，顶点放平，入水时低头 */
+@keyframes whale-tilt {
+  0%   { transform: rotate(-34deg); }
+  32%  { transform: rotate(-12deg); }
+  52%  { transform: rotate(6deg); }
+  72%  { transform: rotate(28deg); }
+  100% { transform: rotate(44deg); }
+}
+
+/* ── 水花 / 涟漪 ─────────────────────────────────────────────────────── */
+.fx {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.drop {
+  position: absolute;
+  width: var(--s, 6px);
+  height: var(--s, 6px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--foam) 60%, rgba(150, 200, 240, .2));
+  opacity: 0;
+  animation: drop var(--dur, 900ms) cubic-bezier(.16, .7, .4, 1) var(--delay, 0ms) both;
+}
+
+@keyframes drop {
+  0%   { transform: translate(0, 0) scale(.5); opacity: 0; }
+  12%  { opacity: 1; }
+  52%  { transform: translate(var(--dx, 0px), calc(-1 * var(--up, 90px))) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx2, 0px), var(--down, 24px)) scale(.35); opacity: 0; }
+}
+
+.foam {
+  position: absolute;
+  width: 120px;
+  height: 40px;
+  margin: -20px 0 0 -60px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #ffffff, rgba(196, 232, 255, .55) 45%, transparent 72%);
+  filter: blur(5px);
+  opacity: 0;
+  animation: foam 880ms cubic-bezier(.2, .7, .4, 1) var(--delay, 0ms) both;
+}
+
+@keyframes foam {
+  0%   { transform: scale(.25); opacity: .95; }
+  55%  { transform: scale(1.15); opacity: .55; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.ripple {
+  position: absolute;
+  width: 40px;
+  height: 12px;
+  margin-left: -20px;
+  border: 1.5px solid rgba(186, 226, 255, .6);
+  border-radius: 50%;
+  opacity: 0;
+  animation: ripple 1500ms cubic-bezier(.2, .7, .35, 1) var(--delay, 0ms) both;
+}
+
+@keyframes ripple {
+  0%   { transform: scale(.25); opacity: 0; }
+  18%  { opacity: .85; }
+  100% { transform: scale(9); opacity: 0; }
+}
+
+/* ── HUD ─────────────────────────────────────────────────────────────── */
+.hud {
+  position: absolute;
+  left: 50%;
+  bottom: 7vh;
+  translate: -50% 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: brand-in 1100ms var(--ease-out) 1200ms both;
+}
+
+.brand__mark {
+  width: 34px;
+  height: auto;
+  color: #fff;
+  filter: drop-shadow(0 0 14px rgba(140, 205, 255, .6));
+}
+
+.brand__text {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 15px;
+  letter-spacing: .44em;          /* 首帧字距很大，收拢到 .17em */
+  text-transform: uppercase;
+  color: #fff;
+  animation: tracking 1400ms var(--ease-out) 1200ms both;
+}
+
+.brand__name { font-weight: 650; }
+.brand__suffix {
+  padding: 2px 7px 3px;
+  border: 1px solid rgba(255, 255, 255, .5);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  color: rgba(255, 255, 255, .82);
+}
+
+@keyframes brand-in {
+  0%   { opacity: 0; filter: blur(10px); transform: translateY(8px); }
+  100% { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+
+@keyframes tracking {
+  0%   { letter-spacing: .44em; opacity: 0; filter: blur(8px); }
+  100% { letter-spacing: .17em; opacity: 1; filter: blur(0); }
+}
+
+.stage {
+  font-size: 12px;
+  letter-spacing: .12em;
+  color: var(--hud-dim);
+  animation: fade-in 700ms ease-out 1900ms both;
+}
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.meter {
+  width: min(340px, 56vw);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: fade-in 700ms ease-out 1400ms both;
+}
+
+.meter__track {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(190, 222, 250, .16);
+  overflow: hidden;
+}
+
+.meter__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(140, 205, 255, .55), #fff);
+  box-shadow: 0 0 12px rgba(140, 205, 255, .8);
+  transition: width 620ms var(--ease-out);
+}
+
+.meter__pct {
+  width: 42px;
+  text-align: right;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--hud-dim);
+}
+
+/* 就绪瞬间的闪光 */
+.flash {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: radial-gradient(60% 45% at 50% 72%, rgba(226, 243, 255, .95), rgba(200, 232, 255, 0) 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash.is-ready .flash { animation: flash 620ms ease-out both; }
+@keyframes flash {
+  0%   { opacity: 0; }
+  22%  { opacity: .85; }
+  100% { opacity: 0; }
+}
+
+.splash.is-out {
+  animation: veil-out 620ms var(--ease-out) both;
+  pointer-events: none;
+}
+@keyframes veil-out {
+  from { opacity: 1; filter: blur(0); }
+  to   { opacity: 0; filter: blur(6px); }
+}
+
+/* 跳过提示 / 重播 */
+.hint {
+  position: absolute;
+  right: 22px;
+  bottom: 20px;
+  z-index: 9;
+  font-size: 11px;
+  letter-spacing: .06em;
+  color: rgba(206, 228, 246, .55);
+  animation: fade-in 600ms ease-out 1500ms both;
+}
+
+.replay {
+  position: absolute;
+  left: 22px;
+  bottom: 20px;
+  z-index: 9;
+  display: none;
+  padding: 7px 13px;
+  border: 1px solid rgba(190, 222, 250, .3);
+  border-radius: 999px;
+  background: rgba(10, 24, 38, .6);
+  color: rgba(226, 240, 255, .92);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: .04em;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  animation: fade-in 500ms ease-out both;
+}
+.replay:hover { border-color: rgba(190, 222, 250, .6); background: rgba(16, 36, 56, .8); }
+.splash.is-done .replay { display: block; }
+
+/* ── 演示结束态（真实插件里这块就是 DSH 主界面） ───────────────────── */
+.after {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: none;
+  place-items: center;
+  background: radial-gradient(120% 90% at 50% 30%, #10222f 0%, #070e15 60%, #03070b 100%);
+}
+
+.after__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 30px 38px;
+  border: 1px solid rgba(160, 200, 235, .16);
+  border-radius: 14px;
+  background: rgba(16, 30, 44, .55);
+  backdrop-filter: blur(10px);
+  text-align: center;
+}
+
+.after__ok {
+  font-size: 13px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(196, 226, 255, .9);
+}
+
+.after__note {
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(178, 202, 224, .62);
+}
+
+.after .replay { display: inline-block; position: static; }
+
+body.show-after .after { display: grid; }
+
+/* 无障碍：减少动态时只留淡入淡出 */
+@media (prefers-reduced-motion: reduce) {
+  .whale-track, .whale-lift, .whale-tilt, .halo, .sea__wave, .sea__shine,
+  .brand, .brand__text, .stage, .meter, .hint { animation-duration: 1ms !important; animation-delay: 0ms !important; }
+  .whale-track { animation-name: none !important; opacity: 0; }
+  .drop, .foam {
+  position: absolute;
+  width: 120px;
+  height: 40px;
+  margin: -20px 0 0 -60px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #ffffff, rgba(196, 232, 255, .55) 45%, transparent 72%);
+  filter: blur(5px);
+  opacity: 0;
+  animation: foam 880ms cubic-bezier(.2, .7, .4, 1) var(--delay, 0ms) both;
+}
+
+@keyframes foam {
+  0%   { transform: scale(.25); opacity: .95; }
+  55%  { transform: scale(1.15); opacity: .55; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.ripple { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="splash" id="splash">
+  <!-- 水下辉光 -->
+  <div class="halo"></div>
+
+  <!-- 鲸鱼：三层容器分别负责 横向 / 纵向 / 姿态，互不干扰 -->
+  <div class="whale-track">
+    <div class="whale-lift">
+      <div class="whale-tilt">
+        <svg class="whale" viewBox="0 0 23.16 17.04" fill="none" aria-hidden="true">
+          <path fill="currentColor" d="M22.9168 1.43018C22.6713 1.31018 22.5658 1.53918 22.4223 1.65519C22.3733 1.69269 22.3318 1.74169 22.2903 1.78669C21.9317 2.1697 21.5127 2.42121 20.9657 2.39121C20.1657 2.34621 19.4827 2.59771 18.8787 3.20973C18.7502 2.45521 18.3236 2.0047 17.6746 1.71569C17.3351 1.56568 16.9916 1.41518 16.7536 1.08867C16.5876 0.856163 16.5421 0.597155 16.4591 0.341647C16.4061 0.187643 16.3536 0.0301382 16.1761 0.00363739C15.9836 -0.0263635 15.9081 0.135141 15.8326 0.270145C15.5306 0.822162 15.4136 1.43018 15.4251 2.0462C15.4516 3.43174 16.0366 4.53527 17.1991 5.3203C17.3311 5.4103 17.3651 5.5003 17.3236 5.63181C17.2441 5.90231 17.1501 6.16482 17.0671 6.43533C17.0141 6.60784 16.9351 6.64584 16.7501 6.57033C16.1121 6.30383 15.5611 5.90931 15.074 5.4328C14.2475 4.63328 13.5 3.75075 12.568 3.05973C12.349 2.89822 12.13 2.74822 11.9034 2.60522C10.9524 1.68169 12.028 0.923165 12.277 0.833162C12.5375 0.739159 12.3675 0.41615 11.5259 0.42015C10.6844 0.42365 9.91439 0.705658 8.93286 1.08117C8.78935 1.13767 8.63835 1.17867 8.48384 1.21267C7.59332 1.04367 6.66829 1.00617 5.70226 1.11517C3.88321 1.31768 2.43016 2.1777 1.36213 3.64575C0.0790928 5.4103 -0.222916 7.41536 0.146595 9.50642C0.535106 11.7105 1.66014 13.535 3.38869 14.9616C5.18125 16.4406 7.24581 17.1657 9.60138 17.0266C11.0319 16.9441 12.6245 16.7526 14.421 15.2321C14.874 15.4576 15.3496 15.5476 16.1381 15.6151C16.7456 15.6716 17.3306 15.5851 17.7836 15.4911C18.4931 15.3411 18.4441 14.6841 18.1876 14.5636C16.1081 13.595 16.5646 13.9891 16.1496 13.67C17.2061 12.42 18.8202 10.1979 19.3182 7.17235C19.3672 6.83834 19.4297 6.36783 19.4222 6.09732C19.4182 5.93231 19.4562 5.86831 19.6447 5.84931C20.1657 5.78931 20.6712 5.64681 21.1357 5.3913C22.4833 4.65528 23.0268 3.44624 23.1548 1.9972C23.1738 1.77569 23.1508 1.54668 22.9168 1.43018ZM11.1749 14.4736C9.15936 12.889 8.18184 12.3675 7.77832 12.39C7.40081 12.4125 7.46881 12.8445 7.55182 13.126C7.63882 13.404 7.75182 13.5955 7.91033 13.8396C8.01983 14.0011 8.09533 14.2411 7.80083 14.4216C7.15181 14.8231 6.02327 14.2866 5.97027 14.2601C4.65673 13.4865 3.5587 12.4655 2.78467 11.069C2.03715 9.72493 1.60314 8.28289 1.53164 6.74384C1.51264 6.37233 1.62214 6.24082 1.99215 6.17332C2.47916 6.08332 2.98118 6.06432 3.46769 6.13582C5.52476 6.43633 7.27581 7.35586 8.74385 8.8129C9.58188 9.64243 10.2159 10.634 10.8689 11.6025C11.5634 12.631 12.3105 13.611 13.262 14.4146C13.598 14.6961 13.866 14.9101 14.1225 15.0681C13.349 15.1546 12.058 15.1731 11.1749 14.4746L11.1749 14.4736ZM12.141 8.25988C12.141 8.09488 12.273 7.96338 12.439 7.96338C12.4765 7.96338 12.5105 7.97088 12.541 7.98188C12.5825 7.99688 12.6205 8.01938 12.6505 8.05338C12.7035 8.10588 12.7335 8.18088 12.7335 8.25988C12.7335 8.42489 12.6015 8.55639 12.4355 8.55639C12.2695 8.55639 12.141 8.42489 12.141 8.25988ZM15.1415 9.79893C14.949 9.87793 14.7565 9.94544 14.5715 9.95294C14.2845 9.96794 13.9715 9.85143 13.8015 9.70893C13.5375 9.48742 13.3485 9.36342 13.2695 8.97691C13.2355 8.8119 13.2545 8.55639 13.2845 8.40989C13.3525 8.09438 13.277 7.89187 13.0545 7.70787C12.8735 7.55786 12.643 7.51636 12.39 7.51636C12.2955 7.51636 12.209 7.47486 12.1445 7.44136C12.039 7.38886 11.9519 7.25735 12.035 7.09585C12.0615 7.04335 12.19 6.91584 12.22 6.89334C12.5635 6.69784 12.9595 6.76184 13.326 6.90834C13.6655 7.04735 13.9225 7.30236 14.292 7.66287C14.6695 8.09838 14.7375 8.21838 14.9525 8.54539C15.1225 8.8009 15.277 9.06341 15.3831 9.36392C15.4471 9.55142 15.3641 9.70493 15.1415 9.79893Z"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- 海面（在鲸鱼上面，负责遮住水下的部分） -->
+  <div class="sea">
+    <div class="sea__fill"></div>
+    <svg class="sea__wave sea__wave--back" viewBox="0 0 1440 160" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,96 C160,52 320,52 480,96 C640,140 800,140 960,96 C1120,52 1280,52 1440,96 L1440,160 L0,160 Z"/>
+    </svg>
+    <svg class="sea__wave sea__wave--mid" viewBox="0 0 1440 160" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,40 C180,22 340,22 520,40 C700,58 880,58 1060,40 C1220,24 1340,24 1440,38 L1440,200 L0,200 Z"/>
+    </svg>
+    <svg class="sea__wave sea__wave--front" viewBox="0 0 1440 160" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,52 C200,34 360,34 540,52 C720,70 900,70 1080,52 C1260,34 1360,36 1440,48 L1440,200 L0,200 Z"/>
+    </svg>
+    <div class="sea__mist"></div>
+    <div class="sea__shine"></div>
+  </div>
+
+  <!-- 水花与涟漪（JS 生成） -->
+  <div class="fx" id="fx"></div>
+
+  <!-- 就绪闪光 -->
+  <div class="flash"></div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="brand">
+      <svg class="brand__mark" viewBox="0 0 23.16 17.04" fill="none" aria-hidden="true">
+        <use href="#whale-shape"/>
+      </svg>
+      <div class="brand__text">
+        <span class="brand__name">DEEPSEEK</span>
+        <span class="brand__suffix">HARNESS</span>
+      </div>
+    </div>
+    <div class="meter">
+      <div class="meter__track"><div class="meter__bar" id="bar"></div></div>
+      <div class="meter__pct" id="pct">0%</div>
+    </div>
+    <div class="stage" id="stage">初始化内核</div>
+  </div>
+
+  <div class="hint" id="hint">点击任意处 或按 Esc 跳过</div>
+</div>
+
+<!-- 演示结束态 -->
+<div class="after" id="after">
+  <div class="after__card">
+    <div class="after__ok">启动完成</div>
+    <div class="after__note">真实插件里，这一刻之后露出的是 DSH 主界面。<br>鲸鱼这条时间轴一共约 4.2s，其中「就绪」由宿主决定。</div>
+    <button class="replay" id="replay" type="button">↻ 重播动画</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const splash = document.getElementById('splash');
+  const fx = document.getElementById('fx');
+  const bar = document.getElementById('bar');
+  const pct = document.getElementById('pct');
+  const stage = document.getElementById('stage');
+  const hint = document.getElementById('hint');
+  const replay = document.getElementById('replay');
+
+  const readout = [
+    [0, '初始化内核'],
+    [900, '装载插件'],
+    [2100, '恢复会话'],
+    [3000, '就绪'],
+  ];
+
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let raf = 0;
+  let finished = false;
+
+  /* ── 水花：在入水点/落水点炸开一簇水滴 + 涟漪 ─────────────────────── */
+  function splashAt(x, y, count, strength) {
+    if (REDUCED) return;
+    for (let i = 0; i < count; i++) {
+      const drop = document.createElement('span');
+      drop.className = 'drop';
+      const spread = (Math.random() - 0.5) * 2 * (48 * strength);
+      const size = 3 + Math.random() * 6;
+      drop.style.left = `${x}px`;
+      drop.style.top = `${y}px`;
+      drop.style.setProperty('--s', `${size}px`);
+      drop.style.setProperty('--dx', `${spread * 0.55}px`);
+      drop.style.setProperty('--dx2', `${spread}px`);
+      drop.style.setProperty('--up', `${40 + Math.random() * 130 * strength}px`);
+      drop.style.setProperty('--down', `${10 + Math.random() * 30}px`);
+      drop.style.setProperty('--dur', `${620 + Math.random() * 520}ms`);
+      drop.style.setProperty('--delay', `${Math.random() * 90}ms`);
+      drop.addEventListener('animationend', () => drop.remove());
+      fx.appendChild(drop);
+    }
+    const foam = document.createElement('span');
+    foam.className = 'foam';
+    foam.style.left = `${x}px`;
+    foam.style.top = `${y}px`;
+    foam.addEventListener('animationend', () => foam.remove());
+    fx.appendChild(foam);
+    for (let i = 0; i < 3; i++) {
+      const ring = document.createElement('span');
+      ring.className = 'ripple';
+      ring.style.left = `${x}px`;
+      ring.style.top = `${y}px`;
+      ring.style.setProperty('--delay', `${i * 160}ms`);
+      ring.addEventListener('animationend', () => ring.remove());
+      fx.appendChild(ring);
+    }
+  }
+
+  const pointOf = (xvw, yvh) => ({
+    x: (window.innerWidth * xvw) / 100,
+    y: (window.innerHeight * yvh) / 100,
+  });
+
+  /* ── 时间线 ──────────────────────────────────────────────────────── */
+  const timers = [];
+  const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+
+  function start() {
+    finished = false;
+    splash.classList.remove('is-out', 'is-ready', 'is-done');
+    bar.style.width = '0%';
+    pct.textContent = '0%';
+    stage.textContent = readout[0][1];
+
+    // 重启 CSS 动画：克隆节点太重，这里用强制 reflow
+    void splash.offsetWidth;
+
+    const exit = pointOf(9, 68);
+    const land = pointOf(67, 70);
+
+    at(250, () => splashAt(exit.x, exit.y, 18, 1.15));
+    at(2450, () => splashAt(land.x, land.y, 22, 1.3));
+    at(2650, () => splashAt(land.x - 40, land.y + 4, 12, 0.8));
+
+    // 进度条：自己推进到 88%，就绪时补满
+    const t0 = performance.now() + 1400;
+    const advance = (now) => {
+      if (finished) return;
+      const k = Math.min(1, Math.max(0, (now - t0) / 2000));
+      const v = Math.round(88 * (1 - Math.pow(1 - k, 2)));
+      bar.style.width = `${v}%`;
+      pct.textContent = `${v}%`;
+      raf = requestAnimationFrame(advance);
+    };
+    raf = requestAnimationFrame(advance);
+
+    for (const [ms, text] of readout.slice(1)) {
+      at(ms, () => { if (!finished) stage.textContent = text; });
+    }
+
+    // demo 里模拟「应用挂载完成」
+    at(3600, ready);
+  }
+
+  function ready() {
+    if (finished) return;
+    finished = true;
+    cancelAnimationFrame(raf);
+    bar.style.width = '100%';
+    pct.textContent = '100%';
+    stage.textContent = '就绪';
+    hint.style.display = 'none';
+    splash.classList.add('is-ready');
+    at(620, () => {
+      splash.classList.add('is-out');
+      at(620, () => {
+        splash.classList.add('is-done');
+        document.body.classList.add('show-after');
+      });
+    });
+  }
+
+  function skip() {
+    if (finished) return;
+    ready();
+  }
+
+  /* ── 交互 ────────────────────────────────────────────────────────── */
+  splash.addEventListener('pointerdown', skip);
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      skip();
+    }
+  });
+  replay.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.body.classList.remove('show-after');
+    splash.classList.remove('is-done', 'is-out', 'is-ready');
+    splash.style.opacity = '';
+    // 让 CSS 动画从头再跑一遍
+    splash.querySelectorAll('[class]').forEach((el) => {
+      el.style.animation = 'none';
+      void el.offsetWidth;
+      el.style.animation = '';
+    });
+    timers.forEach(clearTimeout);
+    timers.length = 0;
+    start();
+  });
+
+  // 调试钩子：截图核对某一帧时用（`__whale.at(1400)` 暂停并跳到 1400ms）
+  window.__whale = {
+    splashAt,
+    pointOf,
+    ready,
+    start,
+    at(ms) {
+      // 定格到某一帧：停掉时间线、收起结束态，再把所有 CSS 动画 seek 过去
+      finished = true;
+      cancelAnimationFrame(raf);
+      timers.forEach(clearTimeout);
+      timers.length = 0;
+      splash.classList.remove('is-out', 'is-done', 'is-ready');
+      document.body.classList.remove('show-after');
+      document.getAnimations().forEach((a) => { a.pause(); a.currentTime = ms; });
+      // 进度条/文案也跟着定格，截图才自洽
+      const k = Math.min(1, Math.max(0, (ms - 1400) / 2000));
+      const v = ms >= 3600 ? 100 : Math.round(88 * (1 - Math.pow(1 - k, 2)));
+      bar.style.width = `${v}%`;
+      pct.textContent = `${v}%`;
+      const label = readout.filter(([t]) => t <= ms).pop();
+      stage.textContent = ms >= 3600 ? '就绪' : label[1];
+    },
+  };
+
+  start();
+})();
+</script>
+</body>
+</html>

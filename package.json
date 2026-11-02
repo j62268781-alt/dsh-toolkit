@@ -1,0 +1,37 @@
+{
+  "name": "dsh-shell-kit",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "DSH 桌面外壳定制工具箱：白色圆角卡片式三栏布局（52px 图标栏 + 定宽 240px 工作区）、macOS 定高标题色带、以及启动时的「鲸鱼自绘」开机动画。A shell customization kit for DeepSeek Harness — carded three-column layout, fixed-height macOS title band, and a self-drawing whale boot screen.",
+  "license": "MIT",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build-client.mjs",
+    "build:check": "node scripts/build-client.mjs --check",
+    "check": "node --check index.js && node --check lib/client.js"
+  },
+  "files": [
+    "index.js",
+    "host",
+    "lib",
+    "src",
+    "scripts",
+    "cordis.patch.yml",
+    "README.md"
+  ]
+}

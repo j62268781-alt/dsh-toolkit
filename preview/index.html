@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="zh-CN" data-platform="darwin" data-ds-theme-source="light">
+  <head>
+    <meta charset="utf-8" />
+    <title>dsh-shell-kit · 静态预览</title>
+
+    <!--
+      静态预览。说明清楚哪些是真的、哪些是示意的：
+
+      真的：主题令牌表（theme-*.css）、三栏外壳（appframe.css）、侧栏组件
+            （sidebar.css）—— 都是从 DeepSeek Harness 客户端包里原样抽出来的
+            组件 CSS，加上 dsh-shell-kit 的 styles.css 之后的效果。
+      示意：工作区列表行、主区对话/输入框 —— 这些组件的 CSS 没有一并搬来，
+            用手写标记 + 令牌拼出近似形状，用来判断「配色与密度」是否合口味。
+
+      换句话说：侧栏的重排是真刀真枪的验证，主区只验证配色与圆角。
+    -->
+
+    <link rel="stylesheet" href="vendor/theme-base.css" />
+    <link rel="stylesheet" href="vendor/theme-design.css" />
+    <link rel="stylesheet" href="vendor/theme-gradient.css" />
+    <link rel="stylesheet" href="vendor/theme-scrollbar.css" />
+    <link rel="stylesheet" href="vendor/appframe.css" />
+    <link rel="stylesheet" href="vendor/sidebar.css" />
+
+    <!-- 皮肤本体：与 lib/client.js 里注入的是同一份文件 -->
+    <link rel="stylesheet" href="../src/client/styles.css?v=8f3aada3" />
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: var(--dsw-alias-bg-base);
+        color: var(--dsw-alias-label-primary);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          sans-serif;
+      }
+
+      /* ── 示意：工作区列表行 ─────────────────────────────────────── */
+      .mock-ws {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        padding: 0 2px;
+      }
+      .mock-ws-row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        height: 30px;
+        padding: 0 8px;
+        border-radius: var(--dsw-radius-sm);
+        font-size: 13px;
+        color: var(--dsw-alias-label-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .mock-ws-row:hover {
+        background: var(--dsw-alias-interactive-bg-hover);
+      }
+      .mock-ws-row.is-active {
+        background: var(--dsw-alias-interactive-bg-active);
+        color: var(--dsw-alias-label-primary);
+      }
+      .mock-ws-icon {
+        width: 15px;
+        height: 15px;
+        flex: none;
+        opacity: 0.55;
+      }
+
+      /* ── 示意：主区 ───────────────────────────────────────────── */
+      /* 会话区白卡片：与真实实现一致 —— 卡片是从色带下沿开始的一张四角圆角白卡
+         （画在会话根的 ::before 上），根自己只裁下缘。 */
+      .mock-main {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-width: 0;
+        position: relative;
+        isolation: isolate;
+        margin-right: var(--cx-gap, 4px);
+        margin-bottom: var(--cx-gap, 4px);
+        border-radius: 0 0 var(--cx-card-radius, 12px) var(--cx-card-radius, 12px);
+        overflow: hidden;
+      }
+      .mock-main::before {
+        content: "";
+        position: absolute;
+        top: var(--cx-band-h, 50px);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: var(--cx-card-radius, 12px);
+        background: var(--dsw-alias-bg-base);
+        z-index: -1;
+        pointer-events: none;
+      }
+      /* 页头 76px = 皮肤的通栏高度（--cx-band-h），顶行放标题、下行放 tab，
+         与真实会话页头的两行结构一致；底边那条发丝线就是通栏的下边界。 */
+      .mock-header {
+        display: flex;
+        flex-direction: column;
+        /* 标题行 50（内容 30 + 上下各 10）+ tab 行 36 */
+        height: 86px;
+        padding: 0;
+        flex: none;
+      }
+      .mock-header-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 50px;
+        /* 标题行贴卡片左缘（与真实实现一致），右侧仍留 20px */
+        padding: 0 20px 0 0;
+        font-size: 13px;
+      }
+      .mock-lights {
+        position: absolute;
+        left: 16px;
+        top: 25px;
+        transform: translateY(-50%);
+        display: flex;
+        gap: 8px;
+        z-index: 3;
+      }
+      .mock-light {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+      .mock-light:nth-child(1) { background: #ff5f57; }
+      .mock-light:nth-child(2) { background: #febc2e; }
+      .mock-light:nth-child(3) { background: #28c840; }
+      .mock-title {
+        color: var(--dsw-alias-label-primary);
+        font-weight: 500;
+      }
+      /* 标题左侧的文件夹图标（与真实皮肤同形同色，走 mask） */
+      .mock-title::before {
+        content: "";
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        margin-right: 6px;
+        vertical-align: -3px;
+        background-color: var(--dsw-alias-label-tertiary);
+        -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1'%3E%3Cpath d='M1.50439 3.11059C1.50439 2.55831 1.95211 2.1106 2.50439 2.1106H5.43389C5.67773 2.1106 5.91318 2.19969 6.09593 2.36113L7.71649 3.79265C7.89924 3.95409 8.1347 4.04319 8.3785 4.04319H13.4958C14.0481 4.04319 14.4958 4.4909 14.4958 5.04319V12.8894C14.4958 13.4417 14.0481 13.8894 13.4958 13.8894H2.50439C1.95211 13.8894 1.50439 13.4417 1.50439 12.8894V4.04319V3.11059Z'/%3E%3Cpath d='M3.63501 7.66614H12.3647'/%3E%3C/svg%3E");
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1'%3E%3Cpath d='M1.50439 3.11059C1.50439 2.55831 1.95211 2.1106 2.50439 2.1106H5.43389C5.67773 2.1106 5.91318 2.19969 6.09593 2.36113L7.71649 3.79265C7.89924 3.95409 8.1347 4.04319 8.3785 4.04319H13.4958C14.0481 4.04319 14.4958 4.4909 14.4958 5.04319V12.8894C14.4958 13.4417 14.0481 13.8894 13.4958 13.8894H2.50439C1.95211 13.8894 1.50439 13.4417 1.50439 12.8894V4.04319V3.11059Z'/%3E%3Cpath d='M3.63501 7.66614H12.3647'/%3E%3C/svg%3E");
+        -webkit-mask-position: center;
+        mask-position: center;
+        -webkit-mask-size: 16px 16px;
+        mask-size: 16px 16px;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+      }
+      .mock-meta {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 12px;
+        color: var(--dsw-alias-label-tertiary);
+      }
+      .mock-tabs {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        height: 36px;
+        padding: 0 20px;
+        border-bottom: 0.5px solid var(--cx-line);
+      }
+      .mock-tab {
+        font-size: 13px;
+        color: var(--dsw-alias-label-tertiary);
+      }
+      .mock-tab.is-active {
+        color: var(--dsw-alias-label-primary);
+        font-weight: 600;
+      }
+      .mock-scroll {
+        flex: 1;
+        overflow: auto;
+        padding: 26px 0 8px;
+      }
+      .mock-col {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 0 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .mock-user {
+        align-self: flex-end;
+        max-width: 78%;
+        background: var(--dsw-specific-bubble);
+        border-radius: var(--dsw-radius-lg);
+        padding: 10px 14px;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      .mock-assistant {
+        font-size: 14px;
+        line-height: 1.7;
+        color: var(--dsw-alias-label-primary);
+      }
+      .mock-assistant p {
+        margin: 0 0 10px;
+      }
+      .mock-tool {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        height: 28px;
+        padding: 0 10px;
+        border: 0.5px solid var(--dsw-alias-border-l2);
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--dsw-alias-label-secondary);
+        background: var(--dsw-alias-bg-layer-1);
+      }
+      .mock-code {
+        margin: 0;
+        padding: 12px 14px;
+        border-radius: var(--dsw-radius-md);
+        background: var(--dsw-alias-markdown-code-block);
+        border: 0.5px solid var(--dsw-alias-border-l1);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--dsw-alias-label-primary);
+        overflow: auto;
+      }
+      .mock-composer-shell {
+        flex: none;
+        padding: 10px 24px 18px;
+      }
+      .mock-composer {
+        max-width: 720px;
+        margin: 0 auto;
+        border: 0.5px solid var(--dsw-alias-border-l3);
+        border-radius: var(--dsw-radius-lg);
+        background: var(--dsw-alias-bg-layer-1);
+        box-shadow: var(--dsw-shadow-lv1);
+        padding: 12px 14px 10px;
+      }
+      .mock-composer-input {
+        font-size: 14px;
+        color: var(--dsw-alias-label-tertiary);
+        padding: 2px 0 14px;
+      }
+      .mock-composer-foot {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .mock-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        height: 24px;
+        padding: 0 9px;
+        border-radius: 999px;
+        border: 0.5px solid var(--dsw-alias-border-l2);
+        font-size: 11.5px;
+        color: var(--dsw-alias-label-secondary);
+      }
+      .mock-send {
+        margin-left: auto;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: none;
+        background: var(--dsw-alias-brand-primary);
+        color: var(--dsw-alias-bg-base);
+        display: grid;
+        place-items: center;
+      }
+
+      .theme-toggle {
+        position: fixed;
+        right: 14px;
+        bottom: 14px;
+        z-index: 99;
+        height: 30px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 0.5px solid var(--dsw-alias-border-l3);
+        background: var(--dsw-alias-bg-layer-2);
+        color: var(--dsw-alias-label-secondary);
+        font-size: 12px;
+        cursor: pointer;
+        box-shadow: var(--dsw-shadow-lv2);
+      }
+    
+      /* ── 示意：账户菜单触发器（真实类名，CSS 在 ui-settings-account 包里）── */
+      .hjANda_trigger {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        height: 44px;
+        padding: 0 6px;
+        border: 0;
+        background: none;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+        border-radius: var(--dsw-radius-md);
+      }
+      .hjANda_trigger:hover {
+        background: var(--dsw-specific-sidebar-nav-item-hover);
+      }
+      .hjANda_avatar {
+        flex: none;
+        display: block;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        overflow: hidden;
+        background: var(--dsw-alias-bg-skeleton);
+      }
+      .hjANda_avatar svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .hjANda_label {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      ._77Pn0W_triggerRow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        position: relative;
+      }
+      .mock-quota {
+        margin: 0 0 6px;
+        padding: 8px 10px;
+        border-radius: var(--dsw-radius-md);
+        border: 0.5px solid var(--dsw-alias-border-l3);
+        background: var(--dsw-alias-bg-layer-1);
+        font-size: 12px;
+        color: var(--dsw-alias-label-secondary);
+      }
+      .mock-quota-bar {
+        height: 4px;
+        margin-top: 6px;
+        border-radius: 2px;
+        background: var(--dsw-alias-border-l2);
+        overflow: hidden;
+      }
+      .mock-quota-bar > i {
+        display: block;
+        height: 100%;
+        width: 70%;
+        background: var(--dsw-alias-label-primary);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div
+      class="PIRFFq_frame"
+      style="grid-template-columns: 296px minmax(0, 1fr) 0px; position: relative"
+    >
+      <!-- 三灯是 macOS 系统画的；预览里补三个圆点，用来核对折叠钮的相对位置 -->
+      <div class="mock-lights">
+        <span class="mock-light"></span>
+        <span class="mock-light"></span>
+        <span class="mock-light"></span>
+      </div>
+      <!-- ═══ 侧栏：真实组件 CSS + 真实 DOM 结构 ═══ -->
+      <div class="PIRFFq_sidebarCol">
+        <div data-slot="sidebar" style="display: contents">
+          <div class="kB3qhq_root wide">
+            <div class="kB3qhq_topStrip">
+              <button class="kB3qhq_iconButton kB3qhq_toggle" title="折叠侧栏">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 5h16v14H4z"/><path d="M9 5v14"/></svg>
+              </button>
+            </div>
+
+            <div class="kB3qhq_logoRow">
+              <span class="kB3qhq_brand kB3qhq_wide">
+                <span class="kB3qhq_brandIdentity">
+                  <span class="kB3qhq_brandMark">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14c3-1 5-4 5-7 2 1 3 3 3 5 1-3 3-5 6-6-1 3-1 5 0 7 2 3 0 6-4 6-3 0-6-2-10-5z"/></svg>
+                  </span>
+                  <span class="kB3qhq_brandName">deepseek HARNESS</span>
+                </span>
+              </span>
+            </div>
+
+            <button class="kB3qhq_newSession">
+              <span class="kB3qhq_newSessionLabelMask">
+                <span class="kB3qhq_newSessionContent">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                  <span class="kB3qhq_newSessionLabel">新会话</span>
+                </span>
+              </span>
+              <span class="kB3qhq_newSessionShortcut">⌘N</span>
+            </button>
+
+            <nav class="kB3qhq_panelList">
+              <button class="kB3qhq_panelRow kB3qhq_panelActive" aria-expanded="false">
+                <span class="kB3qhq_panelGlyph">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>
+                </span>
+                <span class="kB3qhq_panelTitle">工作区</span>
+              </button>
+              <button class="kB3qhq_panelRow">
+                <span class="kB3qhq_panelGlyph">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+                </span>
+                <span class="kB3qhq_panelTitle">历史</span>
+              </button>
+              <button class="kB3qhq_panelRow">
+                <span class="kB3qhq_panelGlyph">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.4"/><path d="M12 4.5v2M12 17.5v2M4.5 12h2M17.5 12h2M6.9 6.9l1.4 1.4M15.7 15.7l1.4 1.4M17.1 6.9l-1.4 1.4M8.3 15.7l-1.4 1.4"/></svg>
+                </span>
+                <span class="kB3qhq_panelTitle">插件</span>
+              </button>
+              <button class="kB3qhq_panelRow">
+                <span class="kB3qhq_panelGlyph">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+                </span>
+                <span class="kB3qhq_panelTitle">自动化</span>
+              </button>
+            </nav>
+
+            <div class="kB3qhq_regionArea">
+              <!-- 示意：工作区浏览器内容 -->
+              <div class="mock-ws">
+                <div class="mock-ws-row is-active">
+                  <svg class="mock-ws-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                  dsh-plugins
+                </div>
+                <div class="mock-ws-row">
+                  <svg class="mock-ws-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                  默认工作区
+                </div>
+                <div class="mock-ws-row">
+                  <svg class="mock-ws-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                  jgcloud-dos-web
+                </div>
+                <div class="mock-ws-row">
+                  <svg class="mock-ws-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                  dsh-shell-kit
+                </div>
+                <div class="mock-ws-row">
+                  <svg class="mock-ws-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                  dsh-sidebar-mobile
+                </div>
+              </div>
+            </div>
+
+            <div class="kB3qhq_footArea">
+              <div class="kB3qhq_footerActions">
+                <div class="mock-quota">
+                  Qoder 额度 · 1,264 / 1,800（70.22%）
+                  <div class="mock-quota-bar"><i></i></div>
+                </div>
+              </div>
+              <div class="kB3qhq_settingsArea">
+                <div class="_77Pn0W_triggerRow">
+                  <button class="hjANda_trigger" aria-label="账号菜单" aria-haspopup="menu">
+                    <span class="hjANda_avatar">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#8a8f98" stroke-width="1.6"><circle cx="12" cy="9" r="3.2"/><path d="M5.5 20c.6-3.4 3.2-5.2 6.5-5.2s5.9 1.8 6.5 5.2"/></svg>
+                    </span>
+                    <span class="hjANda_label">Leon</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ 主区：示意 ═══ -->
+      <div class="PIRFFq_centerCol">
+        <div class="mock-main">
+          <div class="mock-header">
+            <div class="mock-header-top">
+              <span class="mock-title">Codex 界面图标与工作区设计</span>
+              <span class="mock-meta">标准模式 · 1 个子智能体</span>
+            </div>
+            <div class="mock-tabs">
+              <span class="mock-tab is-active">对话</span>
+              <span class="mock-tab">轨迹</span>
+              <span class="mock-tab">上下文</span>
+            </div>
+          </div>
+
+          <div class="mock-scroll">
+            <div class="mock-col">
+              <div class="mock-user">
+                能不能用一个插件把界面换成 Codex 那样？左边一条 icon 栏，右边工作区。
+              </div>
+
+              <div class="mock-assistant">
+                <p>
+                  能，而且不用动内核。DSH 的界面颜色全部来自一组 <code>--dsw-*</code> 设计令牌，
+                  客户端插件只要能往页面里塞一份样式表，就能把它们整套换掉。
+                </p>
+                <p><span class="mock-tool">● 运行了命令 · 读取 asar 里的客户端包</span></p>
+                <pre class="mock-code">ctx.effect(() =&gt; {
+  const tag = document.createElement("style");
+  tag.textContent = CSS;
+  document.head.appendChild(tag);
+  return () =&gt; tag.remove();
+}, "dsh-shell-kit:stylesheet");</pre>
+                <p>
+                  侧栏那条 52px 的 icon 轨道不是新加的一列 —— 三栏栅格是内核固定的
+                  （sidebar | main | rightbar）。做法是把侧栏自己重排成两列，
+                  外壳一根线都不用改。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mock-composer-shell">
+            <div class="mock-composer">
+              <div class="mock-composer-input">和 Codex 一起工作…</div>
+              <div class="mock-composer-foot">
+                <span class="mock-chip">完全权限</span>
+                <span class="mock-chip">deepseek-v4.1-flash</span>
+                <button class="mock-send">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="PIRFFq_rightbarCol" style="display: none"></div>
+    </div>
+
+    <button class="theme-toggle" onclick="
+      document.body.toggleAttribute('data-ds-dark-theme');
+      document.documentElement.dataset.dsThemeSource =
+        document.body.hasAttribute('data-ds-dark-theme') ? 'dark' : 'light';
+    ">切换深浅色</button>
+  </body>
+</html>
