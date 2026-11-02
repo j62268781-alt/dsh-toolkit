@@ -60,7 +60,8 @@ let bootAssets;
 
 function readBootAssets() {
   if (bootAssets === undefined) {
-    const read = (file) => readFileSync(new URL(`./host/${file}`, import.meta.url), "utf8");
+    const read = (file) =>
+      readFileSync(new URL(`./modules/shell/host/${file}`, import.meta.url), "utf8");
     bootAssets = {
       css: read("boot.css"),
       html: read("boot.html"),

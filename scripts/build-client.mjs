@@ -43,9 +43,9 @@ const ROOT = resolve(HERE, "..");
 // 顺序**显式写在这里**而不是靠文件名前缀排序：顺序是有语义的（core 要先定义
 // PKG/CSS/React，entry 必须在最后注册模块；CSS 后面压前面），写在清单里一眼可见，
 // 文件名也能叫得自然。目录里多出未列入清单的文件会直接构建失败（见 readParts）。
-const JS_PARTS_DIR = resolve(ROOT, "src/client/parts");
-const CSS_PARTS_DIR = resolve(ROOT, "src/client/styles");
-const ASSETS_DIR = resolve(ROOT, "src/client/assets");
+const JS_PARTS_DIR = resolve(ROOT, "modules/shell/shell-src/parts");
+const CSS_PARTS_DIR = resolve(ROOT, "modules/shell/shell-src/styles");
+const ASSETS_DIR = resolve(ROOT, "modules/shell/shell-src/assets");
 const OUT_JS = resolve(ROOT, "lib/client.js");
 
 /** JS 片段的拼接顺序（执行顺序）。 */

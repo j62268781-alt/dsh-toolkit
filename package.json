@@ -28,9 +28,8 @@
   },
   "files": [
     "index.js",
-    "host",
+    "modules",
     "lib",
-    "src",
     "scripts",
     "cordis.patch.yml",
     "README.md"

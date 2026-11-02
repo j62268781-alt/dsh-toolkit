@@ -110,24 +110,24 @@ dsh-shell-kit/
 ├─ package.json            dsh.bundle.patch + dsh.client{platform:"web", immediately:true}
 ├─ cordis.patch.yml        Host 侧那一行（insert, id: shell-kit）
 ├─ index.js                Host 半个：订阅 webserver/index-inject，注入开机画面三行
-├─ host/                   开机动画资源（由 index.js 读取后内联进 index.html）
+├─ modules/shell/host/                   开机动画资源（由 index.js 读取后内联进 index.html）
 │  ├─ boot.css             动画样式（纯 CSS，进 <head>）
 │  ├─ boot.html            动画结构（内联鲸鱼 SVG，紧随 <body>）
 │  └─ boot.js              计时与交接（检测应用挂载 → 淡出）
-├─ src/client/parts/       Client 源码片段（**按清单顺序拼接**，无 import/export）
+├─ modules/shell/shell-src/parts/       Client 源码片段（**按清单顺序拼接**，无 import/export）
 │  ├─ core.jsx             PKG / React / CSS 占位符 / installStylesheet
 │  ├─ rail.jsx             rail 图标 tooltip、rail 最上面的「工作区」入口
 │  ├─ band.jsx             标题栏带高度测量（installBandHeight）
 │  ├─ sidebar.jsx          侧栏列宽锁定 + 「收工作区」折叠
 │  ├─ archived.jsx         设置页「已归档的聊天」
 │  └─ entry.jsx            apply() 装配 + __ModuleLoader__ 注册
-├─ src/client/styles/      皮肤样式（**同样按清单顺序拼接**，后者压前者）
+├─ modules/shell/shell-src/styles/      皮肤样式（**同样按清单顺序拼接**，后者压前者）
 │  ├─ tokens.css           层 1：--cx-* 别名 + 平台变量组（唯一放平台差异的地方）
 │  ├─ shell.css            层 2：外壳色带 / 三列 / 中央白卡 / 会话卡
 │  ├─ sidebar.css          层 3：rail 52 + 面板卡 240 / rail-only / 底部两格
 │  ├─ rightbar.css         右侧边栏 = 标题栏 + 白卡片
 │  └─ archived.css         设置页「已归档的聊天」
-├─ src/client/assets/      SVG 资源（构建期内联回字符串，运行时仍是 data-URI，零请求）
+├─ modules/shell/shell-src/assets/      SVG 资源（构建期内联回字符串，运行时仍是 data-URI，零请求）
 │  ├─ folder.svg           会话标题前的文件夹图标（CSS mask-image 用）
 │  └─ house.svg            rail 顶部「工作区」入口（JS 内联 SVG 用）
 │                          注：设置页那两个图标**故意**留在 archived.jsx 里 —— 它们是
@@ -150,8 +150,8 @@ cordis 图里挂一行。皮肤不带配置、不注册工具、不碰服务，�
 `React.createElement` 调用（`React` 由宿主在 factory 里注入）。
 
 **为什么源码是「片段 + 显式清单」而不是 ES 模块**：上面那条「不能 import」直接
-排除了模块化的可能。于是把大文件按功能切成 `src/client/parts/*.jsx` 与
-`src/client/styles/*.css`，构建脚本按**脚本里列的清单顺序**原样拼接，再整体转译。
+排除了模块化的可能。于是把大文件按功能切成 `modules/shell/shell-src/parts/*.jsx` 与
+`modules/shell/shell-src/styles/*.css`，构建脚本按**脚本里列的清单顺序**原样拼接，再整体转译。
 顺序是有语义的（`core.jsx` 要先定义 `PKG`/`CSS`/`React`，`entry.jsx` 必须在最后
 注册模块；CSS 后者压前者），所以它写在 `build-client.mjs` 的两个数组里，一眼可见，
 文件名也因此能叫得自然，不用背数字前缀。
@@ -318,7 +318,7 @@ ctx.slots.inject("settings.section", () =>
 
 ### 源码与构建
 
-页面是 JSX（`src/client/parts/*.jsx`，按构建脚本里的清单顺序拼接），构建时用 esbuild **transform** 转成
+页面是 JSX（`modules/shell/shell-src/parts/*.jsx`，按构建脚本里的清单顺序拼接），构建时用 esbuild **transform** 转成
 `React.createElement` 调用，不打包、不引入 import；CSS 与 SVG 仍走构建期内联
 （`__CLIENT_CSS__` / `__SVG:name__` / `__SVGURI:name__`）。
 产物 `lib/client.js` 约 79KB，`npm run check` 保证与源码同步并跑通 25 项产物断言。
@@ -511,7 +511,7 @@ DSH 的面板图标行（插件 / 自动化任务 / …）不是普通按钮，�
 而「工作区 + 会话」是 `activePanelId === null` 的默认态，**没有 id 可以注册** ——
 所以想要一个「回到会话」的 home 图标，只能自己补节点。
 
-实现（`src/client/parts/rail.jsx` 的 `installHomeRail()`）：
+实现（`modules/shell/shell-src/parts/rail.jsx` 的 `installHomeRail()`）：
 
 - 在 `[class*="_panelList"]` 的最前面插入按钮 `.sk-home`（房子 SVG）。**不加分隔线**：
   它和下面几个面板图标是同一个 flex 列，共用 `gap: 2px`，间距天然一致；
@@ -916,7 +916,7 @@ bundle 装进已挂载的插件」这一步，不是 host 没发现变化。
 所以迭代循环是这样：
 
 ```bash
-vim src/client/styles/sidebar.css   # 或 tokens / shell / rightbar / archived
+vim modules/shell/shell-src/styles/sidebar.css   # 或 tokens / shell / rightbar / archived
 npm run build          # 拼接片段 + 转译 JSX + 内联 CSS/SVG → lib/client.js
 npm run check          # 语法检查 + 产物自检（25 项契约断言）
 # 退出 DeepSeek Harness 再打开 → 新皮肤
@@ -981,7 +981,7 @@ document.querySelector('[data-slot="sidebar"] > [class*="_root"]')
   侧栏整列隐藏，控件移交到 `shell.leading`），本皮肤只在展开态重排。
 - **面板会窄 52px**：侧栏总宽仍是用户的 264–420px（默认 280），rail 吃掉 52px
   后工作区名、底部额度文案更容易截断。把侧栏拖宽一点就恢复；也可以改
-  `src/client/styles/sidebar.css` 里 `grid-template-columns` 的第一段（52px）调窄到 44–48px。
+  `modules/shell/shell-src/styles/sidebar.css` 里 `grid-template-columns` 的第一段（52px）调窄到 44–48px。
 - **第三方主题 / 自定义主题**：因为本皮肤不改任何令牌、只消费，第三方主题
   （`ctx.theme.register` / `overrideTokens`，会写 `body` 内联 style）与本皮肤
   完全兼容——换主题时皮肤跟着变色，不会互相压。
