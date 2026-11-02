@@ -36,5 +36,12 @@
   ],
   "devDependencies": {
     "esbuild": "0.28.2"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "^4.0.5",
+    "@deepseek-ai/cosmokit": "^1.8.6",
+    "@deepseek-ai/dsh-credentials": "^0.2.1-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": "^0.2.1-rc.1",
+    "@deepseek-ai/schemastery": "^3.18.5"
   }
 }

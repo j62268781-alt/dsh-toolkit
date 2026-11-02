@@ -20,6 +20,7 @@
  */
 
 import shell from "./modules/shell/index.js";
+import judgement from "./modules/judgement/lib/index.js";
 
 /** 包名：改名时需与 package.json / cordis.patch.yml / profile 三处同步。 */
 export const name = "dsh-shell-kit";
@@ -35,4 +36,7 @@ export const inject = [];
  */
 export function apply(ctx, config = {}) {
   ctx.plugin(shell, config.shell ?? {});
+  // judgement 是 Service 类（默认导出），cordis 会按它自己的
+  // static inject=['credentials'] 解析依赖。
+  ctx.plugin(judgement, config.judgement ?? {});
 }
