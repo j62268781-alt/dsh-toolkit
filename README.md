@@ -11,6 +11,12 @@ DeepSeek Harness 的**桌面外壳定制工具箱**。现在装了两件东西�
 
 > 旧名 `dsh-codex-skin` 已废弃：这个包早就不只是"Codex 风格皮肤"了，后面还要往里放更多外壳能力，所以改成 `dsh-shell-kit`（`cordis.patch.yml` 里的 id 也相应改成 `shell-kit`）。装过的 profile 需要把 bundles / dependencies / patch 行里的旧名换成新名，见 §五。
 
+> **仓库正在从「单一皮肤」演进为「多模块工具带」**：4 个独立插件（`browser` /
+> `judgement` / `mobile` / `skills-mcp`）将陆续并入本仓库，合并方案与目录规划见
+> [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)，模块状态见
+> [modules/README.md](modules/README.md)。第一阶段（骨架 + `judgement` 搬入）已完成，
+> 业务代码尚未改动。
+
 ![浅色](preview/preview-light.png)
 
 ![深色](preview/preview-dark.png)
