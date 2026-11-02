@@ -36,36 +36,53 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..");
 
-// 源码按「片段」组织：目录内按文件名排序后原样拼接，再整体转译。
+// 源码按「片段」组织：把片段按下面的清单顺序原样拼接，再整体转译。
 // 之所以是拼接而不是 ES 模块：DSH 把客户端插件当经典脚本求值（只认
-// `__ModuleLoader__.load({ factory })`），不能有 import/export。片段名前面的
-// 两位数字就是拼接顺序，文件本身没有任何 import。
+// `__ModuleLoader__.load({ factory })`），不能有 import/export。
+//
+// 顺序**显式写在这里**而不是靠文件名前缀排序：顺序是有语义的（core 要先定义
+// PKG/CSS/React，entry 必须在最后注册模块；CSS 后面压前面），写在清单里一眼可见，
+// 文件名也能叫得自然。目录里多出未列入清单的文件会直接构建失败（见 readParts）。
 const JS_PARTS_DIR = resolve(ROOT, "src/client/parts");
 const CSS_PARTS_DIR = resolve(ROOT, "src/client/styles");
 const ASSETS_DIR = resolve(ROOT, "src/client/assets");
 const OUT_JS = resolve(ROOT, "lib/client.js");
 
+/** JS 片段的拼接顺序（执行顺序）。 */
+const JS_PARTS = ["core.jsx", "rail.jsx", "band.jsx", "sidebar.jsx", "archived.jsx", "entry.jsx"];
+
+/** CSS 片段的拼接顺序（层叠顺序：后者压前者）。 */
+const CSS_PARTS = ["tokens.css", "shell.css", "sidebar.css", "rightbar.css", "archived.css"];
+
 const PLACEHOLDER = "__CLIENT_CSS__";
 
 const BANNER = `/**
  * dsh-shell-kit — 客户端产物，由 scripts/build-client.mjs 生成，请勿手改。
- * 源码：src/client/parts/*.jsx（按文件名排序拼接）+ src/client/styles/*.css
+ * 源码：src/client/parts/ + src/client/styles/（拼接顺序见构建脚本里的清单）
  */
 `;
 
 /**
- * 读一个目录里指定后缀的所有片段，按文件名排序后拼接。
+ * 按清单顺序拼接片段，并做行尾归一化（保证同一份源码在任何平台产出同一字节流）。
  *
- * 排序即层叠/执行顺序，所以片段名统一用 `NN-` 前缀。拼接后再做行尾归一化，
- * 保证同一份源码在 Windows / macOS 上产出同一个字节流。
+ * 清单与目录双向校验，因为「漏拼」是静默 bug：文件在那儿、构建也成功，
+ * 只是那段代码没进产物。宁可构建失败。
  *
  * @param {string} dir 片段目录
+ * @param {string[]} names 拼接顺序
  * @param {string} ext 后缀（含点）
  * @returns {Promise<string>} 拼接后的文本
  */
-async function readConcat(dir, ext) {
-  const names = (await readdir(dir)).filter((name) => name.endsWith(ext)).sort();
-  if (names.length === 0) throw new Error(`${dir} 下没有 ${ext} 片段`);
+async function readParts(dir, names, ext) {
+  const files = (await readdir(dir)).filter((name) => name.endsWith(ext));
+  const unlisted = files.filter((name) => !names.includes(name));
+  const missing = names.filter((name) => !files.includes(name));
+  if (unlisted.length > 0) {
+    throw new Error(`${dir} 里有未列入清单的 ${ext} 文件：${unlisted.join(", ")}（要么加进清单，要么删掉）`);
+  }
+  if (missing.length > 0) {
+    throw new Error(`${dir} 清单里的文件不存在：${missing.join(", ")}`);
+  }
   const parts = await Promise.all(names.map((name) => readFile(join(dir, name), "utf8")));
   return parts.join("").replace(/\r\n/g, "\n");
 }
@@ -160,8 +177,8 @@ async function loadEsbuild() {
  */
 async function render() {
   const [rawSource, rawCss, assets] = await Promise.all([
-    readConcat(JS_PARTS_DIR, ".jsx"),
-    readConcat(CSS_PARTS_DIR, ".css"),
+    readParts(JS_PARTS_DIR, JS_PARTS, ".jsx"),
+    readParts(CSS_PARTS_DIR, CSS_PARTS, ".css"),
     readAssets(),
   ]);
   const { source, css } = inlineAssets(rawSource, rawCss, assets);

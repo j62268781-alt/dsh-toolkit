@@ -108,27 +108,27 @@ dsh-shell-kit/
 │  ├─ boot.css             动画样式（纯 CSS，进 <head>）
 │  ├─ boot.html            动画结构（内联鲸鱼 SVG，紧随 <body>）
 │  └─ boot.js              计时与交接（检测应用挂载 → 淡出）
-├─ src/client/parts/       Client 源码片段（**按文件名排序拼接**，无 import/export）
-│  ├─ 00-core.jsx          PKG / React / CSS 占位符 / installStylesheet
-│  ├─ 10-rail.jsx          rail 图标 tooltip、rail 最上面的「工作区」入口
-│  ├─ 20-band.jsx          标题栏带高度测量（installBandHeight）
-│  ├─ 30-sidebar.jsx       侧栏列宽锁定 + 「收工作区」折叠
-│  ├─ 40-archived.jsx      设置页「已归档的聊天」
-│  └─ 99-entry.jsx         apply() 装配 + __ModuleLoader__ 注册
-├─ src/client/styles/      皮肤样式（**同样按文件名排序拼接**，顺序即层叠顺序）
-│  ├─ 10-tokens.css        层 1：--cx-* 别名 + 平台变量组（唯一放平台差异的地方）
-│  ├─ 20-shell.css         层 2：外壳色带 / 三列 / 中央白卡 / 会话卡
-│  ├─ 30-sidebar.css       层 3：rail 52 + 面板卡 240 / rail-only / 底部两格
-│  ├─ 40-rightbar.css      右侧边栏 = 标题栏 + 白卡片
-│  └─ 50-archived.css      设置页「已归档的聊天」
+├─ src/client/parts/       Client 源码片段（**按清单顺序拼接**，无 import/export）
+│  ├─ core.jsx             PKG / React / CSS 占位符 / installStylesheet
+│  ├─ rail.jsx             rail 图标 tooltip、rail 最上面的「工作区」入口
+│  ├─ band.jsx             标题栏带高度测量（installBandHeight）
+│  ├─ sidebar.jsx          侧栏列宽锁定 + 「收工作区」折叠
+│  ├─ archived.jsx         设置页「已归档的聊天」
+│  └─ entry.jsx            apply() 装配 + __ModuleLoader__ 注册
+├─ src/client/styles/      皮肤样式（**同样按清单顺序拼接**，后者压前者）
+│  ├─ tokens.css           层 1：--cx-* 别名 + 平台变量组（唯一放平台差异的地方）
+│  ├─ shell.css            层 2：外壳色带 / 三列 / 中央白卡 / 会话卡
+│  ├─ sidebar.css          层 3：rail 52 + 面板卡 240 / rail-only / 底部两格
+│  ├─ rightbar.css         右侧边栏 = 标题栏 + 白卡片
+│  └─ archived.css         设置页「已归档的聊天」
 ├─ src/client/assets/      SVG 资源（构建期内联回字符串，运行时仍是 data-URI，零请求）
 │  ├─ folder.svg           会话标题前的文件夹图标（CSS mask-image 用）
 │  └─ house.svg            rail 顶部「工作区」入口（JS 内联 SVG 用）
-│                          注：设置页那两个图标**故意**留在 40-archived.jsx 里 —— 它们是
+│                          注：设置页那两个图标**故意**留在 archived.jsx 里 —— 它们是
 │                          React 组件、靠 className + `stroke="currentColor"` 继承样式，
 │                          外置成文件必须再套一层 wrapper，反而破坏样式契约。
 ├─ scripts/build-client.mjs  片段拼接 + JSX 转译 + CSS/SVG 内联 → lib/client.js
-├─ scripts/verify-client.mjs 产物自检：门禁/平台变量/几何/JS 谓词共 23 项断言
+├─ scripts/verify-client.mjs 产物自检：门禁/平台变量/几何/JS 谓词共 25 项断言
 ├─ lib/client.js           产物（提交进仓库）
 ├─ docs/boot/              开机动画的设计稿与演示（demo-boot.html 可直接打开）
 └─ preview/index.html      静态预览：真实组件 CSS + 本皮肤
@@ -143,11 +143,17 @@ cordis 图里挂一行。皮肤不带配置、不注册工具、不碰服务，�
 也不会被任何 loader 处理 —— 所以 CSS 只能是字符串常量，JSX 必须在构建期变成
 `React.createElement` 调用（`React` 由宿主在 factory 里注入）。
 
-**为什么源码是「片段 + 数字前缀」而不是 ES 模块**：上面那条「不能 import」直接
-排除了模块化的可能。于是把大文件按功能切成 `src/client/parts/NN-*.jsx` 与
-`src/client/styles/NN-*.css`，构建脚本按文件名排序后**原样拼接**，再整体转译；
-前缀数字就是执行 / 层叠顺序，加新文件时挑一个数字即可。收益纯粹是工程性的：
-改侧栏只开 `30-sidebar.*`，改右侧栏只开 `40-rightbar.css`，不用在一千行里翻。
+**为什么源码是「片段 + 显式清单」而不是 ES 模块**：上面那条「不能 import」直接
+排除了模块化的可能。于是把大文件按功能切成 `src/client/parts/*.jsx` 与
+`src/client/styles/*.css`，构建脚本按**脚本里列的清单顺序**原样拼接，再整体转译。
+顺序是有语义的（`core.jsx` 要先定义 `PKG`/`CSS`/`React`，`entry.jsx` 必须在最后
+注册模块；CSS 后者压前者），所以它写在 `build-client.mjs` 的两个数组里，一眼可见，
+文件名也因此能叫得自然，不用背数字前缀。
+
+漏拼是静默 bug（文件在、构建也过，只是那段没进产物），所以 `readParts()` 会做
+**清单与目录的双向校验**：目录里多出未列清单的文件、或清单里的文件不存在，都直接
+构建失败。
+
 拆分本身经过「各段拼回去与原文逐字节相同」校验（改前改后产物正文 SHA 一致），
 所以它不改变任何产物语义 —— 只是把文件切开。
 
@@ -306,10 +312,10 @@ ctx.slots.inject("settings.section", () =>
 
 ### 源码与构建
 
-页面是 JSX（`src/client/parts/*.jsx`，按文件名排序拼接），构建时用 esbuild **transform** 转成
+页面是 JSX（`src/client/parts/*.jsx`，按构建脚本里的清单顺序拼接），构建时用 esbuild **transform** 转成
 `React.createElement` 调用，不打包、不引入 import；CSS 与 SVG 仍走构建期内联
 （`__CLIENT_CSS__` / `__SVG:name__` / `__SVGURI:name__`）。
-产物 `lib/client.js` 约 77KB，`npm run check` 保证与源码同步并跑通 23 项产物断言。
+产物 `lib/client.js` 约 79KB，`npm run check` 保证与源码同步并跑通 25 项产物断言。
 
 ---
 
@@ -499,7 +505,7 @@ DSH 的面板图标行（插件 / 自动化任务 / …）不是普通按钮，�
 而「工作区 + 会话」是 `activePanelId === null` 的默认态，**没有 id 可以注册** ——
 所以想要一个「回到会话」的 home 图标，只能自己补节点。
 
-实现（`src/client/parts/10-rail.jsx` 的 `installHomeRail()`）：
+实现（`src/client/parts/rail.jsx` 的 `installHomeRail()`）：
 
 - 在 `[class*="_panelList"]` 的最前面插入按钮 `.sk-home`（房子 SVG）。**不加分隔线**：
   它和下面几个面板图标是同一个 flex 列，共用 `gap: 2px`，间距天然一致；
@@ -904,9 +910,9 @@ bundle 装进已挂载的插件」这一步，不是 host 没发现变化。
 所以迭代循环是这样：
 
 ```bash
-vim src/client/styles/30-sidebar.css   # 或 10-tokens / 20-shell / 40-rightbar / 50-archived
+vim src/client/styles/sidebar.css   # 或 tokens / shell / rightbar / archived
 npm run build          # 拼接片段 + 转译 JSX + 内联 CSS/SVG → lib/client.js
-npm run check          # 语法检查 + 产物自检（23 项契约断言）
+npm run check          # 语法检查 + 产物自检（25 项契约断言）
 # 退出 DeepSeek Harness 再打开 → 新皮肤
 ```
 
@@ -952,13 +958,13 @@ document.querySelector('[data-slot="sidebar"] > [class*="_root"]')
   `padding: 24px 0 0`（rail 色带仍靠 root 的 background 画到窗口顶边）。换
   Windows / 更矮的 titlebar 时要重算这个数。
 - **macOS 与 Windows 都支持**，但两者的外壳结构不同，差异集中收在两处：
-  1. `styles/10-tokens.css` 的三个变量（`--cx-band-h` / `--cx-toggle-x` /
+  1. `styles/tokens.css` 的三个变量（`--cx-band-h` / `--cx-toggle-x` /
      `--cx-title-clear`），规则本身只有一份；
-  2. `styles/30-sidebar.css` 的「层 3.5 · Windows 专属的结构差异」——Windows
+  2. `styles/sidebar.css` 的「层 3.5 · Windows 专属的结构差异」——Windows
      没有 `_topStrip`，折叠钮是 `_logoRow` 的子元素且被核心 CSS 钉成
      `position: fixed; left: 12px`，所以 rail-only 时只能藏品牌、不能藏整个
      `_logoRow`（否则折叠钮跟着消失）。
-  CSS 的门禁统一读 `<html data-sk-desktop>`（由 `parts/00-core.jsx` 的
+  CSS 的门禁统一读 `<html data-sk-desktop>`（由 `parts/core.jsx` 的
   `installDesktopMarker()` 维护，判据 = darwin 或 data-windows-titlebar），
   JS 侧共用 `isDesktopShell()` / `isDarwinDesktop()`，不再各写一份平台判断。
 - **Windows 上色带高度是 0**：顶部那条由 DSH 自己的 frame
@@ -969,7 +975,7 @@ document.querySelector('[data-slot="sidebar"] > [class*="_root"]')
   侧栏整列隐藏，控件移交到 `shell.leading`），本皮肤只在展开态重排。
 - **面板会窄 52px**：侧栏总宽仍是用户的 264–420px（默认 280），rail 吃掉 52px
   后工作区名、底部额度文案更容易截断。把侧栏拖宽一点就恢复；也可以改
-  `src/client/styles/30-sidebar.css` 里 `grid-template-columns` 的第一段（52px）调窄到 44–48px。
+  `src/client/styles/sidebar.css` 里 `grid-template-columns` 的第一段（52px）调窄到 44–48px。
 - **第三方主题 / 自定义主题**：因为本皮肤不改任何令牌、只消费，第三方主题
   （`ctx.theme.register` / `overrideTokens`，会写 `body` 内联 style）与本皮肤
   完全兼容——换主题时皮肤跟着变色，不会互相压。
