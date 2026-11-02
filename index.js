@@ -21,6 +21,7 @@
 
 import shell from "./modules/shell/index.js";
 import judgement from "./modules/judgement/lib/index.js";
+import mobile from "./modules/mobile/index.js";
 
 /** 包名：改名时需与 package.json / cordis.patch.yml / profile 三处同步。 */
 export const name = "dsh-shell-kit";
@@ -39,4 +40,7 @@ export function apply(ctx, config = {}) {
   // judgement 是 Service 类（默认导出），cordis 会按它自己的
   // static inject=['credentials'] 解析依赖。
   ctx.plugin(judgement, config.judgement ?? {});
+  // mobile 是 { name, inject:['tools'], apply } 普通插件对象；它的 9 条路由
+  // 仍由模块内部通过 ctx.inject(['webServer']) 注册（core/http.js 统一封装待做）。
+  ctx.plugin(mobile, config.mobile ?? {});
 }
