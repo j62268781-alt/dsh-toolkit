@@ -21,7 +21,8 @@
 
 import shell from "./modules/shell/index.js";
 import judgement from "./modules/judgement/lib/index.js";
-import mobile from "./modules/mobile/index.js";
+// mobile 只提供具名导出（name/inject/apply），没有 default，必须整模块导入。
+import * as mobile from "./modules/mobile/index.js";
 
 /** 包名：改名时需与 package.json / cordis.patch.yml / profile 三处同步。 */
 export const name = "dsh-shell-kit";
