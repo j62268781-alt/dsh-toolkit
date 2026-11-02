@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | `shell/` | 本仓库原有 | 待搬迁 | 皮肤（52px rail + 240px 面板）、开机动画、会话删除通道 |
 | `judgement/` | `D:\项目\dsh-judgment` | **已搬入** | 只有编译产物 `lib/`；注册 `ctx.judgment` 服务，`static inject=['credentials']` |
-| `mobile/` | `D:\项目\dsh-sidebar-mobile` | 待搬入 | 右侧栏「移动设备」面板；9 条 webserver 路由 + HMAC capability |
+| `mobile/` | `D:\项目\dsh-sidebar-mobile` | **已搬入** | 右侧栏「移动设备」面板；9 条 webserver 路由 + HMAC capability；接入说明见 `modules/mobile/INTEGRATION.md` |
 | `browser/` | `D:\项目\dsh-agent-browser` | 待搬入 | 7 个 CDP 工具 + 设置页；走 Typert Remote，无路由 |
 | `skills-mcp/` | `D:\项目\dsh-skills-mcp-manager` | 待搬入 | 设置页 Skills & MCP；8 条路由；`src/` --tsc--> `dist/` |
 
