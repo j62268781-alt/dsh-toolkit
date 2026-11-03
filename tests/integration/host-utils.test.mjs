@@ -170,7 +170,7 @@ test('browser task sleep re-export retains the shared timer behavior', async () 
   const { sleep: taskSleep } = await bundleModule(`export { sleep } from './src/modules/browser/host/task/utils.ts'`, [{
     name: 'shared-time-instance',
     setup(builder) {
-      builder.onResolve({ filter: /host\/time\.js$/ }, () => ({
+      builder.onResolve({ filter: /[/\\]host[/\\]time\.js$/ }, () => ({
         path: new URL('../../src/host/time.js', import.meta.url).href, external: true,
       }))
     },
@@ -217,11 +217,11 @@ test('Skills host split activates routes, adopts agents, reconnects projects and
     setup(builder) {
       builder.onResolve({ filter: /^@deepseek-ai\/dsh-mcp-client$/ }, () => ({ path: 'mcp-client', namespace: 'fixture' }))
       builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ contents: `export const name = '@deepseek-ai/dsh-mcp-client'; export function apply() {}; export const inject = []; export const Config = undefined;` }))
-      builder.onResolve({ filter: /^\.\/sdk\.js$/ }, (args) => args.importer.endsWith('/mcp/oauth/controller.js')
+      builder.onResolve({ filter: /^\.\/sdk\.js$/ }, (args) => /[/\\]mcp[/\\]oauth[/\\]controller\.js$/.test(args.importer)
         ? { path: 'oauth-sdk', namespace: 'fixture-sdk' } : undefined)
       builder.onLoad({ filter: /.*/, namespace: 'fixture-sdk' }, () => ({ contents: `export async function loadSdk() { return { ok: false, reason: 'fixture-unavailable', detail: '' } }; export const oauthSdkReasonText = value => value.reason;` }))
       // Diagnostics are not part of this lifecycle assertion; avoid an unawaited side-channel write.
-      builder.onResolve({ filter: /diagnostics\/heartbeat\.js$/ }, () => ({ path: 'heartbeat', namespace: 'fixture-heartbeat' }))
+      builder.onResolve({ filter: /[/\\]diagnostics[/\\]heartbeat\.js$/ }, () => ({ path: 'heartbeat', namespace: 'fixture-heartbeat' }))
       builder.onLoad({ filter: /.*/, namespace: 'fixture-heartbeat' }, () => ({ contents: 'export async function beat() {}' }))
       builder.onResolve({ filter: /^(?:@deepseek-ai\/|yaml$)/ }, (args) => ({ path: import.meta.resolve(args.path), external: true }))
       // Data modules have no package-resolution base; provide the actual installed anchor.

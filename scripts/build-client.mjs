@@ -22,7 +22,7 @@ function sourcePlugin() {
   return {
     name: 'toolkit-client-assets',
     setup(build) {
-      build.onLoad({ filter: /\/theme\/client\/styles\.css$/ }, async ({ path }) => {
+      build.onLoad({ filter: /[/\\]theme[/\\]client[/\\]styles\.css$/ }, async ({ path }) => {
         let css = await themeCss(path)
         const names = [...new Set([...css.matchAll(/__SVGURI:([\w.-]+)__/g)].map((match) => match[1]))]
         for (const name of names) {
@@ -32,17 +32,17 @@ function sourcePlugin() {
         }
         return { contents: `const THEME_CSS = ${JSON.stringify(css)}; export default THEME_CSS;`, loader: 'js' }
       })
-      build.onLoad({ filter: /\/theme\/client\/assets\/[^/]+\.svg$/ }, async ({ path }) => ({
+      build.onLoad({ filter: /[/\\]theme[/\\]client[/\\]assets[/\\][^/\\]+\.svg$/ }, async ({ path }) => ({
         contents: `export default ${JSON.stringify((await readFile(path, 'utf8')).trim())};`, loader: 'js',
       }))
-      build.onLoad({ filter: /\/archived\/client\/.*\.jsx$/ }, async ({ path }) => ({
+      build.onLoad({ filter: /[/\\]archived[/\\]client[/\\].*\.jsx$/ }, async ({ path }) => ({
         contents: (await transform(await readFile(path, 'utf8'), {
           loader: 'jsx', jsxFactory: 'React.createElement', jsxFragment: 'React.Fragment',
           format: 'esm', target: 'es2022', charset: 'utf8', legalComments: 'none',
         })).code,
         loader: 'js',
       }))
-      build.onLoad({ filter: /\/mobile\/client\/.*\.jsx$/ }, async ({ path }) => {
+      build.onLoad({ filter: /[/\\]mobile[/\\]client[/\\].*\.jsx$/ }, async ({ path }) => {
         const source = await readFile(path, 'utf8')
         let { code } = await transform(source, {
           loader: 'jsx', jsxFactory: 'h', jsxFragment: 'Fragment', format: 'esm',

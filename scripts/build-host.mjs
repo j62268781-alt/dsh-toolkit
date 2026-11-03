@@ -1,10 +1,13 @@
 /** Compile TypeScript without bundling and mirror module-owned runtime assets. */
 import { readFile, readdir, mkdir, writeFile } from 'node:fs/promises'
-import { dirname, join, relative, resolve } from 'node:path'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url))
+
+/** Map paths to the slash form used as keys, so Windows and POSIX agree. */
+const toSlash = (path) => path.split(sep).join('/')
 
 async function walk(directory) {
   const files = []
@@ -31,10 +34,10 @@ export async function buildHost({ check = false } = {}) {
   if (diagnostics.length) throw new Error(ts.formatDiagnosticsWithColorAndContext(diagnostics, {
     getCanonicalFileName: (path) => path, getCurrentDirectory: () => ROOT, getNewLine: () => '\n',
   }))
-  const emitted = program.emit(undefined, (path, contents) => outputs.set(relative(ROOT, path), contents))
+  const emitted = program.emit(undefined, (path, contents) => outputs.set(toSlash(relative(ROOT, path)), contents))
   if (emitted.emitSkipped) throw new Error('TypeScript host emit was skipped')
 
-  const copy = async (path) => outputs.set(`lib/${relative(join(ROOT, 'src'), path)}`, await readFile(path))
+  const copy = async (path) => outputs.set(`lib/${toSlash(relative(join(ROOT, 'src'), path))}`, await readFile(path))
   await copy(join(ROOT, 'src/index.js'))
   for (const path of await walk(join(ROOT, 'src/host'))) await copy(path)
   for (const entry of await readdir(join(ROOT, 'src/modules'), { withFileTypes: true })) {
@@ -46,7 +49,7 @@ export async function buildHost({ check = false } = {}) {
 
   // Catch removed/renamed sources rather than silently shipping stale host modules.
   for (const path of await walk(join(ROOT, 'lib'))) {
-    const local = relative(join(ROOT, 'lib'), path)
+    const local = toSlash(relative(join(ROOT, 'lib'), path))
     if (local === 'client.js' || /^modules\/[^/]+\/client\.js$/.test(local) || local === '.build-manifest.json') continue
     if (!outputs.has(`lib/${local}`)) throw new Error(`Unexpected generated host file: lib/${local}; remove the stale output explicitly`)
   }

@@ -11,7 +11,21 @@ pnpm install --frozen-lockfile
 pnpm verify
 ```
 
-也可分别运行 `pnpm build`、`pnpm typecheck`、`pnpm check` 或 `pnpm test`。测试会跳过真实设备发现；真实 Skills/MCP patch 测试需显式设置 `SMP_REAL_PATCH`。
+也可分别运行 `pnpm build`、`pnpm typecheck`、`pnpm check` 或 `pnpm test`。测试会跳过真实设备发现；真实 Skills/MCP patch 测试需显式设置 `SMP_REAL_PATCH`。Windows 上构建脚本与测试夹具都按本机路径分隔符工作，POSIX 与 Windows 各自跑自己适用的用例（Windows 没有 Unix domain socket，daemon RPC 用例在那里跳过，产品走 CLI 兜底）。
+
+## 安装到 DSH
+
+一个插件就是一个 profile bundle：profile 的 `dependencies` 链到本仓库，`dsh.profile.bundles` 登记包名。桌面版自带 `dsh` CLI，`dsh plugin` 直接转发给 profile 里的 pnpm：
+
+```sh
+dsh plugin --profile desktop add D:/path/to/dsh-toolkit
+```
+
+本地目录会装成 `link:` 依赖，CLI 同时把包名加进 `dsh.profile.bundles`。装完**重启 DSH 桌面应用**才生效：Host 插件在启动时挂载，客户端 bundle 的文件清单也在启动时登记，热更新不会重载已装插件。
+
+- bundle 入口：`package.json` 的 `dsh.bundle.patch`（`cordis.patch.yml`），补丁行沿用 `id: shell-kit`、`name: dsh-toolkit`；
+- 客户端入口：`dsh.client` 声明加 `exports["./client"]`（`lib/client.js`），loader 里注册的模块 id 必须等于包名 `dsh-toolkit`；
+- 本地开发改了 `src/` 先 `pnpm build` 再重启应用；`lib/` 是构建产物，不要手改。
 
 ## 配置
 

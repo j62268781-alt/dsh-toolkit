@@ -3,6 +3,7 @@
  * 这些都是"决定了就不会再变"的映射关系，值得被钉住。
  */
 import assert from 'node:assert/strict'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import { actionArgs, isSupportedVersion, nativeBinaryName, nativeSiblingPath, resolveCommand } from '../../lib/modules/browser/host/cli.js'
 import { FOLLOW_UP_VERBS, MAX_CLICK_CANDIDATES, SELECT_OPTION_CAP, activeClauseOf, addToCartTarget, bestEmptyInputForGoal, candidatesFromExtracted, candidatesOf, diffCandidates, disabledTargetWithoutUnlock, fieldName, filterStateMatchesGoal, goalMentions, groupOutlineOf, inputMatchesOf, inputsApplied, isAlreadySatisfied, isTargetToggleCandidate, matchInputValue, ordinalWidgetTargetOf, pendingFieldOf, questionsOf, rankByGoal, requiresPrimaryContentTarget, scopeCandidatesOf, selectOptionQuestion, soleValueFor, specificallyNamed, stateOf, urlChangeMatchesGoal } from '../../lib/modules/browser/host/task.js'
@@ -86,13 +87,14 @@ test('页面侧域名解析：接受 *. 形式、逗号与换行都算分隔，�
 })
 
 test('原生二进制的同目录规则：按 platform-arch 命名，覆盖 npm 全局与 Homebrew 布局', () => {
+  // 断言用本机 path.join 拼期望值：规则本身与分隔符无关，测试不该押死 POSIX 分隔符。
   assert.equal(
     nativeSiblingPath('/opt/homebrew/lib/node_modules/agent-browser/bin/agent-browser.js', 'darwin', 'arm64'),
-    '/opt/homebrew/lib/node_modules/agent-browser/bin/agent-browser-darwin-arm64',
+    join('/opt/homebrew/lib/node_modules/agent-browser/bin', 'agent-browser-darwin-arm64'),
   )
   assert.equal(
     nativeSiblingPath('/usr/local/lib/node_modules/agent-browser/bin/agent-browser.js', 'linux', 'x64'),
-    '/usr/local/lib/node_modules/agent-browser/bin/agent-browser-linux-x64',
+    join('/usr/local/lib/node_modules/agent-browser/bin', 'agent-browser-linux-x64'),
   )
   // win32 要带 .exe；win32+arm64 在原生缺失时退 x64（与 CLI 包装层的 getBinaryName 一致）。
   assert.equal(nativeBinaryName('/tmp/x', 'win32', 'x64'), 'agent-browser-win32-x64.exe')
@@ -135,7 +137,7 @@ test('插件补充会随工具/决策开关变化（工具关掉就说"用 bash 
   assert.match(on, /browser_run\(goal, inputs\?, subgoals\?\)/)
   assert.match(on, /只有 `needs_verification` 才推进/)
   assert.match(on, /单会话串行约束/)
-  assert.match(on, /references\/commands\.md/)
+  assert.match(on, /references[\\/]commands\.md/)
 
   const off = pluginNote({ tools: false, decision: false })
   assert.match(off, /工具面当前\*\*关闭\*\*/)

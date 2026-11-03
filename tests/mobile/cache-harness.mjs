@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import net from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import { Singleflight } from "../../src/host/singleflight.js";
 import { Mobilecli, MobilecliError } from "../../src/modules/mobile/host/device/mobilecli.js";
 import { AdbProbe } from "../../src/modules/mobile/host/device/android-toolchain.js";
@@ -355,7 +356,7 @@ export async function runMobileCacheTests(test) {
 
   await test("Mobile status waits for completion and aborts late unmounted results", async () => {
     const { build } = await import("esbuild");
-    const output = await build({ entryPoints: [new URL("../../src/modules/mobile/client/panel.jsx", import.meta.url).pathname],
+    const output = await build({ entryPoints: [fileURLToPath(new URL("../../src/modules/mobile/client/panel.jsx", import.meta.url))],
       bundle: true, write: false, format: "esm", platform: "node", target: "es2022", jsxFactory: "h", jsxFragment: "Fragment", logLevel: "silent" });
     const { createMobilePanel } = await import(`data:text/javascript;base64,${Buffer.from(output.outputFiles[0].text).toString("base64")}`);
     const effects = [], writes = [], work = [], timers = clock();

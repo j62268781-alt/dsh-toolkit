@@ -147,7 +147,7 @@ test('内置 skill 的内容是原文 + 插件补充，且 references 目录绝�
   assert.match(skill.content, /DSH 插件补充/)                     // 补充也在
   assert.match(skill.content, /browser_run\(goal, inputs\?, subgoals\?\)/) // 决策开着要说（且说清可一次给全）
   assert.equal(skill.resourceBase.kind, 'directory')
-  assert.ok(skill.resourceBase.path.endsWith('/skills/agent-browser'))
+  assert.ok(/[\\/]skills[\\/]agent-browser$/.test(skill.resourceBase.path))
   assert.deepEqual(skill.invocation, { modelInvocable: true, userInvocable: true })
 })
 
@@ -192,7 +192,14 @@ const CHROME_INSTALLED = {
   checks: [{ id: 'chrome.installed', status: 'pass', message: 'Google Chrome 155.0.8059.84 at /Applications/Google Chrome.app' }],
 }
 
-test('自检：CLI 版本比最低支持版本新（0.39.1）→ 通过，不能误报环境失败', async () => {
+// 假 CLI 是 POSIX shell 脚本，Windows 上 spawn 直接 ENOENT；真实的 CLI 在 Windows 走原生 .exe。
+// 版本判断本身与平台无关，跳过的是"跑一个 shell 脚本"这个夹具，不是漏测产品逻辑（POSIX CI 仍跑）。
+const POSIX_FIXTURE_ONLY = process.platform === 'win32'
+  ? '假 CLI 是 POSIX shell 脚本，Windows 上无法直接 spawn（真实 CLI 走原生 exe）'
+  : ''
+
+test('自检：CLI 版本比最低支持版本新（0.39.1）→ 通过，不能误报环境失败', async (t) => {
+  if (POSIX_FIXTURE_ONLY) return t.skip(POSIX_FIXTURE_ONLY)
   const ctx = await boot({ browser: { executablePath: await fakeCli('0.39.1', { doctor: CHROME_INSTALLED }) } })
   const result = await ctx.get('browser').probe()
   const cli = result.checks.find((entry) => entry.id === 'cli')
@@ -201,7 +208,8 @@ test('自检：CLI 版本比最低支持版本新（0.39.1）→ 通过，不能
   assert.equal(result.ok, true, '两项都过时整体应该是就绪')
 })
 
-test('自检：CLI 版本低于下限（0.38.1）→ 红，并给出升级修法', async () => {
+test('自检：CLI 版本低于下限（0.38.1）→ 红，并给出升级修法', async (t) => {
+  if (POSIX_FIXTURE_ONLY) return t.skip(POSIX_FIXTURE_ONLY)
   const ctx = await boot({ browser: { executablePath: await fakeCli('0.38.1') } })
   const result = await ctx.get('browser').probe()
   const cli = result.checks.find((entry) => entry.id === 'cli')

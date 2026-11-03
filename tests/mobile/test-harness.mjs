@@ -14,7 +14,7 @@
 
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import net from "node:net";
 import http from "node:http";
@@ -2857,7 +2857,8 @@ function fakeDaemon(handler, { keepOpen = false } = {}) {
 }
 
 await test("resolveSocketPath 跟随 MOBILECLI_HOME（与 CLI 同一规则）", () => {
-  assert.equal(resolveSocketPath(null), join(process.env.HOME, ".mobilecli", "daemon.sock"));
+  // 期望值用 homedir()：Windows 上没有 HOME，产品本身就是按 homedir() 拼的。
+  assert.equal(resolveSocketPath(null), join(homedir(), ".mobilecli", "daemon.sock"));
   assert.equal(resolveSocketPath("/tmp/custom"), join("/tmp/custom", "daemon.sock"));
   assert.equal(resolveSocketPath(null).endsWith("daemon.sock"), true);
 });
@@ -3925,7 +3926,7 @@ function startFakeDaemon(socketPath) {
   });
 }
 
-await test("连接失败后按退避自动恢复（不必等 CLI 来救）", async () => {
+await testUnixSocket("连接失败后按退避自动恢复（不必等 CLI 来救）", async () => {
   const home = mkdtempSync(join(import.meta.dirname, ".tmp-rpc-test-"));
   const socketPath = join(home, "daemon.sock");
   const logs = [];
@@ -3960,7 +3961,7 @@ await test("连接失败后按退避自动恢复（不必等 CLI 来救）", asy
   }
 });
 
-await test("prewarm 让第一次点击就走 RPC（冷启动不再先吃一次 CLI）", async () => {
+await testUnixSocket("prewarm 让第一次点击就走 RPC（冷启动不再先吃一次 CLI）", async () => {
   const home = mkdtempSync(join(import.meta.dirname, ".tmp-rpc-warm-"));
   const socketPath = join(home, "daemon.sock");
   const rpc = new DaemonRpc({ home, log: () => {} });

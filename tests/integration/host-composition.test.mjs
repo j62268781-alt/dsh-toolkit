@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { test } from 'node:test'
+import { pathToFileURL } from 'node:url'
 import { Context, Service } from '@deepseek-ai/cordis'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import toolkit, { Config } from '../../lib/index.js'
 
 // Resolve the exact Cosmokit instance used by the installed schema runtime.
+// The resolved specifier is a native path, so it must be a file URL before import.
 const schemaRequire = createRequire(import.meta.resolve('@deepseek-ai/schemastery'))
-const { isVolatile, updateVolatile } = await import(schemaRequire.resolve('@deepseek-ai/cosmokit'))
+const { isVolatile, updateVolatile } = await import(pathToFileURL(schemaRequire.resolve('@deepseek-ai/cosmokit')).href)
 
 class Tools extends Service {
   constructor(ctx) {
