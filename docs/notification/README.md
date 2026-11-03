@@ -159,3 +159,21 @@ pnpm verify
 覆盖点：配置解码与根 schema 交叉校验、会话事实投影、完成/失败/暂停/等待/静默分类、
 待交互 key 变化、分发门控、系统通知选项与点击、最近通知 store、提示音降级、
 设置页注册契约与开关写回、端到端（真实 `apply` + 假 ctx）通知标题/正文与点击跳转。
+
+## 真机验证记录（0.2.1-rc.5 桌面端 / Web GUI）
+
+重启桌面应用后，在独立 Web 客户端（同一 `127.0.0.1` GUI）里实测：
+
+1. 设置导航出现「通知」，页面渲染 10 行 item（总开关 / 提示音 / 音量 / 当前会话时机 / 通知范围 /
+   四种类型 / 测试通知），标题与副标题层级、分隔线、控件位置与「通用设置」页一致；
+2. 点击「提示音」开关后，`$DSH_HOME/profiles/desktop/cordis.patch.yml` 出现
+   `- id: shell-kit → config.notification.soundEnabled: false`；再点回去恢复 `true`（写回链路真实可用）；
+3. 把「通知范围」切到「全部会话」后，一个真实子会话跑完触发了系统通知：
+   **标题 = 会话 `displayTitle`**，**正文 = 该轮最后一个 assistant 回复**，`tag` 为
+   `dsh-toolkit:notification:<sessionId>:completed`；
+4. 点击「最近通知」里的条目，主视图跳到该会话并显示它的回复；
+5. 无头 Chrome 默认拒绝通知权限时，页面按设计显示「通知权限：已被拒绝」并在点「授权」后给出说明。
+
+> 真机验证还抓到一个 Cordis 严格上下文的坑：`ctx.workspaces` 未列入 `inject` 时读取会抛
+> `cannot get property "workspaces" without inject`，点击通知只打 warn 不跳转；已在 `inject` 中补上并回归。
+
