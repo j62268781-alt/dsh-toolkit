@@ -7,14 +7,27 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ARCH_COPY } from '../../src/modules/archived/client/locale.js'
 
-test('archived popup and settings use native danger actions and one persistent irreversible confirmation', async t => {
+const h = React.createElement
+
+function primitivesFor() {
+  return {
+    Button: ({ variant, size = 'md', icon, className, children, ...props }) => h('button', { ...props, className, 'data-variant': variant, 'data-size': size }, icon && h('span', { 'data-button-icon': true }, icon), children),
+    IconTrashOutlineRegular: () => h('svg', { 'data-icon': 'trash' }),
+    IconSearchOutlineRegular: () => h('svg', { 'data-icon': 'search' }),
+    MenuItemButton: ({ danger, disabled, onSelect, icon, children }) => h('button', { role: 'menuitem', disabled, 'data-danger': danger, onClick: onSelect }, icon, children),
+    Modal: ({ title, description, footer, children, onClose, closeLabel }) => h('div', { role: 'dialog' },
+      h('h2', null, title), h('p', null, description), children, h('button', { onClick: onClose }, closeLabel ?? '关闭'), footer),
+  }
+}
+
+async function boot(t) {
   const dom = new JSDOM('<html><head></head><body><div id="root"></div></body></html>')
   const saved = new Map()
   for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, IS_REACT_ACT_ENVIRONMENT: true })) {
     saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key))
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value })
   }
-  const root = createRoot(document.getElementById('root'))
+  const root = createRoot(dom.window.document.getElementById('root'))
   const cleanups = []
   t.after(async () => {
     await act(async () => root.unmount())
@@ -25,130 +38,218 @@ test('archived popup and settings use native danger actions and one persistent i
       else delete globalThis[key]
     }
   })
-  const h = React.createElement
-  const primitives = {
-    Button: ({ variant, size = 'md', icon, children, ...props }) => h('button', { ...props, 'data-variant': variant, 'data-size': size }, icon && h('span', { 'data-button-icon': true }, icon), children),
-    IconTrashOutlineRegular: () => h('svg', { 'data-icon': 'trash' }),
-    MenuItemButton: ({ danger, separatorBefore, disabled, onSelect, icon, children }) => h('button', { role: 'menuitem', disabled, 'data-danger': danger, 'data-separator': separatorBefore, onClick: onSelect }, icon, children),
-    Modal: ({ title, description, footer, children, onClose }) => h('div', { role: 'dialog' }, h('h2', null, title), h('p', null, description), children, h('button', { onClick: onClose }, '关闭'), footer),
-  }
+
+  const primitives = primitivesFor()
+  let fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ ok: true }) })
   let spec
-  let calls = 0, refreshes = 0, unarchives = 0, unpins = 0, complete
-  let response = async () => ({ ok: false, status: 409, json: async () => ({ ok: false, reason: 'session-loaded' }) })
   vm.runInNewContext(await readFile(new URL('../../lib/modules/archived/client.js', import.meta.url), 'utf8'), {
-    window: { __ModuleLoader__: { load(value) { spec = value } } }, document, Headers,
-    fetch: (...args) => { calls++; return response(...args) },
+    window: { __ModuleLoader__: { load(value) { spec = value } } }, document: dom.window.document, Headers,
+    fetch: (...args) => fetchImpl(...args),
   })
-  const client = spec.factory(id => {
+  const client = spec.factory((id) => {
     if (id === 'react') return React
     if (id === '@deepseek-ai/dsh-client-ui-primitives') return primitives
     throw Error(id)
   })
-  const workspace = { items: [], archivedSessionIds: ['archived'] }
-  const sessions = { byId: { archived: { title: '归档示例', updatedAt: 1 } } }
+
+  const workspace = { items: [], archivedSessionIds: [] }
+  const sessions = { byId: {} }
+  const calls = { delete: [], unarchive: 0, unpin: 0, refresh: 0, archive: [] }
   const registrations = new Map()
-  client.apply({
-    effect(run) { const off = run(); if (typeof off === 'function') cleanups.push(off) },
+  const ctx = {
+    effect(run) {
+      const off = run()
+      if (typeof off === 'function') cleanups.push(off)
+      return off
+    },
     locale: { register: () => () => {}, bind: () => key => ARCH_COPY.zh[key] },
-    sessions: { list: { getSnapshot: () => sessions, subscribe: () => () => {} }, refresh: async () => { refreshes++ } },
-    workspaces: { list: { getSnapshot: () => workspace, subscribe: () => () => {} }, unarchiveSession: async () => { unarchives++ }, unpinSession: async () => { unpins++ } },
-    slots: { inject: (_name, run) => run(), register(meta, Component) { registrations.set(meta.name, Component); return () => registrations.delete(meta.name) } },
-  })
-  const Menu = registrations.get('sidebar.workspaces.session.menu.item')
-  const Overlay = registrations.get('shell.overlay')
-  const Settings = registrations.get('settings.section')
-  let menuVisible = true, sessionId = 'ordinary', closeCalls = 0
-  const render = () => root.render(h(React.Fragment, null,
-    menuVisible && h(Menu, { sessionId, displayTitle: '归档示例', useWorkspaces: select => select(workspace), useMenuOpenState: () => [true, open => { assert.equal(open, false); closeCalls++; menuVisible = false; render() }] }),
-    h(Overlay), h(Settings),
-  ))
-  const click = async (text, selector = 'button') => {
-    const button = [...document.querySelectorAll(selector)].find(node => node.textContent === text)
-    assert.ok(button, text)
+    sessions: {
+      list: { getSnapshot: () => sessions, subscribe: () => () => {} },
+      refresh: async () => { calls.refresh++ },
+    },
+    workspaces: {
+      list: { getSnapshot: () => workspace, subscribe: () => () => {} },
+      unarchiveSession: async () => { calls.unarchive++ },
+      unpinSession: async () => { calls.unpin++ },
+      delete: async (id) => { calls.delete.push(id) },
+      archiveSession: async (sessionId, options) => { calls.archive.push({ sessionId, options }) },
+    },
+    slots: {
+      inject: (_name, run) => run(),
+      register(meta, Component) { registrations.set(meta.id ?? meta.name, Component); return () => registrations.delete(meta.id ?? meta.name) },
+    },
+  }
+  client.apply(ctx)
+
+  const sections = registrations.get('archived-chats')
+  const removalDialog = registrations.get('dsh-toolkit.archived.delete-confirm')
+  const archiveDialog = registrations.get('dsh-toolkit.archived.archive-confirm')
+  const menuItem = registrations.get('dsh-toolkit.archived.delete')
+  const overlay = (extra) => h(React.Fragment, null,
+    h(removalDialog), h(archiveDialog), extra ?? null)
+  const render = (element) => act(async () => { root.render(element) })
+  const click = async (label) => {
+    const button = [...dom.window.document.querySelectorAll('button')].find((node) => node.textContent === label)
+    assert.ok(button, `missing button: ${label}`)
     await act(async () => button.click())
   }
-  await act(async () => render())
-  assert.equal(document.querySelector('[role="menuitem"]'), null, 'ordinary sessions have no delete entry')
-  sessionId = 'archived'
-  await act(async () => render())
-  const menu = document.querySelector('[role="menuitem"]')
-  assert.equal(menu.dataset.danger, 'true')
-  assert.ok(menu.querySelector('[data-icon="trash"]'))
-  await click('删除会话', '[role="menuitem"]')
-  assert.equal(closeCalls, 1)
-  assert.equal(document.querySelector('[role="menuitem"]'), null)
-  assert.ok(document.querySelector('[role="dialog"]'), 'dialog survives popup unmount')
-  assert.match(document.querySelector('[role="dialog"]').textContent, /归档示例.*无法恢复.*不可逆/)
-  assert.equal(calls, 0)
-  await click('取消')
-  assert.equal(calls, 0)
-  assert.equal(document.querySelector('[role="dialog"]'), null)
+  return {
+    dom, root, ctx, workspace, sessions, calls, registrations, cleanups,
+    sections, menuItem, removalDialog, archiveDialog, overlay, render, click,
+    setFetch(impl) { fetchImpl = impl },
+    text: () => dom.window.document.body.textContent,
+    dialog: () => dom.window.document.querySelector('[role="dialog"]'),
+  }
+}
 
-  await click('删除会话') // Settings opens the same overlay.
-  assert.equal(document.querySelectorAll('[role="dialog"]').length, 1)
-  const confirmButton = document.querySelector('[role="dialog"] .sk-arch__delete')
-  assert.equal(confirmButton.dataset.variant, 'outline')
-  assert.equal(confirmButton.dataset.size, 'md')
-  assert.ok(confirmButton.querySelector('[data-button-icon] [data-icon="trash"]'))
-  const cancelButton = [...document.querySelectorAll('[role="dialog"] button')].find(node => node.textContent === '取消')
-  assert.equal(confirmButton.dataset.size, cancelButton.dataset.size)
-  assert.equal(document.querySelector('.sk-arch__row .sk-arch__delete').dataset.size, 'sm')
-  await click('确认删除')
-  assert.equal(calls, 1)
-  assert.match(document.querySelector('[role="alert"]').textContent, /删除失败：session-loaded/)
-  assert.equal(refreshes, 0)
-  assert.equal(unarchives, 0)
-  response = () => new Promise(resolve => { complete = resolve })
-  await click('确认删除')
-  assert.equal(calls, 2)
-  const pending = [...document.querySelectorAll('button')].find(node => node.textContent === '删除中…')
-  assert.equal(pending.disabled, true)
-  await act(async () => pending.click())
-  await click('关闭')
-  assert.ok(document.querySelector('[role="dialog"]'), 'cannot dismiss an in-progress deletion')
-  assert.equal(calls, 2)
-  await act(async () => complete({ ok: true, status: 200, json: async () => ({ ok: true }) }))
-  assert.equal(document.querySelector('[role="dialog"]'), null)
-  assert.equal(document.querySelector('.sk-arch__row'), null)
-  assert.equal(refreshes, 1)
-  assert.equal(unarchives, 1)
-  assert.equal(unpins, 1)
-
+function seed(workspace, sessions) {
   workspace.items = [
-    { workspaceId: 'a', title: '项目 A', sessionIds: ['a1', 'a2'] },
-    { workspaceId: 'b', title: '项目 B', sessionIds: ['b1'] },
+    { workspaceId: 'A', title: '项目 A', path: '/a', sessionIds: ['a1', 'a2'] },
+    { workspaceId: 'B', title: '项目 B', path: '/b', sessionIds: ['b1', 'b2'] },
   ]
-  workspace.archivedSessionIds = ['a1', 'a2', 'b1']
-  sessions.byId = { a1: { title: '第一条', updatedAt: 3 }, a2: { title: '第二条', updatedAt: 2 }, b1: { title: '其他项目', updatedAt: 1 } }
-  await act(async () => render())
-  assert.equal(document.querySelector('.sk-arch__head .sk-arch__subtitle').textContent, ARCH_COPY.zh.removeHint)
+  workspace.archivedSessionIds = ['a1', 'a2', 'loose', 'missing']
+  sessions.byId = {
+    a1: { title: '第一条', updatedAt: 2 },
+    a2: { title: '第二条', updatedAt: 1 },
+    loose: { title: '单独归档', updatedAt: 3 },
+    b1: { title: '仍在列表', updatedAt: 4 },
+    b2: { title: '也在列表', updatedAt: 5 },
+  }
+}
+
+test('archived page mirrors the built-in search, lists every archived record, and keeps the filter usable', async (t) => {
+  const app = await boot(t)
+  seed(app.workspace, app.sessions)
+  await app.render(app.overlay(h(app.sections)))
+
+  const document = app.dom.window.document
+  assert.equal(document.querySelector('.sk-arch__subtitle').textContent, '搜索、恢复或永久删除已归档的会话。')
+  const search = document.querySelector('.sk-arch input[type="search"]')
+  assert.ok(search, 'search input rendered')
+  assert.equal(search.className, 'sk-searchInput')
+  assert.equal(search.placeholder, '搜索已归档的聊天')
+  assert.ok(document.querySelector('.sk-searchIcon [data-icon="search"]'))
   assert.equal(document.querySelectorAll('.sk-arch__subtitle').length, 1)
-  await click('删除全部', '.sk-arch__group:first-of-type button')
-  assert.match(document.querySelector('[role="dialog"]').textContent, /项目 A.*全部 2 个归档会话.*不可逆/)
-  assert.equal(calls, 2, 'bulk request still requires confirmation')
-  await click('取消')
-  const deleted = []
-  response = async (_input, options) => {
+
+  // Every Workspace is a filter option, including one with no archived rows.
+  const options = [...document.querySelectorAll('.sk-arch__select option')].map((node) => node.textContent)
+  assert.deepEqual(options, ['所有项目', '项目 A', '项目 B', '未分组'])
+
+  const groups = [...document.querySelectorAll('.sk-arch__group')]
+  assert.deepEqual(groups.map((node) => node.querySelector('.sk-arch__groupTitle').textContent), ['项目 A', '未分组'])
+  assert.deepEqual(groups.map((node) => node.querySelector('.sk-arch__groupCount').textContent), ['2 个聊天', '2 个聊天'])
+  // No per-workspace bulk delete: the only bulk action sits in the toolbar.
+  assert.equal(document.querySelectorAll('.sk-arch__groupHead .sk-arch__delete').length, 0)
+
+  const rows = [...document.querySelectorAll('.sk-arch__row')]
+  assert.equal(rows.length, 4)
+  assert.equal(rows[0].querySelector('.sk-arch__rowTitle').textContent, '第一条')
+  assert.match(rows[0].textContent, /恢复/)
+  assert.match(rows[0].textContent, /删除/)
+  const unreadable = rows.find((row) => row.textContent.includes('无法读取的会话'))
+  assert.ok(unreadable, 'records without session data stay listable so they can be deleted')
+  assert.equal(unreadable.querySelector('.sk-arch__rowTitle').getAttribute('title'), 'missing')
+
+  // The filter reaches a workspace that currently has no archived row.
+  const select = document.querySelector('.sk-arch__select')
+  await act(async () => {
+    select.value = 'B'
+    select.dispatchEvent(new app.dom.window.Event('change', { bubbles: true }))
+  })
+  assert.equal(document.querySelectorAll('.sk-arch__group').length, 0)
+  assert.match(app.text(), /没有匹配的归档会话/)
+})
+
+test('bulk delete confirms both counts, retries failed sessions, and only drops fully archived workspaces', async (t) => {
+  const app = await boot(t)
+  seed(app.workspace, app.sessions)
+  await app.render(app.overlay(h(app.sections)))
+
+  await app.click('全部删除')
+  assert.match(app.dialog().textContent, /永久删除 1 个工作区和 4 个任务？/)
+  assert.match(app.dialog().textContent, /此操作会从本机移除全部已归档工作区及其任务，以及单独归档的任务，之后不能从 dsh 恢复。/)
+  await app.click('取消')
+  assert.equal(app.dialog(), null)
+  assert.equal(app.calls.delete.length, 0)
+
+  app.setFetch(async (_input, options) => {
     const { sessionId } = JSON.parse(options.body)
-    deleted.push(sessionId)
-    return { ok: sessionId === 'a1', status: sessionId === 'a1' ? 200 : 409, json: async () => sessionId === 'a1' ? { ok: true } : { ok: false, reason: 'session-loaded' } }
-  }
-  await click('删除全部', '.sk-arch__group:first-of-type button')
-  await click('确认删除')
-  assert.deepEqual(deleted, ['a1', 'a2'])
-  assert.match(document.querySelector('[role="dialog"]').textContent, /全部 1 个归档会话/)
-  assert.match(document.querySelector('[role="alert"]').textContent, /第二条: session-loaded/)
-  assert.equal(document.querySelectorAll('.sk-arch__row').length, 2, 'failed session and other project remain')
-  response = async (_input, options) => {
-    deleted.push(JSON.parse(options.body).sessionId)
+    if (sessionId === 'a2') return { ok: false, status: 409, json: async () => ({ ok: false, reason: 'session-loaded' }) }
     return { ok: true, status: 200, json: async () => ({ ok: true }) }
-  }
-  await click('确认删除')
-  assert.deepEqual(deleted, ['a1', 'a2', 'a2'], 'retry only sends failed sessions')
-  assert.equal(document.querySelector('[role="dialog"]'), null)
-  assert.equal(document.querySelectorAll('.sk-arch__row').length, 1)
-  assert.match(document.querySelector('.sk-arch__row').textContent, /其他项目/)
-  assert.equal(refreshes, 3)
-  assert.equal(unarchives, 3)
-  assert.equal(unpins, 3)
+  })
+  await app.click('全部删除')
+  await app.click('永久删除')
+  assert.match(app.dom.window.document.querySelector('[role="alert"]').textContent, /第二条: session-loaded/)
+  assert.deepEqual(app.calls.delete, [], 'a workspace with a failed session keeps its registration')
+  assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 1, 'only the failed session remains listed')
+  assert.match(app.text(), /永久删除 1 个工作区和 1 个任务？/)
+
+  app.setFetch(async () => ({ ok: true, status: 200, json: async () => ({ ok: true }) }))
+  await app.click('永久删除')
+  assert.equal(app.dialog(), null)
+  assert.deepEqual(app.calls.delete, ['A'])
+  assert.equal(app.calls.unarchive, 4)
+  assert.equal(app.calls.unpin, 4)
+  assert.equal(app.calls.refresh, 2)
+  assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 0)
+})
+
+test('sidebar delete entry still asks for the irreversible confirmation', async (t) => {
+  const app = await boot(t)
+  seed(app.workspace, app.sessions)
+  let closed = 0
+  let visible = true
+  const MenuItem = app.menuItem
+  await app.render(h(React.Fragment, null,
+    visible && h(MenuItem, {
+      sessionId: 'loose', displayTitle: '单独归档',
+      useWorkspaces: (select) => select(app.workspace),
+      useMenuOpenState: () => [true, () => { closed++; visible = false }],
+    }),
+    app.overlay(),
+  ))
+  assert.equal(app.dom.window.document.querySelector('[role="menuitem"]').dataset.danger, 'true')
+  await act(async () => app.dom.window.document.querySelector('[role="menuitem"]').click())
+  assert.equal(closed, 1)
+  assert.match(app.dialog().textContent, /永久删除“单独归档”？/)
+  await app.click('取消')
+  assert.equal(app.calls.delete.length, 0)
+})
+
+test('archiving from the sidebar asks first and refuses silently when cancelled', async (t) => {
+  const app = await boot(t)
+  seed(app.workspace, app.sessions)
+  await app.render(app.overlay(h(app.sections)))
+
+  let pending
+  await act(async () => { pending = app.ctx.workspaces.archiveSession('a1') })
+  pending.catch(() => {})
+  assert.match(app.dialog().textContent, /归档“第一条”？/)
+  assert.match(app.dialog().textContent, /它会离开当前任务列表，保留在设置里的已归档的聊天中；之后你可以在那里永久删除。/)
+  await app.click('取消')
+  await assert.rejects(pending, /cancelled/)
+  assert.equal(app.dialog(), null)
+  assert.deepEqual(app.calls.archive, [], 'cancelling archives nothing')
+
+  let confirmed
+  await act(async () => { confirmed = app.ctx.workspaces.archiveSession('a2') })
+  await app.click('归档')
+  await confirmed
+  assert.deepEqual(app.calls.archive, [{ sessionId: 'a2', options: undefined }])
+  assert.equal(app.dialog(), null)
+
+  // The host's own stop-and-archive dialog already asked; that path stays direct.
+  await act(async () => { await app.ctx.workspaces.archiveSession('loose', { stopActivity: true }) })
+  assert.deepEqual(app.calls.archive.at(-1), { sessionId: 'loose', options: { stopActivity: true } })
+  assert.equal(app.dialog(), null)
+})
+
+test('disposing the page restores the wrapped archive command', async (t) => {
+  const app = await boot(t)
+  const wrapped = app.ctx.workspaces.archiveSession
+  for (const off of [...app.cleanups].reverse()) off()
+  app.cleanups.length = 0
+  assert.notEqual(app.ctx.workspaces.archiveSession, wrapped)
+  await app.ctx.workspaces.archiveSession('a1', { stopActivity: true })
+  assert.deepEqual(app.calls.archive.at(-1), { sessionId: 'a1', options: { stopActivity: true } })
 })

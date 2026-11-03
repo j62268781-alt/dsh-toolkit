@@ -123,16 +123,18 @@ function archivedContext() {
   }
 }
 
-test('archived projection keeps workspace membership, recency, and unavailable counts', () => {
+test('archived projection lists every archived record, keeps workspace membership, and offers every workspace to the filter', () => {
   const ctx = archivedContext()
   const before = JSON.stringify([ctx.sessions.list.getSnapshot(), ctx.workspaces.list.getSnapshot()])
   const result = readArchived(ctx)
   assert.deepEqual(result.groups.map(({ id, rows }) => [id, rows.map(({ id, title }) => [id, title])]), [
     ['project', [['recent', 'Recent'], ['first', 'First']]],
-    ['__ungrouped', [['loose', '']]],
+    ['__ungrouped', [['child', 'Child'], ['loose', ''], ['missing', '']]],
   ])
-  assert.equal(result.total, 3)
-  assert.equal(result.unlisted, 2)
+  assert.deepEqual(result.groups.map(({ fullyArchived }) => fullyArchived), [true, false])
+  assert.equal(result.total, 5)
+  assert.deepEqual(result.projects, [{ id: 'project', title: 'Project' }])
+  assert.equal(result.hasUngrouped, true)
   assert.equal(JSON.stringify([ctx.sessions.list.getSnapshot(), ctx.workspaces.list.getSnapshot()]), before)
 })
 
@@ -167,10 +169,12 @@ test('archived bundle owns its page, CSS lifecycle, and local React JSX binding'
   assert.equal(document.querySelectorAll('style[data-plugin="toolkit-archived"]').length, 1)
   const html = renderToStaticMarkup(React.createElement(Component))
   assert.match(html, /已归档的聊天/)
+  assert.match(html, /搜索、恢复或永久删除已归档的会话/)
   assert.match(html, /Recent/)
+  assert.match(html, /Child/, 'subagent archives stay listed so they can be restored or deleted')
+  assert.match(html, /未分组/)
+  assert.match(html, /sk-searchInput/)
   assert.doesNotMatch(html, /disabled=""|no-endpoint/, 'same-origin deletion is available without an injected bridge')
-  assert.doesNotMatch(html, /Child/)
-  assert.match(html, /另有 2 条归档记录/)
   for (const dispose of cleanup.reverse()) dispose()
   assert.equal(document.querySelectorAll('style').length, 0)
 })

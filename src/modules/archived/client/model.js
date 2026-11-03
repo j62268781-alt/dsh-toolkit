@@ -6,12 +6,24 @@ export function archivedRowTitle(summary) {
   return display;
 }
 
+const UNGROUPED = "__ungrouped";
+
+/**
+ * One row per archived Session, grouped by the Workspace that accounts for it.
+ *
+ * Every id in the registry-global archive set is listed, including Sessions
+ * whose summary never arrived (their data is gone or unreadable) and Sessions
+ * the sidebar hides (subagents): leaving them out would strand them in the
+ * archive set with no way to restore or delete them. A row without a summary
+ * carries `missing` so the UI can label it instead of inventing a title.
+ */
 export function readArchived(ctx) {
   const sessions = ctx.sessions?.list?.getSnapshot?.() ?? {};
   const workspaces = ctx.workspaces?.list?.getSnapshot?.() ?? {};
   const byId = sessions.byId ?? {};
   const items = Array.isArray(workspaces.items) ? workspaces.items : [];
-  const archived = new Set(Array.isArray(workspaces.archivedSessionIds) ? workspaces.archivedSessionIds : []);
+  const archived = [...new Set(Array.isArray(workspaces.archivedSessionIds) ? workspaces.archivedSessionIds : [])];
+  const archivedSet = new Set(archived);
 
   const workspaceByPath = new Map();
   for (const workspace of items) {
@@ -41,37 +53,45 @@ export function readArchived(ctx) {
       title: archivedRowTitle(summary),
       updatedAt: summary?.updatedAt ?? 0,
       workspaceId: workspaceKey(workspace),
+      missing: summary === undefined,
     };
   };
-  const byRecency = (a, b) => b.updatedAt - a.updatedAt;
 
   const buckets = new Map();
   for (const id of archived) {
-    const summary = byId[id];
-    if (summary === undefined) continue;
-
-    if (summary.origin === "subagent") continue;
     const workspace = groupOf(id);
-    const key = workspace ? workspaceKey(workspace) : "__ungrouped";
+    const key = workspace ? workspaceKey(workspace) : UNGROUPED;
     if (!buckets.has(key)) {
       buckets.set(key, { id: key, title: workspace?.title ?? workspace?.path ?? "", rows: [] });
     }
     buckets.get(key).rows.push(toRow(id));
   }
 
+  const byRecency = (a, b) => b.updatedAt - a.updatedAt;
   const groups = [];
   for (const workspace of items) {
     const key = workspaceKey(workspace);
     const bucket = buckets.get(key);
-    if (!bucket || bucket.rows.length === 0) continue;
-    groups.push({ ...bucket, rows: bucket.rows.sort(byRecency) });
-    buckets.delete(key);
+    if (!bucket) continue;
+    const sessionIds = Array.isArray(workspace.sessionIds) ? workspace.sessionIds : [];
+    groups.push({
+      id: key,
+      title: bucket.title,
+      rows: bucket.rows.sort(byRecency),
+      workspaceId: key,
+      // Every Session the workspace accounts for is archived: deleting the list
+      // also takes the Workspace registration (its directory and files stay).
+      fullyArchived: sessionIds.length > 0 && sessionIds.every((id) => archivedSet.has(id)),
+    });
   }
-  const ungrouped = buckets.get("__ungrouped");
-  if (ungrouped && ungrouped.rows.length > 0) {
-    groups.push({ id: "__ungrouped", title: "", rows: ungrouped.rows.sort(byRecency) });
+  const ungrouped = buckets.get(UNGROUPED);
+  if (ungrouped) {
+    groups.push({ id: UNGROUPED, title: "", rows: ungrouped.rows.sort(byRecency), workspaceId: "", fullyArchived: false });
   }
 
-  const total = groups.reduce((n, group) => n + group.rows.length, 0);
-  return { groups, total, unlisted: Math.max(0, archived.size - total) };
+  // The filter lists every Workspace, not only the ones with archived rows, so a
+  // project that just gained its first archive is already selectable.
+  const projects = items.map((workspace) => ({ id: workspaceKey(workspace), title: workspace?.title ?? workspace?.path ?? "" }));
+
+  return { groups, total: archived.length, projects, hasUngrouped: ungrouped !== undefined };
 }

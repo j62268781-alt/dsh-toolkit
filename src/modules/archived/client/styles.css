@@ -8,12 +8,17 @@
 
 .sk-arch__head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
+.sk-arch__headText {
+  min-width: 0;
+}
+
 .sk-arch__action {
+  flex: none;
   height: 32px;
   padding: 0 12px;
   border-radius: var(--dsw-radius-sm);
@@ -31,8 +36,7 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
-.sk-arch__action:disabled,
-.sk-arch__btn:disabled {
+.sk-arch__action:disabled {
   opacity: 0.45;
   cursor: default;
 }
@@ -43,45 +47,25 @@
   gap: 8px;
 }
 
-.sk-arch__search {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  border-radius: var(--dsw-radius-md);
-  border: 0.5px solid var(--dsw-alias-border-l2);
-  background: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.sk-arch__search input {
-  flex: 1 1 auto;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font: inherit;
-  font-size: 13px;
-  outline: none;
-}
-
-.sk-arch__search input::placeholder {
-  color: var(--dsw-alias-label-tertiary);
-}
-
 .sk-arch__select {
-  height: 38px;
+  box-sizing: border-box;
+  flex: none;
+  max-width: 220px;
+  height: 36px;
   padding: 0 10px;
   border-radius: var(--dsw-radius-md);
-  border: 0.5px solid var(--dsw-alias-border-l2);
+  border: 0.5px solid var(--dsw-alias-border-l4);
   background: var(--dsw-alias-bg-layer-1);
   color: var(--dsw-alias-label-primary);
   font: inherit;
   font-size: 13px;
   cursor: pointer;
+  outline: none;
+}
+
+.sk-arch__select:focus-visible {
+  border-color: var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)) 18%, transparent);
 }
 
 .sk-arch__group {
@@ -94,8 +78,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
-  color: var(--dsw-alias-label-secondary);
+  min-height: 24px;
 }
 
 .sk-arch__icon {
@@ -104,13 +87,17 @@
 }
 
 .sk-arch__groupTitle {
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  color: var(--dsw-alias-label-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .sk-arch__groupCount {
+  flex: none;
   margin-left: auto;
   color: var(--dsw-alias-label-tertiary);
   font-size: 12px;
@@ -119,7 +106,7 @@
 .sk-arch__row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 12px 14px;
   border-radius: var(--dsw-radius-md);
   border: 0.5px solid var(--dsw-alias-border-l2);
@@ -135,7 +122,8 @@
 }
 
 .sk-arch__rowTitle {
-  font-size: 13.5px;
+  font-size: 14px;
+  line-height: 22px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -144,9 +132,11 @@
 
 .sk-arch__rowTime {
   font-size: 12px;
+  line-height: 18px;
   color: var(--dsw-alias-label-tertiary);
 }
 
+/* Fallback for when the host exposes no Button primitive. */
 .sk-arch__btn {
   height: 30px;
   padding: 0 10px;
@@ -162,6 +152,11 @@
 
 .sk-arch__btn:hover:not(:disabled) {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.sk-arch__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .sk-arch__empty {

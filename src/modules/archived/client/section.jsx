@@ -3,6 +3,12 @@ import { ARCH_NS } from "./locale.js";
 import { readArchived } from "./model.js";
 import { DeleteButton, useRemoval } from "./removal.jsx";
 
+const primitives = (() => {
+  try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; }
+})();
+
+const UNGROUPED = "__ungrouped";
+
 function ArchivedFolderIcon() {
   return (
     <svg
@@ -23,9 +29,10 @@ function ArchivedFolderIcon() {
   );
 }
 
-function ArchivedSearchIcon() {
+/** Same geometry as the host `IconSearchOutlineRegular`; only used when primitives are missing. */
+function FallbackSearchIcon() {
   return (
-    <svg width={15} height={15} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <svg width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <circle cx={7} cy={7} r={4.5} stroke="currentColor" strokeWidth={1} />
       <path d="M10.6 10.6L14 14" stroke="currentColor" strokeWidth={1} />
     </svg>
@@ -34,6 +41,15 @@ function ArchivedSearchIcon() {
 
 function createArchivedSection(ctx, removal) {
   const timeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+  const Button = primitives.Button;
+  const SearchIcon = primitives.IconSearchOutlineRegular ?? FallbackSearchIcon;
+
+  function RestoreButton({ busy, disabled, onClick, className, children }) {
+    if (Button === undefined) {
+      return <button type="button" className={className ?? "sk-arch__btn"} disabled={busy || disabled} onClick={onClick}>{children}</button>;
+    }
+    return <Button type="button" variant="outline" size="sm" className={className} disabled={busy || disabled} onClick={onClick}>{children}</Button>;
+  }
 
   return function ArchivedChatsSection() {
     const t = ctx.locale.bind(ARCH_NS);
@@ -41,6 +57,7 @@ function createArchivedSection(ctx, removal) {
     const [query, setQuery] = React.useState("");
     const [project, setProject] = React.useState("");
     const [busy, setBusy] = React.useState(false);
+    const [error, setError] = React.useState("");
 
     const removalState = useRemoval(removal);
 
@@ -62,8 +79,7 @@ function createArchivedSection(ctx, removal) {
       };
     }, []);
 
-    const { groups, total, unlisted } = readArchived(ctx);
-    const projects = groups.filter((group) => group.id !== "__ungrouped");
+    const { groups, total, projects, hasUngrouped } = readArchived(ctx);
     const needle = query.trim().toLowerCase();
     const visible = groups
       .filter((group) => project === "" || group.id === project)
@@ -83,20 +99,26 @@ function createArchivedSection(ctx, removal) {
 
     const restore = async (id) => {
       setBusy(true);
+      setError("");
       try {
         await ctx.workspaces.unarchiveSession(id);
+      } catch (reason) {
+        setError(String(reason?.message ?? reason));
       } finally {
         setBusy(false);
       }
     };
     const restoreAll = async () => {
-      const ids = visible.flatMap((group) => group.rows.map((row) => row.id));
+      const ids = groups.flatMap((group) => group.rows.map((row) => row.id)).filter((id) => !removalState.removed.has(id));
       if (ids.length === 0) return;
       const ask = t("confirmRestoreAll").replace("{n}", String(ids.length));
       if (typeof window !== "undefined" && !window.confirm(ask)) return;
       setBusy(true);
+      setError("");
       try {
         for (const id of ids) await ctx.workspaces.unarchiveSession(id);
+      } catch (reason) {
+        setError(String(reason?.message ?? reason));
       } finally {
         setBusy(false);
       }
@@ -105,7 +127,7 @@ function createArchivedSection(ctx, removal) {
     return (
       <div className="sk-arch">
         <div className="sk-arch__head">
-          <div>
+          <div className="sk-arch__headText">
             <h2 className="sk-arch__title">{t("title")}</h2>
             <p className="sk-arch__subtitle">{t("removeHint")}</p>
           </div>
@@ -113,23 +135,24 @@ function createArchivedSection(ctx, removal) {
             type="button"
             className="sk-arch__action"
             disabled={busy || removalState.busy || shown === 0}
-            onClick={restoreAll}
+            onClick={() => { void restoreAll(); }}
           >
             {t("restoreAll")}
           </button>
         </div>
 
         <div className="sk-arch__bar">
-          <div className="sk-arch__search">
-            <ArchivedSearchIcon />
+          <label className="sk-search">
+            <span className="sk-searchIcon"><SearchIcon aria-hidden="true" /></span>
             <input
+              className="sk-searchInput"
               type="search"
               value={query}
               placeholder={t("search")}
               aria-label={t("search")}
               onChange={(event) => setQuery(event.target.value)}
             />
-          </div>
+          </label>
           <select
             className="sk-arch__select"
             value={project}
@@ -137,13 +160,22 @@ function createArchivedSection(ctx, removal) {
             onChange={(event) => setProject(event.target.value)}
           >
             <option value="">{t("allProjects")}</option>
-            {projects.map((group) => (
-              <option value={group.id} key={group.id}>
-                {group.title}
+            {projects.map((entry) => (
+              <option value={entry.id} key={entry.id}>
+                {entry.title}
               </option>
             ))}
+            {hasUngrouped ? <option value={UNGROUPED}>{t("ungrouped")}</option> : null}
           </select>
+          <DeleteButton
+            disabled={busy || removalState.busy || total === 0}
+            onClick={() => removal.requestAll(groups)}
+          >
+            {t("removeAll")}
+          </DeleteButton>
         </div>
+
+        {error !== "" ? <p role="alert" className="sk-arch__note--error">{t("restoreFailed").replace("{reason}", error)}</p> : null}
 
         {visible.length === 0 ? (
           <div className="sk-arch__empty">
@@ -157,41 +189,28 @@ function createArchivedSection(ctx, removal) {
                 <ArchivedFolderIcon />
                 <span className="sk-arch__groupTitle">{group.title || t("ungrouped")}</span>
                 <span className="sk-arch__groupCount">{`${group.rows.length} ${t("chats")}`}</span>
-                <DeleteButton size="sm" disabled={busy || removalState.busy}
-                  onClick={() => removal.requestGroup(group.title || t("ungrouped"), group.rows)}>
-                  {t("removeAll")}
-                </DeleteButton>
               </div>
               {group.rows.map((row) => (
                 <div className="sk-arch__row" key={row.id}>
                   <div className="sk-arch__rowMain">
-                    <span className="sk-arch__rowTitle" title={row.title || t("untitled")}>
-                      {row.title || t("untitled")}
+                    <span className="sk-arch__rowTitle" title={row.missing ? row.id : row.title || t("untitled")}>
+                      {row.title || (row.missing ? t("missing") : t("untitled"))}
                     </span>
                     <span className="sk-arch__rowTime">
                       {row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : ""}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className="sk-arch__btn"
-                    disabled={busy || removalState.busy}
-                    onClick={() => restore(row.id)}
-                  >
+                  <RestoreButton busy={busy || removalState.busy} onClick={() => { void restore(row.id); }}>
                     {t("restore")}
-                  </button>
+                  </RestoreButton>
                   <DeleteButton size="sm" disabled={busy || removalState.busy} onClick={() => removal.request(row)}>
-                    {t("removeSession")}
+                    {t("remove")}
                   </DeleteButton>
                 </div>
               ))}
             </section>
           ))
         )}
-
-        {unlisted > 0 ? (
-          <p className="sk-arch__note">{t("unlisted").replace("{n}", String(unlisted))}</p>
-        ) : null}
       </div>
     );
   };
