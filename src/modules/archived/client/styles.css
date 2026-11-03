@@ -9,36 +9,11 @@
 .sk-arch__head {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 12px;
 }
 
 .sk-arch__headText {
   min-width: 0;
-}
-
-.sk-arch__action {
-  flex: none;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: var(--dsw-radius-sm);
-  border: 0.5px solid var(--dsw-alias-border-l3);
-  background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font: inherit;
-  font-size: 12.5px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background-color 120ms ease;
-}
-
-.sk-arch__action:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
-.sk-arch__action:disabled {
-  opacity: 0.45;
-  cursor: default;
 }
 
 .sk-arch__bar {
@@ -47,25 +22,43 @@
   gap: 8px;
 }
 
+/* Same control as the Skills & MCP page select (smp-select): 36px, l3 stroke,
+   own chevron, 30px right inset. */
 .sk-arch__select {
   box-sizing: border-box;
   flex: none;
+  min-width: 132px;
   max-width: 220px;
   height: 36px;
-  padding: 0 10px;
-  border-radius: var(--dsw-radius-md);
-  border: 0.5px solid var(--dsw-alias-border-l4);
-  background: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-primary);
   font: inherit;
   font-size: 13px;
+  color: var(--dsw-alias-label-primary);
+  background-color: var(--dsw-alias-bg-layer-1);
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-md);
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0 30px 0 10px;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
   cursor: pointer;
   outline: none;
 }
 
 .sk-arch__select:focus-visible {
-  border-color: var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)) 18%, transparent);
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+
+.sk-arch__removeAll {
+  flex: none;
+  white-space: nowrap;
+}
+
+.sk-arch__bar .sk-search {
+  width: auto;
 }
 
 .sk-arch__group {

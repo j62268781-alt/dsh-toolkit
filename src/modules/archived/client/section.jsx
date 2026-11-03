@@ -95,7 +95,6 @@ function createArchivedSection(ctx, removal) {
         }),
       }))
       .filter((group) => group.rows.length > 0);
-    const shown = visible.reduce((n, group) => n + group.rows.length, 0);
 
     const restore = async (id) => {
       setBusy(true);
@@ -108,22 +107,6 @@ function createArchivedSection(ctx, removal) {
         setBusy(false);
       }
     };
-    const restoreAll = async () => {
-      const ids = groups.flatMap((group) => group.rows.map((row) => row.id)).filter((id) => !removalState.removed.has(id));
-      if (ids.length === 0) return;
-      const ask = t("confirmRestoreAll").replace("{n}", String(ids.length));
-      if (typeof window !== "undefined" && !window.confirm(ask)) return;
-      setBusy(true);
-      setError("");
-      try {
-        for (const id of ids) await ctx.workspaces.unarchiveSession(id);
-      } catch (reason) {
-        setError(String(reason?.message ?? reason));
-      } finally {
-        setBusy(false);
-      }
-    };
-
     return (
       <div className="sk-arch">
         <div className="sk-arch__head">
@@ -131,14 +114,6 @@ function createArchivedSection(ctx, removal) {
             <h2 className="sk-arch__title">{t("title")}</h2>
             <p className="sk-arch__subtitle">{t("removeHint")}</p>
           </div>
-          <button
-            type="button"
-            className="sk-arch__action"
-            disabled={busy || removalState.busy || shown === 0}
-            onClick={() => { void restoreAll(); }}
-          >
-            {t("restoreAll")}
-          </button>
         </div>
 
         <div className="sk-arch__bar">
@@ -168,6 +143,7 @@ function createArchivedSection(ctx, removal) {
             {hasUngrouped ? <option value={UNGROUPED}>{t("ungrouped")}</option> : null}
           </select>
           <DeleteButton
+            className="sk-arch__removeAll"
             disabled={busy || removalState.busy || total === 0}
             onClick={() => removal.requestAll(groups)}
           >

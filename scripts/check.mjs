@@ -43,14 +43,18 @@ for (const path of await walk(join(root, 'scripts'))) {
 }
 console.log('Package entry, single client loader and generated JS syntax checked')
 
-// Archived settings page: the search field must keep the built-in plugin
-// inventory geometry (PluginInventorySettingsTab.module.css), and the list uses
-// the 15/14/12 title scale with the 恢复 / 删除 actions.
+// Archived settings page: the search field keeps the built-in plugin inventory
+// geometry (PluginInventorySettingsTab.module.css), the project filter copies the
+// Skills & MCP select, and the list uses the 15/14/12 title scale.
 for (const pattern of [
   /\.sk-searchInput\s*\{[^}]*height:\s*36px/,
   /\.sk-searchInput\s*\{[^}]*border:\s*\.5px solid var\(--dsw-alias-border-l4\)/,
   /\.sk-searchInput\s*\{[^}]*padding:\s*0 34px 0 36px/,
   /\.sk-searchInput:focus-visible\s*\{[^}]*box-shadow:/,
+  /\.sk-arch__select\s*\{[^}]*appearance:\s*none/,
+  /\.sk-arch__select\s*\{[^}]*background-position:\s*right 10px center/,
+  /\.sk-arch__select\s*\{[^}]*border:\s*0?\.5px solid var\(--dsw-alias-border-l3\)/,
+  /\.sk-arch__removeAll\s*\{[^}]*white-space:\s*nowrap/,
   /\.sk-arch__groupTitle\s*\{[^}]*font-size:\s*15px/,
   /\.sk-arch__rowTitle\s*\{[^}]*font-size:\s*14px/,
   /\.sk-arch__rowTime\s*\{[^}]*font-size:\s*12px/,
@@ -58,6 +62,7 @@ for (const pattern of [
   assert.match(client, pattern)
 }
 assert.doesNotMatch(client, /sk-arch__search/)
+assert.doesNotMatch(client, /全部恢复|Restore all/, 'the header bulk restore action was removed')
 for (const copy of [
   '搜索、恢复或永久删除已归档的会话。',
   '永久删除 {w} 个工作区和 {t} 个任务？',

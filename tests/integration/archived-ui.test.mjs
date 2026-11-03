@@ -124,12 +124,19 @@ test('archived page mirrors the built-in search, lists every archived record, an
 
   const document = app.dom.window.document
   assert.equal(document.querySelector('.sk-arch__subtitle').textContent, '搜索、恢复或永久删除已归档的会话。')
+  assert.doesNotMatch(app.text(), /全部恢复/, 'no bulk restore in the header')
   const search = document.querySelector('.sk-arch input[type="search"]')
   assert.ok(search, 'search input rendered')
   assert.equal(search.className, 'sk-searchInput')
   assert.equal(search.placeholder, '搜索已归档的聊天')
   assert.ok(document.querySelector('.sk-searchIcon [data-icon="search"]'))
   assert.equal(document.querySelectorAll('.sk-arch__subtitle').length, 1)
+  // The toolbar keeps its own row: search, project filter, one bulk action.
+  assert.equal(document.querySelectorAll('.sk-arch__bar .sk-arch__select').length, 1)
+  const removeAll = [...document.querySelectorAll('.sk-arch__bar button')].find((node) => node.textContent === '全部删除')
+  assert.ok(removeAll, 'bulk action sits in the toolbar')
+  assert.match(removeAll.className, /sk-arch__removeAll/, 'bulk action must not wrap or shrink')
+  assert.equal(document.querySelectorAll('.sk-arch__head button').length, 0)
 
   // Every Workspace is a filter option, including one with no archived rows.
   const options = [...document.querySelectorAll('.sk-arch__select option')].map((node) => node.textContent)
