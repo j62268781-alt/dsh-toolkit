@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "DSH 综合插件工具箱：启动画面、桌面主题、归档聊天、浏览器自动化、结构化决策、移动设备面板、Skills/MCP 管理、会话通知与 token 用量/成本/CPU 统计。",
+  "description": "DSH 综合插件工具箱：启动画面、桌面主题、归档聊天、浏览器自动化、结构化决策、移动设备面板、Skills/MCP 管理与会话通知。",
   "license": "MIT",
   "main": "index.js",
   "exports": {

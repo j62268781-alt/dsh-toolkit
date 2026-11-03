@@ -62,7 +62,7 @@ Cordis 服务注入：`['slots', 'locale', 'configForms', 'sessions', 'uiSession
 | --- | --- |
 | slot | `settings.section` |
 | id | `notification` |
-| order | `24`（接在 `usage-tokens` 23 之后） |
+| order | `24` |
 | label | `t('nav')` → 「通知」/「Notifications」 |
 | locale | `dsh-toolkit.notification` |
 | 样式节点 | `style[data-plugin="toolkit-notification"]`，类名前缀 `ntf-` |

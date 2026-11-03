@@ -1,6 +1,6 @@
 # dsh-toolkit
 
-将启动画面、桌面主题、归档聊天管理、浏览器自动化、结构化判断、移动设备工具、Skills/MCP 管理、会话通知，以及基于真实会话日志的 token 用量 / 成本预算 / CPU 统计打包为一个 DSH 插件。源码位于 [src](<src/>)，内置技能文档位于 [skills](<skills/>)，`lib/` 是构建产物。用量统计模块的接口契约见 [docs/usage/README.md](<docs/usage/README.md>)，会话通知模块见 [docs/notification/README.md](<docs/notification/README.md>)。
+将启动画面、桌面主题、归档聊天管理、浏览器自动化、结构化判断、移动设备工具、Skills/MCP 管理与会话通知打包为一个 DSH 插件。源码位于 [src](<src/>)，内置技能文档位于 [skills](<skills/>)，`lib/` 是构建产物。会话通知模块的接口契约见 [docs/notification/README.md](<docs/notification/README.md>)。
 
 ## 构建与验证
 
@@ -39,14 +39,6 @@ browser: {}
 judgement: {}
 mobile: {}
 skillsMcp: {}
-usage:
-  budget: 100          # 预算总额，0 = 未设置
-  currency: CNY        # CNY | USD
-  period: month        # month = 本自然月；total = 全部历史
-  historyDays: 14      # 时间线天数
-  refreshMs: 8000      # 客户端轮询间隔
-  includeSubagents: true
-  prices: []           # 自定义单价（每 1M token），空 = 内置默认表
 notification:
   enabled: true        # 通知总开关
   soundEnabled: true   # 提示音开关
@@ -78,12 +70,6 @@ notification:
 Host 路由通过 [共享注册入口](<src/host/routes.js>) 绑定模块生命周期。普通接口使用 `registerAuthenticatedRoute(ctx, route)`，由 DSH 的 `connection.requestRejection()` 校验身份和请求来源；OAuth 回调使用 `registerRoute(ctx, route)`，继续校验一次性 `state`。两者都接收 DSH 的 `{ kind, path, handler }` 路由定义，模块负责请求体、业务校验和响应。
 
 归档删除使用同源接口 `/_dsh/dsh-toolkit/archived/delete-session`，支持远程浏览器。Mobile 的面板及取流接口同样需要 DSH 鉴权，并保留网络围栏和设备令牌；设备切换后旧令牌失效。没有 Web 服务时，移动端工具仍可独立运行。
-
-用量统计使用同源只读接口 `GET /_dsh/dsh-toolkit/usage/snapshot`，返回总 token、会话数量、估算成本与预算、按天时间线、各会话用量明细和 CPU/内存采样。数据来自 `$DSH_HOME/sessions` 下的会话日志与投影缓存，只读、不写回；活跃会话优先使用内存中的事件，落盘日志按文件 mtime/size 缓存解析结果。
-
-## 用量统计
-
-入口常驻**左侧栏**：`sidebar.panellist` 里排在「自动化任务」（schedules，order 10）之后的下一个图标（`usage-tokens`，order 11），点开在中栏渲染统计页（`main` key `usage-tokens`），不占用设置页。页面每 `refreshMs` 轮询一次快照接口；总 token 卡下直接列出输入/输出/缓存读/缓存写明细，成本卡与预算卡注明按 DeepSeek 高峰单价估算（空闲时段约为一半，不是最终账单）。预算可在页面内直接改（写入根配置 `usage` 的 volatile 字段，下一次轮询生效）。Host 半用 `configuredPlugin(usage)` 挂载，避免 Cordis 对已 resolve 的 volatile 配置二次校验导致子插件根本不挂载——这个坑由 `tests/integration/usage-wiring.test.mjs` 锁住。
 
 ## 异步操作
 

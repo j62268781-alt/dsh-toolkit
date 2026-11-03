@@ -12,7 +12,6 @@ const EXPECTED_INJECT = {
   'toolkit-judgment-client': ['slots', 'configForms', 'remote', 'remote.credentials'],
   'toolkit-browser-client': ['slots', 'configForms', 'remote'],
   'toolkit-mobile-client': ['slots', 'sidebarRightTabs'],
-  'toolkit-usage-client': ['slots', 'locale', 'configForms'],
   'toolkit-notification-client': ['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces'],
 }
 const ALL_SERVICES = new Set([
@@ -21,9 +20,6 @@ const ALL_SERVICES = new Set([
 const IMMEDIATE_EFFECTS = new Set([
   'toolkit-archived:dictionary',
   'toolkit-archived:section',
-  'toolkit-usage:dictionary',
-  'toolkit-usage:sidebar-icon',
-  'toolkit-usage:main-panel',
   'toolkit-notification:dictionary',
   'toolkit-notification:section',
   'dsh-sidebar-mobile:tab-type',
@@ -119,7 +115,7 @@ async function boot({ missing = [] } = {}) {
     }
     const slots = {
       inject(name, run) {
-        assert.ok(name === 'settings.section' || name === 'sidebar.panellist' || name === 'main', `unexpected slot ${name}`)
+        assert.equal(name, 'settings.section')
         return run()
       },
       register(registration, Component) {
@@ -178,7 +174,7 @@ async function boot({ missing = [] } = {}) {
   return { ...loaded, children, active, pending, effects, registrations, tabTypes, mounted, trace, writes, value, rootForm, inventory, credentials, remoteServices }
 }
 
-test('the real classic factory uses only Host seed modules and mounts eight separate plugins', async () => {
+test('the real classic factory uses only Host seed modules and mounts seven separate plugins', async () => {
   const { client, required, warnings } = await loadClient()
   assert.deepEqual(Array.from(client.inject), [])
   assert.equal(typeof client.apply, 'function')
@@ -195,8 +191,8 @@ test('the real classic factory uses only Host seed modules and mounts eight sepa
 
 test('the unified bundle registers the original settings pages, Remote faces, and mobile tab', async () => {
   const result = await boot()
-  assert.equal(result.children.length, 8)
-  assert.equal(result.active.length, 8)
+  assert.equal(result.children.length, 7)
+  assert.equal(result.active.length, 7)
   assert.deepEqual(result.pending, [])
   assert.deepEqual(result.warnings, [])
   const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
@@ -268,29 +264,15 @@ test('the unified bundle registers the original settings pages, Remote faces, an
   }
   assert.ok(result.effects.some(({ label }) => label === 'toolkit-theme:stylesheet'))
   assert.ok(result.effects.some(({ label }) => label === 'toolkit-archived:stylesheet'))
-  assert.ok(result.effects.some(({ label }) => label === 'toolkit-usage:dictionary'))
-  assert.ok(result.effects.some(({ label }) => label === 'toolkit-usage:stylesheet'))
   assert.ok(result.effects.some(({ label }) => label === 'toolkit-notification:dictionary'))
   assert.ok(result.effects.some(({ label }) => label === 'toolkit-notification:section'))
   assert.ok(result.effects.some(({ label }) => label === 'dsh-sidebar-mobile:panel-open-poll'))
-
-  // Usage lives in the left sidebar below 自动化任务, not in Settings: one
-  // `sidebar.panellist` icon and one `main` panel sharing the same id/key.
-  const usageSeats = result.registrations.filter(({ plugin }) => plugin === 'toolkit-usage-client')
-  assert.deepEqual(usageSeats.map(({ registration }) => registration.name), ['sidebar.panellist', 'main'])
-  const [iconSeat, panelSeat] = usageSeats
-  assert.equal(iconSeat.registration.id, 'usage-tokens')
-  assert.equal(iconSeat.registration.order, 11)
-  assert.equal(iconSeat.registration.label(), '用量统计')
-  assert.equal(typeof iconSeat.Component, 'function')
-  assert.equal(panelSeat.registration.key, 'usage-tokens')
-  assert.equal(typeof panelSeat.Component, 'function')
 })
 
 test('missing archived session services leave theme, other pages, and the mobile tab active', async () => {
   const result = await boot({ missing: ['sessions'] })
   assert.deepEqual(result.pending, ['toolkit-archived-client', 'toolkit-notification-client'])
-  assert.equal(result.active.length, 6)
+  assert.equal(result.active.length, 5)
   assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['browser', 'judgment', 'skills-mcp'])
   assert.equal(result.tabTypes.length, 1)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'toolkit-theme-client'), true)
@@ -304,7 +286,7 @@ test('nested Remote dependencies block only the client that declares them', asyn
   ]) {
     const result = await boot({ missing: [dependency] })
     assert.deepEqual(result.pending, [pending])
-    assert.equal(result.active.length, 7)
+    assert.equal(result.active.length, 6)
     const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
     assert.equal(sections.length, 4)
     assert.equal(sections.some(({ registration }) => registration.id === absentSection), false)
@@ -315,13 +297,13 @@ test('nested Remote dependencies block only the client that declares them', asyn
 
 test('missing settings forms or mobile tab services do not suspend unrelated children', async () => {
   const withoutForms = await boot({ missing: ['configForms'] })
-  assert.deepEqual(withoutForms.pending, ['toolkit-skills-mcp-client', 'toolkit-judgment-client', 'toolkit-browser-client', 'toolkit-usage-client', 'toolkit-notification-client'])
+  assert.deepEqual(withoutForms.pending, ['toolkit-skills-mcp-client', 'toolkit-judgment-client', 'toolkit-browser-client', 'toolkit-notification-client'])
   assert.deepEqual(withoutForms.active.sort(), ['toolkit-archived-client', 'toolkit-mobile-client', 'toolkit-theme-client'])
   assert.equal(withoutForms.tabTypes.length, 1)
 
   const withoutTabs = await boot({ missing: ['sidebarRightTabs'] })
   assert.deepEqual(withoutTabs.pending, ['toolkit-mobile-client'])
-  assert.equal(withoutTabs.active.length, 7)
+  assert.equal(withoutTabs.active.length, 6)
   assert.equal(withoutTabs.tabTypes.length, 0)
-  assert.equal(withoutTabs.registrations.length, 7)
+  assert.equal(withoutTabs.registrations.length, 5)
 })
