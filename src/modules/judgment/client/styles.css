@@ -6,7 +6,6 @@
  */
 .jdg-page{box-sizing:border-box;width:100%;color:var(--dsw-alias-label-primary);flex-direction:column;align-items:center;gap:14px;display:flex}
 .jdg-pageHead{box-sizing:border-box;justify-content:space-between;align-items:flex-start;gap:16px;display:flex}
-.jdg-pageIntro{color:var(--dsw-alias-label-secondary);margin:4px 0 0;font-size:13px;line-height:20px}
 .jdg-summary{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;margin:0}
 
 /* 搜索行：搜索框 + 主操作。与面板的 filterRow 同形。 */

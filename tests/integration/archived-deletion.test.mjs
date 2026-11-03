@@ -219,7 +219,6 @@ test('authenticated archived deletion moves real session files and projection ca
     mkdir(sessionDir, { recursive: true }),
     mkdir(loadedDir, { recursive: true }),
     mkdir(cacheDir, { recursive: true }),
-    mkdir(trashDir, { recursive: true }),
   ])
   await writeFile(join(sessionDir, 'messages.jsonl'), '{"role":"user","text":"preserved"}\n')
   await writeFile(join(cacheDir, `${sessionId}.json`), '{"title":"archived"}')
@@ -229,7 +228,7 @@ test('authenticated archived deletion moves real session files and projection ca
   const loaded = await request(service.route, '{"sessionId":"live"}')
   assert.equal(loaded.res.statusCode, 409)
   assert.equal(await readFile(join(loadedDir, 'messages.jsonl'), 'utf8'), 'live remains')
-  assert.deepEqual(await readdir(trashDir), [])
+  await assert.rejects(stat(trashDir), { code: 'ENOENT' }, 'live guard must not even create the trash directory')
 
   const { res } = await request(service.route, JSON.stringify({ sessionId }))
   assert.equal(res.statusCode, 200)

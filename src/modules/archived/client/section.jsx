@@ -1,7 +1,7 @@
 import React from "react";
 import { ARCH_NS } from "./locale.js";
 import { readArchived } from "./model.js";
-import { removeSessionViaHost } from "./deletion.js";
+import { DeleteButton, useRemoval } from "./removal.jsx";
 
 function ArchivedFolderIcon() {
   return (
@@ -32,7 +32,7 @@ function ArchivedSearchIcon() {
   );
 }
 
-function createArchivedSection(ctx) {
+function createArchivedSection(ctx, removal) {
   const timeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
   return function ArchivedChatsSection() {
@@ -42,8 +42,7 @@ function createArchivedSection(ctx) {
     const [project, setProject] = React.useState("");
     const [busy, setBusy] = React.useState(false);
 
-    const [hidden, setHidden] = React.useState(() => new Set());
-    const [notice, setNotice] = React.useState("");
+    const removalState = useRemoval(removal);
 
     React.useEffect(() => {
       const rerender = () => bump((n) => n + 1);
@@ -71,7 +70,7 @@ function createArchivedSection(ctx) {
       .map((group) => ({
         ...group,
         rows: group.rows.filter((row) => {
-          if (hidden.has(row.id)) return false;
+          if (removalState.removed.has(row.id)) return false;
           if (needle === "") return true;
           return (
             (row.title || "").toLowerCase().includes(needle) ||
@@ -81,23 +80,6 @@ function createArchivedSection(ctx) {
       }))
       .filter((group) => group.rows.length > 0);
     const shown = visible.reduce((n, group) => n + group.rows.length, 0);
-
-    const remove = async (row) => {
-      const ask = t("confirmRemove").replace("{t}", row.title || t("untitled"));
-      if (typeof window !== "undefined" && !window.confirm(ask)) return;
-      setBusy(true);
-      setNotice("");
-      try {
-        const result = await removeSessionViaHost(row.id);
-        if (result?.ok === true) {
-          setHidden((prev) => new Set(prev).add(row.id));
-        } else {
-          setNotice(t("removeFailed").replace("{reason}", result?.reason ?? "unknown"));
-        }
-      } finally {
-        setBusy(false);
-      }
-    };
 
     const restore = async (id) => {
       setBusy(true);
@@ -123,11 +105,14 @@ function createArchivedSection(ctx) {
     return (
       <div className="sk-arch">
         <div className="sk-arch__head">
-          <h2 className="sk-arch__title">{t("title")}</h2>
+          <div>
+            <h2 className="sk-arch__title">{t("title")}</h2>
+            <p className="sk-arch__subtitle">{t("removeHint")}</p>
+          </div>
           <button
             type="button"
             className="sk-arch__action"
-            disabled={busy || shown === 0}
+            disabled={busy || removalState.busy || shown === 0}
             onClick={restoreAll}
           >
             {t("restoreAll")}
@@ -172,6 +157,10 @@ function createArchivedSection(ctx) {
                 <ArchivedFolderIcon />
                 <span className="sk-arch__groupTitle">{group.title || t("ungrouped")}</span>
                 <span className="sk-arch__groupCount">{`${group.rows.length} ${t("chats")}`}</span>
+                <DeleteButton size="sm" disabled={busy || removalState.busy}
+                  onClick={() => removal.requestGroup(group.title || t("ungrouped"), group.rows)}>
+                  {t("removeAll")}
+                </DeleteButton>
               </div>
               {group.rows.map((row) => (
                 <div className="sk-arch__row" key={row.id}>
@@ -186,27 +175,19 @@ function createArchivedSection(ctx) {
                   <button
                     type="button"
                     className="sk-arch__btn"
-                    disabled={busy}
+                    disabled={busy || removalState.busy}
                     onClick={() => restore(row.id)}
                   >
                     {t("restore")}
                   </button>
-                  <button
-                    type="button"
-                    className="sk-arch__btn sk-arch__btn--danger"
-                    disabled={busy}
-                    onClick={() => remove(row)}
-                  >
-                    {t("remove")}
-                  </button>
+                  <DeleteButton size="sm" disabled={busy || removalState.busy} onClick={() => removal.request(row)}>
+                    {t("removeSession")}
+                  </DeleteButton>
                 </div>
               ))}
             </section>
           ))
         )}
-
-        {notice !== "" ? <p className="sk-arch__note sk-arch__note--error">{notice}</p> : null}
-        <p className="sk-arch__note">{t("removeHint")}</p>
 
         {unlisted > 0 ? (
           <p className="sk-arch__note">{t("unlisted").replace("{n}", String(unlisted))}</p>
@@ -216,7 +197,7 @@ function createArchivedSection(ctx) {
   };
 }
 
-export function installArchivedSection(ctx) {
+export function installArchivedSection(ctx, removal) {
   const t = ctx.locale.bind(ARCH_NS);
   return ctx.slots.inject("settings.section", () =>
     ctx.slots.register(
@@ -227,7 +208,7 @@ export function installArchivedSection(ctx) {
         label: () => t("nav"),
         locale: ARCH_NS,
       },
-      createArchivedSection(ctx)
+      createArchivedSection(ctx, removal)
     )
   );
 }

@@ -1,4 +1,4 @@
-import { readdir, rename, stat } from "node:fs/promises";
+import { mkdir, readdir, rename, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -41,6 +41,7 @@ export async function deleteSessionFiles(sessionId) {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const trashPath = join(trashRoot, `${stamp}-${sessionId}`);
   try {
+    await mkdir(trashRoot, { recursive: true });
     await rename(found, trashPath);
   } catch (error) {
     return { ok: false, reason: `move-failed: ${error.message}` };

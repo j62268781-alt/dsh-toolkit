@@ -13,12 +13,6 @@
   gap: 12px;
 }
 
-.sk-arch__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
 .sk-arch__action {
   height: 32px;
   padding: 0 12px;
@@ -194,12 +188,13 @@
   color: var(--dsw-alias-label-caption);
 }
 
-.sk-arch__btn--danger {
-  color: var(--dsw-alias-state-error-primary, var(--dsw-alias-label-secondary));
+.sk-arch__delete:not(:disabled) {
+  color: var(--dsw-alias-state-error-primary);
 }
 
-.sk-arch__btn--danger:hover:not(:disabled) {
-  background: var(--dsw-alias-state-error-primary-muted, var(--dsw-alias-interactive-bg-hover));
+.sk-arch__delete:hover:not(:disabled) {
+  color: var(--dsw-alias-state-error-primary);
+  background: var(--dsw-alias-interactive-bg-hover-danger);
 }
 
 .sk-arch__note--error {

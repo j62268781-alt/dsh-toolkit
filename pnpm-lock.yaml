@@ -28,6 +28,10 @@ importers:
 
   .:
     dependencies:
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+    devDependencies:
       '@deepseek-ai/cordis':
         specifier: ^4.0.5
         version: 4.0.5
@@ -91,10 +95,6 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: ^3.18.5
         version: 3.18.5
-      yaml:
-        specifier: ^2.9.1
-        version: 2.9.1
-    devDependencies:
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.5

@@ -29,8 +29,6 @@ html[data-sk-desktop] body {
   --cx-card-radius: 12px;
   --cx-page-head-pad: 28px;
 
-  --cx-title-air: 36px;
-
   --cx-band-h: 50px;
   --cx-toggle-x: 88px;
   --cx-title-clear: 160px;
@@ -42,6 +40,10 @@ html[data-platform="darwin"] body {
   --cx-toggle-x: 88px;
   --cx-title-clear: 160px;
   --cx-title-clear-full: 84px;
+}
+
+html[data-platform="darwin"][data-fullscreen] body {
+  --cx-toggle-x: 12px;
 }
 
 html[data-windows-titlebar] body {

@@ -83,9 +83,10 @@
   z-index: 40;
 }
 
+/* Rail-only hides New Session: reserve the remaining 28px toggle and its gap. */
 html[data-sk-desktop]
   [class*="_frame"]:has([data-sk-rail-only]) {
-  --dsh-frame-leading-clearance: var(--cx-title-clear);
+  --dsh-frame-leading-clearance: calc(var(--cx-title-clear) - 28px - 8px);
 }
 
 html[data-sk-desktop]
@@ -94,12 +95,12 @@ html[data-sk-desktop]
   [class*="_titleRow"] {
   padding-inline-start: max(
     0px,
-    calc(var(--dsh-frame-leading-clearance, 0px) - 20px + var(--cx-title-air))
+    var(--dsh-frame-leading-clearance, 0px)
   );
 }
 
 html[data-fullscreen] [class*="_frame"]:has([data-sk-rail-only]) {
-  --dsh-frame-leading-clearance: var(--cx-title-clear-full);
+  --dsh-frame-leading-clearance: calc(var(--cx-title-clear-full) - 28px - 8px);
 }
 
 html[data-sk-desktop]
@@ -109,7 +110,7 @@ html[data-sk-desktop]
   padding-inline-start: max(
     0px,
     calc(
-      var(--dsh-frame-leading-clearance, 0px) - 20px + var(--cx-title-air) - var(--cx-rail-w)
+      var(--dsh-frame-leading-clearance, 0px) - var(--cx-rail-w)
     )
   );
 }

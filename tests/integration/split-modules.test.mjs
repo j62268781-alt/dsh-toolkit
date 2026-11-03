@@ -145,6 +145,7 @@ test('archived bundle owns its page, CSS lifecycle, and local React JSX binding'
   })
   assert.equal(spec.id, 'dsh-toolkit/archived')
   const client = spec.factory(id => {
+    if (id === '@deepseek-ai/dsh-client-ui-primitives') return { Button: 'button' }
     assert.equal(id, 'react')
     return React
   })
@@ -158,8 +159,8 @@ test('archived bundle owns its page, CSS lifecycle, and local React JSX binding'
       bind: () => key => ARCH_COPY.zh[key],
     },
     slots: {
-      inject(name, run) { assert.equal(name, 'settings.section'); return run() },
-      register(registration, view) { assert.equal(registration.id, 'archived-chats'); Component = view; return () => {} },
+      inject(name, run) { assert.ok(['settings.section', 'shell.overlay', 'sidebar.workspaces.session.menu.item'].includes(name)); return run() },
+      register(registration, view) { if (registration.id === 'archived-chats') Component = view; return () => {} },
     },
   }
   client.apply(ctx)

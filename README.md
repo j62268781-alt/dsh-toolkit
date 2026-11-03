@@ -4,7 +4,7 @@
 
 ## 构建与验证
 
-需要 Node.js `>=20` 和 pnpm `11.28.5`：
+需要 Node.js `>=20` 和 pnpm `11.28.5`。DSH 核心包由宿主提供，声明为可选 peer；本地构建通过 devDependencies 安装，插件安装时不携带另一份核心：
 
 ```sh
 pnpm install --frozen-lockfile
