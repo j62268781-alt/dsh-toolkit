@@ -1,2 +1,6 @@
-﻿node_modules/
+node_modules/
+.cache/
+.DS_Store
+lib/modules/*/client.js
+lib/.build-manifest.json
 

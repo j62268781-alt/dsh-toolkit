@@ -1,0 +1,98 @@
+html[data-sk-desktop] [class*="_frame"] > [class*="_sidebarCol"],
+html[data-sk-desktop] [class*="_frame"] > [class*="_centerCol"],
+html[data-sk-desktop] [class*="_frame"] > [class*="_rightbarCol"] {
+  background-color: var(--cx-rail);
+  background-image: none;
+  border-left: none;
+  border-right: none;
+}
+
+html[data-sk-desktop] [data-slot="main"] > :not([data-slot]) {
+
+  margin: var(--cx-band-h) var(--cx-gap) var(--cx-gap) 0;
+
+  max-width: calc(100% - var(--cx-gap));
+  border-radius: var(--cx-card-radius);
+  background-color: var(--dsw-alias-bg-base);
+}
+
+html[data-sk-desktop] [data-slot="main"] > :not([data-slot]) [class*="pagehead" i] {
+  padding-top: var(--cx-page-head-pad, 28px);
+}
+
+html[data-sk-desktop] [class*="_frame"] > [class*="_handle"] {
+  display: none;
+}
+
+html[data-sk-desktop]
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"]) {
+  padding-top: 0;
+}
+
+html[data-sk-desktop]
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"]):not([class*="_headerBlank"])
+  [class*="_crumbCurrent"]::before {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  vertical-align: -3px;
+  background-color: var(--dsw-alias-label-tertiary);
+  -webkit-mask-image: url("__SVGURI:folder__");
+  mask-image: url("__SVGURI:folder__");
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 16px 16px;
+  mask-size: 16px 16px;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+html[data-sk-desktop]
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"])
+  [class*="_titleRow"] {
+  min-height: 30px;
+  padding-block: var(--cx-band-pad);
+  box-sizing: content-box;
+}
+
+html[data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"] {
+  position: relative;
+  isolation: isolate;
+  margin-right: var(--cx-gap);
+  margin-bottom: var(--cx-gap);
+
+  border-radius: 0 0 var(--cx-card-radius) var(--cx-card-radius);
+  overflow: hidden;
+  background: none;
+}
+
+html[data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"]::before {
+  content: "";
+  position: absolute;
+  top: var(--cx-band-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: var(--cx-card-radius);
+  background: var(--dsw-alias-bg-base);
+  z-index: -1;
+  pointer-events: none;
+}
+
+html[data-sk-desktop]
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"]) {
+  padding-left: 0;
+}
+
+html[data-sk-desktop]
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"])
+  [class*="_tabs"] {
+  padding-left: 20px;
+}

@@ -1,49 +1,77 @@
 {
-  "name": "dsh-shell-kit",
+  "name": "dsh-toolkit",
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "DSH 桌面外壳定制工具箱：白色圆角卡片式三栏布局（52px 图标栏 + 定宽 240px 工作区）、macOS 定高标题色带、以及启动时的「鲸鱼自绘」开机动画。A shell customization kit for DeepSeek Harness — carded three-column layout, fixed-height macOS title band, and a self-drawing whale boot screen.",
+  "description": "DSH 综合插件工具箱：启动画面、桌面主题、归档聊天、浏览器自动化、结构化决策、移动设备面板与 Skills/MCP 管理。",
   "license": "MIT",
   "main": "index.js",
   "exports": {
     ".": "./index.js",
     "./client": "./lib/client.js",
+    "./contract": "./lib/modules/judgment/host/contract/index.js",
     "./package.json": "./package.json"
   },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.28.5",
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
     },
     "client": {
       "platform": "web",
-      "immediately": true
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-sidebar-right",
+        "@deepseek-ai/dsh-client-shortcuts"
+      ]
     }
   },
   "scripts": {
-    "build": "node scripts/build-client.mjs",
-    "build:check": "node scripts/build-client.mjs --check",
-    "verify": "node scripts/verify-client.mjs lib/client.js",
-    "check": "node --check index.js && node --check lib/client.js && node scripts/verify-client.mjs lib/client.js"
+    "build": "node scripts/build.mjs",
+    "build:host": "node scripts/build-host.mjs",
+    "build:client": "node scripts/build-client.mjs",
+    "build:check": "node scripts/build.mjs --check",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test.mjs",
+    "check": "node scripts/check.mjs",
+    "verify": "node scripts/build.mjs && tsc --noEmit && node scripts/check.mjs && node scripts/test.mjs && node scripts/build.mjs --check"
   },
   "files": [
     "index.js",
-    "modules",
     "lib",
-    "scripts",
+    "!lib/modules/*/client.js",
+    "!lib/.build-manifest.json",
+    "skills",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "devDependencies": {
-    "esbuild": "0.28.2"
+    "@types/node": "^22.10.0",
+    "esbuild": "0.28.2",
+    "jsdom": "^30.1.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "typescript": "^5.7.0"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "^4.0.5",
     "@deepseek-ai/cosmokit": "^1.8.6",
     "@deepseek-ai/dsh-agent": "^0.2.1-rc.1",
+    "@deepseek-ai/dsh-atomic-write": "^0.2.1-rc.1",
     "@deepseek-ai/dsh-brand": "^0.2.1-rc.1",
     "@deepseek-ai/dsh-credentials": "^0.2.1-rc.1",
+    "@deepseek-ai/dsh-home-paths": "^0.2.1-rc.1",
     "@deepseek-ai/dsh-llm": "^0.2.1-rc.1",
+    "@deepseek-ai/dsh-mcp-client": "^0.2.1-rc.1",
     "@deepseek-ai/dsh-ptc-runtime": "^0.2.1-rc.1",
     "@deepseek-ai/dsh-sandbox": "^0.2.1-rc.1",
     "@deepseek-ai/dsh-sandbox-policy": "^0.2.1-rc.1",
@@ -55,6 +83,7 @@
     "@deepseek-ai/dsh-user-approval": "^0.2.1-rc.1",
     "@deepseek-ai/dsh-util-values": "^0.2.1-rc.1",
     "@deepseek-ai/dsh-working-directory": "^0.2.1-rc.1",
-    "@deepseek-ai/schemastery": "^3.18.5"
+    "@deepseek-ai/schemastery": "^3.18.5",
+    "yaml": "^2.9.1"
   }
 }

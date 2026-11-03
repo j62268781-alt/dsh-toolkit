@@ -1,0 +1,47 @@
+html[data-sk-desktop]
+  [class*="_rightbarCol"]
+  [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
+  [data-dockkit-pane] {
+  background-color: transparent;
+  position: relative;
+  isolation: isolate;
+
+  border-left: 0;
+}
+
+html[data-sk-desktop]
+  [class*="_rightbarCol"]
+  [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
+  [data-dockkit-pane]::before {
+  content: "";
+  position: absolute;
+  top: var(--cx-band-h);
+  left: 0;
+  right: var(--cx-gap);
+  bottom: var(--cx-gap);
+  border-radius: var(--cx-card-radius);
+  background: var(--dsw-alias-bg-base);
+  z-index: -1;
+  pointer-events: none;
+}
+
+html[data-sk-desktop]
+  [class*="_rightbarCol"]
+  [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
+  [data-dockkit-pane]
+  > :last-child {
+  position: relative;
+  margin-right: var(--cx-gap);
+  margin-bottom: var(--cx-gap);
+  border-radius: var(--cx-card-radius);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+html[data-sk-desktop]
+  [class*="_rightbarCol"]
+  [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
+  [data-dockkit-pane]
+  > :first-child {
+  padding-bottom: calc(var(--cx-band-h) - 38px);
+}

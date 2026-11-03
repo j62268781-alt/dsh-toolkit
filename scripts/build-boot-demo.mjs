@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * 把真的开机画面（host/boot.css + host/boot.html）打包成一个可交互的演示页：
+ * 把真的开机画面（src/modules/boot/host/boot.css + src/modules/boot/host/boot.html）打包成一个可交互的演示页：
  * docs/boot/demo-boot.html。
  *
  * 为什么要生成而不是手写：手写的那版会跟实现漂移 —— 改完时序忘了同步演示页，
- * 下次调动画就靠一份过期的画面对参数。这里每次改完 host/boot.* 跑一遍即可。
+ * 下次调动画就靠一份过期的画面对参数。这里每次改完 src/modules/boot/host/boot.* 跑一遍即可。
  *
  * 用法：node scripts/build-boot-demo.mjs
  */
@@ -13,9 +13,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 const root = new URL("../", import.meta.url);
 const read = (rel) => readFileSync(new URL(rel, root), "utf8");
 
-const css = read("host/boot.css");
-const html = read("host/boot.html").trim();
-const script = read("host/boot.js");
+const css = read("src/modules/boot/host/boot.css");
+const html = read("src/modules/boot/host/boot.html").trim();
+const script = read("src/modules/boot/host/boot.js");
 
 /** boot.js 顶部那几个常量，演示页要用来对齐时间轴。 */
 const pick = (name, fallback) => {
@@ -30,8 +30,8 @@ const page = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>启动画面 · dsh-shell-kit</title>
-<!-- 由 scripts/build-boot-demo.mjs 生成，请勿手改；改 host/boot.* 后重新生成。 -->
+<title>启动画面 · dsh-toolkit</title>
+<!-- 由 scripts/build-boot-demo.mjs 生成，请勿手改；改 src/modules/boot/host/boot.* 后重新生成。 -->
 <style>
   ${css.trim().replaceAll("\n", "\n  ")}
 </style>
@@ -149,6 +149,6 @@ ${html}
 
 writeFileSync(new URL("docs/boot/demo-boot.html", root), page);
 console.log(
-  "docs/boot/demo-boot.html ← host/boot.css + host/boot.html" +
+  "docs/boot/demo-boot.html ← src/modules/boot/host/boot.css + src/modules/boot/host/boot.html" +
     ` (MIN_SHOW=${MIN_SHOW}, FADE=${FADE})`,
 );

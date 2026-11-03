@@ -1,0 +1,54 @@
+html body {
+  --cx-rail: color-mix(
+    in srgb,
+    var(--dsw-specific-sidebar-fill),
+    var(--dsw-alias-label-primary) 6%
+  );
+
+  --cx-rail-item-hover: var(--dsw-alias-interactive-bg-hover);
+  --cx-rail-item-active: var(--dsw-alias-interactive-bg-hover);
+  --cx-line: var(--dsw-alias-border-l3);
+}
+
+html:root {
+  --dsw-radius-xs: 3px;
+  --dsw-radius-sm: 6px;
+  --dsw-radius-md: 8px;
+  --dsw-radius-lg: 12px;
+  --dsw-radius-xl: 14px;
+  --dsw-radius-panel: 20px;
+}
+
+html[data-sk-desktop] body {
+
+  --cx-rail-w: 52px;
+  --cx-panel-w: 240px;
+  --cx-gap: 4px;
+  --cx-band-pad: 10px;
+  --cx-band: var(--cx-rail);
+  --cx-card-radius: 12px;
+  --cx-page-head-pad: 28px;
+
+  --cx-title-air: 36px;
+
+  --cx-band-h: 50px;
+  --cx-toggle-x: 88px;
+  --cx-title-clear: 160px;
+  --cx-title-clear-full: 84px;
+}
+
+html[data-platform="darwin"] body {
+  --cx-band-h: 50px;
+  --cx-toggle-x: 88px;
+  --cx-title-clear: 160px;
+  --cx-title-clear-full: 84px;
+}
+
+html[data-windows-titlebar] body {
+  --cx-band-h: 0px;
+  --cx-toggle-x: 12px;
+  --cx-title-clear: 0px;
+  --cx-title-clear-full: 0px;
+  --cx-rail: var(--dsw-specific-sidebar-fill);
+  --dsh-windows-content-radius: 0px;
+}

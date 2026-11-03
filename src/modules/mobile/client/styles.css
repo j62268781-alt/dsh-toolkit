@@ -1,0 +1,136 @@
+.mbm-root { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 8px; padding: 8px;
+  font-size: 12px; color: var(--dsw-alias-label-primary, #1f2329); }
+
+/* 设备下拉与动作按钮保持一行。 */
+.mbm-bar { display: flex; align-items: center; gap: 8px; }
+
+/* 原生下拉箭头关闭，自绘 chevron 保持左右视觉内边距。 */
+.mbm-selectWrap { position: relative; display: flex; flex: 1; min-width: 0; max-width: 220px; }
+.mbm-select { font: inherit; height: 28px; width: 100%; min-width: 0;
+  appearance: none; -webkit-appearance: none;
+  padding: 0 26px 0 8px; border-radius: var(--dsw-radius-sm, 6px);
+  border: 1px solid var(--dsw-alias-border-l2, #d0d5dd);
+  background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; cursor: pointer; }
+.mbm-select:disabled { opacity: .5; cursor: default; }
+
+.mbm-selectCaret { position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  width: 16px; height: 16px; pointer-events: none;
+  color: var(--dsw-alias-label-tertiary, #98a2b3); }
+
+.mbm-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+
+/* 尺寸匹配宿主 sm Button；ghost 变体提供 hover 背景。 */
+.mbm-tool { width: 28px; padding: 0; color: var(--dsw-alias-label-secondary, #667085); }
+.mbm-tool:hover:not(:disabled) { color: var(--dsw-alias-label-primary, #1f2329); }
+.mbm-stage { position: relative; flex: 1; min-height: 120px; display: flex; align-items: center;
+  justify-content: center; overflow: hidden; border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-2, #f4f5f7);
+  border: 1px solid var(--dsw-alias-border-l2, #e4e7ec); }
+
+/* 只抵消底部根内边距；横向留白对称，2px padding 接住外伸侧键。 */
+.mbm-stage[data-frame="device"] {
+
+  margin: 0 0 -8px; padding: 2px; border: none; border-radius: 0;
+
+  background: transparent;
+}
+.mbm-stage[data-frame="frameless"] { border: none; background: transparent; }
+
+/* JS 按帧比例写入尺寸；flex:none 防止拉伸，max-* 保留未测量时的兜底。 */
+.mbm-media { display: block; flex: none; max-width: 100%; max-height: 100%; }
+
+.mbm-media:focus { outline: none; }
+.mbm-media:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary, #4d6bfe);
+  outline-offset: 2px; }
+.mbm-stage[data-frame="bezel"] .mbm-media { border-radius: 10px; }
+
+.mbm-stage[data-frame="device"] .mbm-media { border-radius: var(--mbm-device-radius, 14px); }
+
+/* 非 device 模式不生成外壳布局盒，保持 canvas 的百分比尺寸参照。 */
+.mbm-chassis { display: contents; }
+
+/* padding:5px + border:1px 与 stream/canvas.js 的 CHASSIS_INSET=6 同步。 */
+.mbm-stage[data-frame="device"] .mbm-chassis {
+  position: relative; display: inline-flex; flex: none; padding: 5px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: calc(var(--mbm-device-radius, 14px) + 6px);
+
+  background: linear-gradient(160deg, #1c1f24 0%, #121419 45%, #0a0b0e 100%);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .35);
+}
+
+/* 首帧前只隐藏机身，保留布局尺寸。 */
+.mbm-stage[data-frame="device"] .mbm-chassis[data-media="off"] { opacity: 0; }
+
+/* 装饰节点不拦指针；坐标始终按 canvas 的矩形换算。 */
+.mbm-sideKey, .mbm-island, .mbm-punch { display: none; }
+
+.mbm-stage[data-frame="device"] .mbm-sideKey {
+  display: block; position: absolute; width: 3px; border-radius: 2px;
+  pointer-events: none;
+
+  background: linear-gradient(180deg, #565c66 0%, #3a3f47 55%, #262a30 100%);
+  box-shadow: 0 0 3px rgba(0, 0, 0, .7);
+}
+.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="power"] {
+  right: -2px; top: 22%; height: 7.5%; }
+.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="volumeUp"] {
+  left: -2px; top: 18%; height: 5.5%; }
+.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="volumeDown"] {
+  left: -2px; top: 26%; height: 5.5%; }
+
+.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="ios"] .mbm-island {
+  display: block; position: absolute; top: 7px; left: 50%;
+  transform: translateX(-50%); width: 30%; height: 4.3%;
+  min-height: 13px; max-height: 26px; border-radius: 999px;
+  background: #05060a; pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+}
+
+.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="ios"] .mbm-island::after {
+  content: ""; position: absolute; right: 12%; top: 50%;
+  transform: translateY(-50%); width: 4px; height: 4px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #24406e, #05070c 70%); }
+
+.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="android"] .mbm-punch {
+  display: block; position: absolute; top: 9px; left: 50%;
+  transform: translateX(-50%); width: 4%; min-width: 9px; max-width: 16px;
+  aspect-ratio: 1 / 1; border-radius: 50%;
+  background: #05060a; pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); }
+.mbm-hint { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 6px;
+  align-items: center; justify-content: center; text-align: center; padding: 16px;
+  color: var(--dsw-alias-label-tertiary, #667085); line-height: 1.6; }
+.mbm-hint[data-overlay="1"] { background: rgba(16,17,20,.72); color: #fff; }
+
+/* 已有画面时提示贴底且不拦点击，单行省略避免遮住内容。 */
+.mbm-hint[data-floating="1"] {
+  inset: auto 8px 8px; display: block; padding: 5px 10px;
+  border-radius: 999px; background: rgba(16,17,20,.66); color: #fff;
+  font-size: 11px; line-height: 1.5; text-align: center;
+
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  pointer-events: none; backdrop-filter: blur(6px); }
+.mbm-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.mbm-dot[data-on="1"] { background: #22c55e; }
+.mbm-dot[data-on="0"] { background: #9aa4b2; }
+
+/* 启动中使用琥珀色呼吸动画。 */
+.mbm-dot[data-on="2"] { background: #f59e0b; animation: mbm-pulse 1.2s ease-in-out infinite; }
+@keyframes mbm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.mbm-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  color: var(--dsw-alias-label-tertiary, #667085); font-size: 11px; }
+.mbm-err { color: var(--dsw-alias-state-error-primary, #d92d20); line-height: 1.6; }
+
+.mbm-adb { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px;
+  border-radius: var(--dsw-radius-sm, 6px); line-height: 1.6;
+  border: 1px solid var(--dsw-alias-state-warning-border, #f7d08a);
+  background: var(--dsw-alias-state-warning-bg, #fff8e6);
+  color: var(--dsw-alias-label-primary, #1f2329); }
+.mbm-adbHint { color: var(--dsw-alias-label-secondary, #667085); }
+.mbm-adbPath { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px; color: var(--dsw-alias-label-tertiary, #98a2b3);
+  word-break: break-all; }
+
+/* 宿主 tabTitle 已提供间距，这里只防止图标被压缩。 */
+.mbm-title-icon { flex: none; }

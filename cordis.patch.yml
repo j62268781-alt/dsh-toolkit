@@ -1,12 +1,5 @@
-# dsh-shell-kit 的挂载层。
-#
-# 一个 Host 行 + 一个 Client 半个：
-#   · Host(./index.js) 是空插件 —— 只为让「这个包在 cordis 图里存在」，
-#     皮肤不带配置、不注册工具、不碰服务；
-#   · Client(./lib/client.js) 做全部工作：往 <head> 注入一份样式表。
-#
-# 装进某个 profile 后，这一行就是关掉皮肤的开关（enabled: false 即卸载样式，
-# 因为 Client 半个的 ctx.effect 会在插件被逐出时移除 <style>)。
+# Keep the profile row id so existing module settings remain attached.
+# Each host/client module retains its own service requirements.
 - insert:
     - id: shell-kit
-      name: dsh-shell-kit
+      name: dsh-toolkit

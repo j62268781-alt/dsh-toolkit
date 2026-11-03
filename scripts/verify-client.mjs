@@ -1,38 +1,26 @@
-/**
- * dsh-shell-kit — 产物自检（契约 + 平台分支）
- *
- * 为什么需要它：皮肤靠「语义锚点 + 局部名子串」去命中 DSH 的组件，这些锚点
- * 是稳定的，但**不是不会变的**。DSH 升级后如果某个锚点改名，样式只会静默
- * 失效（不报错、不白屏），靠人眼发现很晚。这个脚本把「本皮肤依赖的关键事实」
- * 变成断言：
- *
- *   1) 门禁统一：产物里不能残留旧的双条件门禁，必须是 data-sk-desktop；
- *   2) 平台变量：darwin / windows 两组都存在，且 windows 组在 darwin 组之后
- *      （同权重时后者胜出，顺序错了 Windows 会拿不到自己的值）；
- *   3) 几何不写死：macOS 专属的 88px / 160px / 84px 必须已经变量化；
- *   4) rail 居中前提：_panelList 内边距为 0（居中靠行自身的 margin:auto）；
- *   5) Windows 结构分支：rail-only 只藏 _brand、保留 _logoRow（折叠钮在
- *      _logoRow 里，藏父节点会让按钮消失）；macOS 专用热区在 Windows 关闭；
- *   6) JS 谓词：isDesktokShell / isDarwinDesktop / installDesktopMarker 以及
- *      data-sk-desktop 常量都在产物里，且没有残留「只认 darwin」的提前 return。
- *
- * 用法：
- *   node scripts/verify-client.mjs            # 默认校验 lib/client.js
- *   node scripts/verify-client.mjs <产物路径>
- */
+/** Verify the theme's DSH selectors, platform branches, and geometry contracts. */
 
 import { readFileSync } from "node:fs";
+import ts from "typescript";
 
 const file = process.argv[2] ?? "lib/client.js";
 const built = readFileSync(file, "utf8");
 
-// 产物里 `const CSS = "…"` 是被 JSON.stringify 内联的整张样式表
-const match = built.match(/const CSS = ("(?:[^"\\]|\\.)*")/);
-if (match === null) {
+// esbuild 可改写声明和引号；读取字符串字面量，不执行客户端代码。
+const source = ts.createSourceFile(file, built, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+let css;
+const visit = (node) => {
+  if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === "THEME_CSS"
+      && node.initializer && ts.isStringLiteralLike(node.initializer) && css === undefined) {
+    css = node.initializer.text;
+  }
+  ts.forEachChild(node, visit);
+};
+visit(source);
+if (css === undefined) {
   console.error(`✗ ${file} 里找不到内联 CSS（构建产物格式变了？）`);
   process.exit(1);
 }
-const css = JSON.parse(match[1]);
 
 const results = [];
 const check = (name, ok, detail = "") => results.push({ name, ok, detail });
