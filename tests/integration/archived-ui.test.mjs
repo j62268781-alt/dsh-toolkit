@@ -175,6 +175,8 @@ test('bulk delete confirms both counts, retries failed sessions, and only drops 
   app.setFetch(async (_input, options) => {
     const { sessionId } = JSON.parse(options.body)
     if (sessionId === 'a2') return { ok: false, status: 409, json: async () => ({ ok: false, reason: 'session-loaded' }) }
+    // Files already gone: the archive entry must still be cleared, not reported as a failure.
+    if (sessionId === 'missing') return { ok: false, status: 404, json: async () => ({ ok: false, reason: 'not-found' }) }
     return { ok: true, status: 200, json: async () => ({ ok: true }) }
   })
   await app.click('全部删除')

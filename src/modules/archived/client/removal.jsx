@@ -51,7 +51,11 @@ export function createRemoval(ctx) {
       const removedNow = new Set();
       for (const row of request.rows) {
         const result = await removeSessionViaHost(row.id);
-        if (result?.ok !== true) {
+        // The files are already gone (workspace deleted, disk cleanup, an older
+        // delete): clearing the archive metadata is the only work left, and it is
+        // what keeps such a record from staying archived forever.
+        const alreadyGone = result?.reason === "not-found";
+        if (result?.ok !== true && !alreadyGone) {
           failed.push(row);
           const reason = String(result?.reason ?? "unknown");
           errors.push(request.kind === "all" ? `${row.title || row.id}: ${reason}` : reason);
