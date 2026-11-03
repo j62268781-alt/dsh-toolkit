@@ -73,11 +73,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // once rendered a blank panel, so every client module is checked, not just the
   // entry. The dev scripts are checked too: a broken checker misleads by silence.
   const clientFiles = collect(join(root, 'src', 'modules', 'skills-mcp', 'client'), ['.js', '.jsx'])
+  // 通知模块没有 TypeScript 侧，同样的「未定义名字」风险只能靠这项检查兜住
+  // （它此前抓到过 index.jsx 里漏 import 的配置命名空间常量）。
+  const notificationFiles = collect(join(root, 'src', 'modules', 'notification', 'client'), ['.js', '.jsx'])
   const scriptFiles = collect(here, ['.mjs'])
   const clientOutput = runTsc(root, [
     '--noEmit', '--allowJs', '--checkJs', '--target', 'es2022', '--module', 'esnext',
     '--moduleResolution', 'bundler', '--jsx', 'preserve', '--skipLibCheck',
-    '--lib', 'es2022,dom', ...clientFiles.map((file) => file.slice(root.length + 1)),
+    '--lib', 'es2022,dom', ...[...clientFiles, ...notificationFiles].map((file) => file.slice(root.length + 1)),
   ])
   const scriptOutput = runTsc(root, [
     '--noEmit', '--allowJs', '--checkJs', '--target', 'es2022', '--module', 'esnext',
@@ -85,7 +88,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ...scriptFiles.map((file) => file.slice(root.length + 1)),
   ])
   const found = undefinedNames([hostOutput, clientOutput, scriptOutput].join('\n'))
-  console.log(`  · 已检查 src/modules/skills-mcp/host（Host ${hostFiles.length} 个文件）· src/modules/skills-mcp/client（Client ${clientFiles.length} 个文件）· tests/skills-mcp/helpers（${scriptFiles.length} 个文件）`)
+  console.log(`  · 已检查 src/modules/skills-mcp/host（Host ${hostFiles.length} 个文件）· src/modules/skills-mcp/client（Client ${clientFiles.length} 个文件）· src/modules/notification/client（Client ${notificationFiles.length} 个文件）· tests/skills-mcp/helpers（${scriptFiles.length} 个文件）`)
   if (found.length > 0) {
     console.log('  ✗ 源码里存在未定义的名字（这类错误在真机上会让插件抛异常、整个 profile 被隔离）：')
     for (const item of found.slice(0, 10)) console.log('    ' + item.line)

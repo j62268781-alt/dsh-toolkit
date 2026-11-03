@@ -1,0 +1,341 @@
+/*
+ * 「通知」设置页样式。
+ *
+ * 只使用宿主主题变量（--dsw-*），不写死颜色；类名前缀 ntf-，避免与其他设置页冲突。
+ *
+ * 版式来源（两处官方/既有实现的合成）：
+ *   - 行容器与控件位置：「通用设置」页 item 行 —— display:flex; justify-content:space-between;
+ *     align-items:center; gap:24px; padding:16px 0; border-bottom:.5px solid border-l2；
+ *   - 标题/副标题层级：Skills & MCP 卡片 —— 标题 14px/500/22px 主色，副标题 12px/18px 三级灰；
+ *   - 下拉反白箭头与 36px 高度：Skills & MCP 的 .smp-select 与「已归档」页的 .sk-arch__select。
+ * 宿主内置页用的是 CSS Modules 哈希类名，无法跨包复用，所以这里按声明重建同样观感。
+ */
+
+.ntf-page {
+  box-sizing: border-box;
+  width: 100%;
+  color: var(--dsw-alias-label-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.ntf-page > * {
+  width: 100%;
+  max-width: 960px;
+}
+
+/* 页头：与 usage/archived 的设置页保持同一套标题层级。 */
+.ntf-pageHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.ntf-pageTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.ntf-pageIntro {
+  color: var(--dsw-alias-label-tertiary);
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.ntf-section {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.ntf-sectionHead {
+  padding: 4px 0 0;
+}
+.ntf-sectionTitle {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.ntf-sectionHint {
+  margin: 4px 0 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* 一行设置项：左 title + 副标题，右控件。 */
+.ntf-row {
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 0;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+}
+.ntf-row:last-child {
+  border-bottom: none;
+}
+.ntf-rowText {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 4px;
+  min-width: 0;
+}
+.ntf-title {
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+.ntf-desc {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.ntf-rowControl {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: min-content;
+}
+.ntf-row[data-disabled=true] .ntf-title,
+.ntf-row[data-disabled=true] .ntf-desc {
+  opacity: 0.55;
+}
+
+/* 原生下拉：36px、l3 描边、右侧反白箭头（与 Skills & MCP 的 .smp-select 同款几何）。 */
+.ntf-select {
+  box-sizing: border-box;
+  height: 36px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--dsw-alias-label-primary);
+  background-color: var(--dsw-alias-bg-layer-1);
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-md);
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0 30px 0 10px;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+}
+.ntf-select:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+.ntf-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ntf-selectSound {
+  min-width: 108px;
+}
+
+/* 音量：滑块 + 百分比。 */
+.ntf-volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ntf-range {
+  width: 160px;
+  accent-color: var(--dsw-alias-state-business-primary, var(--dsw-alias-button-primary-fill));
+  cursor: pointer;
+}
+.ntf-range:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ntf-volumeValue {
+  min-width: 42px;
+  text-align: right;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 类型行右侧：提示音下拉 + 试听 + 开关。 */
+.ntf-kindControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 自绘开关（宿主缺少官方 primitives.Switch 时的降级）。 */
+.ntf-switch {
+  box-sizing: border-box;
+  flex: none;
+  position: relative;
+  width: 26px;
+  height: 15px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--dsw-alias-border-l3);
+  transition: background 0.12s ease;
+}
+.ntf-switch[data-on=true] {
+  background: var(--dsw-alias-state-success-primary, var(--dsw-alias-state-business-primary));
+}
+.ntf-switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ntf-switch:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+.ntf-switchKnob {
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-primary-foreground);
+  box-shadow: 0 1px 2px var(--dsw-alias-bg-mask-1, transparent);
+  transition: transform 0.12s ease;
+}
+.ntf-switch[data-on=true] .ntf-switchKnob {
+  transform: translateX(11px);
+}
+
+/* 按钮（降级宿主自绘；官方 primitives.Button 自带样式时不生效）。 */
+.ntf-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0.5px solid transparent;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  flex: none;
+}
+.ntf-button:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.ntf-button[data-variant=outline] {
+  border-color: var(--dsw-alias-border-l3);
+}
+.ntf-button[data-variant=primary] {
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+}
+.ntf-button[data-variant=primary]:hover:not(:disabled) {
+  background: var(--dsw-alias-button-primary-hover);
+}
+.ntf-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ntf-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 提示 / 错误 / 说明文案。 */
+.ntf-error {
+  margin: 0;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.ntf-notice,
+.ntf-note {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.ntf-empty {
+  margin: 0;
+  padding: 12px 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* 最近通知：标题 = 会话标题，副标题 = 本次最终回复；整行可点，回到对应会话。 */
+.ntf-recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ntf-recentItem {
+  min-width: 0;
+}
+.ntf-recentButton {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 12px 10px;
+  border: 0;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.ntf-recentButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.ntf-recentButton:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+.ntf-recentTitle {
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ntf-recentBody {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.ntf-recentMeta {
+  color: var(--dsw-alias-label-caption, var(--dsw-alias-label-tertiary));
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.ntf-foot {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}

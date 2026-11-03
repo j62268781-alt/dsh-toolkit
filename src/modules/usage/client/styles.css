@@ -1,0 +1,821 @@
+/*
+ * 用量统计页样式。
+ *
+ * 页面常驻中栏（从左侧栏「用量统计」图标打开），所以自带滚动与页边距，宽度随中栏
+ * 自适应（上限 1120px）。只使用宿主主题变量（--dsw-alias-*、--dsw-radius-*、
+ * --dsw-font-mono），不硬编码任何颜色；类名统一 usg- 前缀。
+ * 布局以 4 列 KPI / 3 列 CPU 为默认，窄到 760px 以下折成 2 列。
+ */
+
+.usg-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1120px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px 32px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* 左侧栏按钮图标：颜色跟随侧栏，选中时描边加粗并填充。 */
+.usg-navIcon {
+  display: block;
+  color: currentColor;
+}
+
+.usg-navIcon[data-active="false"] {
+  opacity: 0.85;
+}
+
+/* ── 页头 ─────────────────────────────────────────────── */
+
+.usg-pageHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.usg-pageHeadText {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+
+.usg-pageTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.usg-pageIntro {
+  margin: 8px 0 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12.5px;
+  line-height: 19px;
+}
+
+.usg-headActions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.usg-updated,
+.usg-refreshNote {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── 通用控件 ─────────────────────────────────────────── */
+
+.usg-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 14px;
+  flex: none;
+  border: 0.5px solid transparent;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.usg-button:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.usg-button:active:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
+.usg-button[data-variant="outline"] {
+  border-color: var(--dsw-alias-border-l3);
+}
+
+.usg-button[data-variant="primary"] {
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+}
+
+.usg-button[data-variant="primary"]:hover:not(:disabled) {
+  background: var(--dsw-alias-button-primary-hover);
+}
+
+.usg-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.usg-button:focus-visible,
+.usg-sortButton:focus-visible,
+.usg-input:focus-visible,
+.usg-select:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+
+.usg-input,
+.usg-select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.usg-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 26px;
+  cursor: pointer;
+}
+
+.usg-input:disabled,
+.usg-select:disabled {
+  color: var(--dsw-alias-label-tertiary);
+  cursor: not-allowed;
+}
+
+.usg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.usg-fieldLabel {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11.5px;
+  line-height: 16px;
+}
+
+/* ── 卡片与页块 ───────────────────────────────────────── */
+
+.usg-card {
+  box-sizing: border-box;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 0.5px solid var(--dsw-alias-settings-card-stroke, var(--dsw-alias-border-l2));
+  border-radius: var(--dsw-radius-xl);
+  background: var(--dsw-alias-settings-card-fill, var(--dsw-alias-bg-layer-1));
+}
+
+.usg-cardHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.usg-cardTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.usg-cardMeta {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.usg-note {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  line-height: 17px;
+}
+
+.usg-error {
+  margin: 0;
+  padding: 8px 10px;
+  border: 0.5px solid var(--dsw-alias-state-error-primary, var(--dsw-alias-border-l2));
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-state-error-primary, var(--dsw-alias-label-primary));
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.usg-status {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12.5px;
+}
+
+.usg-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px 0;
+}
+
+.usg-empty {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12.5px;
+  line-height: 19px;
+}
+
+.usg-emptyBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0;
+}
+
+/* ── KPI 卡片 ─────────────────────────────────────────── */
+
+.usg-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.usg-kpi {
+  box-sizing: border-box;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 0.5px solid var(--dsw-alias-settings-card-stroke, var(--dsw-alias-border-l2));
+  border-radius: var(--dsw-radius-xl);
+  background: var(--dsw-alias-settings-card-fill, var(--dsw-alias-bg-layer-1));
+}
+
+.usg-kpiLabel {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  line-height: 16px;
+}
+
+.usg-kpiValue {
+  color: var(--dsw-alias-label-primary);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.usg-kpiDetail {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.usg-kpiHint {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10.5px;
+  line-height: 15px;
+}
+
+.usg-tokenBreakdown {
+  overflow-wrap: anywhere;
+}
+
+/* KPI 数值的语义钩子：视觉由 .usg-kpiValue 决定，类名保留给测试与主题覆盖。 */
+.usg-totalTokens,
+.usg-sessionCount,
+.usg-cost,
+.usg-budget {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 预算 ─────────────────────────────────────────────── */
+
+.usg-budgetBar {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-module-platform);
+  overflow: hidden;
+}
+
+.usg-budgetFill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: 999px;
+  background: var(--dsw-alias-state-business-primary);
+  transition: width 200ms ease;
+}
+
+.usg-budgetBar[data-tone="warn"] .usg-budgetFill {
+  background: var(--dsw-alias-state-warn-primary, var(--dsw-alias-state-business-primary));
+}
+
+.usg-budgetBar[data-tone="over"] .usg-budgetFill {
+  background: var(--dsw-alias-state-error-primary);
+}
+
+.usg-budgetBar[data-tone="unset"] .usg-budgetFill {
+  background: var(--dsw-alias-border-l3);
+}
+
+.usg-budgetInfo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.usg-budgetPercent {
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.usg-budgetForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 132px auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 2px;
+}
+
+.usg-budgetSave {
+  height: 32px;
+}
+
+.usg-budgetInput,
+.usg-budgetCurrency,
+.usg-budgetPeriod {
+  min-width: 0;
+}
+
+.usg-budgetInput {
+  font-variant-numeric: tabular-nums;
+}
+
+.usg-budgetHint {
+  margin-top: 2px;
+}
+
+/* ── 时间线 ───────────────────────────────────────────── */
+
+.usg-timeline {
+  gap: 8px;
+}
+
+.usg-chart {
+  position: relative;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.usg-chartPeak {
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10.5px;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.usg-chartSvg {
+  display: block;
+  width: 100%;
+  height: 150px;
+  overflow: visible;
+}
+
+.usg-chartArea {
+  fill: color-mix(in srgb, var(--dsw-alias-state-business-primary) 16%, transparent);
+  stroke: none;
+}
+
+.usg-chartLine {
+  fill: none;
+  stroke: var(--dsw-alias-state-business-primary);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.usg-chartBar {
+  fill: color-mix(in srgb, var(--dsw-alias-state-business-primary) 55%, transparent);
+  transition: fill 120ms ease;
+}
+
+.usg-chartBar:hover {
+  fill: var(--dsw-alias-state-business-primary);
+}
+
+.usg-chartBar[data-empty="true"] {
+  fill: color-mix(in srgb, var(--dsw-alias-label-tertiary) 22%, transparent);
+}
+
+.usg-chartAxis {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10.5px;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* ── 会话表 ───────────────────────────────────────────── */
+
+.usg-sessions,
+.usg-cpu {
+  gap: 8px;
+}
+
+.usg-tableWrap {
+  max-height: 380px;
+  overflow: auto;
+  border-radius: var(--dsw-radius-md);
+}
+
+.usg-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+.usg-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 8px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-settings-card-fill, var(--dsw-alias-bg-layer-1));
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.usg-table td {
+  padding: 8px 8px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  vertical-align: top;
+}
+
+.usg-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.usg-sessionRow:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.usg-sessionRow[data-live="true"] .usg-sessionTitle {
+  color: var(--dsw-alias-label-primary);
+}
+
+.usg-sessionCell {
+  min-width: 0;
+}
+
+.usg-sessionTitleLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.usg-sessionTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
+
+.usg-sessionCwd {
+  display: block;
+  margin-top: 2px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-tertiary);
+  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10.5px;
+  line-height: 15px;
+}
+
+.usg-sessionModel {
+  display: block;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.usg-sessionMeta {
+  display: block;
+  margin-top: 2px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10.5px;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.usg-sessionTime {
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.usg-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  line-height: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.usg-badge[data-tone="live"] {
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 16%, transparent);
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.usg-badge[data-tone="subagent"] {
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.usg-num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.usg-sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.usg-sortButton:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+.usg-sortButton[data-active="true"] {
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+
+.usg-sortArrow {
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.35;
+}
+
+.usg-sortArrow[data-direction="asc"],
+.usg-sortArrow[data-direction="desc"] {
+  opacity: 1;
+}
+
+/* ── CPU ──────────────────────────────────────────────── */
+
+.usg-cpuGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.usg-cpuStat {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.usg-cpuLabel {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.usg-cpuValue {
+  color: var(--dsw-alias-label-primary);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.usg-cpuProcess {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.usg-cpuSystem {
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.usg-cpuMemory {
+  color: var(--dsw-alias-label-primary);
+}
+
+.usg-cpuDetail {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10.5px;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.usg-meter {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-module-platform);
+  overflow: hidden;
+}
+
+.usg-meterFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--dsw-alias-state-business-primary);
+}
+
+.usg-cpuStat[data-series="process"] .usg-meterFill {
+  background: var(--dsw-alias-state-success-primary);
+}
+
+.usg-cpuStat[data-series="memory"] .usg-meterFill {
+  background: var(--dsw-alias-label-tertiary);
+}
+
+.usg-spark {
+  min-width: 0;
+}
+
+.usg-sparkSvg {
+  display: block;
+  width: 100%;
+  height: 48px;
+}
+
+.usg-sparkArea {
+  fill: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent);
+  stroke: none;
+}
+
+.usg-sparkLine {
+  fill: none;
+  stroke: var(--dsw-alias-state-success-primary);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.usg-sparkLine[data-series="system"] {
+  stroke: var(--dsw-alias-label-tertiary);
+  stroke-dasharray: 3 3;
+}
+
+.usg-cpuFacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px 16px;
+  margin: 2px 0 0;
+}
+
+.usg-cpuFacts dt {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.usg-cpuFacts dd {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ── 页脚 ─────────────────────────────────────────────── */
+
+.usg-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 响应式：设置列约 700–900px ───────────────────────── */
+
+@media (max-width: 760px) {
+  .usg-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .usg-budgetForm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .usg-budgetSave {
+    grid-column: 1 / -1;
+  }
+
+  .usg-cpuGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .usg-sessionCwd {
+    max-width: 180px;
+  }
+}
+
+@media (max-width: 760px) {
+  .usg-page {
+    padding: 18px 18px 32px;
+  }
+}
+
+@media (max-width: 520px) {
+  .usg-kpis,
+  .usg-cpuGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .usg-page {
+    padding: 16px 14px 28px;
+  }
+
+  .usg-pageHead {
+    flex-direction: column;
+  }
+
+  .usg-headActions {
+    align-items: flex-start;
+  }
+}

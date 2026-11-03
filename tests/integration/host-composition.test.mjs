@@ -65,7 +65,7 @@ const judgmentConfig = {
 
 test('root schema preserves module defaults and existing volatile boundaries', () => {
   const config = Config({ mobile: { enabled: false, routePrefix: '/custom-mobile' } })
-  assert.deepEqual(Object.keys(config).sort(), ['archived', 'boot', 'browser', 'judgement', 'mobile', 'shell', 'skillsMcp', 'theme'])
+  assert.deepEqual(Object.keys(config).sort(), ['archived', 'boot', 'browser', 'judgement', 'mobile', 'notification', 'shell', 'skillsMcp', 'theme', 'usage'])
   assert.equal(isVolatile(config.browser), false)
   assert.equal(isVolatile(config.browser.enabled), true)
   assert.equal(config.browser.enabled.get(), true)
@@ -76,6 +76,38 @@ test('root schema preserves module defaults and existing volatile boundaries', (
   assert.equal(isVolatile(config.mobile), false)
   assert.equal(config.mobile.enabled, false)
   assert.equal(config.mobile.routePrefix, '/custom-mobile')
+  // The usage module keeps every leaf volatile so the settings page can write it
+  // without recomposing the plugin tree.
+  assert.equal(isVolatile(config.usage), false)
+  for (const field of ['budget', 'currency', 'period', 'historyDays', 'refreshMs', 'includeSubagents', 'prices']) {
+    assert.equal(isVolatile(config.usage[field]), true, `usage.${field} must stay volatile`)
+  }
+  assert.equal(config.usage.budget.get(), 100)
+  assert.equal(config.usage.currency.get(), 'CNY')
+  assert.equal(config.usage.period.get(), 'month')
+  assert.equal(config.usage.historyDays.get(), 14)
+  assert.equal(config.usage.refreshMs.get(), 8000)
+  assert.equal(config.usage.includeSubagents.get(), true)
+  assert.deepEqual(config.usage.prices.get(), [])
+  // The notification module has no host half; its namespace only exists so the
+  // settings page can write it. Every leaf must stay volatile for that to work.
+  assert.equal(isVolatile(config.notification), false)
+  for (const field of [
+    'enabled', 'soundEnabled', 'volume', 'currentMode', 'scope',
+    'completedEnabled', 'completedSound', 'failedEnabled', 'failedSound',
+    'questionEnabled', 'questionSound', 'permissionEnabled', 'permissionSound',
+  ]) {
+    assert.equal(isVolatile(config.notification[field]), true, `notification.${field} must stay volatile`)
+  }
+  assert.equal(config.notification.enabled.get(), true)
+  assert.equal(config.notification.soundEnabled.get(), true)
+  assert.equal(config.notification.volume.get(), 0.6)
+  assert.equal(config.notification.currentMode.get(), 'hidden')
+  assert.equal(config.notification.scope.get(), 'main-wait')
+  assert.equal(config.notification.completedSound.get(), 'chime')
+  assert.equal(config.notification.failedSound.get(), 'fault')
+  assert.equal(config.notification.questionSound.get(), 'pop')
+  assert.equal(config.notification.permissionSound.get(), 'alert')
 })
 
 test('root mounts both services without revalidating refs and runs Service.init', async (t) => {

@@ -1,0 +1,161 @@
+# notification 模块契约（会话通知）
+
+> 本文是「设置 → 通知」模块的接口契约。实现代码位于 `src/modules/notification/`，
+> 行为测试位于 `tests/notification/`。勘测笔记（参考实现拆解、宿主 API、接入约定）在
+> 同目录的 `reference-notes.md` / `runtime-notes.md` / `toolkit-notes.md`，实现后以本文为准。
+
+## 目标
+
+会话跑完、出错、等回答、需要授权时提醒用户，并把「点击通知 → 回到对应会话」做成闭环：
+
+- 四类提醒：`completed`（会话完成）、`failed`（会话失败）、`question`（等待回答，含计划审阅）、`permission`（需要授权）；
+- **系统通知标题 = 会话标题**（宿主的 `displayTitle`），**正文 = 本轮最后一个 assistant 回复**（失败时是错误信息，待交互时是问题文本/工具名）；
+- **点击通知 → `ctx.uiWorkspace.openSession(sessionId)`** 跳回对应会话；已归档会话先取消归档再打开；
+- 偏好保存在宿主配置里，跨窗口与重启后仍在；
+- 不进入模型请求、不写会话日志、不新增 HTTP 路由。
+
+## Client 端
+
+### 目录与入口
+
+```
+src/modules/notification/client/
+├── index.jsx           # 工厂入口 createNotification(require)：装配 + 注册
+├── locale.js           # 命名空间 dsh-toolkit.notification + zh/en 文案 + createTranslator
+├── model.js            # 纯逻辑：配置常量/默认值/容错解码、正文截断、相对时间
+├── detail.js           # 纯逻辑：会话快照 + 对话快照 → 本轮事实投影
+├── engine.js           # 通知引擎（注入端口，DOM-free）：running 边沿 / 待交互边沿分类
+├── dispatch.js         # 分发器（注入端口）：偏好门控 + 提示音 + 系统通知
+├── browser-notify.js   # Notification API 封装：权限、选项、点击激活、图标降级
+├── sounds.js           # Web Audio 合成的四个提示音
+├── recent.js           # 「最近通知」内存 store
+├── panel.jsx           # 设置页组件
+└── styles.css          # ntf- 前缀，仅主题变量
+```
+
+入口是**工厂**（需要宿主 `require`）：`createNotification(require)` 先 `globalThis.__dshReact = require('react')`，
+返回 `{ name: 'toolkit-notification-client', inject, apply }`，由 `src/client/index.js` 最后追加注册。
+
+### 依赖
+
+Cordis 服务注入：`['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces']`。
+
+> Cordis 的 `ctx` 是严格的：没在 `inject` 里声明的服务一旦读取就会抛
+> `cannot get property "…" without inject`。`workspaces` 只用于点击通知时判断归档会话，也必须在列。
+
+| 服务 | 用途 |
+| --- | --- |
+| `sessions.list` | running 边沿、`displayTitle`、`projectionsBySession`（宿主是否续跑） |
+| `sessions.binding` / `using` | 读对话快照；必要时物化未打开过的会话 |
+| `uiSession.sessionStatus` | `pendingInteraction` 边沿与 `completionUnread`（全量已编目会话） |
+| `uiConversation.binding(...).activate('chat')` | 读取 `assistant-step` / `user` / `turn-error` 节点 |
+| `uiWorkspace.openSession` / `unarchiveSession` | 点击通知后的跳转 |
+| `configForms` + `slots` + `locale` | 配置读写与设置页注册 |
+
+`package.json` 的 `dsh.client.inject` 额外登记 `@deepseek-ai/dsh-api-session-controller`、
+`@deepseek-ai/dsh-client-ui-session`、`@deepseek-ai/dsh-client-ui-workspace`、
+`@deepseek-ai/dsh-client-ui-conversation`，保证上述服务在自身工厂之前就位。
+
+### 设置页
+
+| 项 | 值 |
+| --- | --- |
+| slot | `settings.section` |
+| id | `notification` |
+| order | `24`（接在 `usage-tokens` 23 之后） |
+| label | `t('nav')` → 「通知」/「Notifications」 |
+| locale | `dsh-toolkit.notification` |
+| 样式节点 | `style[data-plugin="toolkit-notification"]`，类名前缀 `ntf-` |
+
+版式：行容器用宿主「通用设置」页 item 行的几何（`padding:16px 0`、`border-bottom:.5px solid
+var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层级对齐 Skills & MCP
+（标题 14px/500/22px 主色，副标题 12px/18px 三级灰）。控件优先用官方 `primitives.Switch` /
+`primitives.Button`，缺失时回落到自绘开关与按钮；下拉是原生 `<select>`（宿主没有 Select primitive）。
+
+页面包含：通知总开关、提示音开关、音量滑块、当前会话提醒时机、通知范围、四种类型的开关与提示音
+选择（含试听）、测试通知（权限状态 / 授权按钮）、以及「最近通知」列表（标题=会话标题，
+副标题=通知正文，点击打开会话）。
+
+## 行为
+
+### 事件判定
+
+- **完成/失败**：`sessions.list.byId[id].running` 由 `true→false` 后等 250ms settle，再读一次事实快照：
+  本轮新增了 `turn-error`（`seq` 大于开跑基线）或 `lastAgentError` 相对基线变化 → `failed`，
+  否则 → `completed`。开跑时只记基线，插件加载前就空闲的会话不补发。
+- **暂停不是结束**：宿主还有排队输入（`inbox['next-turn'/'next-step']`）或未达轮次上限的 `goal` 时，
+  这次空闲边沿不通知，由真正结束的那次边沿通知。
+- **子会话与等待**：`scope = all` 时子会话也提醒；`main`/`main-wait` 下子会话静音，
+  且 `main-wait` 会把主会话的完成通知 hold 到所有后代跑完再发一次；失败永远立即提醒。
+- **待交互**：`uiSession.sessionStatus` 的 `pendingInteraction` 出现或 `key` 变化时发一条；
+  同一互动不重复；互动消失不通知；插件加载前就存在的互动不补发。
+- **对话文本**：`assistant-step.data.blocks` 里 `kind === 'text'` 的文本拼接，最后一个非空 step 胜出；
+  `user.data.content` 用 `type === 'text'`（且 `source.kind === 'user'`）。
+  未打开过的会话借一次 `sessions.using(id, { source: 'controllerOperation' })` 物化后再读，读不到就降级。
+
+### 分发门控
+
+1. `enabled`（通知总开关）关闭 → 什么都不做；
+2. 该类型 `*Enabled` 关闭 → 什么都不做；
+3. 事件来自「你正在读的会话」（`retainedBy.mainView > 0`）且窗口在前台 → 默认静默；
+   `currentMode` 可放宽：`hidden`（默认，仅后台/最小化）、`unfocused`（切到其他应用也提醒）、
+   `always`（始终提醒）；
+4. `soundEnabled` 且该类型音效不为 `none` → 播放提示音；
+5. `enabled` → 弹系统通知：`tag = dsh-toolkit:notification:<sessionId>:<kind>`，
+   `renotify: true`；桌面外壳下额外 `silent: true`（避免系统音与本模块提示音叠加）；
+   图标取页面 favicon（`dsh-app:`/SVG data URL 不可用时省略）。
+
+点击回调：`window.focus()` → `openSession(sessionId)`（归档先 `unarchiveSession`）。
+rc.5 桌面外壳没有窗口聚焦 IPC，这里只能尽力而为（见下方已知限制）。
+
+### 提示音
+
+`chime`（完成）、`fault`（失败）、`pop`（提问）、`alert`（授权），全部用 Web Audio 振荡器 +
+包络 + 软限幅实时合成；共享 `AudioContext` 懒创建、播放结束即 suspend、插件卸载时 close。
+
+## 根配置 `notification`
+
+`src/host/config.js` 内的 `notification` 命名空间。**每个可写字段都是 volatile 叶子**（DSH 设置服务
+只允许写 volatile 字段），且刻意扁平（不嵌套 `types.completed.sound`，因为 schemastery 不允许把
+已含 volatile 叶子的对象再包一层 volatile）。
+
+| 字段 | 默认 | 说明 |
+| --- | --- | --- |
+| `enabled` | `true` | 通知总开关 |
+| `soundEnabled` | `true` | 提示音开关 |
+| `volume` | `0.6` | 音量 0..1 |
+| `currentMode` | `hidden` | 当前会话提醒时机：`hidden` / `unfocused` / `always` |
+| `scope` | `main-wait` | 通知范围：`all` / `main` / `main-wait` |
+| `<kind>Enabled` | `true` | 四种类型的开关（`completed`/`failed`/`question`/`permission`） |
+| `<kind>Sound` | 见下 | 每种类型的提示音：`chime` / `fault` / `pop` / `alert` / `none` |
+
+默认音效：`completed=chime`、`failed=fault`、`question=pop`、`permission=alert`。
+读取端对脏值一律回退默认（`model.js` 的 `resolveSettings`），写入走 `form.set(field, value)`
+（`config.js` 的 scoped form 会拼上 `notification` 前缀）。
+
+## 生效方式
+
+1. `pnpm build`（重新生成 `lib/client.js`；`lib/` 是提交物，不要手改）；
+2. 重启 DSH 桌面应用（Host 配置 schema 与客户端 bundle 清单都在启动时登记）；
+3. 打开 **设置 → 通知**：首次打开系统通知开关时向浏览器/系统申请权限；
+4. 点「发送测试通知」验证通道。
+
+## 已知限制
+
+- **无法把窗口强制带到前台**：rc.5 的桌面外壳没有 focus/activate IPC，`globalThis.dshDesktop`
+  只有 browser/deviceInfo/keyboard/shortcuts/updates。点击通知时依赖平台的激活行为 + `window.focus()`。
+- 系统通知需要权限，声音需要页面获得用户激活（浏览器自动播放策略），与普通 Web 应用一致。
+- 未打开过且从未物化的会话，失败判定依赖 `turn-error`/`lastAgentError`；对话文本读取是 best-effort。
+- 通知类型按会话 + 类型折叠（同一会话的完成与失败不会互相覆盖，同一类型会替换旧卡片）。
+
+## 验收
+
+```sh
+pnpm build
+node --import ./scripts/jsx-register.mjs --test tests/notification/*.test.mjs
+pnpm verify
+```
+
+覆盖点：配置解码与根 schema 交叉校验、会话事实投影、完成/失败/暂停/等待/静默分类、
+待交互 key 变化、分发门控、系统通知选项与点击、最近通知 store、提示音降级、
+设置页注册契约与开关写回、端到端（真实 `apply` + 假 ctx）通知标题/正文与点击跳转。
