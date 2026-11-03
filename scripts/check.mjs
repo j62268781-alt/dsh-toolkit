@@ -63,15 +63,18 @@ for (const pattern of [
 }
 assert.doesNotMatch(client, /sk-arch__search/)
 assert.doesNotMatch(client, /全部恢复|Restore all/, 'the header bulk restore action was removed')
+assert.doesNotMatch(client, /永久删除 \{w\}|个工作区和 \d|个工作区和 \{t\}/, 'the archived module no longer deletes workspaces')
 for (const copy of [
+  '已归档的会话',
   '搜索、恢复或永久删除已归档的会话。',
-  '永久删除 {w} 个工作区和 {t} 个任务？',
-  '此操作会从本机移除全部已归档工作区及其任务，以及单独归档的任务，之后不能从 dsh 恢复。',
+  '永久删除 {t} 个会话？',
+  '此操作会从本机移除全部已归档会话，之后不能从 dsh 恢复。',
   '归档“{t}”？',
-  '它会离开当前任务列表，保留在设置里的已归档的聊天中；之后你可以在那里永久删除。',
+  '它会离开当前任务列表，保留在设置里的已归档的会话中；之后你可以在那里永久删除。',
 ]) {
   assert.ok(client.includes(copy), `archived copy missing: ${copy}`)
 }
+assert.ok(client.includes('个会话'), 'archived counters use 会话 instead of 聊天')
 console.log('Archived settings copy, search geometry and title scale checked')
 run(['scripts/verify-client.mjs'])
 run(['tests/skills-mcp/helpers/undefined-check.mjs'])

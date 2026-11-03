@@ -23,7 +23,6 @@ export function readArchived(ctx) {
   const byId = sessions.byId ?? {};
   const items = Array.isArray(workspaces.items) ? workspaces.items : [];
   const archived = [...new Set(Array.isArray(workspaces.archivedSessionIds) ? workspaces.archivedSessionIds : [])];
-  const archivedSet = new Set(archived);
 
   const workspaceByPath = new Map();
   for (const workspace of items) {
@@ -73,20 +72,11 @@ export function readArchived(ctx) {
     const key = workspaceKey(workspace);
     const bucket = buckets.get(key);
     if (!bucket) continue;
-    const sessionIds = Array.isArray(workspace.sessionIds) ? workspace.sessionIds : [];
-    groups.push({
-      id: key,
-      title: bucket.title,
-      rows: bucket.rows.sort(byRecency),
-      workspaceId: key,
-      // Every Session the workspace accounts for is archived: deleting the list
-      // also takes the Workspace registration (its directory and files stay).
-      fullyArchived: sessionIds.length > 0 && sessionIds.every((id) => archivedSet.has(id)),
-    });
+    groups.push({ id: key, title: bucket.title, rows: bucket.rows.sort(byRecency), workspaceId: key });
   }
   const ungrouped = buckets.get(UNGROUPED);
   if (ungrouped) {
-    groups.push({ id: UNGROUPED, title: "", rows: ungrouped.rows.sort(byRecency), workspaceId: "", fullyArchived: false });
+    groups.push({ id: UNGROUPED, title: "", rows: ungrouped.rows.sort(byRecency), workspaceId: "" });
   }
 
   // The filter lists every Workspace, not only the ones with archived rows, so a

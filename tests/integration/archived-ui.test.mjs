@@ -128,7 +128,7 @@ test('archived page mirrors the built-in search, lists every archived record, an
   const search = document.querySelector('.sk-arch input[type="search"]')
   assert.ok(search, 'search input rendered')
   assert.equal(search.className, 'sk-searchInput')
-  assert.equal(search.placeholder, '搜索已归档的聊天')
+  assert.equal(search.placeholder, '搜索已归档的会话')
   assert.ok(document.querySelector('.sk-searchIcon [data-icon="search"]'))
   assert.equal(document.querySelectorAll('.sk-arch__subtitle').length, 1)
   // The toolbar keeps its own row: search, project filter, one bulk action.
@@ -144,7 +144,7 @@ test('archived page mirrors the built-in search, lists every archived record, an
 
   const groups = [...document.querySelectorAll('.sk-arch__group')]
   assert.deepEqual(groups.map((node) => node.querySelector('.sk-arch__groupTitle').textContent), ['项目 A', '未分组'])
-  assert.deepEqual(groups.map((node) => node.querySelector('.sk-arch__groupCount').textContent), ['2 个聊天', '2 个聊天'])
+  assert.deepEqual(groups.map((node) => node.querySelector('.sk-arch__groupCount').textContent), ['2 个会话', '2 个会话'])
   // No per-workspace bulk delete: the only bulk action sits in the toolbar.
   assert.equal(document.querySelectorAll('.sk-arch__groupHead .sk-arch__delete').length, 0)
 
@@ -167,14 +167,15 @@ test('archived page mirrors the built-in search, lists every archived record, an
   assert.match(app.text(), /没有匹配的归档会话/)
 })
 
-test('bulk delete confirms both counts, retries failed sessions, and only drops fully archived workspaces', async (t) => {
+test('bulk delete confirms the session count, retries failures, and never touches workspaces', async (t) => {
   const app = await boot(t)
   seed(app.workspace, app.sessions)
   await app.render(app.overlay(h(app.sections)))
 
   await app.click('全部删除')
-  assert.match(app.dialog().textContent, /永久删除 1 个工作区和 4 个任务？/)
-  assert.match(app.dialog().textContent, /此操作会从本机移除全部已归档工作区及其任务，以及单独归档的任务，之后不能从 dsh 恢复。/)
+  assert.match(app.dialog().textContent, /永久删除 4 个会话？/)
+  assert.match(app.dialog().textContent, /此操作会从本机移除全部已归档会话，之后不能从 dsh 恢复。/)
+  assert.doesNotMatch(app.dialog().textContent, /工作区/)
   await app.click('取消')
   assert.equal(app.dialog(), null)
   assert.equal(app.calls.delete.length, 0)
@@ -189,14 +190,14 @@ test('bulk delete confirms both counts, retries failed sessions, and only drops 
   await app.click('全部删除')
   await app.click('永久删除')
   assert.match(app.dom.window.document.querySelector('[role="alert"]').textContent, /第二条: session-loaded/)
-  assert.deepEqual(app.calls.delete, [], 'a workspace with a failed session keeps its registration')
+  assert.deepEqual(app.calls.delete, [], 'bulk delete never removes a workspace registration')
   assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 1, 'only the failed session remains listed')
-  assert.match(app.text(), /永久删除 1 个工作区和 1 个任务？/)
+  assert.match(app.text(), /永久删除 1 个会话？/)
 
   app.setFetch(async () => ({ ok: true, status: 200, json: async () => ({ ok: true }) }))
   await app.click('永久删除')
   assert.equal(app.dialog(), null)
-  assert.deepEqual(app.calls.delete, ['A'])
+  assert.deepEqual(app.calls.delete, [])
   assert.equal(app.calls.unarchive, 4)
   assert.equal(app.calls.unpin, 4)
   assert.equal(app.calls.refresh, 2)
@@ -234,7 +235,7 @@ test('archiving from the sidebar asks first and refuses silently when cancelled'
   await act(async () => { pending = app.ctx.workspaces.archiveSession('a1') })
   pending.catch(() => {})
   assert.match(app.dialog().textContent, /归档“第一条”？/)
-  assert.match(app.dialog().textContent, /它会离开当前任务列表，保留在设置里的已归档的聊天中；之后你可以在那里永久删除。/)
+  assert.match(app.dialog().textContent, /它会离开当前任务列表，保留在设置里的已归档的会话中；之后你可以在那里永久删除。/)
   await app.click('取消')
   await assert.rejects(pending, /cancelled/)
   assert.equal(app.dialog(), null)
