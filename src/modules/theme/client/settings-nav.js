@@ -1,4 +1,6 @@
 /** Settings toolbar, search and grouped navigation; native rows still own page selection. */
+import { createSettingsMotion } from './settings-motion.js';
+import { installSettingsActions } from './settings-actions.js';
 
 const PANEL = '[data-shortcut-modal="settings"]';
 const NAV = '[class*="_77Pn0W_nav"]';
@@ -174,15 +176,19 @@ export function installSettingsNav(ctx = {}) {
   let block = null;
   let back = null;
   let grouped = null;
+  let actions = null;
+  const motion = createSettingsMotion();
   const teardown = () => {
+    actions?.dispose();
     grouped?.dispose();
     panel?.removeAttribute("data-sk-settings-toolbar");
     block?.remove();
     back?.remove();
-    panel = block = back = grouped = null;
+    panel = block = back = grouped = actions = null;
   };
   const scan = () => {
     const next = document.querySelector(PANEL);
+    if (panel && !panel.isConnected) motion.leave(panel);
     if (!next) { if (panel) teardown(); return; }
     if (panel !== next || !block?.isConnected || !back?.isConnected) {
       teardown();
@@ -196,15 +202,18 @@ export function installSettingsNav(ctx = {}) {
       panel.prepend(back);
       panel.setAttribute("data-sk-settings-toolbar", "");
       grouped = installGroupedMenu(ctx, nav, block.querySelector("input"));
+      actions = installSettingsActions(panel);
+      motion.enter(panel);
     }
     grouped.sync();
+    actions.sync();
   };
   const observer = new MutationObserver((records) => {
     // Ignore our own menu updates; watch the original rows for React/locale changes.
     if (records.some(({ target }) => !target.parentElement?.closest(".sk-setnav__groups,.sk-setnav__empty") &&
       !target.closest?.(".sk-setnav__groups,.sk-setnav__empty"))) scan();
   });
-  observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["aria-current", "class"] });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["aria-current", "class", "disabled"] });
   const offSlots = ctx.slots?.subscribe("settings.section", scan);
   const offLocale = ctx.locale?.subscribe(scan);
   scan();
@@ -213,5 +222,6 @@ export function installSettingsNav(ctx = {}) {
     offSlots?.();
     offLocale?.();
     teardown();
+    motion.dispose();
   };
 }

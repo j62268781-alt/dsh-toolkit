@@ -33,7 +33,7 @@ test('常量契约：四种类型、五种提示音、三种范围与三档时�
   assert.equal(CONFIG_NS, 'notification')
   assert.deepEqual(KINDS, ['completed', 'failed', 'question', 'permission'])
   assert.deepEqual(SOUNDS, ['chime', 'fault', 'pop', 'alert', 'none'])
-  assert.deepEqual(CURRENT_MODES, ['hidden', 'unfocused', 'always'])
+  assert.deepEqual(CURRENT_MODES, ['never', 'unfocused', 'always'])
   assert.deepEqual(SCOPES, ['all', 'main', 'main-wait'])
   assert.deepEqual(DEFAULT_SOUND, { completed: 'chime', failed: 'fault', question: 'pop', permission: 'alert' })
   assert.equal(isSound('chime'), true)
@@ -54,6 +54,7 @@ test('配置字段清单与根 Config 的 volatile 叶子一一对应', () => {
   // 默认值必须与客户端默认一致，否则页面刚打开就会显示「未保存的差异」。
   assert.equal(schema.notification.enabled.get(), DEFAULT_SETTINGS.enabled)
   assert.equal(schema.notification.soundEnabled.get(), DEFAULT_SETTINGS.soundEnabled)
+  assert.equal(schema.notification.sound.get(), DEFAULT_SETTINGS.sound)
   assert.equal(schema.notification.volume.get(), DEFAULT_SETTINGS.volume)
   assert.equal(schema.notification.currentMode.get(), DEFAULT_SETTINGS.currentMode)
   assert.equal(schema.notification.scope.get(), DEFAULT_SETTINGS.scope)
@@ -89,13 +90,43 @@ test('resolveSettings：缺省、裸对象、ConfigForm 快照与脏值都收敛
   assert.equal(dirty.enabled, true)
   assert.equal(dirty.soundEnabled, true)
   assert.equal(dirty.volume, 1)
-  assert.equal(dirty.currentMode, 'hidden')
+  assert.equal(dirty.currentMode, 'unfocused')
   assert.equal(dirty.scope, 'main-wait')
   assert.equal(dirty.types.completed.enabled, true)
   assert.equal(dirty.types.completed.sound, 'chime')
   assert.equal(dirty.types.failed.sound, 'fault')
   assert.equal(resolveSettings({ volume: -3 }).volume, 0)
   assert.equal(resolveSettings({ volume: Number.NaN }).volume, DEFAULT_SETTINGS.volume)
+})
+
+test('默认值：全局系统音、满音量、失焦通知，并保留旧类型字段', () => {
+  assert.equal(DEFAULT_SETTINGS.volume, 1)
+  assert.equal(DEFAULT_SETTINGS.currentMode, 'unfocused')
+  assert.equal(DEFAULT_SETTINGS.sound, 'system')
+  assert.ok(FIELDS.includes('sound'))
+  assert.equal(new Set(FIELDS).size, FIELDS.length)
+})
+
+test('时机解码：never/unfocused/always 生效，旧 hidden 迁移为 unfocused', () => {
+  for (const mode of CURRENT_MODES) assert.equal(resolveSettings({ currentMode: mode }).currentMode, mode)
+  assert.equal(resolveSettings({ currentMode: 'hidden' }).currentMode, 'unfocused')
+  assert.equal(readSettings({ value: { notification: { currentMode: 'hidden' } } }).currentMode, 'unfocused')
+  for (const mode of ['never', 'unfocused', 'always', 'hidden']) {
+    assert.equal(Config({ notification: { currentMode: mode } }).notification.currentMode.get(), mode)
+  }
+  assert.throws(() => Config({ notification: { currentMode: 'sometimes' } }))
+})
+
+test('全局声音解码：系统音和目录 ID 可持久化，无效值回退系统默认', () => {
+  const id = 'a1'.repeat(16)
+  for (const sound of ['system', id, 'none', 'chime']) {
+    assert.equal(resolveSettings({ sound }).sound, sound)
+    assert.equal(resolveSettings({ value: { notification: { sound } } }).sound, sound)
+    assert.equal(Config({ notification: { sound } }).notification.sound.get(), sound)
+  }
+  for (const sound of ['', '../private.wav', '/System/Library/Sounds/Funk.aiff', 'unknown', null, 42]) {
+    assert.equal(resolveSettings({ sound }).sound, 'system')
+  }
 })
 
 test('readSettings / safeSnapshot：表单缺失或抛错时给默认值，页面不崩', () => {

@@ -81,7 +81,10 @@ export function createNotificationStub({ permission = 'granted', requestResult }
     addEventListener() {}
   }
   FakeNotification.permission = permission
-  FakeNotification.requestPermission = async () => requestResult ?? permission
+  FakeNotification.requestPermission = async () => {
+    FakeNotification.permission = requestResult ?? permission
+    return FakeNotification.permission
+  }
   FakeNotification.instances = instances
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'Notification')
   Object.defineProperty(globalThis, 'Notification', { configurable: true, writable: true, value: FakeNotification })
@@ -91,6 +94,31 @@ export function createNotificationStub({ permission = 'granted', requestResult }
     restore() {
       if (previous) Object.defineProperty(globalThis, 'Notification', previous)
       else delete globalThis.Notification
+    },
+  }
+}
+
+/** Same-origin sound API stub; no real network or audio playback. */
+export function createSoundFetchStub({ sounds = [{ id: 'system', label: 'System default' }, { id: 'a'.repeat(32), label: 'Glass' }], status = 200 } = {}) {
+  const requests = []
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'fetch')
+  Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: async (input, options = {}) => {
+    const url = new URL(typeof input === 'string' ? input : input.url, 'https://dsh.example.test')
+    requests.push({ url, options })
+    if (url.pathname === '/api/plugins/dsh-toolkit/notification/sounds') {
+      return new Response(JSON.stringify({ platform: 'darwin', sounds }), { status, headers: { 'content-type': 'application/json' } })
+    }
+    if (url.pathname === '/api/plugins/dsh-toolkit/notification/sound') {
+      return new Response(new Uint8Array([82, 73, 70, 70, 4, 0, 0, 0, 87, 65, 86, 69]), { headers: { 'content-type': 'audio/wav' } })
+    }
+    throw new Error(`unexpected notification request ${url.pathname}`)
+  } })
+  return {
+    requests,
+    sounds,
+    restore() {
+      if (previous) Object.defineProperty(globalThis, 'fetch', previous)
+      else delete globalThis.fetch
     },
   }
 }
@@ -116,8 +144,9 @@ export function defaultFormValues(overrides = {}) {
   return {
     enabled: true,
     soundEnabled: true,
-    volume: 0.6,
-    currentMode: 'hidden',
+    volume: 1,
+    currentMode: 'unfocused',
+    sound: 'system',
     scope: 'main-wait',
     completedEnabled: types.completed.enabled,
     completedSound: types.completed.sound,

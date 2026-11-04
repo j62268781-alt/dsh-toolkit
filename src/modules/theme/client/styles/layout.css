@@ -133,7 +133,35 @@ html[data-sk-desktop]
 
 html[data-sk-desktop]
   [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"]):has([data-conversation-tabs]) {
+  border-bottom-width: 1px;
+}
+
+html[data-sk-desktop]
+  [data-slot="main.conversation"]
   [class*="_header"]:has([class*="_titleRow"])
   [class*="_tabs"] {
+  /* Match the browser toolbar's 38px, including the header's 1px border. */
+  min-height: 37px;
+  margin-top: 0;
+  align-items: center;
   padding-left: 20px;
+}
+
+html[data-sk-desktop]
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"])
+  [class*="_tab"][role="tab"] {
+  box-sizing: border-box;
+  min-height: 37px;
+  padding-block: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+html[data-sk-desktop]
+  [data-slot="main.conversation"]
+  [class*="_header"]:has([class*="_titleRow"])
+  [class*="_viewsMore"] {
+  margin-top: 0;
 }

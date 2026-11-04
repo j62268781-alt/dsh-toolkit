@@ -18,8 +18,8 @@ export const KINDS = ['completed', 'failed', 'question', 'permission']
 /** 可选提示音；`none` 表示该类型静音。 */
 export const SOUNDS = ['chime', 'fault', 'pop', 'alert', 'none']
 
-/** 你正在读的会话何时也提醒。 */
-export const CURRENT_MODES = ['hidden', 'unfocused', 'always']
+/** 统一通知时机；旧版 hidden 在解码时迁移到 unfocused。 */
+export const CURRENT_MODES = ['never', 'unfocused', 'always']
 
 /** 哪些会话提醒，以及主会话是否等子会话。 */
 export const SCOPES = ['all', 'main', 'main-wait']
@@ -36,8 +36,9 @@ export const DEFAULT_SOUND = Object.freeze({
 export const DEFAULT_SETTINGS = Object.freeze({
   enabled: true,
   soundEnabled: true,
-  volume: 0.6,
-  currentMode: 'hidden',
+  volume: 1,
+  currentMode: 'unfocused',
+  sound: 'system',
   scope: 'main-wait',
   types: Object.freeze({
     completed: Object.freeze({ enabled: true, sound: 'chime' }),
@@ -53,6 +54,7 @@ export const FIELDS = Object.freeze([
   'soundEnabled',
   'volume',
   'currentMode',
+  'sound',
   'scope',
   ...KINDS.flatMap((kind) => [`${kind}Enabled`, `${kind}Sound`]),
 ])
@@ -104,6 +106,7 @@ export function resolveSettings(raw) {
     soundEnabled: typeof source.soundEnabled === 'boolean' ? source.soundEnabled : DEFAULT_SETTINGS.soundEnabled,
     volume: Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : DEFAULT_SETTINGS.volume,
     currentMode: pick(source, 'currentMode', (value) => CURRENT_MODES.includes(value), DEFAULT_SETTINGS.currentMode),
+    sound: pick(source, 'sound', (value) => value === 'system' || isSound(value) || (typeof value === 'string' && /^[a-f0-9]{32}$/.test(value)), 'system'),
     scope: pick(source, 'scope', (value) => SCOPES.includes(value), DEFAULT_SETTINGS.scope),
     types,
   }

@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { JSDOM } from 'jsdom';
+import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.js';
+
+test('titlebar config menu forwards native action, tracks availability, errors and Escape', async (t) => {
+  const dom = new JSDOM(`<div data-shortcut-modal="settings"><nav class="_77Pn0W_nav"><div class="_77Pn0W_navList"></div></nav><div class="_77Pn0W_content"><div class="_77Pn0W_header"><div class="_77Pn0W_actions"><div class="_2zt9ba_action"><button>打开配置文件</button></div></div></div></div></div>`);
+  const originals = new Map();
+  for (const name of ['window','document','MutationObserver','KeyboardEvent']) {
+    originals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
+    Object.defineProperty(globalThis,name,{configurable:true,writable:true,value:dom.window[name] ?? dom.window});
+  }
+  const dispose = installSettingsNav();
+  t.after(() => {dispose();dom.window.close();for(const [name,descriptor] of originals){if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globalThis[name];}});
+  const flush = async () => { await new Promise(resolve => setTimeout(resolve,0)); };
+  const doc = dom.window.document;
+  const original = doc.querySelector('._2zt9ba_action button');
+  const owner = original.parentElement;
+  const more = doc.querySelector('.sk-setnav__more');
+  const menu = doc.querySelector('.sk-setnav__actions');
+  const action = menu.querySelector('button');
+  let clicks = 0;
+  original.addEventListener('click', () => clicks++);
+  assert.equal(more.hidden, false);
+  assert.ok(owner.hasAttribute('data-sk-config-original'));
+  more.click();
+  assert.equal(menu.hidden, false);
+  assert.equal(doc.activeElement, action);
+  action.click();
+  assert.equal(clicks,1);
+  original.disabled = true;
+  await flush();
+  assert.equal(action.disabled,true);
+  action.click();
+  assert.equal(clicks,1,'disabled state cannot invoke native controller twice');
+  const error = doc.createElement('span');error.setAttribute('role','alert');error.textContent='无法打开配置文件';owner.append(error);
+  await flush();
+  assert.equal(menu.querySelector('[role="alert"]').textContent,error.textContent);
+  assert.equal(menu.querySelector('[role="alert"]').hidden,false);
+  let closes = 0;doc.addEventListener('keydown', event => {if(event.key==='Escape')closes++;});
+  action.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+  assert.equal(closes,0,'Escape closes the menu before the native modal');
+  assert.equal(menu.hidden,true);
+  assert.equal(doc.activeElement,more);
+  more.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+  assert.equal(closes,1,'a subsequent Escape reaches native settings');
+  owner.remove();await flush();
+  assert.equal(more.hidden,true,'unavailable document has no titlebar action');
+  doc.querySelector('._77Pn0W_actions').append(owner);await flush();
+  assert.equal(more.hidden,false);
+  dispose();
+  assert.equal(doc.querySelector('.sk-setnav__more'),null);
+  assert.equal(owner.hasAttribute('data-sk-config-original'),false,'native action is restored on plugin teardown');
+});

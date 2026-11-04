@@ -49,7 +49,7 @@ test('权限不足时不弹通知；授予后按选项发一条', () => {
   assert.equal(instance.options.body, '最后回复')
   assert.equal(instance.options.tag, 'custom-tag')
   assert.equal(instance.options.renotify, true)
-  assert.equal(instance.options.silent, undefined, 'web build must not force silent')
+  assert.equal(instance.options.silent, true, 'the selected sound and mute preference control audio on web too')
 })
 
 test('桌面外壳下透传 silent，避免系统提示音与本模块提示音叠加', () => {

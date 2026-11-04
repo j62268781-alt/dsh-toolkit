@@ -137,8 +137,8 @@ export function showBrowserNotification(options = {}) {
     tag,
     // 同 tag 通知被替换时重新提醒一次，而不是在 Windows/Chromium 的通知中心里静默换卡片。
     renotify: true,
-    // 桌面外壳会把 silent 透传给原生通知；不设它系统提示音会和本模块的提示音叠在一起。
-    ...(isDesktopShell() ? { silent: true } : {}),
+    // Sound is controlled by the selected file and volume, including on the web.
+    silent: true,
   }
   const icon = pageIconUrl()
 

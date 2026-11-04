@@ -1,21 +1,14 @@
-/**
- * 注册契约与页面渲染测试。
- *
- * 用 esbuild 按主 bundle 同一套 jsxFactory 现场打包 `index.jsx`，断言：
- *   - 工厂负责发布全局 `__dshReact`、inject 契约、effect 标签顺序；
- *   - 词典注册到 `dsh-toolkit.notification`，样式以 `toolkit-notification` 安装且只用主题变量；
- *   - `settings.section` 的 id/order/locale/label；
- *   - 把页面真正挂进 jsdom：行渲染、开关写回 `notification.<field>`、下拉/滑块写回、只读降级、卸载清理。
- */
+/** Registration and real jsdom settings behavior against the source client bundle. */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import React, { act } from 'react'
 import { NOTIFICATION_COPY, NOTIFICATION_NS } from '../../src/modules/notification/client/locale.js'
 import {
-  chatSnapshot, createFakeContext, createNotificationStub, loadNotificationModule, makeDom, mountComponent, sleep,
+  chatSnapshot, createFakeContext, createNotificationStub, createSoundFetchStub,
+  loadNotificationModule, makeDom, mountComponent, sleep,
 } from './helpers.mjs'
 
-/** 工厂的 require：react + 一个「没有 primitives」的降级环境（组件走自绘控件）。 */
+/** No host primitives: exercise the accessible fallback controls. */
 function makeRequire() {
   const required = []
   const require = (id) => {
@@ -27,56 +20,90 @@ function makeRequire() {
   return { require, required }
 }
 
+async function bootPanel(t, options = {}) {
+  const page = makeDom()
+  const fetch = createSoundFetchStub(options.catalog)
+  const stub = createNotificationStub(options.permission ?? {})
+  const runtime = createFakeContext(options)
+  const module = await loadNotificationModule(`notification-panel-${Math.random().toString(36).slice(2)}`)
+  const { require } = makeRequire()
+  module.default(require).apply(runtime.ctx)
+  assert.deepEqual(fetch.requests, [], 'plugin registration must not fetch the catalogue or audio')
+  const [{ Component }] = runtime.sections
+  const app = await mountComponent(Component)
+  t.after(async () => {
+    await app.unmount()
+    runtime.dispose()
+    stub.restore()
+    fetch.restore()
+    page.restore()
+  })
+  return { page, fetch, stub, runtime, app, Component }
+}
+
+async function changeValue(page, node, value) {
+  await act(async () => {
+    const prototype = node.tagName === 'SELECT' ? page.window.HTMLSelectElement.prototype : page.window.HTMLInputElement.prototype
+    Object.getOwnPropertyDescriptor(prototype, 'value').set.call(node, value)
+    node.dispatchEvent(new page.window.Event(node.type === 'range' ? 'input' : 'change', { bubbles: true }))
+    await sleep(10)
+  })
+}
+
+async function key(page, node, value) {
+  await act(async () => {
+    node.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true }))
+  })
+}
+
+function switchFor(document, title) {
+  return document.querySelector(`[role="switch"][aria-label="${title}"]`)
+}
+
+function assertWrite(runtime, field, value) {
+  assert.deepEqual(runtime.writes.at(-1), [{ op: 'set', path: ['notification', field], value }])
+  assert.equal(runtime.formValues[field], value)
+}
+
 test('createNotification 工厂：全局 React、inject 契约、effect 顺序与词典/样式/设置页注册', async (t) => {
   assert.equal(globalThis.__dshReact, undefined, '工厂之前不应该已经有全局 JSX 工厂')
   const module = await loadNotificationModule('notification-registration')
   const { require, required } = makeRequire()
   const client = module.default(require)
-  assert.equal(globalThis.__dshReact, React, 'factory must publish __dshReact for JSX modules')
+  assert.equal(globalThis.__dshReact, React)
   assert.equal(client.name, 'toolkit-notification-client')
   assert.deepEqual(Array.from(client.inject), ['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces'])
   assert.equal(typeof client.apply, 'function')
-
   const page = makeDom()
-  t.after(() => page.restore())
+  const fetch = createSoundFetchStub()
   const runtime = createFakeContext()
+  t.after(() => { runtime.dispose(); fetch.restore(); page.restore() })
   client.apply(runtime.ctx)
-  // 页面需要官方 primitives 的 Switch/Button；缺失时组件会回落到自绘控件。
+  assert.deepEqual(fetch.requests, [], 'registration stays lazy until panel mount or an event')
   assert.deepEqual([...new Set(required)].sort(), ['@deepseek-ai/dsh-client-ui-primitives', 'react'])
-
   assert.deepEqual(runtime.effects, [
-    'toolkit-notification:dictionary',
-    'toolkit-notification:stylesheet',
-    'toolkit-notification:settings',
-    'toolkit-notification:sessions',
-    'toolkit-notification:pending',
-    'toolkit-notification:sounds',
-    'toolkit-notification:section',
+    'toolkit-notification:dictionary', 'toolkit-notification:stylesheet',
+    'toolkit-notification:settings', 'toolkit-notification:sessions',
+    'toolkit-notification:pending', 'toolkit-notification:sounds', 'toolkit-notification:section',
   ])
-
-  // 词典：命名空间 + 中英文都在。
   assert.equal(runtime.localeRegistrations.length, 1)
   assert.equal(runtime.localeRegistrations[0].namespace, NOTIFICATION_NS)
   assert.ok(NOTIFICATION_COPY.zh.nav)
   assert.ok(NOTIFICATION_COPY.en.nav)
-  // 打包后的模块内联了自己那份词典，比较结构而不是对象身份。
   assert.deepEqual(Object.keys(runtime.localeRegistrations[0].dictionary).sort(), ['en', 'zh'])
   assert.equal(runtime.localeRegistrations[0].dictionary.zh.nav, '通知')
-
-  // 样式：独立的 style 标签、ntf- 前缀、只用主题变量、复用通用设置页的行几何。
   const style = page.document.querySelector('style[data-plugin="toolkit-notification"]')
-  assert.ok(style, 'stylesheet installed via installStylesheet(css, "toolkit-notification")')
+  assert.ok(style)
   const css = style.textContent.replace(/\s+/g, '')
   assert.match(css, /\.ntf-page\{/)
   assert.match(css, /\.ntf-row\{[^}]*padding:16px0/)
   assert.match(css, /\.ntf-row\{[^}]*border-bottom:0\.5pxsolidvar\(--dsw-alias-border-l2\)/)
   assert.match(css, /\.ntf-title\{[^}]*font-size:14px/)
   assert.match(css, /\.ntf-desc\{[^}]*font-size:12px/)
-  assert.match(css, /\.ntf-recentButton\{/)
+  assert.match(css, /\.ntf-card\{/)
+  assert.match(css, /\.ntf-menuItem\{/)
   assert.match(css, /var\(--dsw-alias-/)
-  assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}/, 'no hardcoded hex colours')
-
-  // 设置页：接在 usage(23) 之后，label 走词典而不是硬编码。
+  assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}/)
   const sections = runtime.sections.filter(({ meta }) => meta.name === 'settings.section')
   assert.equal(sections.length, 1)
   const [{ meta, Component }] = sections
@@ -85,164 +112,203 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
   assert.equal(meta.locale, NOTIFICATION_NS)
   assert.equal(meta.label(), '通知')
   assert.equal(typeof Component, 'function')
-
-  // 卸载：样式标签被 effect 清理。
   runtime.dispose()
   assert.equal(page.document.querySelector('style[data-plugin="toolkit-notification"]'), null)
 })
 
-test('页面渲染：行用 title + 副标题，开关与下拉写回 notification 命名空间', async (t) => {
-  const module = await loadNotificationModule('notification-panel')
-  const { require } = makeRequire()
-  const client = module.default(require)
-  const page = makeDom()
-  t.after(() => page.restore())
-  const runtime = createFakeContext({
-    sessions: { s1: { id: 's1', displayTitle: '修复登录问题', running: false } },
-  })
-  client.apply(runtime.ctx)
-  const [{ Component }] = runtime.sections
-  const app = await mountComponent(Component)
-  t.after(() => app.unmount())
-
+test('页面：四张分组卡片、全局声音与四种类型开关，无最近通知和范围控件', async (t) => {
+  const { page, fetch, runtime, app } = await bootPanel(t)
   const document = page.document
   assert.equal(document.querySelector('.ntf-pageTitle').textContent, '通知')
-  // 每一行都有 title + 副标题（通用设置页的 item 结构）。
-  const rows = [...document.querySelectorAll('.ntf-row')]
-  assert.ok(rows.length >= 8, `expected the settings rows, got ${rows.length}`)
-  for (const row of rows) {
-    assert.ok(row.querySelector('.ntf-title'), 'every row has a title')
+  assert.deepEqual([...document.querySelectorAll('.ntf-section')].map((section) => section.getAttribute('aria-label')), ['通知', '提醒类型', '声音', '测试通知'])
+  assert.equal(document.querySelectorAll('.ntf-card').length, 4)
+  for (const row of document.querySelectorAll('.ntf-row')) {
+    assert.ok(row.querySelector('.ntf-title'))
+    assert.ok(row.querySelector('.ntf-desc'))
   }
-  assert.ok(document.body.textContent.includes('通知提醒'))
-  assert.ok(document.body.textContent.includes('当前会话提醒时机'))
-  assert.ok(document.body.textContent.includes('通知范围'))
-  assert.ok(document.body.textContent.includes('会话完成'))
-  assert.ok(document.body.textContent.includes('需要授权'))
-  assert.ok(document.querySelector('.ntf-empty'), 'recent list starts empty')
+  assert.doesNotMatch(document.body.textContent, /最近通知|通知范围/)
+  assert.equal(document.querySelector('[class*="ntf-recent"]'), null)
+  assert.equal(document.querySelectorAll('select').length, 1, 'one global sound selector; no per-type sound or scope selectors')
+  assert.equal(document.querySelectorAll('[role="switch"]').length, 6)
+  assert.equal(fetch.requests.length, 1)
+  assert.equal(fetch.requests[0].url.pathname, '/api/plugins/dsh-toolkit/notification/sounds')
+  assert.equal(fetch.requests[0].options.method ?? 'GET', 'GET')
 
-  // 总开关：默认开，点一下写回 enabled=false。
-  const master = document.querySelectorAll('.ntf-switch')[0]
+  const master = switchFor(document, '启用通知')
   assert.equal(master.getAttribute('aria-checked'), 'true')
-  assert.equal(master.getAttribute('aria-label'), '通知提醒')
   await app.click(master)
-  assert.equal(runtime.writes.at(-1)[0].path[0], 'notification')
-  assert.equal(runtime.writes.at(-1)[0].path[1], 'enabled')
-  assert.equal(runtime.writes.at(-1)[0].value, false)
-  assert.equal(runtime.formValues.enabled, false)
-  assert.equal(document.querySelectorAll('.ntf-switch')[0].getAttribute('aria-checked'), 'false')
+  assertWrite(runtime, 'enabled', false)
+  assert.equal(master.getAttribute('aria-checked'), 'false')
+  assert.equal(document.querySelector('.ntf-timingTrigger').disabled, true)
+  assert.equal(document.querySelector('.ntf-range').disabled, true)
+  await app.click(master)
+  assertWrite(runtime, 'enabled', true)
 
-  // 「当前会话提醒时机」下拉：写回 currentMode。
-  const currentSelect = document.querySelectorAll('.ntf-select')[0]
-  assert.equal(currentSelect.value, 'hidden')
-  await act(async () => {
-    const setter = Object.getOwnPropertyDescriptor(page.window.HTMLSelectElement.prototype, 'value').set
-    setter.call(currentSelect, 'always')
-    currentSelect.dispatchEvent(new page.window.Event('change', { bubbles: true }))
-  })
-  await act(async () => {
-    await sleep(10)
-  })
-  assert.deepEqual(runtime.writes.at(-1)[0].path, ['notification', 'currentMode'])
-  assert.equal(runtime.writes.at(-1)[0].value, 'always')
-
-  // 音量滑块：0..100 的 UI 值写回 0..1 的配置值。
+  for (const [title, field] of [['会话完成', 'completedEnabled'], ['会话失败', 'failedEnabled'], ['等待回答', 'questionEnabled'], ['需要授权', 'permissionEnabled']]) {
+    const toggle = switchFor(document, title)
+    assert.equal(toggle.getAttribute('aria-checked'), 'true')
+    await app.click(toggle)
+    assertWrite(runtime, field, false)
+    assert.equal(toggle.getAttribute('aria-checked'), 'false')
+  }
+  const audio = switchFor(document, '播放声音')
+  await app.click(audio)
+  assertWrite(runtime, 'soundEnabled', false)
+  assert.equal(document.querySelector('.ntf-selectSound').disabled, true)
+  assert.equal(document.querySelector('.ntf-range').disabled, true)
+  await app.click(audio)
+  assertWrite(runtime, 'soundEnabled', true)
   const range = document.querySelector('.ntf-range')
-  await act(async () => {
-    const setter = Object.getOwnPropertyDescriptor(page.window.HTMLInputElement.prototype, 'value').set
-    setter.call(range, '25')
-    range.dispatchEvent(new page.window.Event('change', { bubbles: true }))
-  })
-  await act(async () => {
-    await sleep(10)
-  })
-  assert.deepEqual(runtime.writes.at(-1)[0].path, ['notification', 'volume'])
-  assert.equal(runtime.writes.at(-1)[0].value, 0.25)
-
-  // 类型行：单独关掉「会话失败」写回 failedEnabled（先把总开关打回开，类型开关才可操作）。
-  await app.click(document.querySelectorAll('.ntf-switch')[0])
-  const failedRow = rows.find((row) => row.textContent.includes('会话失败'))
-  const failedSwitch = failedRow.querySelector('.ntf-switch')
-  await app.click(failedSwitch)
-  assert.deepEqual(runtime.writes.at(-1)[0].path, ['notification', 'failedEnabled'])
-  assert.equal(runtime.writes.at(-1)[0].value, false)
+  assert.equal(range.value, '100')
+  assert.equal(document.querySelector('.ntf-volumeValue').textContent, '100%')
+  await changeValue(page, range, '25')
+  assertWrite(runtime, 'volume', 0.25)
+  assert.equal(document.querySelector('.ntf-volumeValue').textContent, '25%')
+  const sound = document.querySelector('.ntf-selectSound')
+  assert.equal(sound.value, 'system')
+  assert.deepEqual([...sound.options].map((option) => [option.value, option.textContent]), [['system', '系统默认'], ['a'.repeat(32), 'Glass']])
+  await changeValue(page, sound, 'a'.repeat(32))
+  assertWrite(runtime, 'sound', 'a'.repeat(32))
+  assert.equal(sound.value, 'a'.repeat(32))
+  const preview = [...document.querySelectorAll('button')].find((node) => node.textContent === '试听')
+  assert.equal(preview.disabled, false)
+  await app.click(preview)
+  assert.match(document.querySelector('[role="alert"]').textContent, /声音无法播放/)
+  assert.equal(fetch.requests.length, 1, 'without AudioContext preview never requests real audio')
 })
 
-test('最近通知：标题 = 会话标题、副标题 = 最终回复，点击重新打开会话', async (t) => {
-  const module = await loadNotificationModule('notification-recent')
-  const { require } = makeRequire()
-  const client = module.default(require)
-  const page = makeDom()
-  t.after(() => page.restore())
-  page.window.focus = () => {}
-  const stub = createNotificationStub({ permission: 'granted' })
-  t.after(() => stub.restore())
-  const runtime = createFakeContext({
+test('音量连续拖动：保存中保持可用，串行写入并在失败时恢复已保存值', async (t) => {
+  const { page, runtime } = await bootPanel(t)
+  const range = page.document.querySelector('.ntf-range')
+  const mutate = runtime.rootForm.mutate
+  const pending = []
+  runtime.rootForm.mutate = (operations) => new Promise((resolve, reject) => pending.push({ operations, resolve, reject }))
+  await changeValue(page, range, '80')
+  await changeValue(page, range, '30')
+  assert.equal(range.disabled, false)
+  assert.equal(range.value, '30')
+  assert.equal(pending.length, 1, 'only one write may be in flight')
+  await act(async () => { pending[0].resolve(mutate(pending[0].operations)); await sleep(10) })
+  assert.equal(pending.length, 2)
+  assert.equal(range.value, '30', 'an older saved snapshot must not move the thumb back')
+  await act(async () => { pending[1].resolve(mutate(pending[1].operations)); await sleep(10) })
+  assertWrite(runtime, 'volume', 0.3)
+  await changeValue(page, range, '60')
+  await act(async () => { pending[2].reject(new Error('volume write rejected')); await sleep(10) })
+  assert.equal(range.value, '30')
+  assert.match(page.document.querySelector('[role="alert"]').textContent, /volume write rejected/)
+})
+
+test('通知时机：三个互斥选项、保存后重新挂载保留、方向键与 Escape 捕获', async (t) => {
+  const { page, runtime, app, Component } = await bootPanel(t)
+  const document = page.document
+  const trigger = document.querySelector('.ntf-timingTrigger')
+  assert.equal(trigger.textContent, '仅在失焦时')
+  assert.equal(trigger.getAttribute('aria-haspopup'), 'menu')
+  assert.equal(trigger.getAttribute('aria-expanded'), 'false')
+  await app.click(trigger)
+  const choices = [...document.querySelectorAll('[role="menuitemradio"]')]
+  assert.equal(document.querySelectorAll('[role="menu"]').length, 1)
+  assert.deepEqual(choices.map((node) => node.firstElementChild.textContent), ['从不', '仅在失焦时', '始终'])
+  assert.deepEqual(choices.map((node) => node.getAttribute('aria-checked')), ['false', 'true', 'false'])
+  assert.equal(document.activeElement, choices[1])
+  await key(page, choices[1], 'ArrowDown')
+  assert.equal(document.activeElement, choices[2])
+  await key(page, choices[2], 'ArrowDown')
+  assert.equal(document.activeElement, choices[0])
+  await key(page, choices[0], 'ArrowUp')
+  assert.equal(document.activeElement, choices[2])
+  await key(page, choices[2], 'Home')
+  assert.equal(document.activeElement, choices[0])
+  await key(page, choices[0], 'End')
+  assert.equal(document.activeElement, choices[2])
+  let dialogEscapes = 0
+  const outerEscape = (event) => { if (event.key === 'Escape') dialogEscapes++ }
+  document.addEventListener('keydown', outerEscape, true)
+  await key(page, choices[2], 'Escape')
+  assert.equal(document.querySelector('[role="menu"]'), null)
+  assert.equal(document.activeElement, trigger)
+  assert.equal(dialogEscapes, 0, 'menu consumes Escape before a dialog handler')
+  assert.deepEqual(runtime.writes, [], 'navigation and dismissal do not change the setting')
+  await key(page, trigger, 'ArrowDown')
+  await app.click(document.querySelectorAll('[role="menuitemradio"]')[2])
+  assertWrite(runtime, 'currentMode', 'always')
+  assert.equal(trigger.textContent, '始终')
+  await app.click(trigger)
+  await app.click(document.querySelectorAll('[role="menuitemradio"]')[0])
+  assertWrite(runtime, 'currentMode', 'never')
+  await app.unmount()
+  const remounted = await mountComponent(Component)
+  assert.equal(document.querySelector('.ntf-timingTrigger').textContent, '从不')
+  await remounted.unmount()
+  document.removeEventListener('keydown', outerEscape, true)
+})
+
+test('移除最近通知列表后，系统通知仍使用会话标题和最后回复，点击打开会话', async (t) => {
+  const { page, stub, runtime } = await bootPanel(t, {
+    notification: { soundEnabled: false },
     sessions: { s1: { id: 's1', displayTitle: '修复登录问题', running: true } },
     chats: { s1: chatSnapshot({ reply: '这是修复后的最后回复' }) },
   })
-  client.apply(runtime.ctx)
-  const [{ Component }] = runtime.sections
-
-  const app = await mountComponent(Component)
-  t.after(() => app.unmount())
-
-  // 会话跑完：等 settle 窗口（250ms）+ 分发链路落地。
-  runtime.setRunning('s1', false)
-  await act(async () => {
-    await sleep(450)
-  })
-
-  assert.equal(stub.instances.length, 1, 'one system notification must be shown')
-  assert.equal(stub.instances[0].title, '修复登录问题', 'notification title is the session title')
-  assert.equal(stub.instances[0].options.body, '这是修复后的最后回复', 'notification body is the final reply')
-
-  const title = page.document.querySelector('.ntf-recentTitle')
-  const body = page.document.querySelector('.ntf-recentBody')
-  assert.ok(title, 'a recent notification row must appear')
-  assert.equal(title.textContent, '修复登录问题')
-  assert.equal(body.textContent, '这是修复后的最后回复')
-
-  const before = runtime.openedSessions.length
-  await app.click(page.document.querySelector('.ntf-recentButton'))
-  assert.equal(runtime.openedSessions.length, before + 1)
-  assert.equal(runtime.openedSessions.at(-1), 's1')
-
-  // 点击系统通知本身也回到对应会话。
+  page.window.focus = () => {}
+  await act(async () => { runtime.setRunning('s1', false); await sleep(450) })
+  assert.equal(stub.instances.length, 1)
+  assert.equal(stub.instances[0].title, '修复登录问题')
+  assert.equal(stub.instances[0].options.body, '这是修复后的最后回复')
+  assert.equal(page.document.querySelector('[class*="ntf-recent"]'), null)
   stub.instances[0].onclick()
-  assert.equal(runtime.openedSessions.at(-1), 's1')
+  assert.deepEqual(runtime.openedSessions, ['s1'])
 })
 
-test('configForms 缺失时页面降级为只读，仍然渲染且不抛错', async (t) => {
-  const module = await loadNotificationModule('notification-readonly')
-  const { require } = makeRequire()
-  const client = module.default(require)
-  const page = makeDom()
-  t.after(() => page.restore())
-  const runtime = createFakeContext({ withConfigForms: false })
-  client.apply(runtime.ctx)
-  const [{ Component }] = runtime.sections
-  const app = await mountComponent(Component)
-  t.after(() => app.unmount())
-
+test('configForms 缺失时页面只读，禁用所有配置控件', async (t) => {
+  const { page, runtime, app } = await bootPanel(t, { withConfigForms: false })
   assert.ok(page.document.querySelector('.ntf-page'))
   assert.match(page.document.body.textContent, /宿主没有提供可写的配置表单/)
-  const master = page.document.querySelectorAll('.ntf-switch')[0]
-  assert.equal(master.disabled, true, 'switches are disabled without a writable form')
-  await app.click(master)
+  for (const control of page.document.querySelectorAll('[role="switch"], .ntf-timingTrigger, select, input')) assert.equal(control.disabled, true)
+  await app.click(switchFor(page.document, '启用通知'))
   assert.deepEqual(runtime.writes, [])
 })
 
-test('缺少会话服务时页面照常注册，只是不会发出通知', async (t) => {
-  const module = await loadNotificationModule('notification-noservices')
-  const { require } = makeRequire()
-  const client = module.default(require)
-  const page = makeDom()
-  t.after(() => page.restore())
-  const runtime = createFakeContext({ withServices: false })
-  assert.doesNotThrow(() => client.apply(runtime.ctx))
-  assert.equal(runtime.sections.length, 1)
-  const [{ Component }] = runtime.sections
-  const app = await mountComponent(Component)
-  t.after(() => app.unmount())
+test('缺少会话服务时页面照常注册和挂载', async (t) => {
+  const { page } = await bootPanel(t, { withServices: false })
   assert.ok(page.document.querySelector('.ntf-pageTitle'))
+})
+
+test('测试通知仍可申请权限并发送；配置保存失败不会乐观更新', async (t) => {
+  const { page, stub, runtime, app } = await bootPanel(t, { permission: { permission: 'default', requestResult: 'granted' } })
+  page.window.focus = () => {}
+  const button = (text) => [...page.document.querySelectorAll('button')].find((node) => node.textContent === text)
+  assert.equal(button('发送测试通知').disabled, true)
+  await app.click(button('授权'))
+  assert.equal(button('授权'), undefined)
+  assert.match(page.document.body.textContent, /通知权限：已授予|已获得通知权限/)
+  await app.click(button('发送测试通知'))
+  assert.equal(stub.instances.length, 1)
+  assert.match(page.document.querySelector('[role="status"]').textContent, /已发送一条测试通知/)
+
+  runtime.rootForm.mutate = async () => false
+  await app.click(switchFor(page.document, '启用通知'))
+  assert.match(page.document.querySelector('[role="alert"]').textContent, /保存失败|宿主拒绝/)
+  assert.equal(switchFor(page.document, '启用通知').getAttribute('aria-checked'), 'true')
+  assert.equal(runtime.formValues.enabled, true)
+  assert.deepEqual(runtime.writes, [])
+
+  runtime.rootForm.mutate = async () => { throw new Error('disk unavailable') }
+  await changeValue(page, page.document.querySelector('.ntf-selectSound'), 'a'.repeat(32))
+  assert.match(page.document.querySelector('[role="alert"]').textContent, /disk unavailable/)
+  assert.equal(page.document.querySelector('.ntf-selectSound').value, 'system')
+  assert.equal(runtime.formValues.sound, 'system')
+  assert.deepEqual(runtime.writes, [])
+})
+
+test('声音目录不可用时保留系统默认和通知设置，并禁用试听', async (t) => {
+  const { page, app } = await bootPanel(t, { catalog: { status: 503 } })
+  const sound = page.document.querySelector('.ntf-selectSound')
+  assert.equal(sound.value, 'system')
+  assert.equal(sound.disabled, false)
+  assert.match(page.document.body.textContent, /暂时无法读取系统声音/)
+  const preview = [...page.document.querySelectorAll('button')].find((node) => node.textContent === '试听')
+  assert.equal(preview.disabled, true)
+  await app.click(switchFor(page.document, '启用通知'))
+  assert.equal(switchFor(page.document, '启用通知').getAttribute('aria-checked'), 'false')
 })

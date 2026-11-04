@@ -1,13 +1,13 @@
 /**
  * 分发器：把引擎分类出来的一条事件，按当前偏好决定「响不响、弹不弹」。
  *
- * 与引擎一样是纯逻辑 + 注入端口：门控判断（类型开关、当前会话时机、窗口可见性）可以完全
+ * 与引擎一样是纯逻辑 + 注入端口：门控判断（类型开关、全局提醒时机、窗口焦点）可以完全
  * 在 node 测试里跑，真正的声音与系统通知由 index.jsx 接上的端口执行。
  *
  * 顺序（短路在前）：
  *   1. 总开关关 → 什么都不做；
  *   2. 该类型关 → 什么都不做；
- *   3. 事件属于「你正在读的会话」且窗口在前台 → 默认静默（currentMode 可放宽）；
+ *   3. 按全局时机判断：never 静默；unfocused 仅窗口隐藏或失焦时提醒；always 总是提醒；
  *   4. 需要则播放提示音；
  *   5. 需要则弹系统通知，点击时回到对应会话。
  */
@@ -18,9 +18,9 @@ import { notificationBody, truncate } from './model.js'
  * @typedef {object} DispatchDeps
  * @property {() => object} settings 读取当前偏好。
  * @property {(key: string, params?: object) => string} t 文案函数。
- * @property {(sound: string, volume: number) => void} playSound 播放提示音。
+ * @property {(sound: string, volume: number) => boolean | void} playSound 播放提示音，false 表示未接受播放。
  * @property {(payload: {title: string, body: string, tag: string, sessionId: string}) => boolean} showNotification 弹系统通知。
- * @property {(sessionId: string) => boolean} isCurrent 该会话是否是你正在读的那个。
+ * @property {(sessionId: string) => boolean} [isCurrent] 旧版会话判断端口；全局时机不使用它。
  * @property {() => boolean} isHidden 文档是否在后台/最小化。
  * @property {() => boolean} [hasFocus] 文档是否获得焦点（缺省按「有焦点」处理）。
  */
@@ -55,20 +55,19 @@ export class NotificationDispatcher {
     const type = settings.types?.[event.kind]
     if (type?.enabled !== true) return { notified: false, sounded: false, reason: 'kind-disabled' }
 
-    // 「你正在读的会话」默认不打扰：只有窗口在后台/最小化，或把时机放宽到 unfocused/always。
+    // 提醒时机作用于所有会话，不随当前正在查看的会话变化。
     const mode = settings.currentMode
-    const isCurrent = this.deps.isCurrent(event.sessionId) === true
-    const hidden = this.deps.isHidden() === true
-    const away = hidden || (mode === 'unfocused' && this.deps.hasFocus?.() === false)
-    if (isCurrent && !away && mode !== 'always') {
-      return { notified: false, sounded: false, reason: 'current-session' }
+    if (mode === 'never') return { notified: false, sounded: false, reason: 'never' }
+    const away = this.deps.isHidden() === true || this.deps.hasFocus?.() === false
+    if (!away && mode !== 'always') {
+      return { notified: false, sounded: false, reason: 'focused' }
     }
 
     let sounded = false
-    if (settings.soundEnabled === true && type.sound !== 'none') {
+    const sound = settings.sound ?? type.sound
+    if (settings.soundEnabled === true && sound !== 'none' && settings.volume !== 0) {
       try {
-        this.deps.playSound(type.sound, settings.volume)
-        sounded = true
+        sounded = this.deps.playSound(sound, settings.volume) !== false
       } catch {
         // 声音失败不影响系统通知。
       }

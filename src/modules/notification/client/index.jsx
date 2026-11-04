@@ -24,7 +24,7 @@ import { CONFIG_NS, readSettings, safeSnapshot } from './model.js'
 import { displayTitleOf, sessionDetailOf } from './detail.js'
 import { NotificationEngine } from './engine.js'
 import { NotificationDispatcher } from './dispatch.js'
-import { SoundPlayer } from './sounds.js'
+import { SystemSoundPlayer, loadSystemSounds } from './system-sounds.js'
 import {
   browserPermission, requestBrowserPermission, showBrowserNotification, showTestNotification,
 } from './browser-notify.js'
@@ -174,7 +174,7 @@ export default function createNotification(require) {
       }
 
       const recent = createRecentStore()
-      const player = new SoundPlayer(() => settingsSource.getSnapshot().volume)
+      const player = new SystemSoundPlayer(() => settingsSource.getSnapshot().volume)
 
       /* ── 会话事实读取：只在需要分类时碰快照，全程 try/catch ───────────── */
       const readDetail = (id) => {
@@ -317,9 +317,13 @@ export default function createNotification(require) {
         setScope: (value) => writeField('scope', String(value)),
         setKindEnabled: (kind, value) => writeField(`${kind}Enabled`, value === true),
         setKindSound: (kind, value) => writeField(`${kind}Sound`, String(value)),
-        previewSound: (sound) => player.play(sound, settingsSource.getSnapshot().volume),
+        setSound: (value) => writeField('sound', String(value)),
+        loadSounds: loadSystemSounds,
+        previewSound: (sound) => player.preview(sound, settingsSource.getSnapshot().volume),
         testNotification: () => {
           const sent = showTestNotification(t)
+          const current = settingsSource.getSnapshot()
+          if (sent && current.soundEnabled && current.volume > 0) player.play(current.sound, current.volume)
           return sent
         },
         permission: () => browserPermission(),

@@ -18,7 +18,7 @@
   -webkit-app-region: drag;
 }
 
-[data-shortcut-modal="settings"][data-sk-settings-toolbar]
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-toolbar]
   > [class*="_content"] > [class*="_header"] > [class*="_close"] {
   display: none;
 }
@@ -41,7 +41,7 @@
 
 /* A tinted menu and content share one surface with a square dividing edge.
    Match the workspace's 250px panel, leaving content room in smaller windows. */
-[data-shortcut-modal="settings"] > nav {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav {
   width: clamp(200px, 22vw, var(--cx-panel-w, 250px));
   min-height: 0;
   gap: 8px;
@@ -50,7 +50,7 @@
   background: var(--dsw-alias-bg-layer-1);
 }
 
-[data-shortcut-modal="settings"] > nav > [class*="_navTitle"] {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav > [class*="_navTitle"] {
   flex: none;
   padding: 2px 8px 4px;
   font-size: 13px;
@@ -59,13 +59,13 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
-[data-shortcut-modal="settings"] > nav > [class*="_navList"] {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav > [class*="_navList"] {
   min-height: 0;
   gap: 2px;
   overscroll-behavior: contain;
 }
 
-[data-shortcut-modal="settings"] > nav [class*="_navCell"] {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav [class*="_navCell"] {
   flex-shrink: 0;
   height: 32px;
   gap: 8px;
@@ -75,35 +75,35 @@
   line-height: 20px;
 }
 
-[data-shortcut-modal="settings"] > nav [class*="_navCell"]:hover {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav [class*="_navCell"]:hover {
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
-[data-shortcut-modal="settings"] > nav [class*="_navCell"][aria-current="true"] {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav [class*="_navCell"][aria-current="true"] {
   background: var(--cx-rail-item-active, var(--dsw-alias-interactive-bg-hover));
   color: var(--dsw-alias-label-primary);
   font-weight: 500;
 }
 
-[data-shortcut-modal="settings"] > nav [class*="_navCell"]:focus-visible,
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav [class*="_navCell"]:focus-visible,
 .sk-setnav__back:focus-visible {
   outline: 1px solid var(--dsw-alias-label-dimmed, var(--dsw-alias-border-l2));
   outline-offset: -1px;
 }
 
-[data-shortcut-modal="settings"] > nav [class*="_navIcon"] {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav [class*="_navIcon"] {
   flex: none;
   width: 16px;
   height: 16px;
 }
 
 /* Our list owns only navigation presentation; the native React rows stay mounted. */
-[data-shortcut-modal="settings"] > nav[data-sk-settings-grouped] > [class*="_navList"] {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav[data-sk-settings-grouped] > [class*="_navList"] {
   display: none;
 }
 
 /* Retain the native title as the dialog's accessible label. */
-[data-shortcut-modal="settings"] > nav[data-sk-settings-grouped] > [class*="_navTitle"] {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav[data-sk-settings-grouped] > [class*="_navTitle"] {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -167,36 +167,44 @@
 .sk-setnav__groups[hidden], .sk-setnav__group[hidden], .sk-setnav__item[hidden], .sk-setnav__empty[hidden] { display: none; }
 
 /* Right column: existing header/body geometry and subpage rules stay unchanged. */
-[data-shortcut-modal="settings"] > [class*="_content"] {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] {
   min-height: 0;
   background: var(--dsw-alias-bg-base);
 }
 
-[data-shortcut-modal="settings"] > [class*="_content"] > [class*="_header"] {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] > [class*="_header"] {
   height: 48px;
   padding: 8px 12px;
   align-items: center;
   border-bottom: 0.5px solid var(--dsw-alias-border-l2);
 }
 
-[data-shortcut-modal="settings"] > [class*="_content"] > [class*="_options"] {
+/* Collapse the former action row once its only action lives in the titlebar. */
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-toolbar]
+  > [class*="_content"] > [class*="_header"]:not(:has(
+    > [class*="_actions"] :is(button, a, input, select, textarea, [role="button"]):not([data-sk-config-original] *)
+  )) {
+  display: none;
+}
+
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] > [class*="_options"] {
   padding: 24px 32px 32px;
 }
 
-[data-shortcut-modal="settings"] > [class*="_content"] > [class*="_options"] > div > * {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] > [class*="_options"] > div > * {
   max-width: 960px;
   /* Centre the reading column so the left/right gutters stay even on wide
      windows instead of leaving all slack on the right. */
   margin-inline: auto;
 }
 
-[data-shortcut-modal="settings"] > [class*="_content"] > [class*="_header"] > [class*="_close"] {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] > [class*="_header"] > [class*="_close"] {
   width: 32px;
   height: 32px;
   border-radius: var(--dsw-radius-md);
 }
 
-[data-shortcut-modal="settings"] > [class*="_content"] > [class*="_header"] > [class*="_close"]:hover {
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] > [class*="_header"] > [class*="_close"]:hover {
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
@@ -208,7 +216,8 @@
   padding-bottom: 8px;
 }
 
-.sk-setnav__back {
+.sk-setnav__back,
+.sk-setnav__more {
   position: fixed;
   top: calc((var(--sk-settings-band-h) - 28px) / 2);
   left: var(--cx-toggle-x, 12px);
@@ -279,3 +288,55 @@
   font-size: 12px;
   line-height: 18px;
 }
+
+.sk-setnav__more {
+  left: auto;
+  right: 12px;
+}
+.sk-setnav__more:hover,
+.sk-setnav__more[aria-expanded="true"] {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+.sk-setnav__more:focus-visible,
+.sk-setnav__actions > button:focus-visible {
+  outline: 1px solid var(--dsw-alias-label-dimmed);
+  outline-offset: -1px;
+}
+html[data-windows-titlebar]:not([data-fullscreen]) .sk-setnav__more {
+  right: 150px;
+}
+.sk-setnav__actions {
+  position: fixed;
+  z-index: 2;
+  top: calc(var(--sk-settings-band-h) - 4px);
+  right: 12px;
+  min-width: 184px;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 4px;
+  border: 1px solid var(--cx-line, var(--dsw-alias-border-l3));
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 8px 28px #0002;
+  -webkit-app-region: no-drag;
+}
+.sk-setnav__actions > button {
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: start;
+  cursor: pointer;
+}
+.sk-setnav__actions > button:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.sk-setnav__actions > button:disabled { opacity: .5; cursor: default; }
+.sk-setnav__action-error { padding: 6px 10px; font-size: 12px; color: var(--dsw-alias-state-error-primary); }
+.sk-setnav__more[hidden], .sk-setnav__actions[hidden], .sk-setnav__action-error[hidden],
+[data-sk-config-original] { display: none; }

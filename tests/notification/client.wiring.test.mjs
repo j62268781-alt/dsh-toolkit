@@ -10,7 +10,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import React, { act } from 'react'
 import {
-  chatSnapshot, createFakeContext, createNotificationStub, loadNotificationModule, makeDom, sleep,
+  chatSnapshot, createFakeContext, createNotificationStub, createSoundFetchStub, loadNotificationModule, makeDom, sleep,
 } from './helpers.mjs'
 
 /** 组装一次完整接线：jsdom + 通知桩 + 假 ctx + 真实 apply。 */
@@ -19,6 +19,7 @@ async function boot(options = {}) {
   // jsdom 没实现 Window.focus()，把它换成一个可断言的空实现（测试自己会覆盖计数）。
   page.window.focus = () => {}
   const stub = createNotificationStub({ permission: options.permission ?? 'granted' })
+  const fetch = createSoundFetchStub()
   const runtime = createFakeContext(options)
   const module = await loadNotificationModule(`notification-wiring-${Math.random().toString(36).slice(2)}`)
   const client = module.default((id) => {
@@ -27,13 +28,16 @@ async function boot(options = {}) {
     throw new Error(`unexpected module ${id}`)
   })
   client.apply(runtime.ctx)
+  assert.deepEqual(fetch.requests, [], 'registration must not fetch sounds before mount or notification event')
   return {
     page,
     stub,
+    fetch,
     runtime,
     async dispose() {
       runtime.dispose()
       stub.restore()
+      fetch.restore()
       page.restore()
     },
   }
@@ -177,25 +181,131 @@ test('需要授权：approval 互动归到 permission 类型', async (t) => {
   assert.equal(app.stub.instances[0].options.body, '需要执行命令')
 })
 
-test('正在读的会话默认不打扰；hidden 时机在窗口隐藏时才提醒', async (t) => {
+test('默认失焦时机：窗口聚焦时安静，隐藏后提醒正在读的会话', async (t) => {
   const app = await boot({
     sessions: { s1: { id: 's1', displayTitle: '正在读的会话', running: true } },
     chats: { s1: chatSnapshot({ reply: '完成' }) },
     retainedBy: { s1: { mainView: 1 } },
   })
   t.after(() => app.dispose())
+  app.page.document.hasFocus = () => true
+  Object.defineProperty(app.page.document, 'visibilityState', { configurable: true, get: () => 'visible' })
 
   app.runtime.setRunning('s1', false)
   await flush()
-  assert.equal(app.stub.instances.length, 0, 'the session you are reading stays quiet')
+  assert.equal(app.stub.instances.length, 0, 'a focused window stays quiet')
+  assert.deepEqual(app.fetch.requests, [], 'a suppressed event must not load audio')
 
-  // 再看一次同样的边沿：把文档标记为隐藏，应当提醒。
+  // 隐藏优先于 hasFocus 的结果。
   app.runtime.setRunning('s1', true)
   await flush()
   Object.defineProperty(app.page.document, 'visibilityState', { configurable: true, get: () => 'hidden' })
   app.runtime.setRunning('s1', false)
   await flush()
   assert.equal(app.stub.instances.length, 1)
+})
+
+test('全局通知时机适用于后台会话与待交互，旧 hidden 与 unfocused 一致', async (t) => {
+  for (const currentMode of ['never', 'unfocused', 'always', 'hidden']) {
+    await t.test(currentMode, async (t) => {
+      const app = await boot({
+        notification: { currentMode, soundEnabled: false },
+        sessions: {
+          s1: { id: 's1', displayTitle: '后台完成', running: true },
+          s2: { id: 's2', displayTitle: '后台待回答', running: false },
+        },
+        chats: { s1: chatSnapshot({ reply: '完成' }) },
+      })
+      t.after(() => app.dispose())
+      let focused = true
+      app.page.document.hasFocus = () => focused
+      Object.defineProperty(app.page.document, 'visibilityState', { configurable: true, get: () => 'visible' })
+      app.runtime.setRunning('s1', false)
+      app.runtime.setStatuses({ s2: { running: false, pendingInteraction: { kind: 'question', key: 'question:1', questions: ['继续吗？'] } } })
+      await flush()
+      assert.equal(app.stub.instances.length, currentMode === 'always' ? 2 : 0, 'foreground policy applies even when neither session is open')
+      focused = false
+      app.runtime.setRunning('s1', true)
+      app.runtime.setRunning('s1', false)
+      app.runtime.setStatuses({ s2: { running: false, pendingInteraction: { kind: 'approval', key: 'approval:2', reason: '需要授权' } } })
+      await flush()
+      assert.equal(app.stub.instances.length, currentMode === 'never' ? 0 : currentMode === 'always' ? 4 : 2)
+      assert.deepEqual(app.fetch.requests, [], 'muted or suppressed events never fetch audio')
+    })
+  }
+})
+
+test('自定义声音的系统通知在浏览器和桌面都 silent，防止重复响铃', async (t) => {
+  for (const desktop of [false, true]) {
+    await t.test(desktop ? 'desktop' : 'web', async (t) => {
+      const previous = Object.getOwnPropertyDescriptor(globalThis, 'dshDesktop')
+      if (desktop) Object.defineProperty(globalThis, 'dshDesktop', { configurable: true, value: {} })
+      else delete globalThis.dshDesktop
+      t.after(() => {
+        if (previous) Object.defineProperty(globalThis, 'dshDesktop', previous)
+        else delete globalThis.dshDesktop
+      })
+      const app = await boot({
+        notification: { sound: 'a'.repeat(32) },
+        sessions: { s1: { id: 's1', displayTitle: '自定义声音', running: true } },
+        chats: { s1: chatSnapshot({ reply: '完成' }) },
+      })
+      t.after(() => app.dispose())
+      app.runtime.setRunning('s1', false)
+      await flush()
+      assert.equal(app.stub.instances.length, 1)
+      assert.equal(app.stub.instances[0].options.silent, true)
+    })
+  }
+})
+
+test('系统音播放在事件发生后异步获取音频，通知和会话跳转不等待解码', async (t) => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'AudioContext')
+  const played = [], gains = []
+  let finishDecode
+  class FakeAudioContext {
+    state = 'running'
+    destination = {}
+    async decodeAudioData(bytes) {
+      assert.ok(bytes.byteLength > 0)
+      return new Promise((resolve) => { finishDecode = () => resolve({ duration: 0.1 }) })
+    }
+    createGain() {
+      const gain = { gain: { value: 0 }, connect() {}, disconnect() {} }
+      gains.push(gain)
+      return gain
+    }
+    createBufferSource() {
+      return { connect() {}, disconnect() {}, start() { played.push(this.buffer) }, stop() {} }
+    }
+    async close() {}
+  }
+  Object.defineProperty(globalThis, 'AudioContext', { configurable: true, value: FakeAudioContext })
+  const app = await boot({
+    notification: { sound: 'system', volume: 0.25 },
+    sessions: { s1: { id: 's1', displayTitle: '系统声音', running: true } },
+    chats: { s1: chatSnapshot({ reply: '完成' }) },
+  })
+  t.after(async () => {
+    await app.dispose()
+    if (previous) Object.defineProperty(globalThis, 'AudioContext', previous)
+    else delete globalThis.AudioContext
+  })
+  app.runtime.setRunning('s1', false)
+  await flush()
+  assert.equal(app.stub.instances.length, 1)
+  assert.equal(played.length, 0, 'notification display does not wait for audio decoding')
+  assert.equal(app.fetch.requests.length, 1, 'an event fetches only its audio; catalogue loading stays panel-lazy')
+  assert.equal(app.fetch.requests[0].url.pathname, '/api/plugins/dsh-toolkit/notification/sound')
+  assert.equal(app.fetch.requests[0].url.searchParams.get('id'), 'system')
+  assert.equal(app.fetch.requests[0].options.credentials, 'same-origin')
+  app.stub.instances[0].onclick()
+  assert.deepEqual(app.runtime.openedSessions, ['s1'])
+  assert.equal(typeof finishDecode, 'function')
+  finishDecode()
+  await act(async () => { await sleep(10) })
+  assert.equal(played.length, 1)
+  assert.equal(gains[0].gain.value, 0.25)
 })
 
 test('总开关关闭时不发通知；提示音开关关闭时只发通知不响铃', async (t) => {

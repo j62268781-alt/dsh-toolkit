@@ -38,6 +38,33 @@ class Credentials extends Service {
   }
 }
 
+class WebServer extends Service {
+  constructor(ctx) {
+    super(ctx, 'webServer')
+    this.routes = []
+  }
+
+  register(route) {
+    this.routes.push(route)
+    return () => {
+      const index = this.routes.indexOf(route)
+      if (index >= 0) this.routes.splice(index, 1)
+    }
+  }
+}
+
+class Connection extends Service {
+  constructor(ctx) {
+    super(ctx, 'connection')
+    this.requests = []
+  }
+
+  requestRejection(request) {
+    this.requests.push(request)
+    return 401
+  }
+}
+
 async function settle(ctx) {
   for (const runtime of ctx.registry.values()) {
     for (const fiber of runtime.fibers) await fiber.await()
@@ -76,11 +103,11 @@ test('root schema preserves module defaults and existing volatile boundaries', (
   assert.equal(isVolatile(config.mobile), false)
   assert.equal(config.mobile.enabled, false)
   assert.equal(config.mobile.routePrefix, '/custom-mobile')
-  // The notification module has no host half; its namespace only exists so the
-  // settings page can write it. Every leaf must stay volatile for that to work.
+  // Every writable notification leaf stays volatile, including the global sound.
+  // Its host child serves the authenticated system sound catalogue.
   assert.equal(isVolatile(config.notification), false)
   for (const field of [
-    'enabled', 'soundEnabled', 'volume', 'currentMode', 'scope',
+    'enabled', 'soundEnabled', 'volume', 'currentMode', 'sound', 'scope',
     'completedEnabled', 'completedSound', 'failedEnabled', 'failedSound',
     'questionEnabled', 'questionSound', 'permissionEnabled', 'permissionSound',
   ]) {
@@ -88,8 +115,9 @@ test('root schema preserves module defaults and existing volatile boundaries', (
   }
   assert.equal(config.notification.enabled.get(), true)
   assert.equal(config.notification.soundEnabled.get(), true)
-  assert.equal(config.notification.volume.get(), 0.6)
-  assert.equal(config.notification.currentMode.get(), 'hidden')
+  assert.equal(config.notification.volume.get(), 1)
+  assert.equal(config.notification.currentMode.get(), 'unfocused')
+  assert.equal(config.notification.sound.get(), 'system')
   assert.equal(config.notification.scope.get(), 'main-wait')
   assert.equal(config.notification.completedSound.get(), 'chime')
   assert.equal(config.notification.failedSound.get(), 'fault')
@@ -162,6 +190,34 @@ test('boot injects its assets without sessions and unregisters with the root', a
   const after = []
   await ctx.emit('webserver/index-inject', after)
   assert.deepEqual(after, [])
+})
+
+test('notification child waits for both webServer and connection, mounts authenticated routes, and disposes with root', async (t) => {
+  const ctx = new Context()
+  await ctx.plugin(WebServer)
+  const fiber = ctx.plugin(toolkit, { mobile: { enabled: false }, browser: { enabled: false } })
+  t.after(() => fiber.dispose())
+  await fiber
+  await settle(ctx)
+  const server = ctx.get('webServer')
+  const soundRoutes = () => server.routes.filter(({ path }) => path.startsWith('/api/plugins/dsh-toolkit/notification/'))
+  assert.deepEqual(soundRoutes(), [], 'webServer alone cannot activate the authenticated notification child')
+  await ctx.plugin(Connection)
+  await settle(ctx)
+  assert.deepEqual(soundRoutes().map(({ kind, path }) => [kind, path]), [
+    ['exact', '/api/plugins/dsh-toolkit/notification/sounds'],
+    ['exact', '/api/plugins/dsh-toolkit/notification/sound'],
+  ])
+  for (const route of soundRoutes()) {
+    const request = { method: 'GET', url: route.path }
+    const response = { statusCode: 0, ended: false, end() { this.ended = true } }
+    await route.handler(request, response)
+    assert.equal(response.statusCode, 401)
+    assert.equal(response.ended, true)
+    assert.equal(ctx.get('connection').requests.at(-1), request, 'routes use the injected host authentication boundary')
+  }
+  await fiber.dispose()
+  assert.deepEqual(soundRoutes(), [])
 })
 
 test('disposing the root removes child services and their effects', async (t) => {
