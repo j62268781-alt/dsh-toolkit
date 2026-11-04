@@ -22,8 +22,8 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 
-const root = new URL('../../', import.meta.url)
-const manifest = JSON.parse(await readFile(new URL('package.json', root), 'utf8'))
+const packageRoot = new URL('../../packages/browser/', import.meta.url)
+const manifest = JSON.parse(await readFile(new URL('package.json', packageRoot), 'utf8'))
 const runtimeDependencies = { ...manifest.dependencies, ...manifest.peerDependencies }
 
 /** 精确版本：可选 `v` 前缀 + 纯 semver（含 prerelease），不含任何区间运算符。 */
@@ -76,7 +76,7 @@ test('bundle 声明的 patch 文件必须真的存在（否则整个 bundle 组�
   const patch = manifest.dsh?.bundle?.patch
   if (patch === undefined) return
   await assert.doesNotReject(
-    readFile(new URL(patch.replace(/^\.\//, ''), root)),
+    readFile(new URL(patch.replace(/^\.\//, ''), packageRoot)),
     `package.json 里 dsh.bundle.patch="${patch}" 指向的文件不存在，bundle 会被跳过`,
   )
 })

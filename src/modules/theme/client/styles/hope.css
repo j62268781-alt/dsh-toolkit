@@ -1,0 +1,335 @@
+/* 「希望红」· hope palette scene
+ *
+ * 黎明/朝阳：深红到暖金的天光、缓缓升起的太阳光晕、放射状光束、上升的余烬与
+ * 地平线微光。所有规则限定在 html[data-sk-palette="hope"]；场景根节点的定位由
+ * theme-center.css 的 .sk-theme-scene 提供，本文件只负责内部图层。
+ * 循环动画只用 transform/opacity；prefers-reduced-motion 时完全静止。
+ */
+
+html[data-sk-palette="hope"] .sk-scene--hope {
+  /* 浅色（默认）：晨光暖白，前景深色文字依旧清晰 */
+  --sk-hope-sky-mid: rgba(255, 190, 150, 0.32);
+  --sk-hope-sky-deep: rgba(178, 46, 40, 0.34);
+  --sk-hope-sky-low: rgba(255, 148, 86, 0.42);
+  --sk-hope-dawn-core: rgba(255, 176, 110, 0.42);
+  --sk-hope-dawn-haze: rgba(255, 206, 168, 0.22);
+  --sk-hope-sun-core: #fff6e2;
+  --sk-hope-sun-gold: rgba(255, 186, 96, 0.95);
+  --sk-hope-sun-warm: rgba(255, 138, 72, 0.58);
+  --sk-hope-sun-halo: rgba(255, 126, 72, 0.3);
+  --sk-hope-horizon-glow: rgba(255, 150, 90, 0.62);
+  --sk-hope-horizon-line: rgba(255, 236, 202, 0.95);
+  --sk-hope-ember: rgba(226, 78, 22, 0.95);
+  --sk-hope-ember-glow: rgba(255, 88, 30, 0.5);
+  --sk-hope-scrim: rgba(255, 252, 247, 0.42);
+  --sk-hope-haze: rgba(255, 250, 244, 0.3);
+  --sk-hope-vignette: rgba(126, 30, 26, 0.14);
+  --sk-hope-ray-core: #ffeccc;
+  --sk-hope-ray-mid: #ffae66;
+  --sk-hope-ray-edge: #c2402c;
+  --sk-hope-rays-opacity: 0.92;
+  --sk-hope-glow-opacity: 0.95;
+  isolation: isolate;
+}
+
+html[data-sk-palette="hope"] body[data-ds-dark-theme] .sk-scene--hope,
+html[data-sk-palette="hope"][data-ds-dark-theme] body .sk-scene--hope {
+  /* 深色：黎明前最深的一刻，暗红天光配金色边缘 */
+  --sk-hope-sky-mid: rgba(112, 24, 24, 0.4);
+  --sk-hope-sky-deep: rgba(58, 9, 14, 0.68);
+  --sk-hope-sky-low: rgba(176, 44, 30, 0.42);
+  --sk-hope-dawn-core: rgba(204, 66, 36, 0.36);
+  --sk-hope-dawn-haze: rgba(96, 18, 20, 0.3);
+  --sk-hope-sun-core: #ffecc8;
+  --sk-hope-sun-gold: rgba(255, 174, 86, 0.92);
+  --sk-hope-sun-warm: rgba(224, 84, 42, 0.62);
+  --sk-hope-sun-halo: rgba(164, 38, 28, 0.44);
+  --sk-hope-horizon-glow: rgba(255, 108, 52, 0.5);
+  --sk-hope-horizon-line: rgba(255, 196, 128, 0.72);
+  --sk-hope-ember: rgba(255, 174, 92, 1);
+  --sk-hope-ember-glow: rgba(255, 118, 46, 0.52);
+  --sk-hope-scrim: rgba(10, 6, 7, 0.46);
+  --sk-hope-haze: rgba(12, 7, 8, 0.38);
+  --sk-hope-vignette: rgba(0, 0, 0, 0.34);
+  --sk-hope-ray-core: #ffe6ba;
+  --sk-hope-ray-mid: #ff9c56;
+  --sk-hope-ray-edge: #9e2a1c;
+  --sk-hope-rays-opacity: 0.82;
+  --sk-hope-glow-opacity: 0.9;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope > * {
+  position: absolute;
+  pointer-events: none;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sky,
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-dawn,
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-rays,
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-horizon,
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-embers,
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-scrim {
+  inset: 0;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sky {
+  background:
+    radial-gradient(118% 68% at 50% 112%, var(--sk-hope-sky-low) 0%, transparent 64%),
+    linear-gradient(180deg, transparent 0%, var(--sk-hope-sky-mid) 52%, var(--sk-hope-sky-deep) 100%);
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-dawn {
+  background:
+    radial-gradient(92% 58% at 50% 104%, var(--sk-hope-dawn-core) 0%, transparent 66%),
+    linear-gradient(180deg, transparent 42%, var(--sk-hope-dawn-haze) 100%);
+  opacity: 0.7;
+  animation: sk-hope-dawn 36s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-rays {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  opacity: var(--sk-hope-rays-opacity);
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-beams {
+  transform-box: view-box;
+  transform-origin: 50% 80%;
+  animation: sk-hope-beams 44s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-ray-stop-core {
+  stop-color: var(--sk-hope-ray-core);
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-ray-stop-mid {
+  stop-color: var(--sk-hope-ray-mid);
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-ray-stop-edge {
+  stop-color: var(--sk-hope-ray-edge);
+}
+
+/* 太阳：光晕半径与日出方向一致，圆心正好坐在地平线上（bottom: 20%）。 */
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sun {
+  left: 50%;
+  bottom: 20%;
+  width: min(34%, 360px, 54vh);
+  aspect-ratio: 1;
+  transform: translate3d(-50%, 50%, 0);
+  animation: sk-hope-sun-rise 30s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sun-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--sk-hope-sun-core) 0%,
+    var(--sk-hope-sun-gold) 7%,
+    var(--sk-hope-sun-warm) 20%,
+    var(--sk-hope-sun-halo) 48%,
+    transparent 72%
+  );
+  opacity: var(--sk-hope-glow-opacity);
+  animation: sk-hope-sun-glow 9s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sun-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 21%;
+  aspect-ratio: 1;
+  transform: translate3d(-50%, -50%, 0);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--sk-hope-sun-core) 0%,
+    var(--sk-hope-sun-core) 38%,
+    var(--sk-hope-sun-gold) 72%,
+    transparent 100%
+  );
+  box-shadow: 0 0 34px 10px var(--sk-hope-sun-halo);
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-horizon-glow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46%;
+  background: radial-gradient(56% 108% at 50% 100%, var(--sk-hope-horizon-glow) 0%, transparent 70%);
+  animation: sk-hope-horizon 13s ease-in-out infinite alternate;
+  will-change: opacity, transform;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-horizon-line {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  bottom: 20%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--sk-hope-horizon-line) 26%,
+    var(--sk-hope-horizon-line) 74%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px 1px var(--sk-hope-horizon-glow);
+  opacity: 0.72;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-embers {
+  overflow: hidden;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-ember {
+  position: absolute;
+  left: var(--sk-hope-ember-x, 50%);
+  bottom: var(--sk-hope-ember-y, 14%);
+  width: var(--sk-hope-ember-size, 2px);
+  height: var(--sk-hope-ember-size, 2px);
+  border-radius: 50%;
+  background: var(--sk-hope-ember);
+  box-shadow: 0 0 6px 1px var(--sk-hope-ember-glow);
+  opacity: var(--sk-hope-ember-peak, 0.6);
+  animation-name: sk-hope-ember-rise;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-scrim {
+  background:
+    radial-gradient(130% 100% at 50% 50%, transparent 56%, var(--sk-hope-vignette) 100%),
+    linear-gradient(180deg, var(--sk-hope-haze) 0%, transparent 34%),
+    radial-gradient(56% 52% at 50% 38%, var(--sk-hope-scrim) 0%, transparent 74%);
+}
+
+/* 卡片缩略图：更小的太阳、更少的粒子与光晕；场景本身仍由 JS 精简。 */
+html[data-sk-palette="hope"] .sk-scene--hope[data-sk-compact="true"] .sk-hope-sun {
+  width: min(52%, 190px);
+  bottom: 19%;
+  animation-duration: 34s;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope[data-sk-compact="true"] .sk-hope-horizon-line {
+  left: 2%;
+  right: 2%;
+  opacity: 0.6;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope[data-sk-compact="true"] .sk-hope-scrim {
+  opacity: 0.62;
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope[data-sk-compact="true"] .sk-hope-rays {
+  opacity: calc(var(--sk-hope-rays-opacity) * 0.85);
+}
+
+html[data-sk-palette="hope"] .sk-scene--hope[data-sk-compact="true"] .sk-hope-ember {
+  box-shadow: 0 0 4px var(--sk-hope-ember-glow);
+}
+
+@keyframes sk-hope-dawn {
+  from {
+    transform: translate3d(0, 1.4%, 0) scale(1.01);
+    opacity: 0.42;
+  }
+  to {
+    transform: translate3d(0, -1.2%, 0) scale(1.04);
+    opacity: 0.82;
+  }
+}
+
+@keyframes sk-hope-beams {
+  from {
+    transform: rotate(-2.1deg);
+    opacity: 0.7;
+  }
+  to {
+    transform: rotate(2.1deg);
+    opacity: 1;
+  }
+}
+
+@keyframes sk-hope-sun-rise {
+  from {
+    transform: translate3d(-50%, 50%, 0);
+  }
+  to {
+    transform: translate3d(-50%, 46%, 0);
+  }
+}
+
+@keyframes sk-hope-sun-glow {
+  from {
+    transform: scale(0.97);
+    opacity: calc(var(--sk-hope-glow-opacity) * 0.82);
+  }
+  to {
+    transform: scale(1.05);
+    opacity: var(--sk-hope-glow-opacity);
+  }
+}
+
+@keyframes sk-hope-horizon {
+  from {
+    transform: scaleX(0.98);
+    opacity: 0.72;
+  }
+  to {
+    transform: scaleX(1.03);
+    opacity: 1;
+  }
+}
+
+@keyframes sk-hope-ember-rise {
+  0% {
+    transform: translate3d(0, 10px, 0) scale(0.55);
+    opacity: 0;
+  }
+  9% {
+    opacity: var(--sk-hope-ember-peak, 0.6);
+  }
+  58% {
+    opacity: calc(var(--sk-hope-ember-peak, 0.6) * 0.68);
+  }
+  100% {
+    transform: translate3d(var(--sk-hope-ember-drift, 16px), calc(var(--sk-hope-ember-rise, 150px) * -1), 0) scale(1.08);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-sk-palette="hope"] .sk-scene--hope,
+  html[data-sk-palette="hope"] .sk-scene--hope *,
+  html[data-sk-palette="hope"] .sk-scene--hope *::before,
+  html[data-sk-palette="hope"] .sk-scene--hope *::after {
+    animation: none !important;
+    transition: none !important;
+    will-change: auto !important;
+  }
+
+  html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sun {
+    transform: translate3d(-50%, 47%, 0);
+  }
+
+  html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-horizon-glow {
+    opacity: 0.9;
+    transform: none;
+  }
+
+  html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-ember {
+    opacity: var(--sk-hope-ember-peak, 0.55);
+  }
+}

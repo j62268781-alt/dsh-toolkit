@@ -20,7 +20,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 
-const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'))
+const manifest = JSON.parse(await readFile(new URL('../../packages/judgment/package.json', import.meta.url), 'utf8'))
 const runtimeDependencies = { ...manifest.dependencies, ...manifest.peerDependencies }
 
 /** 精确版本：可选 `v` 前缀 + 纯 semver（含 prerelease），不含任何区间运算符。 */

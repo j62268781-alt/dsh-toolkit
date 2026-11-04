@@ -23,7 +23,7 @@ async function walk(directory) {
   return files.sort()
 }
 
-export async function buildHost({ check = false } = {}) {
+export async function collectHostOutputs() {
   const outputs = new Map()
   const configPath = join(ROOT, 'tsconfig.json')
   const loaded = ts.readConfigFile(configPath, ts.sys.readFile)
@@ -47,6 +47,11 @@ export async function buildHost({ check = false } = {}) {
     }
   }
 
+  return outputs
+}
+
+export async function buildHost({ check = false } = {}) {
+  const outputs = await collectHostOutputs()
   // Catch removed/renamed sources rather than silently shipping stale host modules.
   for (const path of await walk(join(ROOT, 'lib'))) {
     const local = toSlash(relative(join(ROOT, 'lib'), path))
@@ -64,6 +69,7 @@ export async function buildHost({ check = false } = {}) {
     }
   }
   console.log(`Host ${check ? 'checked' : 'built'}: ${outputs.size} files, unbundled services and runtime assets`)
+  return outputs
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

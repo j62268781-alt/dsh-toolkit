@@ -1,5 +1,18 @@
-# Keep the profile row id so existing module settings remain attached.
-# Each host/client module retains its own service requirements.
+# One bundle, eight independently managed component package identities.
 - insert:
-    - id: shell-kit
-      name: dsh-toolkit
+    - id: dsh-toolkit-boot
+      name: dsh-toolkit-boot
+    - id: dsh-toolkit-theme
+      name: dsh-toolkit-theme
+    - id: dsh-toolkit-archived
+      name: dsh-toolkit-archived
+    - id: dsh-toolkit-browser
+      name: dsh-toolkit-browser
+    - id: dsh-toolkit-judgment
+      name: dsh-toolkit-judgment
+    - id: dsh-toolkit-mobile
+      name: dsh-toolkit-mobile
+    - id: dsh-toolkit-skills-mcp
+      name: dsh-toolkit-skills-mcp
+    - id: dsh-toolkit-notification
+      name: dsh-toolkit-notification

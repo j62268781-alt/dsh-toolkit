@@ -103,6 +103,18 @@ test('root schema preserves module defaults and existing volatile boundaries', (
   assert.equal(isVolatile(config.mobile), false)
   assert.equal(config.mobile.enabled, false)
   assert.equal(config.mobile.routePrefix, '/custom-mobile')
+  assert.equal(isVolatile(config.boot), false)
+  for (const field of ['animation', 'durationMs', 'theme', 'showWordmark', 'allowSkip']) {
+    assert.equal(isVolatile(config.boot[field]), true, `boot.${field} must stay volatile`)
+  }
+  assert.equal(config.boot.animation.get(), 'draw')
+  assert.equal(config.boot.durationMs.get(), 2400)
+  assert.equal(config.boot.theme.get(), 'auto')
+  assert.equal(config.boot.showWordmark.get(), true)
+  assert.equal(config.boot.allowSkip.get(), true)
+  assert.equal(isVolatile(config.theme), false)
+  assert.equal(isVolatile(config.theme.palette), true)
+  assert.equal(config.theme.palette.get(), 'codex')
   // Every writable notification leaf stays volatile, including the global sound.
   // Its host child serves the authenticated system sound catalogue.
   assert.equal(isVolatile(config.notification), false)
@@ -184,6 +196,9 @@ test('boot injects its assets without sessions and unregisters with the root', a
   await ctx.emit('webserver/index-inject', table)
   assert.deepEqual(table.map(({ kind }) => kind), ['style', 'html', 'script'])
   assert.match(table[1].html, /sk-boot/)
+  assert.match(table[1].html, /data-sk-animation="draw"/)
+  assert.match(table[1].html, /data-sk-duration="2400"/)
+  assert.match(table[0].text, /data-sk-animation="abyss"/)
   assert.match(table[2].text, /MIN_SHOW\s*=\s*1700/)
   assert.equal(table.some(({ text }) => text?.includes('window.__SK_HOST =')), false)
   await fiber.dispose()

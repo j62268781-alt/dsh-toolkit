@@ -58,7 +58,12 @@ export function installSettingsActions(panel) {
   window.addEventListener('keydown', onKey, true);
   return {
     sync() {
-      const nextOwner = panel.querySelector('[class*="_content"] > [class*="_header"] > [class*="_actions"] [class*="_2zt9ba_action"]');
+      // Build-specific hashes change between releases; find the header action
+      // seat structurally and take the contribution that owns a button.
+      const actions = panel.querySelector(':scope > [class*="_content"] > [class*="_header"] > [class*="_actions"]');
+      const nextOwner = [...(actions?.children ?? [])].find((child) => child.querySelector('button'))
+        ?? actions?.firstElementChild
+        ?? null;
       if (owner !== nextOwner) owner?.removeAttribute('data-sk-config-original');
       owner = nextOwner;
       original = owner?.querySelector('button') ?? null;

@@ -3,11 +3,10 @@ import { createSettingsMotion } from './settings-motion.js';
 import { installSettingsActions } from './settings-actions.js';
 
 const PANEL = '[data-shortcut-modal="settings"]';
-const NAV = '[class*="_77Pn0W_nav"]';
 const NAV_LIST = '[class*="_navList"]';
 const NAV_CELL = '[class*="_navCell"]';
 const GROUPS = [
-  { title: "基础设置", ids: ["account", "general", "notification"] },
+  { title: "基础设置", ids: ["theme", "boot", "account", "general", "notification"] },
   { title: "模型与 Agent", ids: ["models", "agent-presets", "judgment"] },
   { title: "工具与扩展", ids: ["skills-mcp", "browser", "plugins"] },
   { title: "会话与数据", ids: ["archived-chats"] },
@@ -173,6 +172,7 @@ function installGroupedMenu(ctx, nav, input) {
 
 export function installSettingsNav(ctx = {}) {
   let panel = null;
+  let overlay = null;
   let block = null;
   let back = null;
   let grouped = null;
@@ -182,19 +182,24 @@ export function installSettingsNav(ctx = {}) {
     actions?.dispose();
     grouped?.dispose();
     panel?.removeAttribute("data-sk-settings-toolbar");
+    overlay?.removeAttribute("data-sk-settings-overlay");
     block?.remove();
     back?.remove();
-    panel = block = back = grouped = actions = null;
+    panel = overlay = block = back = grouped = actions = null;
   };
   const scan = () => {
     const next = document.querySelector(PANEL);
     if (panel && !panel.isConnected) motion.leave(panel);
     if (!next) { if (panel) teardown(); return; }
+    // Class hashes are build-specific; the native nav is the panel's direct
+    // child, which is stable across releases and platforms.
+    const nav = [...next.children].find((child) => child.localName === "nav") ?? null;
+    if (!nav) return;
     if (panel !== next || !block?.isConnected || !back?.isConnected) {
       teardown();
-      const nav = next.querySelector(NAV);
-      if (!nav) return;
       panel = next;
+      overlay = next.closest('[role="presentation"]') ?? next.parentElement;
+      overlay?.setAttribute("data-sk-settings-overlay", "");
       block = buildBlock(() => grouped?.sync());
       back = buildBackButton();
       nav.prepend(block);

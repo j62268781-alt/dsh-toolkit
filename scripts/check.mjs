@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process'
 import { readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Script } from 'node:vm'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const run = (args) => {
@@ -27,8 +27,26 @@ const toolkit = await import('../index.js')
 assert.equal(manifest.name, 'dsh-toolkit')
 assert.equal(toolkit.name, manifest.name)
 assert.equal(typeof toolkit.apply, 'function')
-assert.equal(typeof toolkit.Config, 'function')
 assert.deepEqual(toolkit.inject, [])
+assert.equal(manifest.dsh?.client, undefined, 'the aggregate package must not mount a duplicate client bundle')
+
+const moduleNames = ['boot', 'theme', 'archived', 'browser', 'judgment', 'mobile', 'skills-mcp', 'notification']
+for (const name of moduleNames) {
+  const moduleRoot = join(root, 'packages', name)
+  const packageManifest = JSON.parse(await readFile(join(moduleRoot, 'package.json'), 'utf8'))
+  assert.equal(packageManifest.name, `dsh-toolkit-${name}`)
+  assert.equal(packageManifest.dsh?.bundle?.patch, './cordis.patch.yml')
+  const plugin = await import(pathToFileURL(join(moduleRoot, 'index.js')).href)
+  const hostEntry = plugin.default
+  assert.ok(typeof hostEntry === 'function' || typeof hostEntry?.apply === 'function', `${name} must export a Cordis plugin`)
+  assert.equal(packageManifest.dsh?.client?.platform, 'web')
+  assert.ok(packageManifest.dsh?.client?.inject?.length > 0)
+  const built = await readFile(join(moduleRoot, 'lib', 'client.js'), 'utf8')
+  assert.match(built, new RegExp(`id: "dsh-toolkit-${name}"`))
+  new Script(built, { filename: `packages/${name}/lib/client.js` })
+}
+const aggregateDeps = manifest.dependencies ?? {}
+for (const name of moduleNames) assert.equal(aggregateDeps[`dsh-toolkit-${name}`], 'workspace:^')
 
 const client = await readFile(join(root, 'lib/client.js'), 'utf8')
 new Script(client, { filename: 'lib/client.js' })

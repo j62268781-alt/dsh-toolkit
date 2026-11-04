@@ -1,0 +1,7 @@
+# 决策服务
+
+结构化模型决策、连接配置与额度管理。
+
+包名：`dsh-toolkit-judgment`。可由 dsh-toolkit 聚合安装，也可单独作为 DSH bundle 安装。
+
+源码集中在仓库的 src/modules/judgment；公共 Host/Client 工具集中在 src/host 与 src/client。请在仓库根目录运行 pnpm build，不要编辑本包的 lib 或 skills 构建产物。

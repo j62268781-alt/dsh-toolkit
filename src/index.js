@@ -15,11 +15,12 @@ export const inject = []
 const Browser = configuredService(AgentBrowserService)
 const Judgment = configuredService(JudgmentService)
 const SkillsMcp = configuredPlugin(skillsMcp)
+const Boot = configuredPlugin(boot)
 
 export function apply(ctx, config) {
   // Each child retains its own inject requirements; one unavailable service
   // must not stop unrelated panels and tools from loading.
-  ctx.plugin(boot, config.boot)
+  ctx.plugin(Boot, config.boot)
   ctx.plugin(archived, config.archived)
   ctx.plugin(Judgment, config.judgement)
   ctx.plugin(mobile, config.mobile)

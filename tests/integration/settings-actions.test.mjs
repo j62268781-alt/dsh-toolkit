@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom';
 import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.js';
 
 test('titlebar config menu forwards native action, tracks availability, errors and Escape', async (t) => {
-  const dom = new JSDOM(`<div data-shortcut-modal="settings"><nav class="_77Pn0W_nav"><div class="_77Pn0W_navList"></div></nav><div class="_77Pn0W_content"><div class="_77Pn0W_header"><div class="_77Pn0W_actions"><div class="_2zt9ba_action"><button>打开配置文件</button></div></div></div></div></div>`);
+  const dom = new JSDOM(`<div data-shortcut-modal="settings"><nav class="_AnXs9G_nav"><div class="_AnXs9G_navList"></div></nav><div class="_AnXs9G_content"><div class="_AnXs9G_header"><div class="_AnXs9G_actions"><div class="_yHUiNq_action"><button>打开配置文件</button></div></div></div></div></div>`);
   const originals = new Map();
   for (const name of ['window','document','MutationObserver','KeyboardEvent']) {
     originals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
@@ -14,7 +14,7 @@ test('titlebar config menu forwards native action, tracks availability, errors a
   t.after(() => {dispose();dom.window.close();for(const [name,descriptor] of originals){if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globalThis[name];}});
   const flush = async () => { await new Promise(resolve => setTimeout(resolve,0)); };
   const doc = dom.window.document;
-  const original = doc.querySelector('._2zt9ba_action button');
+  const original = doc.querySelector('._yHUiNq_action button');
   const owner = original.parentElement;
   const more = doc.querySelector('.sk-setnav__more');
   const menu = doc.querySelector('.sk-setnav__actions');
@@ -46,7 +46,7 @@ test('titlebar config menu forwards native action, tracks availability, errors a
   assert.equal(closes,1,'a subsequent Escape reaches native settings');
   owner.remove();await flush();
   assert.equal(more.hidden,true,'unavailable document has no titlebar action');
-  doc.querySelector('._77Pn0W_actions').append(owner);await flush();
+  doc.querySelector('._AnXs9G_actions').append(owner);await flush();
   assert.equal(more.hidden,false);
   dispose();
   assert.equal(doc.querySelector('.sk-setnav__more'),null);

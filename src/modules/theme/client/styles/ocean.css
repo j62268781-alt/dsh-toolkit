@@ -1,0 +1,530 @@
+/* 大海蓝鲸 · ocean palette scene
+ *
+ * Every rule is scoped to html[data-sk-palette="ocean"] so no other theme or the
+ * global shell is affected. The scene root geometry comes from theme-center.css;
+ * this file only paints the layers inside it. Motion is transform/opacity only and
+ * stops entirely under prefers-reduced-motion.
+ */
+
+html[data-sk-palette="ocean"] .sk-scene--ocean {
+  /* light: airy sky over a pale sea, dark ink text stays readable */
+  --sk-ocean-sky-1: #f6fbff;
+  --sk-ocean-sky-2: #e3f3fe;
+  --sk-ocean-sky-3: #c8e6f7;
+  --sk-ocean-haze: rgba(255, 255, 255, 0.72);
+  --sk-ocean-horizon: rgba(255, 255, 255, 0.66);
+  --sk-ocean-cloud: rgba(255, 255, 255, 0.86);
+  --sk-ocean-glow-a: rgba(132, 204, 240, 0.5);
+  --sk-ocean-glow-b: rgba(96, 176, 226, 0.34);
+  --sk-ocean-beam: rgba(255, 255, 255, 0.78);
+  --sk-ocean-star: #5d9cc4;
+  --sk-ocean-wave-1: rgba(168, 214, 238, 0.92);
+  --sk-ocean-wave-2: rgba(128, 193, 227, 0.9);
+  --sk-ocean-wave-3: rgba(92, 168, 214, 0.86);
+  --sk-ocean-wave-crest: rgba(255, 255, 255, 0.65);
+  --sk-ocean-splash: rgba(255, 255, 255, 0.85);
+  --sk-ocean-bubble: rgba(255, 255, 255, 0.72);
+  --sk-ocean-whale-ink: #062337;
+  --sk-ocean-spout: rgba(86, 150, 190, 0.5);
+  --sk-ocean-whale-shadow: rgba(23, 84, 128, 0.22);
+  --sk-ocean-whale-opacity: 0.92;
+  --sk-ocean-scrim: rgba(255, 255, 255, 0.6);
+
+  isolation: isolate;
+}
+
+html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean {
+  /* dark: moonlit deep sea, cool highlights keep light text readable */
+  --sk-ocean-sky-1: #04121f;
+  --sk-ocean-sky-2: #071e31;
+  --sk-ocean-sky-3: #0a2b43;
+  --sk-ocean-haze: rgba(8, 30, 48, 0.7);
+  --sk-ocean-horizon: rgba(74, 150, 196, 0.2);
+  --sk-ocean-cloud: rgba(126, 182, 218, 0.09);
+  --sk-ocean-glow-a: rgba(46, 132, 184, 0.3);
+  --sk-ocean-glow-b: rgba(88, 168, 214, 0.2);
+  --sk-ocean-beam: rgba(150, 214, 250, 0.16);
+  --sk-ocean-star: #b9dcf2;
+  --sk-ocean-wave-1: rgba(15, 54, 82, 0.94);
+  --sk-ocean-wave-2: rgba(11, 41, 64, 0.94);
+  --sk-ocean-wave-3: rgba(7, 29, 46, 0.96);
+  --sk-ocean-wave-crest: rgba(126, 196, 236, 0.36);
+  --sk-ocean-splash: rgba(186, 228, 250, 0.55);
+  --sk-ocean-bubble: rgba(176, 222, 248, 0.42);
+  --sk-ocean-whale-ink: #021019;
+  --sk-ocean-spout: rgba(178, 224, 250, 0.62);
+  --sk-ocean-whale-shadow: rgba(0, 0, 0, 0.45);
+  --sk-ocean-whale-opacity: 0.88;
+  --sk-ocean-scrim: rgba(3, 16, 28, 0.5);
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean > * {
+  position: absolute;
+  pointer-events: none;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky,
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-beams,
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-stars,
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-bubbles,
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-scrim {
+  inset: 0;
+}
+
+/* ── sky ─────────────────────────────────────────────────────────────── */
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky {
+  background:
+    radial-gradient(120% 62% at 50% 0%, var(--sk-ocean-sky-1) 0%, transparent 72%),
+    radial-gradient(90% 40% at 50% 76%, var(--sk-ocean-horizon) 0%, transparent 74%),
+    linear-gradient(
+      180deg,
+      var(--sk-ocean-sky-1) 0%,
+      var(--sk-ocean-sky-2) 46%,
+      var(--sk-ocean-sky-3) 82%,
+      var(--sk-ocean-sky-3) 100%
+    );
+  animation: sk-ocean-sky-breathe 26s ease-in-out infinite;
+  overflow: hidden;
+}
+
+/* soft drifting cloud banks: one above the horizon, one hugging the sea line */
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky::before,
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--sk-ocean-cloud) 0%, transparent 100%);
+  filter: blur(22px);
+  will-change: transform;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky::before {
+  left: -14%;
+  top: 8%;
+  width: 62%;
+  height: 30%;
+  animation: sk-ocean-cloud-drift 54s ease-in-out infinite;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky::after {
+  right: -18%;
+  top: 40%;
+  width: 56%;
+  height: 24%;
+  animation: sk-ocean-cloud-drift 68s ease-in-out infinite reverse;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(28px);
+  will-change: transform, opacity;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky-glow--left {
+  left: -12%;
+  top: -26%;
+  width: 68%;
+  height: 86%;
+  background: radial-gradient(closest-side, var(--sk-ocean-glow-a) 0%, transparent 100%);
+  animation: sk-ocean-glow-drift 34s ease-in-out infinite;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky-glow--right {
+  right: -18%;
+  top: -14%;
+  width: 62%;
+  height: 74%;
+  background: radial-gradient(closest-side, var(--sk-ocean-glow-b) 0%, transparent 100%);
+  animation: sk-ocean-glow-drift 42s ease-in-out infinite reverse;
+}
+
+/* ── light shafts ────────────────────────────────────────────────────── */
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-beam {
+  position: absolute;
+  top: -30%;
+  height: 150%;
+  width: 13%;
+  background: linear-gradient(
+    180deg,
+    var(--sk-ocean-beam) 0%,
+    color-mix(in srgb, var(--sk-ocean-beam) 45%, transparent) 45%,
+    transparent 78%
+  );
+  filter: blur(22px);
+  transform-origin: 50% 0%;
+  opacity: 0.55;
+  will-change: transform, opacity;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-beam--1 {
+  left: 6%;
+  transform: rotate(15deg);
+  animation: sk-ocean-beam-sway 22s ease-in-out infinite;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-beam--2 {
+  left: 38%;
+  width: 9%;
+  transform: rotate(9deg);
+  opacity: 0.35;
+  animation: sk-ocean-beam-sway 27s ease-in-out infinite;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-beam--3 {
+  right: 8%;
+  width: 15%;
+  transform: rotate(-13deg);
+  opacity: 0.4;
+  animation: sk-ocean-beam-sway 31s ease-in-out infinite reverse;
+}
+
+/* ── stars ───────────────────────────────────────────────────────────── */
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-star {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--sk-ocean-star);
+  box-shadow: 0 0 6px var(--sk-ocean-star);
+  animation-name: sk-ocean-star-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: opacity;
+}
+
+/* ── whale ───────────────────────────────────────────────────────────── */
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale {
+  position: absolute;
+  right: 2%;
+  bottom: 12%;
+  width: clamp(200px, 30vw, 440px);
+  aspect-ratio: 320 / 220;
+  opacity: var(--sk-ocean-whale-opacity);
+  filter: drop-shadow(0 24px 40px var(--sk-ocean-whale-shadow));
+  transform-origin: 90% 90%;
+  animation: sk-ocean-whale-breach 18s ease-in-out infinite;
+  will-change: transform;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale-eye {
+  fill: var(--sk-ocean-whale-ink);
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale-mouth {
+  stroke: var(--sk-ocean-whale-ink);
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale-spout {
+  stroke: var(--sk-ocean-spout);
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-body-top {
+  stop-color: #0b2e4c;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-body-mid {
+  stop-color: #1a5885;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-body-low {
+  stop-color: #569bc2;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-fin-top {
+  stop-color: #092640;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-fin-low {
+  stop-color: #1b5580;
+}
+
+
+html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean .sk-ocean-body-top {
+  stop-color: #2f6f96;
+}
+
+html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean .sk-ocean-body-mid {
+  stop-color: #57a6cf;
+}
+
+html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean .sk-ocean-body-low {
+  stop-color: #8fd2ef;
+}
+
+html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean .sk-ocean-fin-top {
+  stop-color: #2a6488;
+}
+
+html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean .sk-ocean-fin-low {
+  stop-color: #3a83ac;
+}
+
+/* ── splash rings ────────────────────────────────────────────────────── */
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-splash {
+  position: absolute;
+  right: 5%;
+  bottom: 8%;
+  width: clamp(150px, 22%, 320px);
+  aspect-ratio: 2.7 / 1;
+  opacity: 0.9;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-splash-ring {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid var(--sk-ocean-splash);
+  border-radius: 50%;
+  animation: sk-ocean-splash-ring 6.6s cubic-bezier(0.22, 0.61, 0.24, 1) infinite;
+  will-change: transform, opacity;
+}
+
+/* ── waves ───────────────────────────────────────────────────────────── */
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-waves {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(88px, 30%, 260px);
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 200%;
+  height: 100%;
+  will-change: transform;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--1 {
+  opacity: 0.75;
+  animation: sk-ocean-wave-drift 32s linear infinite;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--1 .sk-ocean-wave-path {
+  fill: var(--sk-ocean-wave-1);
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--2 {
+  opacity: 0.9;
+  animation: sk-ocean-wave-drift 24s linear infinite reverse;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--2 .sk-ocean-wave-path {
+  fill: var(--sk-ocean-wave-2);
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--3 {
+  opacity: 1;
+  animation: sk-ocean-wave-drift 18s linear infinite;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--3 .sk-ocean-wave-path {
+  fill: var(--sk-ocean-wave-3);
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave-path {
+  stroke: var(--sk-ocean-wave-crest);
+  stroke-width: 1;
+}
+
+/* ── bubbles ─────────────────────────────────────────────────────────── */
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-bubble {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid var(--sk-ocean-bubble);
+  background: color-mix(in srgb, var(--sk-ocean-bubble) 28%, transparent);
+  animation-name: sk-ocean-bubble-rise;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+/* ── scrim keeps hero text readable over the artwork ─────────────────── */
+
+html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-scrim {
+  background:
+    radial-gradient(58% 52% at 50% 42%, var(--sk-ocean-scrim) 0%, transparent 74%),
+    linear-gradient(180deg, transparent 52%, var(--sk-ocean-haze) 100%);
+  opacity: 0.85;
+}
+
+/* ── compact card preview ────────────────────────────────────────────── */
+
+html[data-sk-palette="ocean"] .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-whale {
+  right: 3%;
+  bottom: 14%;
+  width: 54%;
+  animation-duration: 22s;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-splash {
+  right: 6%;
+  bottom: 8%;
+  width: 44%;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-waves {
+  height: 38%;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-scrim {
+  opacity: 0.5;
+}
+
+html[data-sk-palette="ocean"] .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-beam {
+  filter: blur(14px);
+  opacity: 0.35;
+}
+
+/* ── motion ──────────────────────────────────────────────────────────── */
+
+@keyframes sk-ocean-sky-breathe {
+  0%,
+  100% {
+    opacity: 0.94;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes sk-ocean-cloud-drift {
+  0%,
+  100% {
+    transform: translate3d(-2%, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(4%, 2%, 0) scale(1.06);
+  }
+}
+
+@keyframes sk-ocean-glow-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.68;
+  }
+  50% {
+    transform: translate3d(3%, 2%, 0) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes sk-ocean-beam-sway {
+  0%,
+  100% {
+    transform: rotate(9deg) translate3d(-2%, 0, 0) scaleY(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: rotate(13deg) translate3d(2%, 0, 0) scaleY(1.06);
+    opacity: 0.7;
+  }
+}
+
+@keyframes sk-ocean-star-twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes sk-ocean-whale-breach {
+  0%,
+  100% {
+    transform: translate3d(0, 2.4%, 0) rotate(23deg) scale(0.985);
+  }
+  44% {
+    transform: translate3d(0, -3.4%, 0) rotate(29deg) scale(1.012);
+  }
+  68% {
+    transform: translate3d(0, -1.2%, 0) rotate(26deg) scale(1.004);
+  }
+}
+
+@keyframes sk-ocean-splash-ring {
+  0% {
+    transform: scale(0.22);
+    opacity: 0;
+  }
+  16% {
+    opacity: 0.7;
+  }
+  70% {
+    opacity: 0.24;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+@keyframes sk-ocean-wave-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes sk-ocean-bubble-rise {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.7);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.7;
+  }
+  70% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate3d(6px, -160px, 0) scale(1.05);
+    opacity: 0;
+  }
+}
+
+/* Busy frames are wasted work for a decorative layer; reduced motion freezes it. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-sk-palette="ocean"] .sk-scene--ocean,
+  html[data-sk-palette="ocean"] .sk-scene--ocean *,
+  html[data-sk-palette="ocean"] .sk-scene--ocean *::before,
+  html[data-sk-palette="ocean"] .sk-scene--ocean *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-splash {
+    opacity: 0.35;
+  }
+
+  html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale {
+    transform: rotate(26deg);
+  }
+}

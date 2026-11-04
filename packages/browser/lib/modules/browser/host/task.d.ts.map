@@ -1,0 +1,1 @@
+{"version":3,"file":"task.d.ts","sources":["toolkit:///src/modules/browser/host/task.ts"],"names":[],"mappings":"AAAA;;GAEG;AAEH,cAAc,iBAAiB,CAAA","sourcesContent":["/**\n * `src/task.ts`：向后兼容入口，实际实现按职责拆分在 `./task/` 目录下。\n */\n\nexport * from './task/index.js'\n"]}

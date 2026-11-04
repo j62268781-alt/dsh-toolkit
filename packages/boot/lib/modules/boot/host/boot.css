@@ -1,0 +1,125 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   dsh-shell-kit · 启动画面（boot）
+
+   这一段由 Host 半个插件注入到 index.html 的 <head>，在 React 挂载之前
+   就已经生效，所以它必须：只用 CSS、只用内联 SVG、不依赖任何运行时。
+
+   颜色取自主题注入的 --dsh-boot-bg 与 body[data-ds-dark-theme]，这两样
+   在 ui-theme 的 boot 注入里已经设好，早于本样式表读取。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+body {
+  --sk-ink: #0f1115;
+  --sk-ink-2: #61666b;
+  --sk-grid: rgba(15, 17, 21, .05);
+}
+
+body[data-ds-dark-theme] {
+  --sk-ink: #f9fafb;
+  --sk-ink-2: #cfd3d6;
+  --sk-grid: rgba(249, 250, 251, .045);
+}
+
+/* 自带的 loading 卡片让位：它仍是"应用是否挂载完成"的信号，只是不显示 */
+[data-dsh-boot] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 万一 6 秒内应用没起来，把自带 loading 卡片还回去（本插件只负责好看，不劫持失败态） */
+html[data-sk-boot-bailed] [data-dsh-boot] {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.sk-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: grid;
+  place-items: center;
+  background: var(--dsh-boot-bg, #ffffff);
+  transition: opacity 280ms ease-in;
+  will-change: opacity;
+}
+
+.sk-boot[data-sk-leaving] { opacity: 0; }
+
+.sk-boot__grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--sk-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0;
+  animation: sk-grid-in 900ms ease-out 40ms both;
+  -webkit-mask-image: radial-gradient(58% 58% at 50% 50%, #000 20%, transparent 76%);
+          mask-image: radial-gradient(58% 58% at 50% 50%, #000 20%, transparent 76%);
+}
+
+.sk-boot__lockup {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.sk-boot__mark {
+  width: 92px;
+  height: auto;
+  overflow: visible;
+  color: var(--sk-ink);
+}
+
+/* 第一笔：描边把鲸鱼轮廓画出来（pathLength=1，dash 进度与真实长度无关） */
+.sk-boot__trace {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: .44;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sk-trace 680ms cubic-bezier(.38, .12, .3, 1) 110ms both,
+             sk-trace-out 240ms ease-in 780ms both;
+}
+
+/* 第二笔：画完再填成实心 */
+.sk-boot__fill {
+  fill: currentColor;
+  opacity: 0;
+  animation: sk-fill-in 400ms ease-out 760ms both;
+}
+
+.sk-boot__wordmark {
+  font: 600 13px/1.2 -apple-system, "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+  letter-spacing: .3em;
+  text-indent: .3em;
+  color: var(--sk-ink);
+  white-space: nowrap;
+  opacity: 0;
+  animation: sk-wm-in 520ms cubic-bezier(.22, .61, .36, 1) 950ms both,
+             sk-wm-track 760ms cubic-bezier(.22, .61, .36, 1) 950ms both;
+}
+
+.sk-boot__wordmark b {
+  font-weight: 500;
+  color: var(--sk-ink-2);
+}
+
+@keyframes sk-grid-in { from { opacity: 0; transform: scale(1.02); } to { opacity: 1; transform: none; } }
+@keyframes sk-trace { to { stroke-dashoffset: 0; } }
+@keyframes sk-trace-out { to { opacity: 0; } }
+@keyframes sk-fill-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sk-wm-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes sk-wm-track { from { letter-spacing: .42em; } to { letter-spacing: .26em; } }
+/* 系统里关掉动效时，只留淡入淡出 */
+@media (prefers-reduced-motion: reduce) {
+  .sk-boot__grid,
+  .sk-boot__mark .sk-boot__trace,
+  .sk-boot__mark .sk-boot__fill,
+  .sk-boot__wordmark {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+}

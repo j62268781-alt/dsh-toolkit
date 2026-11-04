@@ -1,6 +1,9 @@
 # Keep installs and pre-script dependency checks on the same local store.
 storeDir: .cache/pnpm-store
 
+packages:
+  - packages/*
+
 # esbuild supplies the compiler used by the unified build.
 allowBuilds:
   esbuild: true

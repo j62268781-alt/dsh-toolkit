@@ -12,7 +12,7 @@ const FRAMES = [
 function page(t, { reducedMotion = false } = {}) {
   const dom = new JSDOM(`<html><body>
     <button id="settings-trigger">Open settings</button>
-    <div id="settings-overlay" class="_77Pn0W_overlay extra" role="presentation">
+    <div id="settings-overlay" class="_AnXs9G_overlay extra" role="presentation">
       <section id="settings-panel" data-shortcut-modal="settings" role="dialog" aria-modal="true">
         <label id="search-label" for="settings-search">Search settings</label>
         <input id="settings-search" aria-labelledby="search-label" value="Appearance">
@@ -50,7 +50,7 @@ function page(t, { reducedMotion = false } = {}) {
     return animation
   }
   const document = dom.window.document
-  const overlay = document.querySelector('._77Pn0W_overlay')
+  const overlay = document.querySelector('._AnXs9G_overlay')
   const panel = document.querySelector('[data-shortcut-modal="settings"]')
   const trigger = document.querySelector('#settings-trigger')
   const input = document.querySelector('#settings-search')

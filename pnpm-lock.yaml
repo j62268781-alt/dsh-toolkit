@@ -28,9 +28,30 @@ importers:
 
   .:
     dependencies:
-      yaml:
-        specifier: ^2.9.1
-        version: 2.9.1
+      dsh-toolkit-archived:
+        specifier: workspace:^
+        version: link:packages/archived
+      dsh-toolkit-boot:
+        specifier: workspace:^
+        version: link:packages/boot
+      dsh-toolkit-browser:
+        specifier: workspace:^
+        version: link:packages/browser
+      dsh-toolkit-judgment:
+        specifier: workspace:^
+        version: link:packages/judgment
+      dsh-toolkit-mobile:
+        specifier: workspace:^
+        version: link:packages/mobile
+      dsh-toolkit-notification:
+        specifier: workspace:^
+        version: link:packages/notification
+      dsh-toolkit-skills-mcp:
+        specifier: workspace:^
+        version: link:packages/skills-mcp
+      dsh-toolkit-theme:
+        specifier: workspace:^
+        version: link:packages/theme
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ^4.0.5
@@ -113,6 +134,79 @@ importers:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+
+  packages/archived: {}
+
+  packages/boot: {}
+
+  packages/browser:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: ^4.0.5
+        version: 4.0.5
+      '@deepseek-ai/dsh-tools':
+        specifier: 0.2.1-rc.1
+        version: 0.2.1-rc.1(c3b211c6f014171a83f9423fed3f65af)
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: 0.2.1-rc.1
+        version: 0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/schemastery':
+        specifier: ^3.18.5
+        version: 3.18.5
+
+  packages/judgment:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: ^4.0.5
+        version: 4.0.5
+      '@deepseek-ai/dsh-credentials':
+        specifier: 0.2.1-rc.1
+        version: 0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: 0.2.1-rc.1
+        version: 0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/schemastery':
+        specifier: ^3.18.5
+        version: 3.18.5
+
+  packages/mobile:
+    dependencies:
+      '@deepseek-ai/dsh-tools':
+        specifier: 0.2.1-rc.1
+        version: 0.2.1-rc.1(c3b211c6f014171a83f9423fed3f65af)
+
+  packages/notification:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ^3.18.5
+        version: 3.18.5
+
+  packages/skills-mcp:
+    dependencies:
+      '@deepseek-ai/dsh-atomic-write':
+        specifier: 0.2.1-rc.1
+        version: 0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-home-paths':
+        specifier: 0.2.1-rc.1
+        version: 0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)
+      '@deepseek-ai/dsh-mcp-client':
+        specifier: 0.2.1-rc.1
+        version: 0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-attachment@0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-brand@0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)))(@deepseek-ai/dsh-llm@0.2.1-rc.1(@deepseek-ai/cordis@4.0.5))(@deepseek-ai/dsh-scope@0.2.1-rc.1(@deepseek-ai/cordis@4.0.5))(@deepseek-ai/dsh-subprocess@0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-http-proxy@0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)))(@deepseek-ai/dsh-system-prompt@0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-llm@0.2.1-rc.1(@deepseek-ai/cordis@4.0.5))(@deepseek-ai/dsh-scope@0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)))(@deepseek-ai/dsh-timeout@0.2.1-rc.1(@deepseek-ai/cordis@4.0.5))(@deepseek-ai/dsh-tools@0.2.1-rc.1(c3b211c6f014171a83f9423fed3f65af))
+      '@deepseek-ai/schemastery':
+        specifier: ^3.18.5
+        version: 3.18.5
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+
+  packages/theme:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ^3.18.5
+        version: 3.18.5
 
 packages:
 

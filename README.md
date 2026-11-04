@@ -1,86 +1,64 @@
 # dsh-toolkit
 
-将启动画面、桌面主题、归档聊天管理、浏览器自动化、结构化判断、移动设备工具、Skills/MCP 管理与会话通知打包为一个 DSH 插件。源码位于 [src](<src/>)，内置技能文档位于 [skills](<skills/>)，`lib/` 是构建产物。会话通知模块的接口契约见 [docs/notification/README.md](<docs/notification/README.md>)。
+DSH 插件集合，提供一个聚合 bundle 和八个可单独启停的模块包。模块源码仍集中在 `src/modules`、`src/host`、`src/client`；根目录 `pnpm build` 会把各模块所需的 Host 依赖闭包、Client bundle 和运行资源生成到 `packages/*/lib`。无需拆 Git 仓库。
 
-## 构建与验证
+| 模块 | 独立包名 | Client |
+| --- | --- | --- |
+| 启动画面 | `dsh-toolkit-boot` | 有 |
+| 桌面主题 | `dsh-toolkit-theme` | 有 |
+| 归档管理 | `dsh-toolkit-archived` | 有 |
+| 浏览器自动化 | `dsh-toolkit-browser` | 有 |
+| 结构化判断 | `dsh-toolkit-judgment` | 有 |
+| 移动设备 | `dsh-toolkit-mobile` | 有 |
+| Skills / MCP | `dsh-toolkit-skills-mcp` | 有 |
+| 会话通知 | `dsh-toolkit-notification` | 有 |
 
-需要 Node.js `>=20` 和 pnpm `11.28.5`。DSH 核心包由宿主提供，声明为可选 peer；本地构建通过 devDependencies 安装，插件安装时不携带另一份核心：
+## 安装
+
+开发和本地使用时，在仓库根目录安装依赖并构建，然后把聚合包加入目标 profile：
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm verify
-```
-
-也可分别运行 `pnpm build`、`pnpm typecheck`、`pnpm check` 或 `pnpm test`。测试会跳过真实设备发现；真实 Skills/MCP patch 测试需显式设置 `SMP_REAL_PATCH`。Windows 上构建脚本与测试夹具都按本机路径分隔符工作，POSIX 与 Windows 各自跑自己适用的用例（Windows 没有 Unix domain socket，daemon RPC 用例在那里跳过，产品走 CLI 兜底）。
-
-## 安装到 DSH
-
-一个插件就是一个 profile bundle：profile 的 `dependencies` 链到本仓库，`dsh.profile.bundles` 登记包名。桌面版自带 `dsh` CLI，`dsh plugin` 直接转发给 profile 里的 pnpm：
-
-```sh
+pnpm install
+pnpm build
+# 在 DSH 环境中
 dsh plugin --profile desktop add D:/path/to/dsh-toolkit
 ```
 
-本地目录会装成 `link:` 依赖，CLI 同时把包名加进 `dsh.profile.bundles`。装完**重启 DSH 桌面应用**才生效：Host 插件在启动时挂载，客户端 bundle 的文件清单也在启动时登记，热更新不会重载已装插件。实测 `plugin_manager` 的 enable/disable 与 remove/install 只会改 profile 组合（`application: applied`），并不会让 `link:` 本地包里已进入 Node ESM 缓存的 Host 模块重新求值——改完 Host 半仍然需要重启一次。
+聚合 bundle 会声明全部八个模块，因此插件管理页面提供一个总开关和每个模块独立的 Host/Client 开关。只需要单个功能时，可将 `packages/<module>` 目录作为 DSH bundle 单独安装。修改源码后重新运行 `pnpm build`；Host ESM 改动仍需重启 DSH。不要编辑 `packages/*/lib` 构建产物。
 
-- bundle 入口：`package.json` 的 `dsh.bundle.patch`（`cordis.patch.yml`），补丁行沿用 `id: shell-kit`、`name: dsh-toolkit`；
-- 客户端入口：`dsh.client` 声明加 `exports["./client"]`（`lib/client.js`），loader 里注册的模块 id 必须等于包名 `dsh-toolkit`；
-- 本地开发改了 `src/` 先 `pnpm build` 再重启应用；`lib/` 是构建产物，不要手改。
+DSH 核心包只声明为可选 peer，由宿主提供；模块实际用到的 peer 按模块分别声明。Skills/MCP 额外使用普通运行依赖 `yaml`。
 
-## 配置
+## 旧配置迁移
 
-配置保留各功能模块原有命名空间。`shell` 仅为旧配置兼容，不再挂载旧模块。
+升级前先对目标 profile 的 `cordis.patch.yml` 生成预览：
 
-```yaml
-boot: {}
-theme: {}
-archived: {}
-browser: {}
-judgement: {}
-mobile: {}
-skillsMcp: {}
-notification:
-  enabled: true        # 通知总开关
-  soundEnabled: true   # 提示音开关
-  volume: 0.6          # 提示音音量 0..1
-  currentMode: hidden  # 当前会话提醒时机：hidden | unfocused | always
-  scope: main-wait     # 通知范围：all | main | main-wait
-  completedEnabled: true
-  completedSound: chime
-  failedEnabled: true
-  failedSound: fault
-  questionEnabled: true
-  questionSound: pop
-  permissionEnabled: true
-  permissionSound: alert
+```sh
+node scripts/migrate-config.mjs D:/path/to/profile/cordis.patch.yml
 ```
 
-模块独立声明 Host/Client 服务依赖。启动画面不依赖会话服务；主题使用布局服务；归档管理需要会话和工作区服务。客户端通过一个 `dsh-toolkit` loader 注册，各模块仍保持独立生命周期。会话通知是纯客户端模块（不新增 host 路由），但会读取宿主配置命名空间，所以 `dsh.client.inject` 额外登记了 `dsh-api-session-controller`、`dsh-client-ui-session`、`dsh-client-ui-workspace`、`dsh-client-ui-conversation`，确保它用到的 `ctx.sessions` / `uiSession` / `uiWorkspace` / `uiConversation` 服务在自身加载前已就位。
+检查输出后显式加 `--write` 才会写回。写入前会创建带时间戳和 UUID 的备份；该命令不会自动选择或修改当前 DSH profile。转换将旧聚合配置拆到模块包 ID，模块已有配置优先，并为八个模块显式保留旧总开关状态。旧 root 覆盖会保留并设为 disabled；因为新 bundle 不再插入旧 `shell-kit` 行，宿主可能对这条遗留覆盖报告 `entry not found`，不影响新模块行。冲突别名或不安全的 YAML 结构会拒绝自动迁移，需先手工处理。
 
-## 会话通知
+## 构建与验证
 
-「设置 → 通知」可以开关四类提醒——会话完成 / 会话失败 / 等待回答 / 需要授权。每种类型单独开关并可选择提示音（四种内置音效全部用 Web Audio 实时合成，不携带音频文件），另有音量滑块、三档「当前会话提醒时机」（仅后台 / 切到其他应用 / 始终）和三种「通知范围」（全部会话 / 只主会话 / 主会话等子会话跑完）。
+需要 Node.js `>=20` 和 pnpm `11.28.5`：
 
-系统通知的**标题是会话标题**、**正文是本轮最后一个回复的文本**（失败时是错误信息，待交互时是问题文本或工具名）；点击通知会调用 `ctx.uiWorkspace.openSession(sessionId)` 跳回对应会话，已归档的会话会先取消归档。rc.5 的桌面外壳没有「把窗口带到前台」的 IPC（`globalThis.dshDesktop` 只暴露 browser / deviceInfo / keyboard / shortcuts / updates），所以点击时只能尽力 `window.focus()`：Web 端由浏览器在点击通知时聚焦标签页，桌面端由平台的窗口激活行为处理。
+```sh
+pnpm install
+pnpm verify
+```
 
-偏好保存在 DSH 用户配置的 `notification` 命名空间里（每个可写字段都是 volatile 叶子），跨窗口、重启后仍在。设置页底部的「最近通知」列出本次运行已经发出的通知，标题/副标题就是通知实际的标题与正文，点击同样可以打开会话。行为契约见 [docs/notification/README.md](<docs/notification/README.md>)。
+`pnpm build:check` 检查根与各独立包的产物是否最新。`pnpm migrate:config <patch.yml>` 可运行迁移预览。测试会跳过真实设备发现；真实 Skills/MCP patch 测试需显式设置 `SMP_REAL_PATCH`。
 
-## HTTP 路由
+## 功能说明
 
-Host 路由通过 [共享注册入口](<src/host/routes.js>) 绑定模块生命周期。普通接口使用 `registerAuthenticatedRoute(ctx, route)`，由 DSH 的 `connection.requestRejection()` 校验身份和请求来源；OAuth 回调使用 `registerRoute(ctx, route)`，继续校验一次性 `state`。两者都接收 DSH 的 `{ kind, path, handler }` 路由定义，模块负责请求体、业务校验和响应。
-
-归档删除使用同源接口 `/_dsh/dsh-toolkit/archived/delete-session`，支持远程浏览器。Mobile 的面板及取流接口同样需要 DSH 鉴权，并保留网络围栏和设备令牌；设备切换后旧令牌失效。没有 Web 服务时，移动端工具仍可独立运行。
-
-## 异步操作
-
-共享工具负责配置写入回执、可替换读取的取消、非重叠轮询和 JSON 请求诊断。Host 侧的进程、期限、在途去重及串行队列保留模块各自的错误处理和刷新策略；写请求不会自动重试。客户端停止等待不代表远端写入已回滚。
-
-Judgment 的请求期限覆盖响应正文读取。每小时配额按滚动窗口计算，调用额度在读取凭据前预占；配置输入 token 配额的连接或用途会依次执行，待上一笔实际用量结算后再准入下一笔。单次请求仍可能超出剩余 token 额度，因为发包前无法获知实际用量。
-
-## 外部工具
-
+- 启动画面提供描摹、水面浮现与「深海跃迁」三种动画，可在设置中调整配色、最短展示时长、字标和跳过行为；右侧实时预览随草稿变化，使用与真实启动相同的 HTML/CSS（沙箱 iframe，不执行脚本）。
+- 主题中心（外观）同时列出 DSH 原生 Light / Dark / System、现有 Codex 风格，以及新增的「大海蓝鲸」「希望红」动态主题；原生明暗偏好照旧由 DSH 设置持久化，插件配色选择单独保存。
+- 「大海蓝鲸」「希望红」场景只显示在主会话的空白新会话中；已有会话、加载中的会话和侧栏嵌入会话不会显示，且尊重系统减少动态效果偏好。
+- 设置弹层（Codex 风格）改用结构选择器（`role="presentation"`、`data-shortcut-modal="settings"`、直接子级 `nav`），不再依赖构建期 CSS 模块类名；Windows 上按系统标题栏高度预留顶部拖拽带，并让返回/更多按钮避开右上角窗口按钮。
+- 通知模块含 Host 鉴权音效路由和 Client 设置/提醒，不是纯 Client 功能。
 - Browser 自动化需要 `agent-browser` CLI 与 Chrome/Chromium。
 - Mobile 需要 `mobilecli`；Android 还需要 `adb`，iOS 需要设备代理和授权。
-- Skills/MCP 使用 DSH 提供的 Loader/MCP 服务，以及目标运行时和技能目录权限。
+- Skills/MCP 使用 DSH Loader/MCP 服务以及目标运行时和技能目录权限。
+- Judgment 的类型契约从 `dsh-toolkit-judgment/contract` 导出。
 
-使用 `src/` 中的源码并通过构建更新 `lib/`；不要直接编辑构建产物。安装或替换 profile 插件前，应在目标 DSH 环境中检查旧插件重复挂载和配置迁移。补丁行沿用 `shell-kit` ID 以兼容既有 profile，插件名称为 `dsh-toolkit`。
+通知行为与 Host 路由契约见 [docs/notification/README.md](docs/notification/README.md)。

@@ -219,33 +219,32 @@ test('a controller without atomic mutate does not expose incorrectly scoped scal
   assert.equal(scoped.mutate, undefined)
 })
 
-test('root entry candidates precede legacy entries and share the cached scoped form', () => {
+test('root entry candidates retain scoped lookup after module and legacy candidates', () => {
   const first = makeForm({ value: { browser: { enabled: true } } }).form
   const second = makeForm({ value: { browser: { enabled: false } } }).form
-  const legacy = { getSnapshot: () => ({ enabled: false }) }
   const visited = []
   const renamed = makeForm({ value: { browser: { enabled: false } } }).form
-  const forms = new Map([['shell-kit', first], ['dsh-toolkit', renamed], ['dsh-shell-kit', second], ['agent-browser', legacy]])
+  const forms = new Map([['shell-kit', first], ['dsh-toolkit', renamed], ['dsh-shell-kit', second]])
   const ctx = { configForms: { get(entryId) { visited.push(entryId); return forms.get(entryId) } } }
   const result = findScopedForm(ctx, 'browser', ['agent-browser', 'dsh-agent-browser'])
   assert.deepEqual(ROOT_ENTRIES, ['shell-kit', 'dsh-toolkit', 'dsh-shell-kit'])
   assert.equal(result.entryId, 'shell-kit')
   assert.equal(result.form, scopeForm(first, 'browser'))
-  assert.deepEqual(visited, ['shell-kit'])
+  assert.deepEqual(visited, ['dsh-toolkit-browser', 'agent-browser', 'dsh-agent-browser', 'shell-kit'])
 
   forms.delete('shell-kit')
   visited.length = 0
   const fallback = findScopedForm(ctx, 'browser', ['agent-browser'])
   assert.equal(fallback.entryId, 'dsh-toolkit')
   assert.equal(fallback.form, scopeForm(renamed, 'browser'))
-  assert.deepEqual(visited, ['shell-kit', 'dsh-toolkit'])
+  assert.deepEqual(visited, ['dsh-toolkit-browser', 'agent-browser', 'shell-kit', 'dsh-toolkit'])
 
   forms.delete('dsh-toolkit')
   visited.length = 0
   const oldRoot = findScopedForm(ctx, 'browser', ['agent-browser'])
   assert.equal(oldRoot.entryId, 'dsh-shell-kit')
   assert.equal(oldRoot.form, scopeForm(second, 'browser'))
-  assert.deepEqual(visited, ['shell-kit', 'dsh-toolkit', 'dsh-shell-kit'])
+  assert.deepEqual(visited, ['dsh-toolkit-browser', 'agent-browser', 'shell-kit', 'dsh-toolkit', 'dsh-shell-kit'])
 })
 
 test('legacy entry fallback preserves its original unscoped form despite throwing lookups', () => {
@@ -260,11 +259,26 @@ test('legacy entry fallback preserves its original unscoped form despite throwin
   assert.equal(result.form, legacy)
   assert.equal(result.entryId, 'dsh-judgment')
   assert.equal(result.form.set, legacy.set)
-  assert.deepEqual(visited, ['shell-kit', 'dsh-toolkit', 'dsh-shell-kit', 'judgment/provider', 'dsh-judgment'])
+  assert.deepEqual(visited, ['dsh-toolkit-judgment', 'judgment/provider', 'dsh-judgment'])
 })
 
-test('missing config controllers return the root entry id without a writable form', () => {
+test('module ids and legacy standalone forms precede scoped root forms', () => {
+  for (const [namespace, id] of [['browser', 'dsh-toolkit-browser'], ['judgement', 'dsh-toolkit-judgment'], ['skillsMcp', 'dsh-toolkit-skills-mcp'], ['notification', 'dsh-toolkit-notification']]) {
+    const direct = { snapshot: { enabled: true }, set() {} }
+    const legacy = { snapshot: { enabled: false } }
+    const root = makeForm({ value: { [namespace]: {} } }).form
+    const forms = new Map([[id, direct], ['old-entry', legacy], ['shell-kit', root]])
+    const ctx = { configForms: { get: (key) => forms.get(key) } }
+    assert.deepEqual(findScopedForm(ctx, namespace, ['old-entry']), { entryId: id, form: direct })
+    forms.delete(id)
+    assert.deepEqual(findScopedForm(ctx, namespace, ['old-entry']), { entryId: 'old-entry', form: legacy })
+    forms.delete('old-entry')
+    assert.equal(findScopedForm(ctx, namespace).form, scopeForm(root, namespace))
+  }
+})
+
+test('missing config controllers return the module entry id without a writable form', () => {
   for (const ctx of [undefined, {}, { configForms: {} }, { configForms: { get: () => undefined } }, { configForms: { get() { throw new Error('not mounted') } } }]) {
-    assert.deepEqual(findScopedForm(ctx, 'browser', ['agent-browser']), { form: undefined, entryId: 'shell-kit' })
+    assert.deepEqual(findScopedForm(ctx, 'browser', ['agent-browser']), { form: undefined, entryId: 'dsh-toolkit-browser' })
   }
 })

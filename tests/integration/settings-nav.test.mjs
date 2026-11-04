@@ -68,12 +68,12 @@ function page(t, html) {
 
 const PANEL_HTML = `<html><body>
   <div data-shortcut-modal="settings">
-    <nav class="_77Pn0W_nav">
-      <div class="_77Pn0W_navTitle">设置</div>
-      <div class="_77Pn0W_navList">
-        <button class="_77Pn0W_navCell _77Pn0W_active">账号与余额</button>
-        <button class="_77Pn0W_navCell">Skills &amp; MCP</button>
-        <button class="_77Pn0W_navCell">通知</button>
+    <nav class="_AnXs9G_nav">
+      <div class="_AnXs9G_navTitle">设置</div>
+      <div class="_AnXs9G_navList">
+        <button class="_AnXs9G_navCell _AnXs9G_active">账号与余额</button>
+        <button class="_AnXs9G_navCell">Skills &amp; MCP</button>
+        <button class="_AnXs9G_navCell">通知</button>
       </div>
     </nav>
   </div>
@@ -160,7 +160,7 @@ test('settings toolbar remounts once after a native panel is replaced', async (t
 test('grouped menu keeps React rows in place and orders by stable settings identity', async (t) => {
   const { document, ctx, entries, flush, onCleanup } = page(t, PANEL_HTML)
   const nav = document.querySelector('nav')
-  const list = nav.querySelector('._77Pn0W_navList')
+  const list = nav.querySelector('._AnXs9G_navList')
   entries[2].options.label = '自定义提示'
   list.lastElementChild.textContent = '自定义提示'
   list.firstElementChild.setAttribute('aria-current', 'true')
@@ -197,9 +197,9 @@ test('grouped menu keeps React rows in place and orders by stable settings ident
 test('unknown slot IDs use the fallback group and search hides empty sections', async (t) => {
   const { document, ctx, entries, flush, onCleanup } = page(t, PANEL_HTML)
   entries.push({ options: { id: 'third-party-panel', order: 3, label: '第三方控制' } })
-  const list = document.querySelector('._77Pn0W_navList')
+  const list = document.querySelector('._AnXs9G_navList')
   const custom = document.createElement('button')
-  custom.className = '_77Pn0W_navCell'
+  custom.className = '_AnXs9G_navCell'
   custom.textContent = '第三方控制'
   list.append(custom)
   onCleanup(installSettingsNav(ctx))
@@ -228,9 +228,9 @@ test('slot and locale subscriptions update active search results and unsubscribe
   input.value = '扩展'
   input.dispatchEvent(new window.Event('input', { bubbles: true }))
 
-  const list = nav.querySelector('._77Pn0W_navList')
+  const list = nav.querySelector('._AnXs9G_navList')
   const pluginCell = document.createElement('button')
-  pluginCell.className = '_77Pn0W_navCell'
+  pluginCell.className = '_AnXs9G_navCell'
   pluginCell.textContent = '扩展中心'
   list.append(pluginCell)
   entries.push({ options: { id: 'plugin-center', order: 3, label: '扩展中心' } })

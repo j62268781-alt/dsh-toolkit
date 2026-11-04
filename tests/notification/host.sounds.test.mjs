@@ -96,10 +96,16 @@ test('catalog excludes symlink escapes, arbitrary paths and oversized files; IDs
   const { root, system } = await fixture(t)
   const outside = path.join(root, 'private.wav'), safe = path.join(system, 'Safe.wav')
   await Promise.all([writeFile(outside, wav(5)), writeFile(safe, wav(6)), writeFile(path.join(system, 'Huge.wav'), Buffer.alloc(MAX_SOUND_BYTES + 1))])
-  await symlink(outside, path.join(system, 'Escape.wav'))
+  try {
+    await symlink(outside, path.join(system, 'Escape.wav'))
+  } catch (error) {
+    if (process.platform !== 'win32' || error.code !== 'EPERM') throw error
+    t.diagnostic('Windows does not permit symlink creation in this environment; path validation cases still run')
+  }
   const service = createSoundService({ platform: 'win32', directories: [system] })
   const catalog = await service.getCatalog()
   assert.deepEqual(catalog.sounds.map(({ label }) => label), ['System default', 'Safe'])
+  assert.equal(catalog.sounds.some(({ label }) => label === 'Escape'), false)
   for (const id of ['../private.wav', outside, '%2e%2e%2fprivate.wav', 'f'.repeat(32), null]) {
     await assert.rejects(service.readSound(id), { statusCode: 404 })
   }

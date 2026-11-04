@@ -1,5 +1,10 @@
-/** Project a module's existing settings form onto the toolkit's one Cordis row. */
+/** Legacy aggregate rows remain readable while profiles migrate to module rows. */
 export const ROOT_ENTRIES = ['shell-kit', 'dsh-toolkit', 'dsh-shell-kit']
+
+export function moduleEntryId(namespace) {
+  const module = ({ judgement: 'judgment', skillsMcp: 'skills-mcp' })[namespace] ?? namespace
+  return `dsh-toolkit-${module}`
+}
 
 const EMPTY = Object.freeze({})
 const forms = new WeakMap()
@@ -42,9 +47,10 @@ export function scopeForm(form, namespace) {
   return scoped
 }
 
-/** Standalone entry fallbacks keep the upstream module harnesses usable. */
+/** Prefer module rows, then standalone legacy harnesses, then scoped root rows. */
 export function findScopedForm(ctx, namespace, legacyCandidates = []) {
-  for (const entryId of [...ROOT_ENTRIES, ...legacyCandidates]) {
+  const candidates = [...new Set([moduleEntryId(namespace), ...legacyCandidates, ...ROOT_ENTRIES])]
+  for (const entryId of candidates) {
     try {
       const form = ctx?.configForms?.get?.(entryId)
       if (form) return { form: ROOT_ENTRIES.includes(entryId) ? scopeForm(form, namespace) : form, entryId }
@@ -52,5 +58,5 @@ export function findScopedForm(ctx, namespace, legacyCandidates = []) {
       // Missing entries throw on some versions of the host.
     }
   }
-  return { form: undefined, entryId: ROOT_ENTRIES[0] }
+  return { form: undefined, entryId: moduleEntryId(namespace) }
 }
