@@ -2,7 +2,7 @@
 
   --dsh-sidebar-inline-padding: 0px;
   display: grid;
-  grid-template-columns: var(--cx-rail-w) var(--cx-panel-w);
+  grid-template-columns: var(--cx-rail-w) minmax(0, 1fr);
   grid-template-rows: 46px auto minmax(0, 1fr) auto;
   grid-template-areas:
     "nav     brand"
@@ -30,9 +30,9 @@
   position: absolute;
   top: var(--cx-band-h);
   left: var(--cx-rail-w);
-  width: var(--cx-panel-w);
+  right: 0;
   bottom: var(--cx-gap);
-  border-radius: var(--cx-card-radius);
+  border-radius: var(--cx-card-radius) 0 0 var(--cx-card-radius);
   background: var(--dsw-alias-bg-base);
   z-index: -1;
   pointer-events: none;
@@ -158,7 +158,10 @@ html[data-sk-desktop] [data-slot="main.conversation"] [class*="_composerSeat"] {
 
 [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_newSession"] {
   grid-area: new;
-  margin: 0 8px 8px 4px;
+  /* The panel column starts at the rail edge, so an asymmetric pair here reads
+     as a button pushed against the left. Keep the native 8px on the right and
+     mirror it on the left. */
+  margin: 0 8px 4px;
 }
 
 [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] {
@@ -251,9 +254,21 @@ html[data-sk-desktop] [data-slot="main.conversation"] [class*="_composerSeat"] {
 [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] {
   grid-area: region;
   min-height: 0;
+
+  /* Native insets this area by -4px on the left and by the (now zeroed) inline
+     padding on the right, and the list stacked its own 2px scrollbar offset on
+     top. That offset is gone, so hold the 6px the list used to end at on the
+     right and mirror it on the left: one inset, both sides. */
   margin: 0;
-  padding: 0 6px 0 4px;
+  padding: 0 6px;
   overflow: hidden;
+}
+
+/* Keep the section toolbar on the same 32px rhythm as its session rows.
+   The new-session row owns the 4px gap above; do not add the native 2px again. */
+[data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] [class*="_sectionHeader"] {
+  height: 32px;
+  margin: 0 0 4px;
 }
 
 [data-slot="sidebar"] [class*="_sectionHeader"] {
@@ -311,7 +326,13 @@ html[data-sk-desktop] [data-slot="main.conversation"] [class*="_composerSeat"] {
   white-space: nowrap;
 }
 
-[data-slot="sidebar"] > [class*="_root"] {
+/* The session list reserves room for a scrollbar it no longer draws: its own
+   root re-declares a 5px width and a 2px offset, and the list turns the offset
+   into `margin-right`. Zeroing them on the sidebar root alone never reaches that
+   inner root, so the rows stopped 2px short of the right inset while sitting
+   flush on the left — the hover highlight read as off-centre. Declare them on
+   every `_root` under the slot; the values only ever subtract space. */
+[data-slot="sidebar"] [class*="_root"] {
   --dsh-session-list-scrollbar-width: 0px;
   --dsh-session-list-scrollbar-offset: 0px;
 }
@@ -344,4 +365,38 @@ html[data-windows-titlebar]
 
 html[data-windows-titlebar] .sk-collapse-hit {
   display: none !important;
+}
+
+/* The native session row keeps a 16px leading cell for the status dots or a
+   `sidebar.session.row.leading` decoration. A blank row leaves the cell truly
+   empty, while every other idle row still gets the factory outlet's own
+   `display: contents` wrapper, so the cell itself never reads as `:empty`.
+   Collapse it in both shapes and let the title hug the row's inset; a status dot
+   or a registered decoration makes it non-empty again and the cell returns. */
+[data-slot="sidebar"]
+  [class*="_sessionRow"]
+  > [class*="_slot"]:empty,
+[data-slot="sidebar"]
+  [class*="_sessionRow"]
+  > [class*="_slot"]:has(> [data-slot="sidebar.session.row.leading"]:empty) {
+  display: none;
+}
+
+[data-slot="sidebar"]
+  [class*="_sessionRow"]:has(> [class*="_slot"]:empty)
+  > [class*="_title"],
+[data-slot="sidebar"]
+  [class*="_sessionRow"]:has(
+    > [class*="_slot"] > [data-slot="sidebar.session.row.leading"]:empty
+  )
+  > [class*="_title"] {
+  margin-inline-start: 0;
+}
+
+/* The "show the rest" row still indents by the leading cell it assumes every
+   session row owns (8px row inset + 16px cell + 4px title margin = 28px), so it
+   drifts 20px right of the titles it follows once that cell collapses. Match the
+   collapsed title inset instead, keeping the group's own depth indent. */
+[data-slot="sidebar"] [class*="_sessionOverflowButton"] {
+  padding-inline-start: calc(8px + var(--dsh-workspace-indent, 0px));
 }

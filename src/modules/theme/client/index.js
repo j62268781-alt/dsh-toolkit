@@ -4,8 +4,9 @@ import { installDesktopMarker } from "./platform.js";
 import { installRailTitles, installHomeRail } from "./rail.js";
 import { installBandHeight } from "./band.js";
 import { installSidebarWidth, installWorkspaceCollapse } from "./sidebar.js";
+import { installSettingsNav } from "./settings-nav.js";
 
-export const inject = ["layout"];
+export const inject = ["layout", "slots", "locale"];
 
 export function apply(ctx) {
   ctx.effect(installDesktopMarker, "toolkit-theme:desktop-marker");
@@ -15,4 +16,5 @@ export function apply(ctx) {
   ctx.effect(installBandHeight, "toolkit-theme:band-height");
   ctx.effect(() => installSidebarWidth(ctx), "toolkit-theme:sidebar-width");
   ctx.effect(() => installWorkspaceCollapse(ctx), "toolkit-theme:workspace-collapse");
+  ctx.effect(() => installSettingsNav(ctx), "toolkit-theme:settings-nav");
 }

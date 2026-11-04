@@ -22,7 +22,7 @@ html:root {
 html[data-sk-desktop] body {
 
   --cx-rail-w: 52px;
-  --cx-panel-w: 240px;
+  --cx-panel-w: 250px;
   --cx-gap: 4px;
   --cx-band-pad: 10px;
   --cx-band: var(--cx-rail);

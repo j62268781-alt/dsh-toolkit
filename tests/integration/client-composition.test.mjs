@@ -6,7 +6,7 @@ import React from 'react'
 
 const CLIENT = new URL('../../lib/client.js', import.meta.url)
 const EXPECTED_INJECT = {
-  'toolkit-theme-client': ['layout'],
+  'toolkit-theme-client': ['layout', 'slots', 'locale'],
   'toolkit-archived-client': ['slots', 'locale', 'sessions', 'workspaces'],
   'toolkit-skills-mcp-client': ['slots', 'configForms', 'remote', 'remote.pluginInventory'],
   'toolkit-judgment-client': ['slots', 'configForms', 'remote', 'remote.credentials'],

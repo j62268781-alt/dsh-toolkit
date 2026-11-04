@@ -19,7 +19,7 @@ html[data-sk-desktop]
   left: 0;
   right: var(--cx-gap);
   bottom: var(--cx-gap);
-  border-radius: var(--cx-card-radius);
+  border-radius: 0 var(--cx-card-radius) var(--cx-card-radius) 0;
   background: var(--dsw-alias-bg-base);
   z-index: -1;
   pointer-events: none;
@@ -33,7 +33,7 @@ html[data-sk-desktop]
   position: relative;
   margin-right: var(--cx-gap);
   margin-bottom: var(--cx-gap);
-  border-radius: var(--cx-card-radius);
+  border-radius: 0 var(--cx-card-radius) var(--cx-card-radius) 0;
   overflow-x: hidden;
   overflow-y: auto;
 }

@@ -70,10 +70,13 @@ test('theme follows late platform attributes and tears down its marker', async (
   assert.equal(root.hasAttribute('data-sk-desktop'), false)
 })
 
-test('theme preserves workspace, rail, hidden, and reopened sidebar widths', async (t) => {
-  const { document, flush, onCleanup } = page(t, `<html data-platform="darwin"><body>
+for (const platform of ['darwin', 'windows']) test(`theme preserves resized workspace, rail, hidden, and reopened widths on ${platform}`, async (t) => {
+  const marker = platform === 'darwin' ? 'data-platform="darwin"' : 'data-windows-titlebar=""'
+  const { document, flush, onCleanup } = page(t, `<html ${marker}><body>
     <div class="_frame_test" style="grid-template-columns: 296px minmax(0, 1fr) 0px">
-      <aside data-slot="sidebar"><div class="_root_test"><button class="_toggle_test"></button></div></aside>
+      <aside data-slot="sidebar"><div class="_root_test"><div class="${platform === 'darwin' ? '_topStrip_test' : '_logoRow_test'}"><button class="_iconButton_test _toggle_test"><span></span></button></div><div class="_regionArea_test"><button class="_toggle_region"><span>收起分组</span></button></div></div></aside>
+      <main><section class="_editedFiles_test"><button class="_toggle_files"><span>全部5个文件</span></button></section></main>
+      <div class="_handle_test" data-side="sidebar" style="left:296px"></div>
     </div></body></html>`)
   const frame = document.querySelector('._frame_test')
   const sidebar = document.querySelector('._root_test')
@@ -89,21 +92,99 @@ test('theme preserves workspace, rail, hidden, and reopened sidebar widths', asy
   const stopWidth = installSidebarWidth(ctx)
   const stopCollapse = installWorkspaceCollapse(ctx)
   onCleanup(() => { stopCollapse(); stopWidth() })
-  assert.match(frame.style.gridTemplateColumns, /^296px/)
-  document.querySelector('._toggle_test').click()
+  assert.match(frame.style.gridTemplateColumns, /^302px/)
+  const handle = document.querySelector('[data-side="sidebar"]')
+  assert.equal(handle.getAttribute('aria-valuenow'), '250')
+  assert.equal(frame.hasAttribute('data-sk-workspace-expanded'), true)
+  const filesToggle = document.querySelector('._toggle_files')
+  const regionToggle = document.querySelector('._toggle_region')
+  const nativeToggle = document.querySelector('._toggle_test')
+  let nativeClicks = 0
+  nativeToggle.addEventListener('click', () => { nativeClicks++; ctx.layout.toggleSidebar() })
+  let fileClicks = 0
+  let regionClicks = 0
+  let bubbledClicks = 0
+  filesToggle.addEventListener('click', () => {
+    fileClicks++
+    const expanded = filesToggle.getAttribute('aria-expanded') !== 'true'
+    filesToggle.setAttribute('aria-expanded', String(expanded))
+    filesToggle.firstElementChild.textContent = expanded ? '收起' : '全部5个文件'
+  })
+  regionToggle.addEventListener('click', () => regionClicks++)
+  document.body.addEventListener('click', () => bubbledClicks++)
+  for (const label of ['收起', '全部5个文件']) {
+    const event = new window.MouseEvent('click', { bubbles: true, cancelable: true })
+    assert.equal(filesToggle.firstElementChild.dispatchEvent(event), true, 'edited-files click must not be canceled')
+    assert.equal(event.defaultPrevented, false)
+    assert.equal(filesToggle.textContent, label, 'edited-files card handles its own expand/collapse click')
+    await flush()
+    assert.match(frame.style.gridTemplateColumns, /^302px/, 'edited-files toggle must not collapse the sidebar')
+    assert.equal(sidebar.hasAttribute('data-sk-rail-only'), false)
+  }
+  regionToggle.firstElementChild.click()
+  assert.equal(fileClicks, 2)
+  assert.equal(regionClicks, 1, 'unrelated toggles inside the sidebar keep their own behavior')
+  assert.equal(bubbledClicks, 3, 'unrelated toggle clicks propagate normally')
+  assert.match(frame.style.gridTemplateColumns, /^302px/)
+  const pointer = (type, x, id = 1) => {
+    const event = new window.MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, button: 0 })
+    Object.defineProperty(event, 'pointerId', { value: id })
+    handle.dispatchEvent(event)
+  }
+  let nativeDrags = 0
+  handle.addEventListener('pointerdown', () => nativeDrags++)
+  pointer('pointerdown', 302)
+  pointer('pointermove', 1000, 2)
+  await flush()
+  assert.match(frame.style.gridTemplateColumns, /^302px/, 'other pointers must not resize')
+  pointer('pointermove', 1000)
+  await flush()
+  assert.match(frame.style.gridTemplateColumns, /^502px/)
+  assert.equal(handle.style.left, '502px')
+  pointer('pointerup', 1000)
+  assert.equal(nativeDrags, 0, 'native width clamp must not handle theme drags')
+  assert.equal(frame.hasAttribute('data-dragging'), false)
+  frame.style.gridTemplateColumns = '280px minmax(0, 1fr) 0px'
+  await flush()
+  assert.match(frame.style.gridTemplateColumns, /^502px/, 'host updates must preserve dragged width')
+  pointer('pointerdown', 502)
+  pointer('pointerup', -1000)
+  assert.match(frame.style.gridTemplateColumns, /^302px/, 'minimum width applies on final pointerup')
+  handle.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'End', bubbles: true }))
+  assert.match(frame.style.gridTemplateColumns, /^502px/)
+  handle.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }))
+  assert.equal(handle.getAttribute('aria-valuenow'), '440')
+  nativeToggle.firstElementChild.click()
+  assert.equal(nativeClicks, 0, 'expanded native toggle enters the theme rail before host collapse')
   assert.match(frame.style.gridTemplateColumns, /^52px/)
   assert.equal(sidebar.hasAttribute('data-sk-rail-only'), true)
   document.querySelector('.sk-collapse-hit').click()
   await flush()
   assert.match(frame.style.gridTemplateColumns, /^0px/)
-  ctx.layout.toggleSidebar()
+  nativeToggle.firstElementChild.click()
+  assert.equal(nativeClicks, 1, 'hidden sidebar toggle reaches the native reopen handler')
   await flush()
-  assert.match(frame.style.gridTemplateColumns, /^296px/)
+  assert.match(frame.style.gridTemplateColumns, /^492px/)
   assert.equal(sidebar.hasAttribute('data-sk-rail-only'), false)
   activePanelId = 'conversation'
   for (const run of subscriptions) run()
   await flush()
   assert.match(frame.style.gridTemplateColumns, /^52px/)
+  assert.equal(frame.hasAttribute('data-sk-workspace-expanded'), false)
+  activePanelId = null
+  for (const run of subscriptions) run()
+  await flush()
+  assert.match(frame.style.gridTemplateColumns, /^492px/)
+  pointer('pointerdown', 492)
+  pointer('pointercancel', 492)
+  assert.equal(frame.hasAttribute('data-dragging'), false)
+  stopCollapse()
+  stopWidth()
+  assert.equal(handle.hasAttribute('role'), false)
+  pointer('pointerdown', 492)
+  pointer('pointerup', 1000)
+  assert.equal(nativeDrags, 1, 'cleanup restores native event handling')
+  assert.match(frame.style.gridTemplateColumns, /^492px/)
 })
 
 function archivedContext() {

@@ -5,14 +5,32 @@ html[data-sk-desktop] [class*="_frame"] > [class*="_rightbarCol"] {
   background-image: none;
   border-left: none;
   border-right: none;
+  border-radius: 0;
+}
+
+html[data-sk-desktop] [class*="_frame"] {
+  --cx-center-left-radius: var(--cx-card-radius);
+  --cx-center-right-radius: var(--cx-card-radius);
+  --cx-center-right-gap: var(--cx-gap);
+}
+
+html[data-sk-desktop] [class*="_frame"][data-sk-workspace-expanded] {
+  --cx-center-left-radius: 0px;
+}
+
+html[data-sk-desktop]
+  [class*="_frame"]:not([data-rightbar-collapsed]):not([data-rightbar-fullscreen]) {
+  --cx-center-right-radius: 0px;
+  --cx-center-right-gap: 0px;
 }
 
 html[data-sk-desktop] [data-slot="main"] > :not([data-slot]) {
 
-  margin: var(--cx-band-h) var(--cx-gap) var(--cx-gap) 0;
+  margin: var(--cx-band-h) var(--cx-center-right-gap) var(--cx-gap) 0;
 
-  max-width: calc(100% - var(--cx-gap));
-  border-radius: var(--cx-card-radius);
+  max-width: calc(100% - var(--cx-center-right-gap));
+  border-radius: var(--cx-center-left-radius) var(--cx-center-right-radius)
+    var(--cx-center-right-radius) var(--cx-center-left-radius);
   background-color: var(--dsw-alias-bg-base);
 }
 
@@ -21,7 +39,29 @@ html[data-sk-desktop] [data-slot="main"] > :not([data-slot]) [class*="pagehead" 
 }
 
 html[data-sk-desktop] [class*="_frame"] > [class*="_handle"] {
+  display: block;
+  top: var(--cx-band-h);
+  bottom: var(--cx-gap);
+  width: 8px;
+}
+
+html[data-sk-desktop]
+  [class*="_frame"]:not([data-sk-workspace-expanded])
+  > [class*="_handle"][data-side="sidebar"] {
   display: none;
+}
+
+html[data-sk-desktop] [class*="_frame"] > [class*="_handle"]::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 1px;
+  background: var(--cx-line);
+  pointer-events: none;
+}
+
+html[data-sk-desktop] [class*="_frame"] > [class*="_handle"]:hover::after {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 30%, var(--cx-line));
 }
 
 html[data-sk-desktop]
@@ -63,10 +103,10 @@ html[data-sk-desktop]
 html[data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"] {
   position: relative;
   isolation: isolate;
-  margin-right: var(--cx-gap);
+  margin-right: var(--cx-center-right-gap);
   margin-bottom: var(--cx-gap);
 
-  border-radius: 0 0 var(--cx-card-radius) var(--cx-card-radius);
+  border-radius: 0 0 var(--cx-center-right-radius) var(--cx-center-left-radius);
   overflow: hidden;
   background: none;
 }
@@ -78,7 +118,8 @@ html[data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"]::before
   left: 0;
   right: 0;
   bottom: 0;
-  border-radius: var(--cx-card-radius);
+  border-radius: var(--cx-center-left-radius) var(--cx-center-right-radius)
+    var(--cx-center-right-radius) var(--cx-center-left-radius);
   background: var(--dsw-alias-bg-base);
   z-index: -1;
   pointer-events: none;

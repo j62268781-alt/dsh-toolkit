@@ -1,8 +1,10 @@
 import { isDesktopShell } from "./platform.js";
 
-// Shared state keeps the 296 → 52 → 0 → 296 sidebar cycle consistent across both installers.
-const SIDEBAR_W = "296px";
-const RAIL_W = "52px";
+// Keep the workspace width independent of the rail → hidden collapse cycle.
+const RAIL_WIDTH = 52;
+const WORKSPACE_MIN = 250;
+const WORKSPACE_MAX = 450;
+const RAIL_W = `${RAIL_WIDTH}px`;
 let frameEl = null;
 
 let workspaceCollapsed = false;
@@ -33,8 +35,20 @@ function findFrame() {
 export function installSidebarWidth(ctx) {
   let queued = 0;
   let offPanel = null;
+  let workspaceWidth = WORKSPACE_MIN;
+  let drag = null;
+  const handles = new Map();
+
+  const finishDrag = () => {
+    if (!drag) return;
+    const { handle, pointerId, frame } = drag;
+    drag = null;
+    frame.removeAttribute("data-dragging");
+    if (handle.hasPointerCapture?.(pointerId)) handle.releasePointerCapture(pointerId);
+  };
 
   const pass = () => {
+    if (queued) cancelAnimationFrame(queued);
     queued = 0;
 
     if (!isDesktopShell()) return;
@@ -56,13 +70,35 @@ export function installSidebarWidth(ctx) {
       }
     }
 
+    const expanded = !collapsed && home && !workspaceCollapsed;
+    frame.toggleAttribute("data-sk-workspace-expanded", expanded);
+    if (!expanded) finishDrag();
     const target = collapsed
       ? "0px"
-      : home && !workspaceCollapsed
-        ? SIDEBAR_W
+      : expanded
+        ? `${RAIL_WIDTH + workspaceWidth}px`
         : RAIL_W;
     const next = cols.replace(/^[\d.]+px/, target);
     if (next !== cols) frame.style.gridTemplateColumns = next;
+
+    const handle = frame.querySelector('[data-side="sidebar"]');
+    if (handle) {
+      if (!handles.has(handle)) {
+        handles.set(handle, {
+          left: handle.style.left,
+          attrs: Object.fromEntries(["role", "tabindex", "aria-label", "aria-orientation", "aria-valuemin", "aria-valuemax", "aria-valuenow"].map((name) => [name, handle.getAttribute(name)])),
+        });
+        handle.setAttribute("role", "separator");
+        handle.setAttribute("tabindex", "0");
+        handle.setAttribute("aria-label", "调整工作区宽度");
+        handle.setAttribute("aria-orientation", "vertical");
+        handle.setAttribute("aria-valuemin", String(WORKSPACE_MIN));
+        handle.setAttribute("aria-valuemax", String(WORKSPACE_MAX));
+      }
+      if (handle.style.left !== target) handle.style.left = target;
+      const value = String(workspaceWidth);
+      if (handle.getAttribute("aria-valuenow") !== value) handle.setAttribute("aria-valuenow", value);
+    }
     collapseSync?.();
   };
 
@@ -70,6 +106,63 @@ export function installSidebarWidth(ctx) {
     if (queued) return;
     queued = requestAnimationFrame(pass);
   };
+
+  const setWidth = (width) => {
+    workspaceWidth = Math.min(WORKSPACE_MAX, Math.max(WORKSPACE_MIN, Math.round(width)));
+  };
+  const sidebarHandle = (event) => {
+    if (!isDesktopShell() || !(event.target instanceof Element)) return null;
+    const handle = event.target.closest('[data-side="sidebar"]');
+    const frame = findFrame();
+    return handle && handle.parentElement === frame && frame.hasAttribute("data-sk-workspace-expanded") ? handle : null;
+  };
+  // The host clamps total sidebar width to 264–420px. Own this handle's events
+  // so the workspace itself can span 250–450px, in addition to the 52px rail.
+  const onPointerDown = (event) => {
+    const handle = sidebarHandle(event);
+    if (!handle || event.button !== 0 || drag) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const frame = findFrame();
+    drag = { handle, frame, pointerId: event.pointerId, x: event.clientX, width: workspaceWidth };
+    frame.setAttribute("data-dragging", "");
+    handle.setPointerCapture?.(event.pointerId);
+  };
+  const onPointerMove = (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    setWidth(drag.width + event.clientX - drag.x);
+    schedule();
+  };
+  const onPointerUp = (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    event.stopImmediatePropagation();
+    if (event.type === "pointerup") setWidth(drag.width + event.clientX - drag.x);
+    finishDrag();
+    pass();
+  };
+  const onKeyDown = (event) => {
+    if (!sidebarHandle(event)) return;
+    const widths = {
+      ArrowLeft: workspaceWidth - (event.shiftKey ? 50 : 10),
+      ArrowRight: workspaceWidth + (event.shiftKey ? 50 : 10),
+      Home: WORKSPACE_MIN,
+      End: WORKSPACE_MAX,
+    };
+    if (!(event.key in widths)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    setWidth(widths[event.key]);
+    pass();
+  };
+  document.addEventListener("pointerdown", onPointerDown, true);
+  document.addEventListener("pointermove", onPointerMove, true);
+  document.addEventListener("pointerup", onPointerUp, true);
+  document.addEventListener("pointercancel", onPointerUp, true);
+  document.addEventListener("lostpointercapture", onPointerUp, true);
+  document.addEventListener("keydown", onKeyDown, true);
+  window.addEventListener("blur", finishDrag);
 
   widthPass = pass;
 
@@ -103,18 +196,38 @@ export function installSidebarWidth(ctx) {
   return () => {
     observer.disconnect();
     platformObserver.disconnect();
+    finishDrag();
+    document.removeEventListener("pointerdown", onPointerDown, true);
+    document.removeEventListener("pointermove", onPointerMove, true);
+    document.removeEventListener("pointerup", onPointerUp, true);
+    document.removeEventListener("pointercancel", onPointerUp, true);
+    document.removeEventListener("lostpointercapture", onPointerUp, true);
+    document.removeEventListener("keydown", onKeyDown, true);
+    window.removeEventListener("blur", finishDrag);
     window.removeEventListener("resize", schedule);
     if (typeof offPanel === "function") offPanel();
     if (queued) cancelAnimationFrame(queued);
+    frameEl?.removeAttribute("data-sk-workspace-expanded");
+    for (const [handle, { left, attrs }] of handles) {
+      handle.style.left = left;
+      for (const [name, value] of Object.entries(attrs)) {
+        if (value === null) handle.removeAttribute(name);
+        else handle.setAttribute(name, value);
+      }
+    }
+    handles.clear();
+    widthPass = null;
     frameEl = null;
   };
 }
 
 export function installWorkspaceCollapse(ctx) {
 
-  // Match the structural class, since accessible labels change with locale.
-  const isToggleButton = (btn) =>
-    [...btn.classList].some((name) => name.includes("_toggle"));
+  // Scope the structural class to the native sidebar header; other cards also
+  // use _toggle classes, and accessible labels change with locale.
+  const isToggleButton = (btn) => btn.matches(
+    '[data-slot="sidebar"] > [class*="_root"] > :is([class*="_topStrip"], [class*="_logoRow"]) button[class*="_toggle"]',
+  );
 
   const hit = document.createElement("button");
   hit.type = "button";

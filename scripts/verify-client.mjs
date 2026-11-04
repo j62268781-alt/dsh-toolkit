@@ -9,7 +9,9 @@ const built = readFileSync(file, "utf8");
 // esbuild 可改写声明和引号；读取字符串字面量，不执行客户端代码。
 const source = ts.createSourceFile(file, built, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
 let css;
+const stringLiterals = new Set();
 const visit = (node) => {
+  if (ts.isStringLiteralLike(node)) stringLiterals.add(node.text);
   if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === "THEME_CSS"
       && node.initializer && ts.isStringLiteralLike(node.initializer) && css === undefined) {
     css = node.initializer.text;
@@ -101,8 +103,11 @@ check(
   !built.includes('getAttribute("data-platform") !== "darwin") return'),
 );
 check(
-  "折叠钮用结构识别（class 局部名 _toggle），不依赖 aria-label 文案",
-  built.includes('includes("_toggle")'),
+  "折叠钮只匹配侧边栏顶部结构，不拦截页面中的其他 _toggle",
+  [...stringLiterals].some((value) => value.startsWith('[data-slot="sidebar"] > ')
+    && value.includes('[class*="_topStrip"]') && value.includes('[class*="_logoRow"]')
+    && value.endsWith('button[class*="_toggle"]'))
+    && !built.includes('includes("_toggle")'),
 );
 check(
   "展开态用状态观察（data-sidebar-collapsed），不靠点按钮猜",
