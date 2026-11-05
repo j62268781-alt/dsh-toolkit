@@ -32,7 +32,7 @@
 .smp-cardActions{align-items:center;gap:4px;margin-left:auto;flex:none;display:inline-flex}
 .smp-cardActions .smp-actionsRow{margin:0;gap:4px}
 .smp-cardActions .smp-button{box-sizing:border-box;height:28px;padding:0 10px;font-size:12px;line-height:18px;border-radius:var(--dsw-radius-sm)}
-.smp-cardDescription{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}
+.smp-cardDescription{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}
 .smp-formGrid:first-child{margin-top:0}
 .smp-cardDetails .smp-details{margin:0}
 .smp-details{grid-template-columns:76px minmax(0,1fr);gap:6px 10px;margin:8px 0 0;display:grid;font-size:12px;line-height:18px}

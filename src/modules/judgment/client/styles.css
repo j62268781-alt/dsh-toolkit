@@ -26,7 +26,7 @@
 .jdg-probeLine{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}
 .jdg-probeLine[data-tone=ok]{color:var(--dsw-alias-state-success-primary,#12805c)}
 .jdg-probeLine[data-tone=warn]{color:var(--dsw-alias-state-error-primary,#d92d20)}
-.jdg-cardDescription{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}
+.jdg-cardDescription{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}
 
 
 /* 状态：圆点承担颜色、文字承担含义；danger 一档文字也要跟上（它是真要用户动手的事）。 */
