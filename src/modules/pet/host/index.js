@@ -1,0 +1,150 @@
+import { readFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import { randomUUID } from 'node:crypto'
+import { sendJson } from '../../../host/http.js'
+import { registerAuthenticatedRoute } from '../../../host/routes.js'
+import { readSettings } from './config.js'
+import { createHelperBridge, attachEvents, parseAction } from './bridge.js'
+import { HelperManager } from './helper.js'
+import { createActivityFeed } from './activity.js'
+
+export const name = 'toolkit-pet'
+export const inject = ['webServer', 'connection', 'sessionController', 'sessionProjections', 'sessions', 'settings']
+export const API_PATH = '/api/plugins/dsh-toolkit/pet'
+const PET_IDS = ['qoduck-lab', 'kleidis-lab', 'neon-cat', 'retro-duck']
+
+async function loadPets() {
+  return Promise.all(PET_IDS.map(async (id) => {
+    const assetDir = fileURLToPath(new URL(`./runtime/pets/${id}/`, import.meta.url))
+    const manifest = JSON.parse(await readFile(new URL(`./runtime/pets/${id}/pet.json`, import.meta.url), 'utf8'))
+    return { id, name: manifest.displayName || id, assetDir, manifest }
+  }))
+}
+
+export async function createPetService(ctx, initialConfig = {}) {
+  let config = initialConfig
+  let settings = readSettings(config)
+  let disposed = false
+  let navigation = { seq: 0, sessionId: null }
+  const listeners = new Set()
+  const publicResponses = new Set()
+  const pets = await loadPets()
+  let manager, feed, bridge
+  const snapshot = (privateState = false) => ({
+    ok: true, settings,
+    pets: privateState ? pets : pets.map(({ id, name }) => ({ id, name })),
+    runtime: manager?.state || { status: 'stopped', available: false },
+    sessions: feed?.snapshot() || [], navigation,
+  })
+  const publish = () => {
+    if (disposed) return
+    for (const send of listeners) send()
+    bridge?.publish()
+  }
+  const action = async (input) => {
+    if (disposed) throw new Error('Desktop pet has stopped')
+    if (['prepare', 'retry', 'start'].includes(input.action)) {
+      // Preparation runs independently so a large first download never holds an HTTP request open.
+      if (input.action === 'prepare') void manager.prepare(config, manager.enabled)
+      else void manager.retry(config)
+      return { ok: true }
+    }
+    if (input.action === 'position') return { ok: true }
+    const sessionId = input.sessionId
+    const { items } = await ctx.sessionController.list({})
+    if (!items.some((session) => session.sessionId === sessionId)) throw new Error('Session no longer exists')
+    if (input.action === 'open') {
+      navigation = { seq: navigation.seq + 1, sessionId }
+      publish()
+      // The web client selects the session; Desktop's supported URI brings its main window forward.
+      if (process.platform === 'darwin') {
+        const { spawn } = await import('node:child_process')
+        const child = spawn('/usr/bin/open', ['dsh://open'], { stdio: 'ignore' })
+        child.on('error', () => {})
+        child.unref()
+      }
+      return { ok: true }
+    }
+    if (input.action === 'cancel') await ctx.sessionController.cancel({ sessionId })
+    else if (input.action === 'prompt') await ctx.sessionController.prompt({ requestId: randomUUID(), sessionId, mode: 'queue', content: [{ type: 'text', text: input.text.trim() }] })
+    else throw new Error('Unknown pet action')
+    return { ok: true }
+  }
+  bridge = await createHelperBridge(() => snapshot(true), action)
+  manager = new HelperManager({ onChange: publish, bridge })
+  try {
+    feed = createActivityFeed(ctx, publish)
+    await feed.ready
+  } catch (error) {
+    feed?.dispose()
+    await manager.dispose()
+    await bridge.dispose()
+    throw error
+  }
+  const configure = async (next) => {
+    config = next || {}
+    settings = readSettings(config)
+    if (!pets.some((pet) => pet.id === settings.activePet)) settings = { ...settings, activePet: pets[0].id }
+    publish()
+    await manager.configure(config, settings)
+  }
+  const updateConfig = async (ns) => {
+    if (disposed) return
+    const standalone = ns === 'dsh-toolkit-pet'
+    const legacy = ['dsh-toolkit', 'shell-kit', 'dsh-shell-kit'].includes(ns)
+    if (!standalone && !legacy) return
+    const descriptors = await ctx.settings.describe({ redactSecrets: false })
+    if (disposed) return
+    const descriptor = descriptors.find((item) => item.ns === ns)
+    if (descriptor) await configure(standalone ? descriptor.value : descriptor.value?.pet)
+  }
+  const unlisten = ctx.on('settings/document-updated', updateConfig, { global: true })
+  void configure(config)
+  return {
+    snapshot, action,
+    attach(req, res) {
+      publicResponses.add(res)
+      res.on('close', () => publicResponses.delete(res))
+      return attachEvents(req, res, listeners, snapshot)
+    },
+    async dispose() {
+      disposed = true
+      if (typeof unlisten === 'function') unlisten()
+      feed.dispose()
+      await manager.dispose()
+      for (const res of publicResponses) res.end()
+      listeners.clear()
+      await bridge.dispose()
+    },
+  }
+}
+
+export function apply(ctx, config) {
+  ctx.effect(async () => {
+    const service = await createPetService(ctx, config)
+    let active = true
+    try {
+      for (const [suffix, method] of [['state', 'GET'], ['events', 'GET'], ['action', 'POST']]) {
+        registerAuthenticatedRoute(ctx, {
+          kind: 'exact', path: `${API_PATH}/${suffix}`,
+          async handler(req, res) {
+            res.setHeader('cache-control', 'no-store')
+            if (!active || req.method !== method) return sendJson(res, 404, { ok: false, reason: 'not-found' })
+            try {
+              if (suffix === 'state') return sendJson(res, 200, service.snapshot())
+              if (suffix === 'events') return service.attach(req, res)
+              return sendJson(res, 200, await service.action(await parseAction(req)))
+            } catch (error) { sendJson(res, 400, { ok: false, error: error.message }) }
+          },
+        })
+      }
+    } catch (error) {
+      active = false
+      await service.dispose()
+      throw error
+    }
+    return async () => { active = false; await service.dispose() }
+  }, 'desktop pet service')
+}
+
+export default { name, inject, apply }

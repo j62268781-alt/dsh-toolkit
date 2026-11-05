@@ -6,6 +6,7 @@ import * as judgment from '../modules/judgment/client/index.jsx'
 import createMobile from '../modules/mobile/client/index.jsx'
 import createSkillsMcp from '../modules/skills-mcp/client/client.js'
 import createNotification from '../modules/notification/client/index.jsx'
+import createPet from '../modules/pet/client/index.jsx'
 import * as boot from '../modules/boot/client/index.jsx'
 
 export const inject = []
@@ -20,4 +21,5 @@ export function apply(ctx) {
   // 追加在最后：既有子插件的下标与顺序保持不变（集成测试按 children[i] 断言）。
   ctx.plugin({ name: 'toolkit-notification-client', ...createNotification(require) })
   ctx.plugin({ name: 'toolkit-boot-client', ...boot })
+  ctx.plugin({ name: 'toolkit-pet-client', ...createPet(require) })
 }

@@ -14,6 +14,7 @@ const EXPECTED_INJECT = {
   'toolkit-mobile-client': ['slots', 'sidebarRightTabs'],
   'toolkit-notification-client': ['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces'],
   'toolkit-boot-client': ['slots', 'configForms'],
+  'toolkit-pet-client': ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces'],
 }
 const ALL_SERVICES = new Set([
   ...Object.values(EXPECTED_INJECT).flat(), 'sidebarRight', 'shortcuts', 'uiSession', 'uiConversation', 'uiWorkspace',
@@ -24,6 +25,8 @@ const IMMEDIATE_EFFECTS = new Set([
   'toolkit-archived:section',
   'toolkit-notification:dictionary',
   'toolkit-notification:section',
+  'toolkit-pet:dictionary',
+  'toolkit-pet:section',
   'dsh-sidebar-mobile:tab-type',
   'dsh-sidebar-mobile:tab-body',
   'dsh-sidebar-mobile:tab-title',
@@ -176,7 +179,7 @@ async function boot({ missing = [] } = {}) {
   return { ...loaded, children, active, pending, effects, registrations, tabTypes, mounted, trace, writes, value, rootForm, inventory, credentials, remoteServices }
 }
 
-test('the real classic factory uses only Host seed modules and mounts eight separate plugins', async () => {
+test('the real classic factory uses only Host seed modules and mounts nine separate plugins', async () => {
   const { client, required, warnings } = await loadClient()
   assert.deepEqual(Array.from(client.inject), [])
   assert.equal(typeof client.apply, 'function')
@@ -193,12 +196,12 @@ test('the real classic factory uses only Host seed modules and mounts eight sepa
 
 test('the unified bundle registers the original settings pages, Remote faces, and mobile tab', async () => {
   const result = await boot()
-  assert.equal(result.children.length, 8)
-  assert.equal(result.active.length, 8)
+  assert.equal(result.children.length, 9)
+  assert.equal(result.active.length, 9)
   assert.deepEqual(result.pending, [])
   assert.deepEqual(result.warnings, [])
   const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
-  assert.deepEqual(sections.map(({ registration }) => registration.id).sort(), ['archived-chats', 'boot', 'browser', 'judgment', 'notification', 'skills-mcp', 'theme'])
+  assert.deepEqual(sections.map(({ registration }) => registration.id).sort(), ['archived-chats', 'boot', 'browser', 'desktop-pet', 'judgment', 'notification', 'skills-mcp', 'theme'])
 
   const expected = {
     'archived-chats': { namespace: 'shell-kit.archived', order: 20, label: '已归档的聊天' },
@@ -206,6 +209,7 @@ test('the unified bundle registers the original settings pages, Remote faces, an
     browser: { namespace: 'browser', order: 22, label: '浏览器' },
     judgment: { namespace: 'judgement', order: 21, label: '决策' },
     notification: { namespace: 'notification', order: 24, label: '通知' },
+    'desktop-pet': { namespace: 'pet', order: 25, label: '桌面宠物' },
     'skills-mcp': { namespace: 'skillsMcp', order: 20, label: 'Skills & MCP' },
     theme: { namespace: 'theme', order: 5, label: '外观' },
   }
@@ -216,6 +220,11 @@ test('the unified bundle registers the original settings pages, Remote faces, an
     assert.equal(registration.label(), definition.label)
     if (registration.id === 'archived-chats') {
       assert.equal(registration.locale, 'shell-kit.archived')
+      assert.equal(registration.inject, undefined)
+      continue
+    }
+    if (registration.id === 'desktop-pet') {
+      assert.equal(registration.locale, 'dsh-toolkit.pet')
       assert.equal(registration.inject, undefined)
       continue
     }
@@ -298,8 +307,8 @@ test('the unified bundle registers the original settings pages, Remote faces, an
 test('missing archived session services leave theme, other pages, and the mobile tab active', async () => {
   const result = await boot({ missing: ['sessions'] })
   assert.deepEqual(result.pending, ['toolkit-archived-client', 'toolkit-notification-client'])
-  assert.equal(result.active.length, 6)
-  assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['boot', 'browser', 'judgment', 'skills-mcp', 'theme'])
+  assert.equal(result.active.length, 7)
+  assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['boot', 'browser', 'desktop-pet', 'judgment', 'skills-mcp', 'theme'])
   assert.equal(result.tabTypes.length, 1)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'toolkit-theme-client'), true)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'toolkit-archived-client'), false)
@@ -312,9 +321,9 @@ test('nested Remote dependencies block only the client that declares them', asyn
   ]) {
     const result = await boot({ missing: [dependency] })
     assert.deepEqual(result.pending, [pending])
-    assert.equal(result.active.length, 7)
+    assert.equal(result.active.length, 8)
     const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
-    assert.equal(sections.length, 6)
+    assert.equal(sections.length, 7)
     assert.equal(sections.some(({ registration }) => registration.id === absentSection), false)
     assert.equal(sections.some(({ registration }) => registration.id === 'browser'), true)
     assert.equal(result.tabTypes.length, 1)
@@ -323,13 +332,13 @@ test('nested Remote dependencies block only the client that declares them', asyn
 
 test('missing settings forms or mobile tab services do not suspend unrelated children', async () => {
   const withoutForms = await boot({ missing: ['configForms'] })
-  assert.deepEqual(withoutForms.pending, ['toolkit-theme-client', 'toolkit-skills-mcp-client', 'toolkit-judgment-client', 'toolkit-browser-client', 'toolkit-notification-client', 'toolkit-boot-client'])
+  assert.deepEqual(withoutForms.pending, ['toolkit-theme-client', 'toolkit-skills-mcp-client', 'toolkit-judgment-client', 'toolkit-browser-client', 'toolkit-notification-client', 'toolkit-boot-client', 'toolkit-pet-client'])
   assert.deepEqual(withoutForms.active.sort(), ['toolkit-archived-client', 'toolkit-mobile-client'])
   assert.equal(withoutForms.tabTypes.length, 1)
 
   const withoutTabs = await boot({ missing: ['sidebarRightTabs'] })
   assert.deepEqual(withoutTabs.pending, ['toolkit-mobile-client'])
-  assert.equal(withoutTabs.active.length, 7)
+  assert.equal(withoutTabs.active.length, 8)
   assert.equal(withoutTabs.tabTypes.length, 0)
-  assert.equal(withoutTabs.registrations.length, 7)
+  assert.equal(withoutTabs.registrations.length, 8)
 })

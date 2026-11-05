@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "displayName": "Qoduck Lab",
+  "spriteVersionNumber": 2,
+  "author": "petdex-lab",
+  "license": "CC0-1.0",
+  "generatedBy": "petdex-lab procedural painter",
+  "description": "实验室小鸭，11 行动作 + 16 向注视，适合验证 v2 规范。",
+  "slug": "qoduck-lab",
+  "tags": [
+    "duck",
+    "v2",
+    "look-tracking"
+  ]
+}

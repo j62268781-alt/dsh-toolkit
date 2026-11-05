@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "displayName": "Kleidis Lab",
+  "spriteVersionNumber": 2,
+  "author": "petdex-lab",
+  "license": "CC0-1.0",
+  "generatedBy": "petdex-lab procedural painter",
+  "description": "奶油色小狗，11 行动作 + 16 向注视，演示不同物种。",
+  "slug": "kleidis-lab",
+  "tags": [
+    "dog",
+    "v2"
+  ]
+}

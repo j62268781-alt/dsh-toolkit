@@ -8,4 +8,5 @@ export const PACKAGE_MODULES = Object.freeze([
   { name: 'mobile', client: { entry: 'src/modules/mobile/client/index.jsx', factory: true }, skills: ['mobilecli'] },
   { name: 'skills-mcp', client: { entry: 'src/modules/skills-mcp/client/client.js', factory: true }, skills: [] },
   { name: 'notification', client: { entry: 'src/modules/notification/client/index.jsx', factory: true }, skills: [] },
+  { name: 'pet', client: { entry: 'src/modules/pet/client/index.jsx', factory: true }, skills: [] },
 ].map((module) => Object.freeze({ ...module, packageName: `dsh-toolkit-${module.name}` })))

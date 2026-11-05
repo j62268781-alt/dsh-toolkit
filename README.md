@@ -1,6 +1,6 @@
 # dsh-toolkit
 
-DSH 插件集合，提供一个聚合 bundle 和八个可单独启停的模块包。模块源码仍集中在 `src/modules`、`src/host`、`src/client`；根目录 `pnpm build` 会把各模块所需的 Host 依赖闭包、Client bundle 和运行资源生成到 `packages/*/lib`。无需拆 Git 仓库。
+DSH 插件集合，提供一个聚合 bundle 和九个可单独启停的模块包。模块源码仍集中在 `src/modules`、`src/host`、`src/client`；根目录 `pnpm build` 会把各模块所需的 Host 依赖闭包、Client bundle 和运行资源生成到 `packages/*/lib`。无需拆 Git 仓库。
 
 | 模块 | 独立包名 | Client |
 | --- | --- | --- |
@@ -12,6 +12,7 @@ DSH 插件集合，提供一个聚合 bundle 和八个可单独启停的模块�
 | 移动设备 | `dsh-toolkit-mobile` | 有 |
 | Skills / MCP | `dsh-toolkit-skills-mcp` | 有 |
 | 会话通知 | `dsh-toolkit-notification` | 有 |
+| 桌面宠物 | `dsh-toolkit-pet` | 有 |
 
 ## 安装
 
@@ -24,9 +25,9 @@ pnpm build
 dsh plugin --profile desktop add D:/path/to/dsh-toolkit
 ```
 
-聚合 bundle 会声明全部八个模块，因此插件管理页面提供一个总开关和每个模块独立的 Host/Client 开关。只需要单个功能时，可将 `packages/<module>` 目录作为 DSH bundle 单独安装。修改源码后重新运行 `pnpm build`；Host ESM 改动仍需重启 DSH。不要编辑 `packages/*/lib` 构建产物。
+聚合 bundle 会声明全部九个模块，因此插件管理页面提供一个总开关和每个模块独立的 Host/Client 开关。只需要单个功能时，可将 `packages/<module>` 目录作为 DSH bundle 单独安装。修改源码后重新运行 `pnpm build`；Host ESM 改动仍需重启 DSH。不要编辑 `packages/*/lib` 构建产物。
 
-DSH 核心包只声明为可选 peer，由宿主提供；模块实际用到的 peer 按模块分别声明。Skills/MCP 额外使用普通运行依赖 `yaml`。
+DSH 核心包只声明为可选 peer，由宿主提供；模块实际用到的 peer 按模块分别声明。Skills/MCP 额外使用普通运行依赖 `yaml`；桌面宠物使用 `@electron/get` 与 `extract-zip` 准备独立的 Electron 运行时。
 
 ## 旧配置迁移
 
@@ -36,7 +37,7 @@ DSH 核心包只声明为可选 peer，由宿主提供；模块实际用到的 p
 node scripts/migrate-config.mjs D:/path/to/profile/cordis.patch.yml
 ```
 
-检查输出后显式加 `--write` 才会写回。写入前会创建带时间戳和 UUID 的备份；该命令不会自动选择或修改当前 DSH profile。转换将旧聚合配置拆到模块包 ID，模块已有配置优先，并为八个模块显式保留旧总开关状态。旧 root 覆盖会保留并设为 disabled；因为新 bundle 不再插入旧 `shell-kit` 行，宿主可能对这条遗留覆盖报告 `entry not found`，不影响新模块行。冲突别名或不安全的 YAML 结构会拒绝自动迁移，需先手工处理。
+检查输出后显式加 `--write` 才会写回。写入前会创建带时间戳和 UUID 的备份；该命令不会自动选择或修改当前 DSH profile。转换将旧聚合配置拆到模块包 ID，模块已有配置优先，并为九个模块显式保留旧总开关状态。旧 root 覆盖会保留并设为 disabled；因为新 bundle 不再插入旧 `shell-kit` 行，宿主可能对这条遗留覆盖报告 `entry not found`，不影响新模块行。冲突别名或不安全的 YAML 结构会拒绝自动迁移，需先手工处理。
 
 ## 构建与验证
 
@@ -58,6 +59,7 @@ pnpm verify
 - 两套动态场景只显示在主会话的空白新会话中；已有会话、加载中的会话和侧栏嵌入会话不会显示，且尊重系统减少动态效果偏好。
 - 设置弹层（Codex 风格）改用结构选择器（`role="presentation"`、`data-shortcut-modal="settings"`、直接子级 `nav`），不再依赖构建期 CSS 模块类名；Windows 上按系统标题栏高度预留顶部拖拽带，并让返回/更多按钮避开右上角窗口按钮。
 - 通知模块含 Host 鉴权音效路由和 Client 设置/提醒，不是纯 Client 功能。
+- 桌面宠物与灵动岛默认关闭，开启后由插件自动管理独立的 Electron 辅助进程；可从设置中准备运行时。配置、运行方式和资源许可见 [桌面宠物说明](docs/pet/README.md)。
 - Browser 自动化需要 `agent-browser` CLI 与 Chrome/Chromium。
 - Mobile 需要 `mobilecli`；Android 还需要 `adb`，iOS 需要设备代理和授权。
 - Skills/MCP 使用 DSH Loader/MCP 服务以及目标运行时和技能目录权限。

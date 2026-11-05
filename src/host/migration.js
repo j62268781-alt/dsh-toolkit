@@ -2,7 +2,7 @@
 export const ROOT_IDS = ['shell-kit', 'dsh-toolkit', 'dsh-shell-kit']
 export const MODULE_NAMESPACES = Object.freeze({
   boot: 'boot', theme: 'theme', archived: 'archived', browser: 'browser',
-  judgement: 'judgment', mobile: 'mobile', skillsMcp: 'skills-mcp', notification: 'notification',
+  judgement: 'judgment', mobile: 'mobile', skillsMcp: 'skills-mcp', notification: 'notification', pet: 'pet',
 })
 const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key)
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)

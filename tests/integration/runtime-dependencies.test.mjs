@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 
 const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'))
-const modules = ['boot', 'theme', 'archived', 'browser', 'judgment', 'mobile', 'skills-mcp', 'notification']
+const modules = ['boot', 'theme', 'archived', 'browser', 'judgment', 'mobile', 'skills-mcp', 'notification', 'pet']
 
 test('the plugin consumes DSH runtime packages without installing another core copy', () => {
   const runtime = Object.keys(manifest.devDependencies).filter((name) => name.startsWith('@deepseek-ai/'))
@@ -16,7 +16,7 @@ test('the plugin consumes DSH runtime packages without installing another core c
   }
 })
 
-test('each module declares only optional DSH peers and Skills/MCP owns yaml', async () => {
+test('each module declares optional DSH peers and only its own runtime dependencies', async () => {
   for (const name of modules) {
     const pkg = JSON.parse(await readFile(new URL(`../../packages/${name}/package.json`, import.meta.url), 'utf8'))
     for (const peer of Object.keys(pkg.peerDependencies ?? {})) {
@@ -24,7 +24,8 @@ test('each module declares only optional DSH peers and Skills/MCP owns yaml', as
       assert.equal(pkg.peerDependenciesMeta?.[peer]?.optional, true, `${name}: ${peer} must be optional`)
       assert.match(pkg.peerDependencies[peer], /[~^*><|]/, `${name}: ${peer} must use a compatibility range`)
     }
-    if (name !== 'skills-mcp') assert.deepEqual(pkg.dependencies ?? {}, {}, `${name} must not add unrelated runtime packages`)
-    else assert.equal(typeof pkg.dependencies?.yaml, 'string')
+    if (name === 'skills-mcp') assert.equal(typeof pkg.dependencies?.yaml, 'string')
+    else if (name === 'pet') assert.deepEqual(pkg.dependencies, { '@electron/get': '^3.1.0', 'extract-zip': '^2.0.1' })
+    else assert.deepEqual(pkg.dependencies ?? {}, {}, `${name} must not add unrelated runtime packages`)
   }
 })

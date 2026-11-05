@@ -81,7 +81,7 @@ test('no root is unchanged; no config creates only explicit module switch overri
   assert.equal(migratePatch(unrelated).changed, false)
   for (const disabled of [false, true]) {
     const result = migratePatch([{ id: 'shell-kit', disabled }])
-    assert.equal(result.patches.length, 9)
+    assert.equal(result.patches.length, 10)
     for (const row of result.patches.slice(1)) {
       assert.equal(row.disabled, disabled)
       assert.equal('config' in row, false)

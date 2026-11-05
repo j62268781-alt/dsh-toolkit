@@ -92,7 +92,7 @@ const judgmentConfig = {
 
 test('root schema preserves module defaults and existing volatile boundaries', () => {
   const config = Config({ mobile: { enabled: false, routePrefix: '/custom-mobile' } })
-  assert.deepEqual(Object.keys(config).sort(), ['archived', 'boot', 'browser', 'judgement', 'mobile', 'notification', 'shell', 'skillsMcp', 'theme'])
+  assert.deepEqual(Object.keys(config).sort(), ['archived', 'boot', 'browser', 'judgement', 'mobile', 'notification', 'pet', 'shell', 'skillsMcp', 'theme'])
   assert.equal(isVolatile(config.browser), false)
   assert.equal(isVolatile(config.browser.enabled), true)
   assert.equal(config.browser.enabled.get(), true)
