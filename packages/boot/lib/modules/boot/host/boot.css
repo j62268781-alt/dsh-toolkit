@@ -26,7 +26,7 @@ body[data-ds-dark-theme] {
   pointer-events: none !important;
 }
 
-/* 万一 6 秒内应用没起来，把自带 loading 卡片还回去（本插件只负责好看，不劫持失败态） */
+/* 万一 10 秒内应用没起来，把自带 loading 卡片还回去（本插件只负责好看，不劫持失败态） */
 html[data-sk-boot-bailed] [data-dsh-boot] {
   opacity: 1 !important;
   pointer-events: auto !important;
@@ -113,151 +113,561 @@ html[data-sk-boot-bailed] [data-dsh-boot] {
 @keyframes sk-fill-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sk-wm-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes sk-wm-track { from { letter-spacing: .42em; } to { letter-spacing: .26em; } }
-.sk-boot__depth { display: none; }
 
-/* 深海之门：三层透视光环与海平面，单次入场后保持安静。 */
-.sk-boot[data-sk-animation="abyss"] {
-  --dsh-boot-bg: radial-gradient(ellipse at 50% 40%, #164667 0%, #071e38 48%, #020b18 100%);
-  --sk-ink: #e6fbff;
-  --sk-ink-2: #8bc6dc;
-  --sk-depth-line: rgba(112, 225, 255, .44);
-  --sk-depth-glow: rgba(44, 176, 245, .2);
-  --sk-depth-particle: rgba(167, 241, 255, .7);
+/* The artwork below is ported from docs/boot/demo-morph.html and demo.html.
+   Namespaced classes/keyframes isolate it from the Harness and the stable draw mode. */
+.sk-boot--ocean {
+  --sk-ocean-sea-deep: #02080f;
+  --sk-ocean-sea-mid: #061a2b;
+  --sk-ocean-sea-top: #0d3a58;
+  --sk-ocean-whale: #eef7ff;
+  --sk-ocean-foam: #cbe6ff;
+  --sk-ocean-hud-dim: rgba(197, 219, 240, .62);
+  --sk-ocean-ease-out: cubic-bezier(.22, .68, .3, 1);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+  color: #eef7ff;
+}
+.sk-boot--ocean {
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   isolation: isolate;
+  background:
+    radial-gradient(120% 85% at 50% 118%, #12496c 0%, var(--sk-ocean-sea-top) 26%,
+      var(--sk-ocean-sea-mid) 52%, var(--sk-ocean-sea-deep) 78%, #010509 100%);
 }
-.sk-boot[data-sk-animation="abyss"][data-sk-theme="light"],
-body[data-ds-light-theme] .sk-boot[data-sk-animation="abyss"][data-sk-theme="auto"] {
-  --dsh-boot-bg: radial-gradient(ellipse at 50% 35%, #f4fcff 0%, #c6e9f5 48%, #77adc7 100%);
-  --sk-ink: #0b3553;
-  --sk-ink-2: #376783;
-  --sk-depth-line: rgba(15, 102, 150, .38);
-  --sk-depth-glow: rgba(13, 123, 183, .16);
-  --sk-depth-particle: rgba(21, 117, 163, .56);
-}
-@media (prefers-color-scheme: light) {
-  .sk-boot[data-sk-animation="abyss"][data-sk-theme="auto"] {
-    --dsh-boot-bg: radial-gradient(ellipse at 50% 35%, #f4fcff 0%, #c6e9f5 48%, #77adc7 100%);
-    --sk-ink: #0b3553;
-    --sk-ink-2: #376783;
-    --sk-depth-line: rgba(15, 102, 150, .38);
-    --sk-depth-glow: rgba(13, 123, 183, .16);
-    --sk-depth-particle: rgba(21, 117, 163, .56);
-  }
-}
-body[data-ds-dark-theme] .sk-boot[data-sk-animation="abyss"][data-sk-theme="auto"] {
-  --dsh-boot-bg: radial-gradient(ellipse at 50% 40%, #164667 0%, #071e38 48%, #020b18 100%);
-  --sk-ink: #e6fbff;
-  --sk-ink-2: #8bc6dc;
-  --sk-depth-line: rgba(112, 225, 255, .44);
-  --sk-depth-glow: rgba(44, 176, 245, .2);
-  --sk-depth-particle: rgba(167, 241, 255, .7);
-}
-.sk-boot[data-sk-animation="abyss"] .sk-boot__depth {
-  display: block;
+
+.sk-boot--ocean::before {
+  content: "";
   position: absolute;
-  inset: 0;
-  overflow: hidden;
-  perspective: 800px;
+  inset: 0 0 40% 0;
+  background: radial-gradient(80% 70% at 50% 100%,
+    rgba(111, 188, 255, .13), transparent 70%);
   pointer-events: none;
 }
-.sk-boot__beams {
-  position: absolute;
-  inset: -35% -20% 0;
-  background: conic-gradient(from 154deg at 50% 0%, transparent 0deg 8deg, var(--sk-depth-glow) 10deg, transparent 16deg 27deg, var(--sk-depth-glow) 30deg, transparent 35deg 45deg, var(--sk-depth-glow) 49deg, transparent 54deg);
-  filter: blur(9px);
-  opacity: .6;
-  transform-origin: 50% 0;
-  animation: sk-depth-beams 2.1s ease-out both;
-}
-.sk-boot__portal {
+
+.sk-boot-ocean__halo {
   position: absolute;
   left: 50%;
-  top: 45%;
-  width: min(46vw, 440px);
-  min-width: 240px;
-  aspect-ratio: 1;
-  transform-style: preserve-3d;
-  transform: translate(-50%, -50%) rotateX(8deg) rotateY(-18deg);
-}
-.sk-boot__ring {
-  position: absolute;
-  inset: 0;
-  border: 1px solid var(--sk-depth-line);
+  bottom: 6%;
+  width: min(78vw, 980px);
+  aspect-ratio: 1.9;
+  translate: -50% 0;
   border-radius: 50%;
-  box-shadow: 0 0 28px var(--sk-depth-glow), inset 0 0 20px var(--sk-depth-glow);
-  transform: translateZ(var(--sk-ring-z)) scale(var(--sk-ring-scale));
-  opacity: var(--sk-ring-opacity);
-  animation: sk-depth-ring 1.7s cubic-bezier(.16,.7,.2,1) var(--sk-ring-delay) both;
+  background: radial-gradient(closest-side,
+    rgba(126, 200, 255, .30), rgba(88, 160, 235, .10) 55%, transparent 72%);
+  filter: blur(18px);
+  animation: sk-ocean-halo calc(3.4s * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) both;
 }
-.sk-boot__ring::before {
-  content: '';
+
+@keyframes sk-ocean-halo {
+  0%   { opacity: 0; transform: scale(.82); }
+  45%  { opacity: 1; transform: scale(1); }
+  100% { opacity: .78; transform: scale(1.05); }
+}
+
+/* ── 海面（盖在鲸鱼上面，出水的那一下才「破水而出」） ────────────────── */
+.sk-boot-ocean__sea {
   position: absolute;
-  inset: 8px;
-  border: 1px dashed var(--sk-depth-line);
-  border-radius: inherit;
-  opacity: .35;
+  inset: auto 0 0 0;
+  height: 38vh;
+  z-index: 4;
+  pointer-events: none;
 }
-.sk-boot__ring--far { --sk-ring-z: -180px; --sk-ring-scale: .66; --sk-ring-opacity: .28; --sk-ring-delay: 0ms; }
-.sk-boot__ring--middle { --sk-ring-z: -50px; --sk-ring-scale: .88; --sk-ring-opacity: .6; --sk-ring-delay: 90ms; }
-.sk-boot__ring--near { --sk-ring-z: 110px; --sk-ring-scale: 1.08; --sk-ring-opacity: .8; --sk-ring-delay: 180ms; }
-.sk-boot__plane {
+
+.sk-boot-ocean__sea-fill {
   position: absolute;
-  left: -35%;
-  top: 68%;
-  width: 170%;
-  height: 110%;
-  transform-origin: 50% 0;
-  transform: rotateX(68deg);
-  background-image: repeating-linear-gradient(90deg, transparent 0 59px, var(--sk-depth-line) 60px 61px), repeating-linear-gradient(0deg, transparent 0 41px, var(--sk-depth-line) 42px 43px);
-  mask-image: radial-gradient(ellipse at 50% 0%, #000, transparent 65%);
-  -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000, transparent 65%);
-  opacity: .23;
-  animation: sk-depth-plane 1.8s cubic-bezier(.2,.7,.2,1) both;
+  inset: auto 0 0 0;
+  height: 100%;
+  background: linear-gradient(to bottom,
+    rgba(30, 96, 146, 0) 0%, rgba(27, 90, 136, .55) 5%,
+    rgba(19, 68, 108, .88) 13%, rgba(12, 46, 74, .99) 26%,
+    #05131f 52%, #02080e 82%, #010508 100%);
 }
-.sk-boot__horizon {
+
+.sk-boot-ocean__sea-wave {
   position: absolute;
-  left: 15%;
-  right: 15%;
-  top: 68%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--sk-depth-line), transparent);
-  box-shadow: 0 0 32px 5px var(--sk-depth-glow);
-  animation: sk-depth-horizon 1.8s ease-out both;
+  left: -25%;
+  width: 150%;
+  height: 100%;
+  display: block;
 }
-.sk-boot__motes {
+.sk-boot-ocean__sea-wave--back  { top: -1%; opacity: .38; animation: sk-ocean-drift calc(11s * var(--sk-boot-time-scale, 1)) ease-in-out infinite alternate; }
+.sk-boot-ocean__sea-wave--mid   { top: 1%;  opacity: .55; animation: sk-ocean-drift calc(8.5s * var(--sk-boot-time-scale, 1)) ease-in-out infinite alternate-reverse; }
+.sk-boot-ocean__sea-wave--front { top: 3%;  opacity: .95; animation: sk-ocean-drift calc(6.4s * var(--sk-boot-time-scale, 1)) ease-in-out infinite alternate; }
+
+.sk-boot-ocean__sea-wave path {
+  fill: #061a2b;
+  stroke: rgba(176, 222, 255, .30);
+  stroke-width: 1.1;
+  vector-effect: non-scaling-stroke;
+}
+.sk-boot-ocean__sea-wave--back  path { fill: #0c3550; stroke: rgba(170, 216, 255, .18); }
+.sk-boot-ocean__sea-wave--mid   path { fill: #08283f; stroke: rgba(176, 222, 255, .26); }
+.sk-boot-ocean__sea-wave--front path { stroke: rgba(198, 232, 255, .45); }
+
+@keyframes sk-ocean-drift {
+  from { transform: translateX(-3.5%) translateY(0); }
+  to   { transform: translateX(3.5%) translateY(-1.4%); }
+}
+
+.sk-boot-ocean__sea-mist {
+  position: absolute;
+  inset: -26px 0 auto 0;
+  height: 90px;
+  background: linear-gradient(to top, rgba(120, 186, 240, .16), transparent 78%);
+  filter: blur(7px);
+}
+
+.sk-boot-ocean__sea-shine {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: min(46vw, 560px);
+  height: 3px;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, rgba(190, 228, 255, .85), transparent);
+  filter: blur(2px);
+  animation: sk-ocean-shine calc(3.4s * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) both;
+}
+@keyframes sk-ocean-shine { 0%, 12% { opacity: 0; } 55% { opacity: .9; } 100% { opacity: .5; } }
+
+/* ── 主角：鲸鱼 → logo ──────────────────────────────────────────────── */
+.sk-boot-ocean__stage {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle at 24% 34%, var(--sk-depth-particle) 1px, transparent 2px), radial-gradient(circle at 76% 62%, var(--sk-depth-particle) 1px, transparent 2px), radial-gradient(circle at 67% 23%, var(--sk-depth-particle) 1px, transparent 2px), radial-gradient(circle at 35% 71%, var(--sk-depth-particle) .7px, transparent 1.5px), radial-gradient(circle at 83% 38%, var(--sk-depth-particle) .7px, transparent 1.5px), radial-gradient(circle at 14% 56%, var(--sk-depth-particle) .7px, transparent 1.5px);
-  opacity: .55;
-  animation: sk-depth-motes 2s ease-out both;
+  z-index: 2;             /* 低于 .sk-boot-ocean__sea：起飞那一下会被海面挡住 */
+  display: grid;
+  place-items: center;
+  pointer-events: none;
 }
-.sk-boot[data-sk-animation="abyss"] .sk-boot__grid { display: none; }
-.sk-boot[data-sk-animation="abyss"] .sk-boot__lockup { z-index: 1; perspective: 700px; animation: sk-depth-arrive 1.7s cubic-bezier(.16,.7,.2,1) both; }
-.sk-boot[data-sk-animation="abyss"] .sk-boot__mark { width: 104px; filter: drop-shadow(0 3px 0 var(--sk-depth-glow)) drop-shadow(0 0 24px var(--sk-depth-glow)); }
-.sk-boot[data-sk-animation="abyss"] .sk-boot__trace { stroke: var(--sk-ink); animation: sk-depth-trace 1.5s ease-out both; }
-.sk-boot[data-sk-animation="abyss"] .sk-boot__fill { animation: sk-depth-assemble 1.7s ease-out both; }
-.sk-boot[data-sk-animation="abyss"] .sk-boot__wordmark { animation: sk-depth-wordmark 1.7s ease-out both; }
-@keyframes sk-depth-ring {
-  from { opacity: 0; transform: translateZ(calc(var(--sk-ring-z) - 340px)) scale(.35); }
-  to { opacity: var(--sk-ring-opacity); transform: translateZ(var(--sk-ring-z)) scale(var(--sk-ring-scale)); }
-}
-@keyframes sk-depth-beams { from { opacity: 0; transform: scaleX(.6); } to { opacity: .6; transform: none; } }
-@keyframes sk-depth-plane { from { opacity: 0; transform: rotateX(78deg) translateY(90px); } to { opacity: .23; transform: rotateX(68deg); } }
-@keyframes sk-depth-horizon { from { opacity: 0; transform: scaleX(.1); } to { opacity: 1; transform: none; } }
-@keyframes sk-depth-motes { from { opacity: 0; transform: scale(.65); } to { opacity: .55; transform: none; } }
-@keyframes sk-depth-arrive { from { opacity: 0; transform: perspective(700px) translateZ(-280px) rotateX(12deg); } 68% { opacity: 1; } to { opacity: 1; transform: none; } }
-@keyframes sk-depth-trace { 0%,12% { stroke-dashoffset: 1; opacity: 0; } 30% { opacity: 1; } 78% { stroke-dashoffset: 0; opacity: .5; } 100% { stroke-dashoffset: 0; opacity: 0; } }
-@keyframes sk-depth-assemble { 0%,40% { opacity: 0; } 80%,100% { opacity: 1; } }
-@keyframes sk-depth-wordmark { 0%,62% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
 
-/* 系统里关掉动效时，只留淡入淡出 */
+/*
+ * lockup 就是动画结束时的最终状态：品牌标 + 字标，水平居中锁死。
+ * 鲸鱼三层 wrapper 各自把「位移 / 姿态与缩放」从起始值归零，
+ * 归零之后它天然就落在 logo 的位置上 —— 不需要算像素。
+ */
+.sk-boot-ocean__lockup {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transform-origin: 50% 50%;
+  animation: sk-ocean-lock-shake calc(520ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.36, .07, .19, .97) calc(1490ms * var(--sk-boot-time-scale, 1)) both;
+}
+
+.sk-boot-ocean__arc-x {
+  animation: sk-ocean-arc-x calc(1280ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.32, .02, .5, 1) calc(220ms * var(--sk-boot-time-scale, 1)) both;
+  will-change: transform;
+}
+
+.sk-boot-ocean__arc-y {
+  animation: sk-ocean-arc-y calc(1280ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.34, .02, .46, 1) calc(220ms * var(--sk-boot-time-scale, 1)) both;
+  will-change: transform;
+}
+
+.sk-boot-ocean__arc-rot {
+  animation: sk-ocean-arc-rot calc(1280ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.3, .02, .5, 1) calc(220ms * var(--sk-boot-time-scale, 1)) both;
+  will-change: transform;
+}
+
+.sk-boot-ocean__mark {
+  display: block;
+  width: 84px;
+  height: auto;
+  color: var(--sk-ocean-whale);
+  /* 鲸鱼本来朝左；翻转写在元素自身，父级 rotate 才不会被镜像 */
+  transform: scaleX(-1);
+  filter:
+    drop-shadow(0 0 10px rgba(150, 210, 255, .55))
+    drop-shadow(0 0 34px rgba(96, 168, 255, .34));
+}
+
+/* 横向：从左下角飞向中心 */
+@keyframes sk-ocean-arc-x {
+  0%   { transform: translateX(-40vw); }
+  100% { transform: translateX(0); }
+}
+
+/* 纵向：出水 → 过冲一点点 → 落到中心 */
+@keyframes sk-ocean-arc-y {
+  0%   { transform: translateY(44vh); }
+  46%  { transform: translateY(-5vh); }
+  68%  { transform: translateY(-8vh); }
+  86%  { transform: translateY(1.2vh); }
+  100% { transform: translateY(0); }
+}
+
+/* 姿态 + 缩放：昂头起飞 → 放平 → 收成 logo 尺寸（末段轻微过冲） */
+@keyframes sk-ocean-arc-rot {
+  0%   { transform: rotate(-40deg) scale(2.9); }
+  24%  { transform: rotate(-22deg) scale(2.72); }
+  48%  { transform: rotate(-4deg) scale(2.3); }
+  74%  { transform: rotate(7deg) scale(1.42); }
+  90%  { transform: rotate(-2.5deg) scale(.93); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+/* 「抖一下」：落定后的三下渐弱冲击 */
+@keyframes sk-ocean-lock-shake {
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
+  12%  { transform: translate(-4px, 3px) rotate(-1.6deg) scale(1.05); }
+  28%  { transform: translate(4px, -3px) rotate(1.4deg) scale(1.03); }
+  44%  { transform: translate(-3px, 1.6px) rotate(-.9deg) scale(1.016); }
+  60%  { transform: translate(2px, -1.2px) rotate(.6deg) scale(1.008); }
+  78%  { transform: translate(-1px, .6px) rotate(-.28deg) scale(1.003); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+
+/* ── 字标 ───────────────────────────────────────────────────────────── */
+.sk-boot-ocean__wordmark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  animation: sk-ocean-wordmark-in calc(620ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) calc(1500ms * var(--sk-boot-time-scale, 1)) both;
+}
+
+.sk-boot-ocean__wordmark-name {
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: .34em;
+  text-transform: uppercase;
+  color: #fff;
+  animation: sk-ocean-tracking calc(620ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) calc(1500ms * var(--sk-boot-time-scale, 1)) both;
+}
+
+.sk-boot-ocean__wordmark-suffix {
+  padding: 2px 7px 3px;
+  border: 1px solid rgba(255, 255, 255, .5);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  color: rgba(255, 255, 255, .82);
+}
+
+@keyframes sk-ocean-wordmark-in {
+  0%   { opacity: 0; filter: blur(10px); transform: translateX(-10px); }
+  100% { opacity: 1; filter: blur(0); transform: translateX(0); }
+}
+
+@keyframes sk-ocean-tracking {
+  0%   { letter-spacing: .34em; opacity: .4; }
+  100% { letter-spacing: .14em; opacity: 1; }
+}
+
+/* ── 落定瞬间的闪光与冲击波 ──────────────────────────────────────────── */
+.sk-boot-ocean__mark-slot {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.sk-boot-ocean__shock-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.sk-boot-ocean__shock {
+  position: absolute;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(198, 232, 255, .85);
+  opacity: 0;
+  z-index: 5;
+  pointer-events: none;
+  animation: sk-ocean-shock calc(1100ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.2, .7, .35, 1) both;
+}
+
+@keyframes sk-ocean-shock {
+  0%   { transform: scale(.35); opacity: 0; }
+  14%  { opacity: .95; }
+  100% { transform: scale(4.6); opacity: 0; }
+}
+
+.sk-boot-ocean__flash {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: radial-gradient(34% 24% at 50% 50%, rgba(226, 243, 255, .62), rgba(200, 232, 255, 0) 70%);
+  opacity: 0;
+  pointer-events: none;
+  animation: sk-ocean-flash calc(560ms * var(--sk-boot-time-scale, 1)) ease-out calc(1490ms * var(--sk-boot-time-scale, 1)) both;
+}
+@keyframes sk-ocean-flash {
+  0%   { opacity: 0; }
+  12%  { opacity: .8; }
+  38%  { opacity: .35; }
+  100% { opacity: 0; }
+}
+
+/* ── 水花 ───────────────────────────────────────────────────────────── */
+.sk-boot-ocean__fx {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.sk-boot-ocean__drop {
+  position: absolute;
+  width: var(--s, 6px);
+  height: var(--s, 6px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--sk-ocean-foam) 60%, rgba(150, 200, 240, .2));
+  opacity: 0;
+  animation: sk-ocean-drop var(--dur, calc(900ms * var(--sk-boot-time-scale, 1))) cubic-bezier(.16, .7, .4, 1) var(--delay, calc(0ms * var(--sk-boot-time-scale, 1))) both;
+}
+
+@keyframes sk-ocean-drop {
+  0%   { transform: translate(0, 0) scale(.5); opacity: 0; }
+  12%  { opacity: 1; }
+  52%  { transform: translate(var(--dx, 0px), calc(-1 * var(--up, 90px))) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx2, 0px), var(--down, 24px)) scale(.35); opacity: 0; }
+}
+
+.sk-boot-ocean__foam {
+  position: absolute;
+  width: 120px;
+  height: 40px;
+  margin: -20px 0 0 -60px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #ffffff, rgba(196, 232, 255, .55) 45%, transparent 72%);
+  filter: blur(5px);
+  opacity: 0;
+  animation: sk-ocean-foam calc(880ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.2, .7, .4, 1) var(--delay, calc(0ms * var(--sk-boot-time-scale, 1))) both;
+}
+@keyframes sk-ocean-foam {
+  0%   { transform: scale(.25); opacity: .95; }
+  55%  { transform: scale(1.15); opacity: .55; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.sk-boot-ocean__ripple {
+  position: absolute;
+  width: 40px;
+  height: 12px;
+  margin-left: -20px;
+  border: 1.5px solid rgba(186, 226, 255, .6);
+  border-radius: 50%;
+  opacity: 0;
+  animation: sk-ocean-ripple calc(1500ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.2, .7, .35, 1) var(--delay, calc(0ms * var(--sk-boot-time-scale, 1))) both;
+}
+@keyframes sk-ocean-ripple {
+  0%   { transform: scale(.25); opacity: 0; }
+  18%  { opacity: .85; }
+  100% { transform: scale(9); opacity: 0; }
+}
+
+
+.sk-boot-ocean__hud {
+  position: absolute;
+  left: 50%;
+  bottom: 12vh;
+  translate: -50% 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.sk-boot-ocean__meter {
+  width: min(340px, 56vw);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  animation: sk-ocean-rise calc(700ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) calc(1750ms * var(--sk-boot-time-scale, 1)) both;
+}
+
+.sk-boot-ocean__meter-track {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(190, 222, 250, .16);
+  overflow: hidden;
+}
+
+.sk-boot-ocean__meter-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(140, 205, 255, .55), #fff);
+  box-shadow: 0 0 12px rgba(140, 205, 255, .8);
+  transition: width calc(560ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out);
+}
+
+@keyframes sk-ocean-rise {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+
+.sk-boot-ocean__whale-track {
+  position: absolute;
+  left: 6vw;
+  bottom: 24vh;
+  z-index: 2;               /* 低于 .sk-boot-ocean__sea，海面才会盖住它 */
+  animation: sk-ocean-whale-x calc(2.5s * var(--sk-boot-time-scale, 1)) cubic-bezier(.32, .02, .62, 1) calc(.3s * var(--sk-boot-time-scale, 1)) both;
+}
+
+.sk-boot-ocean__whale-lift {
+  animation: sk-ocean-whale-y calc(2.5s * var(--sk-boot-time-scale, 1)) cubic-bezier(.38, .02, .45, 1) calc(.3s * var(--sk-boot-time-scale, 1)) both;
+}
+
+.sk-boot-ocean__whale-tilt {
+  animation: sk-ocean-whale-tilt calc(2.5s * var(--sk-boot-time-scale, 1)) cubic-bezier(.3, .02, .5, 1) calc(.3s * var(--sk-boot-time-scale, 1)) both;
+}
+
+.sk-boot-ocean__whale {
+  display: block;
+  width: clamp(150px, 18vw, 262px);
+  height: auto;
+  color: var(--sk-ocean-whale);
+  /* 鲸鱼本来朝左，翻过来朝右飞。
+     必须翻转在元素自身上（transform），不能写在父级的 scale 属性上，
+     否则父级的 rotate 会被一并镜像，姿态方向会反。 */
+  transform: scaleX(-1);
+  filter:
+    drop-shadow(0 0 12px rgba(150, 210, 255, .55))
+    drop-shadow(0 0 42px rgba(96, 168, 255, .32));
+}
+
+/* 横向：匀速穿越画面 */
+@keyframes sk-ocean-whale-x {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(62vw); }
+}
+
+/* 纵向：出水 → 顶点悬停 → 落回 */
+@keyframes sk-ocean-whale-y {
+  0%   { transform: translateY(34vh); }
+  34%  { transform: translateY(-4vh); }
+  50%  { transform: translateY(-12vh); }
+  66%  { transform: translateY(-3vh); }
+  100% { transform: translateY(32vh); }
+}
+
+/* 姿态：出水时昂头，顶点放平，入水时低头 */
+@keyframes sk-ocean-whale-tilt {
+  0%   { transform: rotate(-34deg); }
+  32%  { transform: rotate(-12deg); }
+  52%  { transform: rotate(6deg); }
+  72%  { transform: rotate(28deg); }
+  100% { transform: rotate(44deg); }
+}
+
+
+.sk-boot-ocean__brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: sk-ocean-brand-in calc(1100ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) calc(1200ms * var(--sk-boot-time-scale, 1)) both;
+}
+
+.sk-boot-ocean__brand-mark {
+  width: 34px;
+  height: auto;
+  color: #fff;
+  filter: drop-shadow(0 0 14px rgba(140, 205, 255, .6));
+}
+
+.sk-boot-ocean__brand-text {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 15px;
+  letter-spacing: .44em;          /* 首帧字距很大，收拢到 .17em */
+  text-transform: uppercase;
+  color: #fff;
+  animation: sk-ocean-brand-tracking calc(1400ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) calc(1200ms * var(--sk-boot-time-scale, 1)) both;
+}
+
+.sk-boot-ocean__brand-name { font-weight: 650; }
+.sk-boot-ocean__brand-suffix {
+  padding: 2px 7px 3px;
+  border: 1px solid rgba(255, 255, 255, .5);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  color: rgba(255, 255, 255, .82);
+}
+
+@keyframes sk-ocean-brand-in {
+  0%   { opacity: 0; filter: blur(10px); transform: translateY(8px); }
+  100% { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+
+@keyframes sk-ocean-brand-tracking {
+  0%   { letter-spacing: .44em; opacity: 0; filter: blur(8px); }
+  100% { letter-spacing: .17em; opacity: 1; filter: blur(0); }
+}
+
+
+/* Desktop and the smaller iframe use the same responsive composition. */
+.sk-boot-ocean__lockup { gap: clamp(6px, 1.2vw, 14px); }
+.sk-boot-ocean__mark-slot { width: clamp(34px, 7.2vw, 84px); height: clamp(34px, 7.2vw, 84px); }
+.sk-boot-ocean__mark { width: 100%; }
+.sk-boot-ocean__wordmark-name { font-size: clamp(10px, 1.6vw, 19px); }
+.sk-boot-ocean__wordmark-suffix { font-size: clamp(7px, .85vw, 10px); }
+.sk-boot-ocean__wordmark { gap: clamp(6px, 1vw, 12px); }
+.sk-boot-ocean__shock { left: 50%; top: 50%; animation-delay: calc(var(--delay) * var(--sk-boot-time-scale, 1)); }
+.sk-boot-ocean__splash { position: absolute; width: 0; height: 0; }
+.sk-boot-ocean__drop, .sk-boot-ocean__foam, .sk-boot-ocean__ripple { left: 0; top: 0; }
+.sk-boot-ocean__drop { animation-duration: calc(var(--dur, 900ms) * var(--sk-boot-time-scale, 1)); animation-delay: calc(var(--delay, 0ms) * var(--sk-boot-time-scale, 1)); }
+.sk-boot-ocean__foam, .sk-boot-ocean__ripple { animation-delay: calc(var(--delay, 0ms) * var(--sk-boot-time-scale, 1)); }
+.sk-boot-ocean__status { font-size: 12px; letter-spacing: .12em; color: var(--sk-ocean-hud-dim); animation: sk-ocean-rise calc(700ms * var(--sk-boot-time-scale, 1)) ease-out calc(1820ms * var(--sk-boot-time-scale, 1)) both; }
+.sk-boot-ocean__meter-bar { animation: sk-ocean-progress calc(1900ms * var(--sk-boot-time-scale, 1)) ease-out calc(1400ms * var(--sk-boot-time-scale, 1)) both; }
+@keyframes sk-ocean-progress { from { width: 0; } to { width: 88%; } }
+.sk-boot[data-sk-ready] .sk-boot-ocean__meter-bar { animation: none; width: 100%; }
+.sk-boot[data-sk-animation="abyss"] .sk-boot-ocean__hud { bottom: 7vh; gap: clamp(8px, 2vh, 18px); }
+.sk-boot[data-sk-animation="abyss"] .sk-boot-ocean__wordmark { opacity: 1; }
+.sk-boot-ocean__brand-text { font-size: clamp(10px, 1.4vw, 15px); }
+.sk-boot-ocean__brand-suffix { font-size: clamp(7px, .85vw, 10px); align-self: center; }
+.sk-boot[data-sk-animation="abyss"] .sk-boot-ocean__flash { animation: none; }
+.sk-boot[data-sk-animation="abyss"][data-sk-ready] .sk-boot-ocean__flash { animation: sk-ocean-flash 280ms ease-out both; }
+.sk-boot[data-sk-wordmark="false"] :is(.sk-boot__wordmark, .sk-boot-ocean__wordmark) { display: none; }
+.sk-boot[data-sk-theme="light"] { --dsh-boot-bg: #f4fbfa; --sk-ink: #10292a; --sk-ink-2: #3d7471; --sk-grid: rgba(16,41,42,.08); }
+.sk-boot[data-sk-theme="dark"] { --dsh-boot-bg: #101a1d; --sk-ink: #e5faf4; --sk-ink-2: #a8c9c1; --sk-grid: rgba(229,250,244,.08); }
+.sk-boot--ocean[data-sk-theme="light"], body[data-ds-light-theme] .sk-boot--ocean[data-sk-theme="auto"] {
+  --sk-ocean-sea-deep: #d2e9f3; --sk-ocean-sea-mid: #a4d0e6; --sk-ocean-sea-top: #65b3da;
+  --sk-ocean-whale: #143953; --sk-ocean-hud-dim: #d5edff;
+}
+@media (prefers-color-scheme: dark) {
+  .sk-boot[data-sk-theme="auto"] { --dsh-boot-bg: #101a1d; --sk-ink: #e5faf4; --sk-ink-2: #a8c9c1; --sk-grid: rgba(229,250,244,.08); }
+}
+@media (prefers-color-scheme: light) {
+  .sk-boot--ocean[data-sk-theme="auto"] { --sk-ocean-sea-deep: #d2e9f3; --sk-ocean-sea-mid: #a4d0e6; --sk-ocean-sea-top: #65b3da; --sk-ocean-whale: #143953; --sk-ocean-hud-dim: #d5edff; }
+}
+body[data-ds-dark-theme] .sk-boot--ocean[data-sk-theme="auto"] { --sk-ocean-sea-deep: #02080f; --sk-ocean-sea-mid: #061a2b; --sk-ocean-sea-top: #0d3a58; --sk-ocean-whale: #eef7ff; --sk-ocean-hud-dim: rgba(197,219,240,.62); }
+@media (max-width: 700px) {
+  .sk-boot-ocean__whale { width: clamp(74px, 18vw, 150px); }
+  .sk-boot-ocean__splash { transform: scale(.55); }
+  .sk-boot-ocean__shock { width: 44px; height: 44px; margin: -22px 0 0 -22px; }
+  .sk-boot-ocean__status { font-size: 10px; }
+  .sk-boot-ocean__brand { gap: 8px; }
+  .sk-boot-ocean__brand-mark { width: 24px; }
+}
+/* No movement or flashing under the OS preference; leave the final identity readable. */
 @media (prefers-reduced-motion: reduce) {
-  .sk-boot__grid,
-  .sk-boot__mark .sk-boot__trace,
-  .sk-boot__mark .sk-boot__fill,
-  .sk-boot__wordmark {
-    animation-duration: 1ms !important;
-    animation-delay: 0ms !important;
-  }
+  .sk-boot *, .sk-boot::before, .sk-boot::after { animation: none !important; transition: none !important; }
+  .sk-boot .sk-boot__fill, .sk-boot .sk-boot__wordmark, .sk-boot .sk-boot__grid,
+  .sk-boot-ocean__wordmark, .sk-boot-ocean__wordmark-name, .sk-boot-ocean__meter, .sk-boot-ocean__status { opacity: 1; filter: none; }
+  .sk-boot .sk-boot__trace, .sk-boot-ocean__fx, .sk-boot-ocean__flash, .sk-boot-ocean__shock-layer, .sk-boot-ocean__whale-track { display: none; }
+  .sk-boot-ocean__lockup, .sk-boot-ocean__arc-x, .sk-boot-ocean__arc-y, .sk-boot-ocean__arc-rot { transform: none; }
+  .sk-boot-ocean__meter-bar { width: 88%; }
 }

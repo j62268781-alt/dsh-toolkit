@@ -10,13 +10,13 @@ import { DSH_DESKTOP_LOGO } from '../../../client/ui/dsh-logo.js'
 import panelCss from './styles.css'
 
 export const inject = ['slots', 'configForms']
-const DEFAULTS = Object.freeze({ animation: 'draw', durationMs: 2400, theme: 'auto', showWordmark: true, allowSkip: true })
+const DEFAULTS = Object.freeze({ animation: 'draw', theme: 'auto', showWordmark: true, allowSkip: true })
 const FIELDS = Object.keys(DEFAULTS)
 const SETTING_FIELDS = FIELDS.filter((field) => field !== 'animation')
 const MODES = [
   { id: 'draw', name: '经典描摹', caption: '一笔勾勒，安静启程', detail: '保留原版描摹，鲸标稳定呈现' },
-  { id: 'water', name: '水面浮现', caption: '跃出水面，涟漪舒展', detail: '保留鲸标跃出水面的柔和动效' },
-  { id: 'abyss', name: '深海之门', caption: '穿越光环，从深蓝抵达', detail: '透视光环与海平面，凝聚立体鲸影' },
+  { id: 'water', name: '跃浪成标', caption: '跃出水面，收拢成标', detail: '鲸鱼沿弧线跃出，收拢成 Logo，字标随后浮现' },
+  { id: 'abyss', name: '鲸跃归海', caption: '掠过海面，再次入海', detail: '鲸鱼沿抛物线跃出，再入水激起水花与涟漪' },
 ]
 
 function snapshotOf(form) {
@@ -69,7 +69,7 @@ export function BootPanel({ form }) {
   const controlsDisabled = !writable || saving !== ''
   const animation = pendingAnimation || current.animation
   const mode = MODES.find((item) => item.id === animation) ?? MODES[0]
-  const doc = React.useMemo(() => createPreviewDocument({ css: bootCss, html: bootHtml, script: '' }, { ...draft, animation }), [animation, draft.theme, draft.durationMs, draft.showWordmark, draft.allowSkip])
+  const doc = React.useMemo(() => createPreviewDocument({ css: bootCss, html: bootHtml, script: '' }, { ...draft, animation }), [animation, draft.theme, draft.showWordmark, draft.allowSkip])
   const update = (field, value) => {
     dirty.current = true
     setDraft((values) => ({ ...values, [field]: value }))
@@ -136,7 +136,6 @@ export function BootPanel({ form }) {
     <div className="boot-feedback" aria-live="polite">{error ? <p className="boot-error" role="alert">{error}</p> : notice ? <p className="boot-ok" role="status">{notice}</p> : null}</div>
     <Group title="显示设置">
       <label className="boot-row"><span className="boot-row-text"><span>画面配色</span><small>独立设置启动画面的明暗</small></span><select disabled={controlsDisabled} value={draft.theme} onChange={(event) => update('theme', event.target.value)}><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
-      <label className="boot-row"><span className="boot-row-text"><span>最短展示时间</span><small>应用准备就绪后，平滑进入桌面</small></span><span className="boot-duration"><input disabled={controlsDisabled} aria-label="最短展示时间" type="range" min="1700" max="8000" step="100" value={draft.durationMs} onChange={(event) => update('durationMs', Number(event.target.value))} /><output>{(draft.durationMs / 1000).toFixed(1)} 秒</output></span></label>
       <div className="boot-row"><span className="boot-row-text"><span>显示文字标识</span><small>在鲸标下方显示 DEEPSEEK HARNESS</small></span><Toggle label="显示文字标识" checked={draft.showWordmark} disabled={controlsDisabled} onChange={(value) => update('showWordmark', value)} /></div>
     </Group>
     <Group title="交互设置"><div className="boot-row"><span className="boot-row-text"><span>允许跳过</span><small>点击画面，或按 Esc、空格、Enter 跳过</small></span><Toggle label="允许跳过" checked={draft.allowSkip} disabled={controlsDisabled} onChange={(value) => update('allowSkip', value)} /></div></Group>

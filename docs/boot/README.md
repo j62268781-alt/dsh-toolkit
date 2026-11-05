@@ -1,32 +1,23 @@
 # 开机动画 · 设计稿与演示
 
-这个目录**不是插件**，是 `dsh-shell-kit` 的开机动画设计稿与可交互演示。
-真正的实现只有三个文件，在插件根目录的 `host/` 下：
+这个目录保存启动动画的设计稿与演示。实际插件实现位于 [boot 模块](../../src/modules/boot/)：
 
-- `host/boot.css` —— 动画样式（进 `<head>`，首屏前生效）
-- `host/boot.html` —— 动画结构（内联鲸鱼 SVG，紧随 `<body>`）
-- `host/boot.js` —— 计时、挂载检测、淡出
+- [boot.css](../../src/modules/boot/host/boot.css)：描摹、海面、飞跃、粒子和减少动态样式，首屏前注入。
+- [boot.html](../../src/modules/boot/host/boot.html)：经典描摹的内联鲸鱼 SVG。
+- [scene.js](../../src/modules/boot/host/scene.js)：选择场景、生成有限水花粒子，并输出共用的运行与预览结构。
+- [boot.js](../../src/modules/boot/host/boot.js)：动画时长、宿主就绪检测、跳过、淡出和 10 秒失败兜底。
+- [index.js](../../src/modules/boot/host/index.js)：通过 `webserver/index-inject` 注入场景。
 
-由 `index.js` 通过 `webserver/index-inject` 注入，细节见
-[boot-design.md](boot-design.md) 与 [../../README.md](../../README.md) 的「三·五」节。
+## 三款动画
 
-## 演示
+| 配置键 | 设置页名称 | 设计来源与效果 |
+| --- | --- | --- |
+| `draw` | 经典描摹 | [demo-boot.html](demo-boot.html)：描线 → 填色 → 字标；鲸标固定，不增加落定抖动 |
+| `water` | 跃浪成标 | [demo-morph.html](demo-morph.html)：鲸鱼从海面跃出，沿原弧线收成 Logo，保留落定冲击、水花和三层海面 |
+| `abyss` | 鲸跃归海 | [demo.html](demo.html)：鲸鱼沿原抛物线跃出再入水，保留起跳和两簇落水粒子、品牌字标与海面遮挡 |
 
-| 文件 | 内容 |
-| --- | --- |
-| `demo-boot.html` | **当前实现的镜像**（A5「留白」）：描线 → 填色 → 字标 → 淡出。可切浅/深色、拖时间轴逐帧停看（`window.__boot.at(ms)` / `.play()` / `.pause()`） |
-| `demo.html` | 早期「鲸鱼出海」草稿（跃出 → 扎回海里） |
-| `demo-morph.html` | 早期「鲸鱼跃出 → 收成 logo」草稿 |
-| `frames/` | 上面几版的截帧 |
+既有配置键保持兼容。文档中的独立演示保留原始设计语言；设置页预览直接使用实际插件的场景与 CSS，不执行演示脚本，也不模拟宿主就绪。
 
-`demo-boot.html` 是**生成物**：`node scripts/build-boot-demo.mjs` 会把真的
-`host/boot.css` + `host/boot.html` 内联进来，时间轴常量也从 `host/boot.js` 里读
-（`MIN_SHOW` / `FADE`）。所以改完实现跑一下脚本，演示页不会漂移。
+每款动画自行决定展示时长：`draw` 2.4 秒、`water` 2.9 秒、`abyss` 4.5 秒，均按原速播放。设置页不再提供时长选项，旧 `durationMs` 配置会被忽略。动画播放完成且宿主已挂载后进入桌面；宿主尚未就绪时继续等待，保留 10 秒失败兜底。粒子在构建场景 HTML 时一次性生成，运行和沙箱预览一致；退出时随场景移除。允许跳过时可点击或按 Esc、空格、Enter 提前结束。
 
-打开方式（任意静态服务器，别用 file://，否则相对资源可能被拦）：
-
-```bash
-cd /Users/joeson/Documents/dsh-plugins/dsh-shell-kit
-python3 -m http.server 8137
-# → http://127.0.0.1:8137/docs/boot/demo-boot.html
-```
+明暗设置和系统减少动态偏好均生效。减少动态时隐藏飞跃、水花及闪光，保留静态鲸标和字标。设计演示的重播、时间轴与模拟就绪仅用于独立查看，不参与真实应用启动。
