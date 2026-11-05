@@ -5,6 +5,8 @@ const TITLE_ROW = '[data-slot="main.conversation"] [class*="_titleRow"]';
 
 export function installBandHeight() {
   let queued = 0;
+  const previous = document.body.style.getPropertyValue("--cx-band-h");
+  const priority = document.body.style.getPropertyPriority("--cx-band-h");
 
   const pass = () => {
     queued = 0;
@@ -36,6 +38,7 @@ export function installBandHeight() {
     observer.disconnect();
     window.removeEventListener("resize", schedule);
     if (queued) cancelAnimationFrame(queued);
-    document.body.style.removeProperty("--cx-band-h");
+    if (previous) document.body.style.setProperty("--cx-band-h", previous, priority);
+    else document.body.style.removeProperty("--cx-band-h");
   };
 }

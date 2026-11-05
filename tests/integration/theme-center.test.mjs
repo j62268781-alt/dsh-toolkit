@@ -16,6 +16,7 @@ import {
   clearPaletteScenes,
   createPaletteScene,
   installPalette,
+  installSceneClock,
   mountPaletteScene,
   readPalette,
   registerPaletteScene,
@@ -83,10 +84,43 @@ function heroPage(t) {
   return { window: dom.window, document: dom.window.document }
 }
 
+test('one scene clock refreshes every mounted time scene and disposes cleanly', () => {
+  const calls = []
+  const scenes = [{ id: 'hero' }, { id: 'preview' }, { id: 'card' }]
+  const listeners = new Map()
+  const date = new Date('2026-11-05T06:30:00')
+  let tick
+  let cleared
+  const doc = {
+    hidden: false,
+    querySelectorAll: selector => selector === '.sk-scene--hope' ? scenes : [],
+    addEventListener: (name, callback) => listeners.set(name, callback),
+    removeEventListener: (name, callback) => { if (listeners.get(name) === callback) listeners.delete(name) },
+  }
+  const clock = {
+    setInterval(callback, ms) { assert.equal(ms, 60_000); tick = callback; return 42 },
+    clearInterval: handle => { cleared = handle },
+  }
+  const stop = installSceneClock((scene, now) => calls.push([scene.id, now]), { document: doc, clock, now: () => date })
+  assert.deepEqual(calls.map(([id]) => id), ['hero', 'preview', 'card'])
+  assert.ok(calls.every(([, now]) => now === date))
+  doc.hidden = true
+  tick()
+  assert.equal(calls.length, 3)
+  doc.hidden = false
+  listeners.get('visibilitychange')()
+  assert.equal(calls.length, 6)
+  stop()
+  tick()
+  assert.equal(calls.length, 6)
+  assert.equal(cleared, 42)
+  assert.equal(listeners.size, 0)
+})
+
 const flush = () => new Promise((resolve) => setTimeout(resolve, 15))
 
 test('theme host config keeps the palette a volatile, clamped enum', () => {
-  assert.deepEqual([...PALETTES], ['codex', 'ocean', 'hope'])
+  assert.deepEqual([...PALETTES], ['native', 'codex', 'ocean', 'hope'])
   const parsed = Config({})
   const field = parsed.palette
   assert.equal(typeof field?.get, 'function')
@@ -108,7 +142,7 @@ test('readPalette accepts snapshots and clamps unknown values', () => {
   assert.equal(readPalette(null), 'codex')
 })
 
-test('applyPalette marks only animated palettes', () => {
+test('applyPalette marks every style explicitly and clamps invalid values', () => {
   const dom = new JSDOM('<!doctype html><html><body></body></html>')
   const root = dom.window.document.documentElement
   applyPalette('ocean', root)
@@ -116,7 +150,11 @@ test('applyPalette marks only animated palettes', () => {
   applyPalette('hope', root)
   assert.equal(root.getAttribute(PALETTE_ATTR), 'hope')
   applyPalette('codex', root)
-  assert.equal(root.hasAttribute(PALETTE_ATTR), false)
+  assert.equal(root.getAttribute(PALETTE_ATTR), 'codex')
+  applyPalette('native', root)
+  assert.equal(root.getAttribute(PALETTE_ATTR), 'native')
+  applyPalette('invalid', root)
+  assert.equal(root.getAttribute(PALETTE_ATTR), 'codex')
   dom.window.close()
 })
 
@@ -168,7 +206,7 @@ test('installPalette mounts scenes only in the main empty-conversation hero', as
   form.write('codex')
   await flush()
   assert.equal(document.querySelectorAll('.sk-theme-scene').length, 0)
-  assert.equal(document.documentElement.hasAttribute(PALETTE_ATTR), false)
+  assert.equal(document.documentElement.getAttribute(PALETTE_ATTR), 'codex')
 
   form.write('ocean')
   await flush()
@@ -190,24 +228,64 @@ test('installPalette mounts scenes only in the main empty-conversation hero', as
   assert.equal(document.documentElement.hasAttribute(PALETTE_ATTR), false)
 })
 
+test('hero lifecycle preserves settings preview scenes through active chats and teardown', async (t) => {
+  const { document } = heroPage(t)
+  registerPaletteScene('ocean', sceneBuilder('ocean'))
+  registerPaletteScene('hope', sceneBuilder('hope'))
+  const previews = document.createElement('section')
+  previews.className = 'sk-theme-page'
+  const previewScene = createPaletteScene('hope', { compact: true })
+  previews.append(previewScene)
+  document.body.append(previews)
+  const hero = document.querySelector(HERO_SELECTOR)
+  const form = fakeForm('ocean')
+  const dispose = installPalette({}, { form, document })
+  await flush()
+  assert.equal(previewScene.isConnected, true)
+  assert.equal(hero.querySelector('.sk-theme-scene')?.dataset.skScene, 'ocean')
+
+  hero.closest('[data-phase]').setAttribute('data-phase', 'active')
+  hero.setAttribute('data-content-phase', 'active')
+  await flush()
+  assert.equal(hero.querySelector('.sk-theme-scene'), null)
+  assert.equal(previewScene.isConnected, true)
+
+  // A later settings render while no hero exists must retain its own scenes.
+  const anotherPreview = createPaletteScene('ocean', { compact: true })
+  previews.append(anotherPreview)
+  await flush()
+  assert.equal(anotherPreview.isConnected, true)
+
+  hero.closest('[data-phase]').setAttribute('data-phase', 'hero')
+  hero.setAttribute('data-content-phase', 'hero')
+  await flush()
+  form.write('hope') // Queued render must not run after disposal.
+  dispose()
+  await flush()
+  assert.equal(hero.querySelector('.sk-theme-scene'), null)
+  assert.equal(previews.querySelectorAll('.sk-theme-scene').length, 2)
+  assert.equal(document.documentElement.hasAttribute(PALETTE_ATTR), false)
+})
+
 test('theme center CSS and selector keep the hero scoping and visual states', async () => {
   const css = await readFile(`${ROOT}src/modules/theme/client/styles/theme-center.css`, 'utf8')
   const palette = await readFile(`${ROOT}src/modules/theme/client/palette.js`, 'utf8')
   const panel = await readFile(`${ROOT}src/modules/theme/client/settings-theme.jsx`, 'utf8')
 
   assert.match(palette, /\[data-slot="main\.conversation"\] > \[data-phase="hero"\] > \[data-conversation-content\]\[data-content-phase="hero"\]/)
-  assert.match(css, /\.sk-theme-card\.is-selected \.sk-theme-card__art/)
+  assert.match(css, /\.sk-theme-card\.is-selected\s*\{/)
   assert.match(css, /sk-theme-preview-window/)
   assert.match(css, /prefers-reduced-motion/)
   assert.match(css, /z-index: -1/)
   assert.match(css, /html\[data-sk-palette="ocean"\]/)
   assert.match(css, /html\[data-sk-palette="hope"\]/)
   assert.doesNotMatch(css, /class\*="_[A-Za-z0-9]{5,}_/)
-  assert.match(panel, /全部主题/)
+  assert.match(panel, /aria-label="颜色模式"/)
+  assert.match(panel, /aria-label="主题风格"/)
   assert.match(panel, /浅色/)
   assert.match(panel, /深色/)
   assert.match(panel, /跟随系统/)
   assert.match(panel, /大海蓝鲸/)
-  assert.match(panel, /希望红/)
-  assert.match(panel, /敬请期待/)
+  assert.match(panel, /昼夜流光/)
+  assert.doesNotMatch(panel, /敬请期待/)
 })

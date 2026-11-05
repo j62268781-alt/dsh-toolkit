@@ -1,6 +1,7 @@
 import './react.js'
 import React from 'react'
 import { acceptConfigWrite } from '../../../client/config-write.js'
+import { DSH_DESKTOP_LOGO } from '../../../client/ui/dsh-logo.js'
 import { createPaletteScene, readPalette } from './palette.js'
 
 const MODE_CARDS = [
@@ -10,9 +11,10 @@ const MODE_CARDS = [
 ]
 
 const PALETTE_CARDS = [
-  { id: 'codex', label: 'Codex', hint: '当前桌面风格' },
-  { id: 'ocean', label: '大海蓝鲸', hint: '深海呼吸，鲸跃海面' },
-  { id: 'hope', label: '希望红', hint: '朝阳与余烬' },
+  { id: 'native', label: '原始 DSH', hint: '纯粹，熟悉的界面' },
+  { id: 'codex', label: 'Codex', hint: '专注的工作空间' },
+  { id: 'ocean', label: '大海蓝鲸', hint: '潜入深蓝，与巨鲸同行' },
+  { id: 'hope', label: '昼夜流光', hint: '随当地时间，日升星落' },
 ]
 
 const isWritable = (form) => {
@@ -39,7 +41,7 @@ function SceneBox({ palette, compact = false }) {
 
 function PreviewWindow({ palette, colorScheme }) {
   return (
-    <div className="sk-theme-preview-window" data-preview-mode={colorScheme}>
+    <div className="sk-theme-preview-window" data-preview-mode={colorScheme} data-preview-palette={palette}>
       <div className="sk-theme-preview-rail" aria-hidden="true">
         <span className="sk-theme-preview-logo" />
         <span className="sk-theme-preview-nav" />
@@ -63,18 +65,28 @@ function PreviewWindow({ palette, colorScheme }) {
   )
 }
 
-function ThemeCard({ selected, label, hint, onClick, children, disabled = false }) {
+function ThemeEmblem({ palette }) {
+  if (palette === 'codex') return (
+    <svg className="sk-theme-emblem sk-theme-emblem--codex" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      {/* OpenAI mark, Simple Icons 13.21.0 (CC0). */}
+      <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z" />
+    </svg>
+  )
+  return <img className="sk-theme-emblem sk-theme-emblem--native" src={DSH_DESKTOP_LOGO} alt="" draggable={false} aria-hidden="true" />
+}
+
+function ThemeCard({ selected, label, hint, onClick, children, disabled = false, colorScheme, palette }) {
   return (
     <button
       type="button"
       role="radio"
+      aria-label={label}
       aria-checked={selected}
-      aria-disabled={disabled || undefined}
       disabled={disabled}
-      className={`sk-theme-card${selected ? ' is-selected' : ''}${disabled ? ' is-disabled' : ''}`}
-      onClick={disabled ? undefined : onClick}
+      className={`sk-theme-card${selected ? ' is-selected' : ''}`}
+      onClick={onClick}
     >
-      <span className="sk-theme-card__art">{children}</span>
+      <span className="sk-theme-card__art" data-preview-mode={colorScheme} data-preview-palette={palette}>{children}</span>
       <span className="sk-theme-card__caption">
         <span className="sk-theme-card__name">{label}</span>
         <span className="sk-theme-card__hint">{hint}</span>
@@ -99,20 +111,17 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
     return form.subscribe(() => setPalette(readPalette(form)))
   }, [form])
 
-  const writable = isWritable(form)
+  const writable = isWritable(form) && typeof form?.set === 'function'
   const preference = snapshot.preference ?? 'system'
   const colorScheme = snapshot.colorScheme ?? 'light'
 
   const pickMode = async (id) => {
-    if (!writable || busy) return
+    if (typeof theme?.setTheme !== 'function' || busy || preference === id) return
     setBusy(true)
     setError('')
     try {
-      theme?.setTheme?.(id)
-      if (readPalette(form) !== 'codex') {
-        acceptConfigWrite(() => form?.set?.('palette', 'codex'), 'palette')
-        setPalette('codex')
-      }
+      await theme.setTheme(id)
+      setSnapshot(theme.getTheme?.() ?? {})
     } catch (err) {
       setError(String(err?.message ?? err))
     } finally {
@@ -125,7 +134,7 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
     setBusy(true)
     setError('')
     try {
-      acceptConfigWrite(() => form?.set?.('palette', id), 'palette')
+      await acceptConfigWrite(() => form?.set?.('palette', id), 'palette')
       setPalette(id)
     } catch (err) {
       setError(String(err?.message ?? err))
@@ -139,7 +148,7 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
       <header className="sk-theme-head">
         <div className="sk-theme-head__copy">
           <h2 className="sk-theme-title">外观</h2>
-          <p className="sk-theme-subtitle">选择原始外观，或为空白新对话换上一套有呼吸感的主题。</p>
+          <p className="sk-theme-subtitle">分别选择界面明暗与主题风格，搭配你喜欢的外观。</p>
         </div>
         <span className="sk-theme-badge">实时预览</span>
       </header>
@@ -150,41 +159,53 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
 
       <div className="sk-theme-grid-section">
         <div className="sk-theme-grid-head">
-          <h3>全部主题</h3>
-          <span>系统原生明暗与主题风格独立保存</span>
+          <h3>颜色模式</h3>
+          <span>控制界面明暗</span>
         </div>
-        <div className="sk-theme-grid" role="radiogroup" aria-label="全部主题">
+        <div className="sk-theme-grid sk-theme-grid--modes" role="radiogroup" aria-label="颜色模式">
           {MODE_CARDS.map((card) => (
             <ThemeCard
               key={card.id}
               label={card.label}
               hint={card.hint}
-              selected={palette === 'codex' && preference === card.id}
+              selected={preference === card.id}
+              disabled={busy || typeof theme?.setTheme !== 'function'}
               onClick={() => pickMode(card.id)}
             >
-              <span className="sk-theme-mode-art" data-mode={card.id} />
+              <span className="sk-theme-mode-art" data-mode={card.id} data-resolved-mode={colorScheme} />
             </ThemeCard>
           ))}
+        </div>
+      </div>
+
+      <div className="sk-theme-grid-section">
+        <div className="sk-theme-grid-head">
+          <h3>主题风格</h3>
+          <span>保留所选颜色模式</span>
+        </div>
+        <div className="sk-theme-grid" role="radiogroup" aria-label="主题风格">
           {PALETTE_CARDS.map((card) => (
             <ThemeCard
               key={card.id}
               label={card.label}
               hint={card.hint}
               selected={palette === card.id}
+              disabled={!writable || busy}
+              colorScheme={colorScheme}
+              palette={card.id}
               onClick={() => pickPalette(card.id)}
             >
-              <SceneBox palette={card.id} compact />
+              {['native', 'codex'].includes(card.id)
+                ? <ThemeEmblem palette={card.id} />
+                : <SceneBox palette={card.id} compact />}
             </ThemeCard>
           ))}
-          <ThemeCard label="敬请期待" hint="更多主题正在打磨" disabled>
-            <span className="sk-theme-mode-art" data-mode="soon" />
-          </ThemeCard>
         </div>
       </div>
 
       {!writable || error || busy ? (
         <p className="sk-theme-status" role="status" data-tone={error ? 'error' : 'idle'}>
-          {error || (busy ? '正在保存…' : '当前配置为只读，主题选择暂不可修改。')}
+          {error || (busy ? '正在保存…' : '当前配置为只读，主题风格暂不可修改。')}
         </p>
       ) : null}
     </section>

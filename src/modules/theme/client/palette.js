@@ -7,7 +7,7 @@
  */
 import { findScopedForm } from '../../../client/config.js'
 
-export const PALETTES = Object.freeze(['codex', 'ocean', 'hope'])
+export const PALETTES = Object.freeze(['native', 'codex', 'ocean', 'hope'])
 
 export const PALETTE_ATTR = 'data-sk-palette'
 export const SCENE_CLASS = 'sk-theme-scene'
@@ -49,11 +49,10 @@ export function readPalette(form) {
   return PALETTES.includes(palette) ? palette : 'codex'
 }
 
-/** Apply the palette marker on the document root; `codex` is the no-art default. */
+/** Apply an explicit style marker; only `codex` enables the Codex shell. */
 export function applyPalette(palette, root = globalThis.document?.documentElement) {
   if (!root?.setAttribute) return
-  if (PALETTES.includes(palette) && palette !== 'codex') root.setAttribute(PALETTE_ATTR, palette)
-  else root.removeAttribute(PALETTE_ATTR)
+  root.setAttribute(PALETTE_ATTR, PALETTES.includes(palette) ? palette : 'codex')
 }
 
 function scenesIn(scope) {
@@ -76,6 +75,27 @@ export function clearPaletteScenes(scope = globalThis.document) {
   for (const scene of scope.querySelectorAll(`.${SCENE_CLASS}`)) scene.remove()
 }
 
+/** One wall-clock refresh for hero + settings scenes, paused while hidden. */
+export function installSceneClock(updateScene, options = {}) {
+  const doc = options.document ?? globalThis.document
+  const clock = options.clock ?? globalThis
+  const now = options.now ?? (() => new Date())
+  let disposed = false
+  const refresh = () => {
+    if (disposed || doc?.hidden) return
+    const date = now()
+    for (const scene of doc?.querySelectorAll?.('.sk-scene--hope') ?? []) updateScene(scene, date)
+  }
+  const timer = clock.setInterval(refresh, 60_000)
+  doc?.addEventListener?.('visibilitychange', refresh)
+  refresh()
+  return () => {
+    disposed = true
+    clock.clearInterval(timer)
+    doc?.removeEventListener?.('visibilitychange', refresh)
+  }
+}
+
 /**
  * Own the palette marker and the hero scene for the client lifetime.
  * Returns the teardown used by `ctx.effect`.
@@ -88,16 +108,19 @@ export function installPalette(ctx, options = {}) {
   const Observer = options.MutationObserver ?? globalThis.MutationObserver
 
   let queued = false
+  let active = true
+  let mountedHero = null
   const render = () => {
+    if (!active) return
     const palette = read()
     applyPalette(palette, root)
     const hero = doc?.querySelector?.(options.heroSelector ?? HERO_SELECTOR) ?? null
-    if (!hero) {
-      // No empty main hero on screen (active chat, loading, or embedded pane):
-      // leave no scene behind anywhere.
-      clearPaletteScenes(doc)
-      return
+    if (mountedHero !== hero) {
+      for (const scene of scenesIn(mountedHero)) scene.remove()
+      mountedHero = hero
     }
+    // Settings thumbnails own their scenes; only clean up the main hero we mounted.
+    if (!hero) return
     const wanted = paletteSceneFactory(palette)
     if (!wanted) {
       for (const scene of scenesIn(hero)) scene.remove()
@@ -130,9 +153,11 @@ export function installPalette(ctx, options = {}) {
   render()
 
   return () => {
+    active = false
     off?.()
     observer?.disconnect()
     root?.removeAttribute?.(PALETTE_ATTR)
-    clearPaletteScenes(doc)
+    for (const scene of scenesIn(mountedHero)) scene.remove()
+    mountedHero = null
   }
 }

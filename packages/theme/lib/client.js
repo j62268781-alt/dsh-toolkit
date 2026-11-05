@@ -40,7 +40,7 @@ window.__ModuleLoader__.load({
     module.exports = __toCommonJS(theme_package_entry_exports);
 
     // src/modules/theme/client/styles.css
-    var THEME_CSS = `html body {
+    var THEME_CSS = `html[data-sk-palette="codex"] body {
       --cx-rail: color-mix(
         in srgb,
         var(--dsw-specific-sidebar-fill),
@@ -52,7 +52,7 @@ window.__ModuleLoader__.load({
       --cx-line: var(--dsw-alias-border-l3);
     }
 
-    html:root {
+    html[data-sk-palette="codex"]:root {
       --dsw-radius-xs: 3px;
       --dsw-radius-sm: 6px;
       --dsw-radius-md: 8px;
@@ -61,7 +61,7 @@ window.__ModuleLoader__.load({
       --dsw-radius-panel: 20px;
     }
 
-    html[data-sk-desktop] body {
+    html[data-sk-palette="codex"][data-sk-desktop] body {
 
       --cx-rail-w: 52px;
       --cx-panel-w: 250px;
@@ -77,18 +77,18 @@ window.__ModuleLoader__.load({
       --cx-title-clear-full: 84px;
     }
 
-    html[data-platform="darwin"] body {
+    html[data-sk-palette="codex"][data-platform="darwin"] body {
       --cx-band-h: 50px;
       --cx-toggle-x: 88px;
       --cx-title-clear: 160px;
       --cx-title-clear-full: 84px;
     }
 
-    html[data-platform="darwin"][data-fullscreen] body {
+    html[data-sk-palette="codex"][data-platform="darwin"][data-fullscreen] body {
       --cx-toggle-x: 12px;
     }
 
-    html[data-windows-titlebar] body {
+    html[data-sk-palette="codex"][data-windows-titlebar] body {
       --cx-band-h: 0px;
       --cx-toggle-x: 12px;
       --cx-title-clear: 0px;
@@ -97,9 +97,9 @@ window.__ModuleLoader__.load({
       --dsh-windows-content-radius: 0px;
     }
 
-    html[data-sk-desktop] [class*="_frame"] > [class*="_sidebarCol"],
-    html[data-sk-desktop] [class*="_frame"] > [class*="_centerCol"],
-    html[data-sk-desktop] [class*="_frame"] > [class*="_rightbarCol"] {
+    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_sidebarCol"],
+    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_centerCol"],
+    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_rightbarCol"] {
       background-color: var(--cx-rail);
       background-image: none;
       border-left: none;
@@ -107,23 +107,23 @@ window.__ModuleLoader__.load({
       border-radius: 0;
     }
 
-    html[data-sk-desktop] [class*="_frame"] {
+    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] {
       --cx-center-left-radius: var(--cx-card-radius);
       --cx-center-right-radius: var(--cx-card-radius);
       --cx-center-right-gap: var(--cx-gap);
     }
 
-    html[data-sk-desktop] [class*="_frame"][data-sk-workspace-expanded] {
+    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"][data-sk-workspace-expanded] {
       --cx-center-left-radius: 0px;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [class*="_frame"]:not([data-rightbar-collapsed]):not([data-rightbar-fullscreen]) {
       --cx-center-right-radius: 0px;
       --cx-center-right-gap: 0px;
     }
 
-    html[data-sk-desktop] [data-slot="main"] > :not([data-slot]) {
+    html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-slot]) {
 
       margin: var(--cx-band-h) var(--cx-center-right-gap) var(--cx-gap) 0;
 
@@ -133,24 +133,24 @@ window.__ModuleLoader__.load({
       background-color: var(--dsw-alias-bg-base);
     }
 
-    html[data-sk-desktop] [data-slot="main"] > :not([data-slot]) [class*="pagehead" i] {
+    html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-slot]) [class*="pagehead" i] {
       padding-top: var(--cx-page-head-pad, 28px);
     }
 
-    html[data-sk-desktop] [class*="_frame"] > [class*="_handle"] {
+    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_handle"] {
       display: block;
       top: var(--cx-band-h);
       bottom: var(--cx-gap);
       width: 8px;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [class*="_frame"]:not([data-sk-workspace-expanded])
       > [class*="_handle"][data-side="sidebar"] {
       display: none;
     }
 
-    html[data-sk-desktop] [class*="_frame"] > [class*="_handle"]::after {
+    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_handle"]::after {
       content: "";
       position: absolute;
       inset: 0 auto 0 50%;
@@ -159,17 +159,17 @@ window.__ModuleLoader__.load({
       pointer-events: none;
     }
 
-    html[data-sk-desktop] [class*="_frame"] > [class*="_handle"]:hover::after {
+    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_handle"]:hover::after {
       background: color-mix(in srgb, var(--dsw-alias-label-primary) 30%, var(--cx-line));
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"]) {
       padding-top: 0;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"]):not([class*="_headerBlank"])
       [class*="_crumbCurrent"]::before {
@@ -190,7 +190,7 @@ window.__ModuleLoader__.load({
       mask-repeat: no-repeat;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"])
       [class*="_titleRow"] {
@@ -199,7 +199,7 @@ window.__ModuleLoader__.load({
       box-sizing: content-box;
     }
 
-    html[data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"] {
+    html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"] {
       position: relative;
       isolation: isolate;
       margin-right: var(--cx-center-right-gap);
@@ -210,7 +210,7 @@ window.__ModuleLoader__.load({
       background: none;
     }
 
-    html[data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"]::before {
+    html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"]::before {
       content: "";
       position: absolute;
       top: var(--cx-band-h);
@@ -224,19 +224,19 @@ window.__ModuleLoader__.load({
       pointer-events: none;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"]) {
       padding-left: 0;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"]):has([data-conversation-tabs]) {
       border-bottom-width: 1px;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"])
       [class*="_tabs"] {
@@ -247,7 +247,7 @@ window.__ModuleLoader__.load({
       padding-left: 20px;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"])
       [class*="_tab"][role="tab"] {
@@ -258,14 +258,14 @@ window.__ModuleLoader__.load({
       align-items: center;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"])
       [class*="_viewsMore"] {
       margin-top: 0;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) {
 
       --dsh-sidebar-inline-padding: 0px;
       display: grid;
@@ -286,13 +286,13 @@ window.__ModuleLoader__.load({
       );
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) {
       width: 100% !important;
 
       isolation: isolate;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only])::after {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only])::after {
       content: "";
       position: absolute;
       top: var(--cx-band-h);
@@ -305,7 +305,7 @@ window.__ModuleLoader__.load({
       pointer-events: none;
     }
 
-    .sk-collapse-hit {
+    html[data-sk-palette="codex"] .sk-collapse-hit {
       position: fixed;
       left: var(--cx-toggle-x);
       top: calc((var(--cx-band-h) - 28px) / 2);
@@ -319,31 +319,31 @@ window.__ModuleLoader__.load({
       z-index: 40;
       display: none;
     }
-    .sk-collapse-hit[data-show] {
+    html[data-sk-palette="codex"] .sk-collapse-hit[data-show] {
       display: block;
     }
-    .sk-collapse-hit:hover {
+    html[data-sk-palette="codex"] .sk-collapse-hit:hover {
       background: var(--dsw-alias-interactive-bg-hover);
     }
-    .sk-collapse-hit:focus-visible {
+    html[data-sk-palette="codex"] .sk-collapse-hit:focus-visible {
       outline: 2px solid var(--dsw-alias-label-primary);
       outline-offset: -2px;
     }
 
-    [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] {
       grid-template-columns: var(--cx-rail-w);
       grid-template-rows: minmax(0, 1fr) auto;
       grid-template-areas: "nav" "account";
     }
 
-    [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_logoRow"],
-    [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_newSession"],
-    [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_regionArea"],
-    [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_footArea"] > [class*="_footerActions"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_logoRow"],
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_newSession"],
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_regionArea"],
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_footArea"] > [class*="_footerActions"] {
       display: none;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"])[data-sk-rail-only] > [class*="_topStrip"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"])[data-sk-rail-only] > [class*="_topStrip"] {
       position: fixed;
       top: calc((var(--cx-band-h) - 28px) / 2);
       left: var(--cx-toggle-x);
@@ -351,12 +351,12 @@ window.__ModuleLoader__.load({
     }
 
     /* Rail-only hides New Session: reserve the remaining 28px toggle and its gap. */
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [class*="_frame"]:has([data-sk-rail-only]) {
       --dsh-frame-leading-clearance: calc(var(--cx-title-clear) - 28px - 8px);
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [class*="_frame"][data-sidebar-collapsed]
       [data-slot="main.conversation"]
       [class*="_titleRow"] {
@@ -366,11 +366,11 @@ window.__ModuleLoader__.load({
       );
     }
 
-    html[data-fullscreen] [class*="_frame"]:has([data-sk-rail-only]) {
+    html[data-sk-palette="codex"][data-fullscreen] [class*="_frame"]:has([data-sk-rail-only]) {
       --dsh-frame-leading-clearance: calc(var(--cx-title-clear-full) - 28px - 8px);
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [class*="_frame"]:has([data-sk-rail-only])
       [data-slot="main.conversation"]
       [class*="_titleRow"] {
@@ -382,17 +382,17 @@ window.__ModuleLoader__.load({
       );
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"]) {
       margin-right: 0;
     }
 
-    html[data-sk-desktop] [data-slot="main.conversation"] [class*="_composerSeat"] {
+    html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main.conversation"] [class*="_composerSeat"] {
       bottom: 0;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_topStrip"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_topStrip"] {
       position: absolute;
       top: calc((var(--cx-band-h) - 28px) / 2);
       left: var(--cx-toggle-x);
@@ -404,12 +404,12 @@ window.__ModuleLoader__.load({
       justify-content: flex-start;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_topStrip"] [class*="_iconButton"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_topStrip"] [class*="_iconButton"] {
       width: 28px;
       height: 28px;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_logoRow"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_logoRow"] {
       grid-area: brand;
       height: 46px;
       margin: 0;
@@ -417,13 +417,13 @@ window.__ModuleLoader__.load({
       justify-content: flex-start;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_logoRow"] [class*="_brandName"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_logoRow"] [class*="_brandName"] {
       font-size: 15px;
       font-weight: 600;
       letter-spacing: 0.01em;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_newSession"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_newSession"] {
       grid-area: new;
       /* The panel column starts at the rail edge, so an asymmetric pair here reads
          as a button pushed against the left. Keep the native 8px on the right and
@@ -431,7 +431,7 @@ window.__ModuleLoader__.load({
       margin: 0 8px 4px;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] {
       grid-area: nav;
       align-self: start;
       margin: 6px 0 0;
@@ -439,12 +439,12 @@ window.__ModuleLoader__.load({
       gap: 2px;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelGlyph"] svg {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelGlyph"] svg {
       width: 18px;
       height: 18px;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"] {
       width: 36px;
       height: 36px;
       min-height: 36px;
@@ -455,22 +455,22 @@ window.__ModuleLoader__.load({
       gap: 0;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > *:has([class*="_panelRow"]) {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > *:has([class*="_panelRow"]) {
       display: flex;
       justify-content: center;
       width: 100%;
       min-width: 0;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"]:hover {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"]:hover {
       background: var(--cx-rail-item-hover);
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"][class*="_panelActive"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"][class*="_panelActive"] {
       background: var(--cx-rail-item-active);
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home {
       box-sizing: border-box;
       display: flex;
       flex: none;
@@ -488,28 +488,28 @@ window.__ModuleLoader__.load({
       cursor: pointer;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home:hover {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home:hover {
       background: var(--cx-rail-item-hover);
       color: var(--dsw-alias-label-primary);
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home[data-active="true"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home[data-active="true"] {
       background: var(--cx-rail-item-active);
       color: var(--dsw-alias-label-primary);
     }
 
-    .sk-home__glyph {
+    html[data-sk-palette="codex"] .sk-home__glyph {
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
 
-    .sk-home__glyph svg {
+    html[data-sk-palette="codex"] .sk-home__glyph svg {
       width: 18px;
       height: 18px;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelTitle"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelTitle"] {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -518,7 +518,7 @@ window.__ModuleLoader__.load({
       white-space: nowrap;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] {
       grid-area: region;
       min-height: 0;
 
@@ -533,12 +533,12 @@ window.__ModuleLoader__.load({
 
     /* Keep the section toolbar on the same 32px rhythm as its session rows.
        The new-session row owns the 4px gap above; do not add the native 2px again. */
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] [class*="_sectionHeader"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] [class*="_sectionHeader"] {
       height: 32px;
       margin: 0 0 4px;
     }
 
-    [data-slot="sidebar"] [class*="_sectionHeader"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] [class*="_sectionHeader"] {
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.06em;
@@ -546,18 +546,18 @@ window.__ModuleLoader__.load({
       color: var(--dsw-alias-label-tertiary);
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] {
       display: contents;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_footerActions"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_footerActions"] {
       grid-area: foot;
       box-sizing: border-box;
       padding: 0 8px 8px;
       min-width: 0;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] {
       grid-area: account;
       align-self: end;
       padding: 0 0 8px;
@@ -566,13 +566,13 @@ window.__ModuleLoader__.load({
       align-items: center;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] {
       width: 100%;
       margin: 0;
       justify-content: center;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_trigger"]:not([class*="_triggerRow"]) {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_trigger"]:not([class*="_triggerRow"]) {
       width: 36px;
       height: 36px;
       justify-content: center;
@@ -580,11 +580,11 @@ window.__ModuleLoader__.load({
       gap: 0;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_anchor"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_anchor"] {
       justify-content: center;
     }
 
-    [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_label"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_label"] {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -599,23 +599,23 @@ window.__ModuleLoader__.load({
        inner root, so the rows stopped 2px short of the right inset while sitting
        flush on the left — the hover highlight read as off-centre. Declare them on
        every \`_root\` under the slot; the values only ever subtract space. */
-    [data-slot="sidebar"] [class*="_root"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] [class*="_root"] {
       --dsh-session-list-scrollbar-width: 0px;
       --dsh-session-list-scrollbar-offset: 0px;
     }
 
-    [data-slot="sidebar"] > [class*="_root"] [class*="_list"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"] [class*="_list"] {
       scrollbar-width: none;
       scrollbar-gutter: auto;
     }
 
-    [data-slot="sidebar"] > [class*="_root"] [class*="_list"]::-webkit-scrollbar {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"] [class*="_list"]::-webkit-scrollbar {
       width: 0;
       height: 0;
       display: none;
     }
 
-    html[data-windows-titlebar]
+    html[data-sk-palette="codex"][data-windows-titlebar]
       [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_logoRow"] {
       display: flex;
       height: 0;
@@ -625,12 +625,12 @@ window.__ModuleLoader__.load({
       overflow: visible;
     }
 
-    html[data-windows-titlebar]
+    html[data-sk-palette="codex"][data-windows-titlebar]
       [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_logoRow"] > [class*="_brand"] {
       display: none;
     }
 
-    html[data-windows-titlebar] .sk-collapse-hit {
+    html[data-sk-palette="codex"][data-windows-titlebar] .sk-collapse-hit {
       display: none !important;
     }
 
@@ -640,19 +640,19 @@ window.__ModuleLoader__.load({
        \`display: contents\` wrapper, so the cell itself never reads as \`:empty\`.
        Collapse it in both shapes and let the title hug the row's inset; a status dot
        or a registered decoration makes it non-empty again and the cell returns. */
-    [data-slot="sidebar"]
+    html[data-sk-palette="codex"] [data-slot="sidebar"]
       [class*="_sessionRow"]
       > [class*="_slot"]:empty,
-    [data-slot="sidebar"]
+    html[data-sk-palette="codex"] [data-slot="sidebar"]
       [class*="_sessionRow"]
       > [class*="_slot"]:has(> [data-slot="sidebar.session.row.leading"]:empty) {
       display: none;
     }
 
-    [data-slot="sidebar"]
+    html[data-sk-palette="codex"] [data-slot="sidebar"]
       [class*="_sessionRow"]:has(> [class*="_slot"]:empty)
       > [class*="_title"],
-    [data-slot="sidebar"]
+    html[data-sk-palette="codex"] [data-slot="sidebar"]
       [class*="_sessionRow"]:has(
         > [class*="_slot"] > [data-slot="sidebar.session.row.leading"]:empty
       )
@@ -664,11 +664,11 @@ window.__ModuleLoader__.load({
        session row owns (8px row inset + 16px cell + 4px title margin = 28px), so it
        drifts 20px right of the titles it follows once that cell collapses. Match the
        collapsed title inset instead, keeping the group's own depth indent. */
-    [data-slot="sidebar"] [class*="_sessionOverflowButton"] {
+    html[data-sk-palette="codex"] [data-slot="sidebar"] [class*="_sessionOverflowButton"] {
       padding-inline-start: calc(8px + var(--dsh-workspace-indent, 0px));
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [class*="_rightbarCol"]
       [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
       [data-dockkit-pane] {
@@ -679,7 +679,7 @@ window.__ModuleLoader__.load({
       border-left: 0;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [class*="_rightbarCol"]
       [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
       [data-dockkit-pane]::before {
@@ -695,7 +695,7 @@ window.__ModuleLoader__.load({
       pointer-events: none;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [class*="_rightbarCol"]
       [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
       [data-dockkit-pane]
@@ -708,12 +708,21 @@ window.__ModuleLoader__.load({
       overflow-y: auto;
     }
 
-    html[data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-desktop]
       [class*="_rightbarCol"]
       [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
       [data-dockkit-pane]
       > :first-child {
       padding-bottom: calc(var(--cx-band-h) - 38px);
+    }
+
+    /* Settings remain shared across themes, including macOS window clearance. */
+    html[data-platform="darwin"] :is([role="presentation"]:has(> [data-shortcut-modal="settings"]), [data-sk-settings-overlay]) {
+      --cx-toggle-x: 88px;
+      --cx-band-h: 50px;
+    }
+    html[data-platform="darwin"][data-fullscreen] :is([role="presentation"]:has(> [data-shortcut-modal="settings"]), [data-sk-settings-overlay]) {
+      --cx-toggle-x: 12px;
     }
 
     /* Connected settings shell. Keep native section content, close/focus handling
@@ -788,6 +797,12 @@ window.__ModuleLoader__.load({
       min-height: 0;
       gap: 2px;
       overscroll-behavior: contain;
+      scrollbar-width: none;
+    }
+
+    :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav > [class*="_navList"]::-webkit-scrollbar,
+    .sk-setnav__groups::-webkit-scrollbar {
+      display: none;
     }
 
     :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav [class*="_navCell"] {
@@ -843,7 +858,7 @@ window.__ModuleLoader__.load({
       min-height: 0;
       overflow-y: auto;
       overscroll-behavior: contain;
-      scrollbar-width: thin;
+      scrollbar-width: none;
       padding-bottom: 8px;
     }
 
@@ -1086,7 +1101,7 @@ window.__ModuleLoader__.load({
     .sk-setnav__more[hidden], .sk-setnav__actions[hidden], .sk-setnav__action-error[hidden],
     [data-sk-config-original] { display: none; }
 
-    /* Theme center: live preview window + "全部主题" card grid. */
+    /* Independent color mode and style choices with a live preview. */
 
     .sk-theme-page {
       display: flex;
@@ -1107,16 +1122,17 @@ window.__ModuleLoader__.load({
 
     .sk-theme-title {
       margin: 0;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 600;
-      letter-spacing: 0.01em;
+      line-height: 26px;
+      color: var(--dsw-alias-label-primary);
     }
 
     .sk-theme-subtitle {
-      margin: 6px 0 0;
+      margin: 12px 0 0;
       max-width: 52ch;
       font-size: 13px;
-      line-height: 1.55;
+      line-height: 20px;
       color: var(--dsw-alias-label-secondary);
     }
 
@@ -1145,7 +1161,7 @@ window.__ModuleLoader__.load({
 
     .sk-theme-preview-window {
       display: flex;
-      min-height: 268px;
+      min-height: 320px;
       border-radius: 14px;
       overflow: hidden;
       background: #f3f5f9;
@@ -1168,6 +1184,11 @@ window.__ModuleLoader__.load({
       border-right: 1px solid rgb(15 17 21 / 0.06);
     }
 
+    .sk-theme-preview-window[data-preview-palette="codex"] .sk-theme-preview-rail {
+      width: 48px;
+      background: rgb(126 132 144 / 0.12);
+    }
+
     .sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-rail {
       background: rgb(255 255 255 / 0.04);
       border-right-color: rgb(255 255 255 / 0.06);
@@ -1178,7 +1199,7 @@ window.__ModuleLoader__.load({
       height: 22px;
       margin-bottom: 6px;
       border-radius: 7px;
-      background: linear-gradient(135deg, #4d6bfe, #2f45c8);
+      background: linear-gradient(135deg, var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe), #2f45c8);
     }
 
     .sk-theme-preview-nav {
@@ -1288,7 +1309,7 @@ window.__ModuleLoader__.load({
       width: 30px;
       height: 30px;
       border-radius: 50%;
-      background: #4d6bfe;
+      background: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);
     }
 
     /* Grid ------------------------------------------------------------------- */
@@ -1305,85 +1326,74 @@ window.__ModuleLoader__.load({
     .sk-theme-grid-head h3 {
       margin: 0;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
+      line-height: 20px;
+      color: var(--dsw-alias-label-primary);
     }
 
     .sk-theme-grid-head span {
-      font-size: 11px;
-      color: var(--dsw-alias-label-tertiary);
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--dsw-alias-label-secondary);
     }
 
     .sk-theme-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(146px, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
     }
+
+    .sk-theme-grid--modes .sk-theme-card__art { aspect-ratio: 2.4; }
 
     .sk-theme-card {
       display: flex;
       flex-direction: column;
+      min-width: 0;
       gap: 8px;
-      padding: 0;
-      border: 0;
-      background: none;
+      padding: 5px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      background: var(--dsw-alias-bg-layer-1);
       color: inherit;
       font: inherit;
       text-align: left;
       cursor: pointer;
-      border-radius: 14px;
+      border-radius: 12px;
+      transition: border-color 0.16s ease, background-color 0.16s ease;
     }
 
-    .sk-theme-card:focus-visible { outline: 2px solid var(--dsw-alias-label-primary); outline-offset: 3px; }
+    .sk-theme-card:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); outline-offset: 3px; }
+    .sk-theme-card:hover:not(:disabled) { background: var(--dsw-alias-bg-layer-2); }
+    .sk-theme-card.is-selected { border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); }
 
     .sk-theme-card__art {
       position: relative;
       display: block;
-      aspect-ratio: 4 / 3;
+      box-sizing: border-box;
+      width: 100%;
+      aspect-ratio: 16 / 9;
       overflow: hidden;
-      border-radius: 12px;
+      border-radius: 8px;
       border: 1px solid var(--dsw-alias-border-l2);
       background: var(--dsw-alias-bg-layer-1);
-      transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
     }
 
-    .sk-theme-card:hover .sk-theme-card__art {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 24px rgb(15 17 21 / 0.14);
+    .sk-theme-card__caption { display: flex; flex-direction: column; gap: 4px; padding: 2px 5px 5px; }
+
+    .sk-theme-card__name {
+      color: var(--dsw-alias-label-primary);
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
     }
-
-    .sk-theme-card.is-selected .sk-theme-card__art {
-      border-color: var(--dsw-alias-label-primary);
-      box-shadow: 0 0 0 2px var(--dsw-alias-label-primary);
-    }
-
-    .sk-theme-card.is-selected .sk-theme-card__art::after {
-      content: "";
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--dsw-alias-label-primary);
-      box-shadow: 0 0 0 3px var(--dsw-alias-bg-layer-1);
-    }
-
-    .sk-theme-card__caption { display: flex; flex-direction: column; gap: 2px; padding: 0 2px; }
-
-    .sk-theme-card__name { font-size: 13px; font-weight: 500; }
-
-    .sk-theme-card.is-selected .sk-theme-card__name { font-weight: 600; }
 
     .sk-theme-card__hint {
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      font-size: 11px;
-      color: var(--dsw-alias-label-dimmed);
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--dsw-alias-label-secondary);
     }
 
-    .sk-theme-card.is-disabled { cursor: default; opacity: 0.55; }
-    .sk-theme-card.is-disabled:hover .sk-theme-card__art { transform: none; box-shadow: none; }
+    .sk-theme-card:disabled { cursor: default; }
+    .sk-theme-card:disabled .sk-theme-card__art { opacity: 0.65; }
 
     /* Card art --------------------------------------------------------------- */
 
@@ -1394,59 +1404,34 @@ window.__ModuleLoader__.load({
       inset: 0;
     }
 
-    .sk-theme-mode-art::before {
-      content: "";
+    .sk-theme-mode-art[data-mode="light"] { background: #f6f7f9; }
+    .sk-theme-mode-art[data-mode="dark"] { background: #191b20; }
+    .sk-theme-mode-art[data-mode="system"] { background: linear-gradient(135deg, #f6f7f9 50%, #191b20 50%); }
+
+    .sk-theme-emblem {
       position: absolute;
-      inset: 18% 16% 30%;
-      border-radius: 8px;
-      border: 1px solid rgb(15 17 21 / 0.08);
-      background: rgb(255 255 255 / 0.72);
-      box-shadow: 0 6px 16px rgb(15 17 21 / 0.08);
+      width: auto;
+      height: 58%;
+      aspect-ratio: 1;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      object-fit: contain;
+      color: var(--dsw-alias-label-primary);
     }
 
-    .sk-theme-mode-art::after {
-      content: "";
-      position: absolute;
-      left: 26%;
-      right: 26%;
-      bottom: 20%;
-      height: 7px;
-      border-radius: 999px;
-      background: rgb(15 17 21 / 0.14);
+    .sk-theme-emblem--native { height: 72%; }
+    .sk-theme-card__art[data-preview-palette="codex"] { background: var(--dsw-alias-bg-layer-2); }
+    .sk-theme-card__art[data-preview-palette="native"] { background: var(--dsw-alias-bg-base); }
+
+    @media (max-width: 760px) {
+      .sk-theme-grid { gap: 10px; }
+      .sk-theme-grid-head { align-items: flex-start; flex-direction: column; gap: 4px; }
+      .sk-theme-stage { padding: 10px; }
+      .sk-theme-preview-rail { width: 76px; padding: 16px 8px; }
+      .sk-theme-preview-hero { padding: 24px 14px; }
+      .sk-theme-preview-copy b { font-size: 24px; }
     }
-
-    .sk-theme-mode-art[data-mode="light"] {
-      background: linear-gradient(160deg, #fbfcfe 0%, #e9edf4 58%, #d9e0ea 100%);
-    }
-
-    .sk-theme-mode-art[data-mode="dark"] {
-      background: radial-gradient(120% 90% at 18% 8%, #2b313c 0%, #181b22 55%, #0f1116 100%);
-    }
-
-    .sk-theme-mode-art[data-mode="dark"]::before {
-      border-color: rgb(255 255 255 / 0.1);
-      background: rgb(255 255 255 / 0.06);
-      box-shadow: 0 6px 16px rgb(0 0 0 / 0.4);
-    }
-
-    .sk-theme-mode-art[data-mode="dark"]::after { background: rgb(255 255 255 / 0.2); }
-
-    .sk-theme-mode-art[data-mode="system"] {
-      background: linear-gradient(135deg, #f7f9fc 0 49.6%, #171a20 50.4% 100%);
-    }
-
-    .sk-theme-mode-art[data-mode="system"]::before {
-      background: rgb(255 255 255 / 0.5);
-      border-color: rgb(15 17 21 / 0.1);
-    }
-
-    .sk-theme-mode-art[data-mode="soon"] {
-      background: repeating-linear-gradient(135deg, rgb(125 133 148 / 0.08) 0 10px, rgb(125 133 148 / 0.02) 10px 20px);
-      border: 1px dashed var(--dsw-alias-border-l3);
-    }
-
-    .sk-theme-mode-art[data-mode="soon"]::before,
-    .sk-theme-mode-art[data-mode="soon"]::after { display: none; }
 
     /* Status ----------------------------------------------------------------- */
 
@@ -1475,876 +1460,747 @@ window.__ModuleLoader__.load({
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .sk-theme-card,
-      .sk-theme-card__art { transition: none; }
-      .sk-theme-card:hover .sk-theme-card__art { transform: none; }
+      .sk-theme-card { transition: none; }
     }
 
-    /* 大海蓝鲸 · ocean palette scene
-     *
-     * Every rule is scoped to html[data-sk-palette="ocean"] so no other theme or the
-     * global shell is affected. The scene root geometry comes from theme-center.css;
-     * this file only paints the layers inside it. Motion is transform/opacity only and
-     * stops entirely under prefers-reduced-motion.
+    /* Ocean pack: sea-glass surfaces and a quiet marine scene.
+     * Shell rules follow the selected pack; artwork is scene-scoped so every card
+     * thumbnail paints independently. Explicit preview modes own scene brightness.
      */
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean {
-      /* light: airy sky over a pale sea, dark ink text stays readable */
-      --sk-ocean-sky-1: #f6fbff;
-      --sk-ocean-sky-2: #e3f3fe;
-      --sk-ocean-sky-3: #c8e6f7;
-      --sk-ocean-haze: rgba(255, 255, 255, 0.72);
-      --sk-ocean-horizon: rgba(255, 255, 255, 0.66);
-      --sk-ocean-cloud: rgba(255, 255, 255, 0.86);
-      --sk-ocean-glow-a: rgba(132, 204, 240, 0.5);
-      --sk-ocean-glow-b: rgba(96, 176, 226, 0.34);
-      --sk-ocean-beam: rgba(255, 255, 255, 0.78);
-      --sk-ocean-star: #5d9cc4;
-      --sk-ocean-wave-1: rgba(168, 214, 238, 0.92);
-      --sk-ocean-wave-2: rgba(128, 193, 227, 0.9);
-      --sk-ocean-wave-3: rgba(92, 168, 214, 0.86);
-      --sk-ocean-wave-crest: rgba(255, 255, 255, 0.65);
-      --sk-ocean-splash: rgba(255, 255, 255, 0.85);
-      --sk-ocean-bubble: rgba(255, 255, 255, 0.72);
-      --sk-ocean-whale-ink: #062337;
-      --sk-ocean-spout: rgba(86, 150, 190, 0.5);
-      --sk-ocean-whale-shadow: rgba(23, 84, 128, 0.22);
-      --sk-ocean-whale-opacity: 0.92;
-      --sk-ocean-scrim: rgba(255, 255, 255, 0.6);
+    html[data-sk-palette="ocean"] body {
+      --sk-ocean-line: color-mix(in srgb, var(--dsw-alias-border-l3) 82%, #75aab5);
+      --sk-ocean-menu: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 95%, #79bac5);
+      --sk-ocean-content: color-mix(in srgb, var(--dsw-alias-bg-base) 98%, #79bac5);
+    }
 
+    html[data-sk-palette="ocean"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav {
+      background: var(--sk-ocean-menu);
+      border-inline-end-color: var(--sk-ocean-line);
+    }
+
+    html[data-sk-palette="ocean"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] {
+      background: var(--sk-ocean-content);
+    }
+
+    html[data-sk-palette="ocean"] .sk-setnav__search {
+      border-color: var(--sk-ocean-line);
+      background: color-mix(in srgb, var(--dsw-alias-bg-base) 64%, var(--sk-ocean-menu));
+    }
+
+    html[data-sk-palette="ocean"] .sk-setnav__item[aria-current="true"] {
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sk-ocean-line) 65%, transparent);
+    }
+
+    /* Preview surfaces are local: selecting another card never borrows this pack. */
+    [data-preview-palette="ocean"] {
+      --sk-ocean-preview-radius: 20px;
+      --sk-ocean-preview-rail: #e8f1f2;
+      --sk-ocean-preview-composer: rgb(251 254 254 / 0.94);
+      --sk-ocean-preview-line: rgb(56 115 133 / 0.18);
+      --sk-ocean-preview-shadow: rgb(40 96 113 / 0.09);
+    }
+
+    [data-preview-palette="ocean"][data-preview-mode="dark"] {
+      --sk-ocean-preview-rail: #1a2a31;
+      --sk-ocean-preview-composer: rgb(25 43 51 / 0.94);
+      --sk-ocean-preview-line: rgb(142 193 204 / 0.2);
+      --sk-ocean-preview-shadow: rgb(0 12 20 / 0.2);
+    }
+
+    .sk-theme-card__art[data-preview-palette="ocean"] { border-radius: 16px; }
+    .sk-theme-preview-window[data-preview-palette="ocean"] { border-radius: var(--sk-ocean-preview-radius); }
+
+    .sk-theme-preview-window[data-preview-palette="ocean"] .sk-theme-preview-rail {
+      background: var(--sk-ocean-preview-rail);
+      border-right-color: var(--sk-ocean-preview-line);
+    }
+
+    .sk-theme-preview-window[data-preview-palette="ocean"] .sk-theme-preview-logo {
+      border-radius: 9px;
+      background: linear-gradient(145deg, #8fc6ce, #367e9a);
+    }
+
+    .sk-theme-preview-window[data-preview-palette="ocean"] .sk-theme-preview-composer {
+      border-radius: var(--sk-ocean-preview-radius);
+      border-color: var(--sk-ocean-preview-line);
+      background: var(--sk-ocean-preview-composer);
+      box-shadow: 0 7px 20px var(--sk-ocean-preview-shadow);
+    }
+
+    .sk-theme-preview-window[data-preview-palette="ocean"] .sk-theme-preview-composer i { background: #438aa4; }
+
+    /* Light is the scene default, including Light previews inside a dark page. */
+    .sk-scene--ocean {
+      --sk-ocean-sky-1: #80c6de;
+      --sk-ocean-sky-2: #23658e;
+      --sk-ocean-sky-3: #07213f;
+      --sk-ocean-haze: rgb(3 24 47 / 0.6);
+      --sk-ocean-horizon: rgb(199 252 255 / 0.72);
+      --sk-ocean-cloud: rgb(255 255 255 / 0.68);
+      --sk-ocean-glow-a: rgb(171 216 224 / 0.32);
+      --sk-ocean-glow-b: rgb(153 204 218 / 0.22);
+      --sk-ocean-beam: rgb(255 255 255 / 0.48);
+      --sk-ocean-star: #88b5c0;
+      --sk-ocean-wave-1: #b3d7df;
+      --sk-ocean-wave-2: #8bbecf;
+      --sk-ocean-wave-3: #69a5bd;
+      --sk-ocean-wave-crest: rgb(245 255 255 / 0.6);
+      --sk-ocean-splash: rgb(245 255 255 / 0.76);
+      --sk-ocean-bubble: rgb(244 255 255 / 0.65);
+      --sk-ocean-whale-ink: #183f53;
+      --sk-ocean-whale-top: #35718a;
+      --sk-ocean-whale-mid: #5791a8;
+      --sk-ocean-whale-low: #8bb7c4;
+      --sk-ocean-fin-top: #2b6079;
+      --sk-ocean-fin-low: #4f859c;
+      --sk-ocean-whale-belly: #d3e7e7;
+      --sk-ocean-spout: rgb(87 150 170 / 0.48);
+      --sk-ocean-whale-shadow: rgb(38 98 121 / 0.13);
+      --sk-ocean-scrim: rgb(247 252 252 / 0.76);
       isolation: isolate;
+      pointer-events: none;
     }
 
-    html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean {
-      /* dark: moonlit deep sea, cool highlights keep light text readable */
-      --sk-ocean-sky-1: #04121f;
-      --sk-ocean-sky-2: #071e31;
-      --sk-ocean-sky-3: #0a2b43;
-      --sk-ocean-haze: rgba(8, 30, 48, 0.7);
-      --sk-ocean-horizon: rgba(74, 150, 196, 0.2);
-      --sk-ocean-cloud: rgba(126, 182, 218, 0.09);
-      --sk-ocean-glow-a: rgba(46, 132, 184, 0.3);
-      --sk-ocean-glow-b: rgba(88, 168, 214, 0.2);
-      --sk-ocean-beam: rgba(150, 214, 250, 0.16);
-      --sk-ocean-star: #b9dcf2;
-      --sk-ocean-wave-1: rgba(15, 54, 82, 0.94);
-      --sk-ocean-wave-2: rgba(11, 41, 64, 0.94);
-      --sk-ocean-wave-3: rgba(7, 29, 46, 0.96);
-      --sk-ocean-wave-crest: rgba(126, 196, 236, 0.36);
-      --sk-ocean-splash: rgba(186, 228, 250, 0.55);
-      --sk-ocean-bubble: rgba(176, 222, 248, 0.42);
-      --sk-ocean-whale-ink: #021019;
-      --sk-ocean-spout: rgba(178, 224, 250, 0.62);
-      --sk-ocean-whale-shadow: rgba(0, 0, 0, 0.45);
-      --sk-ocean-whale-opacity: 0.88;
-      --sk-ocean-scrim: rgba(3, 16, 28, 0.5);
+    body[data-ds-dark-theme] .sk-scene--ocean:not([data-preview-mode="light"] *),
+    [data-preview-mode="dark"] .sk-scene--ocean {
+      --sk-ocean-sky-1: #0b3653;
+      --sk-ocean-sky-2: #051f39;
+      --sk-ocean-sky-3: #010c20;
+      --sk-ocean-haze: rgb(14 31 41 / 0.48);
+      --sk-ocean-horizon: rgb(131 187 203 / 0.12);
+      --sk-ocean-cloud: rgb(160 202 213 / 0.05);
+      --sk-ocean-glow-a: rgb(82 153 173 / 0.14);
+      --sk-ocean-glow-b: rgb(105 175 191 / 0.08);
+      --sk-ocean-beam: rgb(153 204 219 / 0.09);
+      --sk-ocean-star: #afced7;
+      --sk-ocean-wave-1: #234a58;
+      --sk-ocean-wave-2: #1b404e;
+      --sk-ocean-wave-3: #143440;
+      --sk-ocean-wave-crest: rgb(136 191 209 / 0.3);
+      --sk-ocean-splash: rgb(168 216 230 / 0.4);
+      --sk-ocean-bubble: rgb(173 214 228 / 0.3);
+      --sk-ocean-whale-ink: #183a4b;
+      --sk-ocean-whale-top: #43839e;
+      --sk-ocean-whale-mid: #6aa7bc;
+      --sk-ocean-whale-low: #9dc7d1;
+      --sk-ocean-fin-top: #326880;
+      --sk-ocean-fin-low: #528ba2;
+      --sk-ocean-whale-belly: #c4dedf;
+      --sk-ocean-spout: rgb(173 214 228 / 0.46);
+      --sk-ocean-whale-shadow: rgb(0 10 18 / 0.2);
+      --sk-ocean-scrim: rgb(17 30 39 / 0.66);
     }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean > * {
+    .sk-scene--ocean > * {
       position: absolute;
       pointer-events: none;
     }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky,
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-beams,
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-stars,
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-bubbles,
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-scrim {
-      inset: 0;
-    }
+    .sk-scene--ocean .sk-ocean-sky,
+    .sk-scene--ocean .sk-ocean-beams,
+    .sk-scene--ocean .sk-ocean-stars,
+    .sk-scene--ocean .sk-ocean-bubbles,
+    .sk-scene--ocean .sk-ocean-scrim { inset: 0; }
 
-    /* ── sky ─────────────────────────────────────────────────────────────── */
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky {
-      background:
-        radial-gradient(120% 62% at 50% 0%, var(--sk-ocean-sky-1) 0%, transparent 72%),
-        radial-gradient(90% 40% at 50% 76%, var(--sk-ocean-horizon) 0%, transparent 74%),
-        linear-gradient(
-          180deg,
-          var(--sk-ocean-sky-1) 0%,
-          var(--sk-ocean-sky-2) 46%,
-          var(--sk-ocean-sky-3) 82%,
-          var(--sk-ocean-sky-3) 100%
-        );
-      animation: sk-ocean-sky-breathe 26s ease-in-out infinite;
+    .sk-scene--ocean .sk-ocean-sky {
       overflow: hidden;
+      background:
+        radial-gradient(90% 40% at 55% 74%, var(--sk-ocean-horizon), transparent 74%),
+        linear-gradient(180deg, var(--sk-ocean-sky-1), var(--sk-ocean-sky-2) 56%, var(--sk-ocean-sky-3));
     }
 
-    /* soft drifting cloud banks: one above the horizon, one hugging the sea line */
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky::before,
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky::after {
+    .sk-scene--ocean .sk-ocean-sky::before,
+    .sk-scene--ocean .sk-ocean-sky::after {
       content: "";
       position: absolute;
-      border-radius: 50%;
-      background: radial-gradient(closest-side, var(--sk-ocean-cloud) 0%, transparent 100%);
-      filter: blur(22px);
-      will-change: transform;
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky::before {
-      left: -14%;
-      top: 8%;
-      width: 62%;
-      height: 30%;
-      animation: sk-ocean-cloud-drift 54s ease-in-out infinite;
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky::after {
-      right: -18%;
-      top: 40%;
-      width: 56%;
+      width: 60%;
       height: 24%;
-      animation: sk-ocean-cloud-drift 68s ease-in-out infinite reverse;
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky-glow {
-      position: absolute;
       border-radius: 50%;
-      filter: blur(28px);
-      will-change: transform, opacity;
+      background: radial-gradient(closest-side, var(--sk-ocean-cloud), transparent);
+      filter: blur(18px);
+      animation: sk-ocean-cloud-drift 58s ease-in-out infinite alternate;
     }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky-glow--left {
-      left: -12%;
-      top: -26%;
-      width: 68%;
-      height: 86%;
-      background: radial-gradient(closest-side, var(--sk-ocean-glow-a) 0%, transparent 100%);
-      animation: sk-ocean-glow-drift 34s ease-in-out infinite;
-    }
+    .sk-scene--ocean .sk-ocean-sky::before { left: -12%; top: 12%; }
+    .sk-scene--ocean .sk-ocean-sky::after { right: -14%; top: 47%; animation-direction: alternate-reverse; }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-sky-glow--right {
-      right: -18%;
-      top: -14%;
-      width: 62%;
-      height: 74%;
-      background: radial-gradient(closest-side, var(--sk-ocean-glow-b) 0%, transparent 100%);
-      animation: sk-ocean-glow-drift 42s ease-in-out infinite reverse;
-    }
-
-    /* ── light shafts ────────────────────────────────────────────────────── */
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-beam {
+    .sk-scene--ocean .sk-ocean-sky-glow {
       position: absolute;
-      top: -30%;
-      height: 150%;
-      width: 13%;
-      background: linear-gradient(
-        180deg,
-        var(--sk-ocean-beam) 0%,
-        color-mix(in srgb, var(--sk-ocean-beam) 45%, transparent) 45%,
-        transparent 78%
-      );
-      filter: blur(22px);
-      transform-origin: 50% 0%;
-      opacity: 0.55;
-      will-change: transform, opacity;
+      width: 66%;
+      height: 70%;
+      border-radius: 50%;
     }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-beam--1 {
-      left: 6%;
-      transform: rotate(15deg);
-      animation: sk-ocean-beam-sway 22s ease-in-out infinite;
+    .sk-scene--ocean .sk-ocean-sky-glow--left {
+      left: -22%;
+      top: -20%;
+      background: radial-gradient(closest-side, var(--sk-ocean-glow-a), transparent);
     }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-beam--2 {
-      left: 38%;
-      width: 9%;
-      transform: rotate(9deg);
-      opacity: 0.35;
-      animation: sk-ocean-beam-sway 27s ease-in-out infinite;
+    .sk-scene--ocean .sk-ocean-sky-glow--right {
+      right: -20%;
+      top: 7%;
+      background: radial-gradient(closest-side, var(--sk-ocean-glow-b), transparent);
     }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-beam--3 {
-      right: 8%;
-      width: 15%;
-      transform: rotate(-13deg);
-      opacity: 0.4;
-      animation: sk-ocean-beam-sway 31s ease-in-out infinite reverse;
+    .sk-scene--ocean .sk-ocean-beam {
+      position: absolute;
+      top: -20%;
+      width: 12%;
+      height: 120%;
+      background: linear-gradient(180deg, var(--sk-ocean-beam), transparent 75%);
+      filter: blur(18px);
+      transform-origin: 50% 0;
+      opacity: 0.45;
+      animation: sk-ocean-beam-sway 34s ease-in-out infinite alternate;
     }
 
-    /* ── stars ───────────────────────────────────────────────────────────── */
+    .sk-scene--ocean .sk-ocean-beam--1 { left: 4%; }
+    .sk-scene--ocean .sk-ocean-beam--2 { left: 38%; width: 7%; opacity: 0.22; }
+    .sk-scene--ocean .sk-ocean-beam--3 { right: 2%; animation-direction: alternate-reverse; }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-star {
+    .sk-scene--ocean .sk-ocean-star {
       position: absolute;
       border-radius: 50%;
       background: var(--sk-ocean-star);
-      box-shadow: 0 0 6px var(--sk-ocean-star);
-      animation-name: sk-ocean-star-twinkle;
-      animation-timing-function: ease-in-out;
-      animation-iteration-count: infinite;
-      will-change: opacity;
+      animation: sk-ocean-star-twinkle 10s ease-in-out infinite;
     }
 
-    /* ── whale ───────────────────────────────────────────────────────────── */
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale {
-      position: absolute;
-      right: 2%;
-      bottom: 12%;
-      width: clamp(200px, 30vw, 440px);
+    /* A blue whale swims just above the lower water layers, away from hero text. */
+    .sk-scene--ocean .sk-ocean-whale {
+      right: 6%;
+      bottom: -5%;
+      width: clamp(210px, 34%, 430px);
       aspect-ratio: 320 / 220;
-      opacity: var(--sk-ocean-whale-opacity);
-      filter: drop-shadow(0 24px 40px var(--sk-ocean-whale-shadow));
-      transform-origin: 90% 90%;
-      animation: sk-ocean-whale-breach 18s ease-in-out infinite;
-      will-change: transform;
+      filter: drop-shadow(0 12px 18px var(--sk-ocean-whale-shadow));
+      transform: rotate(8deg);
+      transform-origin: 70% 60%;
+      animation: sk-ocean-whale-swim 22s ease-in-out infinite;
     }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale-svg {
+    .sk-scene--ocean .sk-ocean-whale-svg {
       display: block;
       width: 100%;
       height: 100%;
       overflow: visible;
     }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale-eye {
-      fill: var(--sk-ocean-whale-ink);
+    .sk-scene--ocean .sk-ocean-body-top { stop-color: var(--sk-ocean-whale-top); }
+    .sk-scene--ocean .sk-ocean-body-mid { stop-color: var(--sk-ocean-whale-mid); }
+    .sk-scene--ocean .sk-ocean-body-low { stop-color: var(--sk-ocean-whale-low); }
+    .sk-scene--ocean .sk-ocean-fin-top { stop-color: var(--sk-ocean-fin-top); }
+    .sk-scene--ocean .sk-ocean-fin-low { stop-color: var(--sk-ocean-fin-low); }
+    .sk-scene--ocean .sk-ocean-whale-eye { fill: var(--sk-ocean-whale-ink); }
+    .sk-scene--ocean .sk-ocean-whale-eye-glint { fill: var(--sk-ocean-whale-belly); }
+    .sk-scene--ocean .sk-ocean-whale-mouth { stroke: var(--sk-ocean-whale-ink); }
+    .sk-scene--ocean .sk-ocean-whale-spout { stroke: var(--sk-ocean-spout); }
+    .sk-scene--ocean .sk-ocean-whale-belly { fill: var(--sk-ocean-whale-belly); opacity: 0.46; }
+    .sk-scene--ocean .sk-ocean-whale-pleats { stroke: var(--sk-ocean-whale-top); opacity: 0.28; }
+    .sk-scene--ocean .sk-ocean-whale-highlight { stroke: var(--sk-ocean-whale-belly); opacity: 0.32; }
+
+    .sk-scene--ocean .sk-ocean-splash {
+      right: 7%;
+      bottom: 7%;
+      width: 27%;
+      aspect-ratio: 5 / 1;
+      opacity: 0.6;
     }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale-mouth {
-      stroke: var(--sk-ocean-whale-ink);
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale-spout {
-      stroke: var(--sk-ocean-spout);
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-body-top {
-      stop-color: #0b2e4c;
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-body-mid {
-      stop-color: #1a5885;
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-body-low {
-      stop-color: #569bc2;
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-fin-top {
-      stop-color: #092640;
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-fin-low {
-      stop-color: #1b5580;
-    }
-
-
-    html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean .sk-ocean-body-top {
-      stop-color: #2f6f96;
-    }
-
-    html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean .sk-ocean-body-mid {
-      stop-color: #57a6cf;
-    }
-
-    html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean .sk-ocean-body-low {
-      stop-color: #8fd2ef;
-    }
-
-    html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean .sk-ocean-fin-top {
-      stop-color: #2a6488;
-    }
-
-    html[data-sk-palette="ocean"] body[data-ds-dark-theme] .sk-scene--ocean .sk-ocean-fin-low {
-      stop-color: #3a83ac;
-    }
-
-    /* ── splash rings ────────────────────────────────────────────────────── */
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-splash {
-      position: absolute;
-      right: 5%;
-      bottom: 8%;
-      width: clamp(150px, 22%, 320px);
-      aspect-ratio: 2.7 / 1;
-      opacity: 0.9;
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-splash-ring {
+    .sk-scene--ocean .sk-ocean-splash-ring {
       position: absolute;
       inset: 0;
-      border: 1.5px solid var(--sk-ocean-splash);
+      border: 1px solid var(--sk-ocean-splash);
       border-radius: 50%;
-      animation: sk-ocean-splash-ring 6.6s cubic-bezier(0.22, 0.61, 0.24, 1) infinite;
-      will-change: transform, opacity;
+      animation: sk-ocean-splash-ring 8s ease-out infinite;
     }
 
-    /* ── waves ───────────────────────────────────────────────────────────── */
+    .sk-scene--ocean .sk-ocean-waves { left: 0; right: 0; bottom: 0; height: 34%; }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-waves {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: clamp(88px, 30%, 260px);
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave {
+    .sk-scene--ocean .sk-ocean-wave {
       position: absolute;
       left: 0;
       bottom: 0;
       width: 200%;
       height: 100%;
-      will-change: transform;
     }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave-svg {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
+    .sk-scene--ocean .sk-ocean-wave-svg { display: block; width: 100%; height: 100%; }
+    .sk-scene--ocean .sk-ocean-wave--1 { opacity: 0.72; animation: sk-ocean-wave-drift 42s linear infinite; }
+    .sk-scene--ocean .sk-ocean-wave--2 { opacity: 0.86; animation: sk-ocean-wave-drift 34s linear infinite reverse; }
+    .sk-scene--ocean .sk-ocean-wave--3 { animation: sk-ocean-wave-drift 27s linear infinite; }
+    .sk-scene--ocean .sk-ocean-wave--1 .sk-ocean-wave-path { fill: var(--sk-ocean-wave-1); }
+    .sk-scene--ocean .sk-ocean-wave--2 .sk-ocean-wave-path { fill: var(--sk-ocean-wave-2); }
+    .sk-scene--ocean .sk-ocean-wave--3 .sk-ocean-wave-path { fill: var(--sk-ocean-wave-3); }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--1 {
-      opacity: 0.75;
-      animation: sk-ocean-wave-drift 32s linear infinite;
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--1 .sk-ocean-wave-path {
-      fill: var(--sk-ocean-wave-1);
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--2 {
-      opacity: 0.9;
-      animation: sk-ocean-wave-drift 24s linear infinite reverse;
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--2 .sk-ocean-wave-path {
-      fill: var(--sk-ocean-wave-2);
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--3 {
-      opacity: 1;
-      animation: sk-ocean-wave-drift 18s linear infinite;
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave--3 .sk-ocean-wave-path {
-      fill: var(--sk-ocean-wave-3);
-    }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-wave-path {
+    .sk-scene--ocean .sk-ocean-wave-crest {
+      fill: none;
       stroke: var(--sk-ocean-wave-crest);
       stroke-width: 1;
+      vector-effect: non-scaling-stroke;
     }
 
-    /* ── bubbles ─────────────────────────────────────────────────────────── */
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-bubble {
+    .sk-scene--ocean .sk-ocean-bubble {
       position: absolute;
       border-radius: 50%;
       border: 1px solid var(--sk-ocean-bubble);
-      background: color-mix(in srgb, var(--sk-ocean-bubble) 28%, transparent);
-      animation-name: sk-ocean-bubble-rise;
-      animation-timing-function: linear;
-      animation-iteration-count: infinite;
-      will-change: transform, opacity;
+      background: color-mix(in srgb, var(--sk-ocean-bubble) 12%, transparent);
+      animation: sk-ocean-bubble-rise 18s linear infinite;
     }
 
-    /* ── scrim keeps hero text readable over the artwork ─────────────────── */
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-scrim {
+    .sk-scene--ocean .sk-ocean-scrim {
       background:
-        radial-gradient(58% 52% at 50% 42%, var(--sk-ocean-scrim) 0%, transparent 74%),
-        linear-gradient(180deg, transparent 52%, var(--sk-ocean-haze) 100%);
-      opacity: 0.85;
+        radial-gradient(ellipse 58% 48% at 46% 38%, var(--sk-ocean-scrim), transparent 80%),
+        linear-gradient(180deg, transparent 74%, var(--sk-ocean-haze));
     }
 
-    /* ── compact card preview ────────────────────────────────────────────── */
+    .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-whale { right: 3%; bottom: -4%; width: 76%; }
+    .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-splash { right: 7%; bottom: 8%; width: 58%; }
+    .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-waves { height: 40%; }
+    .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-scrim { opacity: 0.28; }
+    .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-beams { opacity: 0.5; }
 
-    html[data-sk-palette="ocean"] .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-whale {
-      right: 3%;
-      bottom: 14%;
-      width: 54%;
-      animation-duration: 22s;
+    /* Submerged camera, refracting ceiling and two animals establish scale. */
+    .sk-scene--ocean { perspective: 1000px; overflow: hidden; }
+    .sk-scene--ocean .sk-ocean-surface {
+      left: -15%; right: -15%; top: -23%; height: 48%;
+      transform: rotateX(66deg) rotateZ(-7deg); transform-origin: 50% 70%; border-radius: 50%;
+      background: repeating-radial-gradient(ellipse at 48% 55%, transparent 0 18px, rgb(187 247 255 / 0.36) 20px, transparent 24px 44px), radial-gradient(ellipse, rgb(139 238 255 / 0.82), rgb(25 108 161 / 0.2) 64%, transparent 75%);
+      filter: blur(1px); opacity: 0.8; animation: sk-ocean-surface-roll 19s ease-in-out infinite alternate;
     }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-splash {
-      right: 6%;
-      bottom: 8%;
-      width: 44%;
+    .sk-scene--ocean .sk-ocean-beam {
+      top: -18%; height: 145%; width: 18%; clip-path: polygon(37% 0, 63% 0, 100% 100%, 0 100%);
+      background: linear-gradient(180deg, rgb(218 255 255 / 0.78), var(--sk-ocean-beam) 25%, transparent 90%);
+      filter: blur(5px); opacity: 0.62; mix-blend-mode: screen;
     }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-waves {
-      height: 38%;
+    .sk-scene--ocean .sk-ocean-beam--1 { left: 58%; }
+    .sk-scene--ocean .sk-ocean-beam--2 { left: 78%; width: 6%; opacity: 0.36; }
+    .sk-scene--ocean .sk-ocean-beam--3 { right: 52%; width: 28%; opacity: 0.24; }
+    .sk-scene--ocean .sk-ocean-distant-whale {
+      left: 9%; top: 41%; width: 16%; height: 5%; border-radius: 55% 32% 45% 50%;
+      background: #236080; opacity: 0.3; filter: blur(1.4px); transform: rotate(-12deg);
+      animation: sk-ocean-distant-drift 48s ease-in-out infinite alternate;
     }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-scrim {
-      opacity: 0.5;
+    .sk-scene--ocean .sk-ocean-distant-whale::after {
+      content: ""; position: absolute; right: -17%; top: -60%; width: 32%; height: 185%;
+      background: inherit; clip-path: polygon(0 48%, 90% 0, 63% 46%, 100% 100%, 8% 64%);
     }
-
-    html[data-sk-palette="ocean"] .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-beam {
-      filter: blur(14px);
-      opacity: 0.35;
+    .sk-scene--ocean .sk-ocean-distant-whale::before {
+      content: ""; position: absolute; left: 37%; top: 70%; width: 30%; height: 80%;
+      background: inherit; clip-path: polygon(0 0, 100% 95%, 64% 0);
     }
-
-    /* ── motion ──────────────────────────────────────────────────────────── */
-
-    @keyframes sk-ocean-sky-breathe {
-      0%,
-      100% {
-        opacity: 0.94;
-      }
-      50% {
-        opacity: 1;
-      }
+    .sk-scene--ocean .sk-ocean-whale {
+      right: -6%; bottom: -7%; width: clamp(340px, 66%, 940px); transform: rotate(-12deg) rotateY(-12deg);
+      filter: drop-shadow(0 28px 18px var(--sk-ocean-whale-shadow)) drop-shadow(-2px -3px 2px rgb(134 238 255 / 0.25)); animation-duration: 28s;
+    }
+    .sk-scene--ocean .sk-ocean-whale-fold { stroke: var(--sk-ocean-whale-ink); opacity: 0.38; }
+    .sk-scene--ocean .sk-ocean-whale-mottle { fill: var(--sk-ocean-whale-belly); opacity: 0.17; }
+    .sk-scene--ocean .sk-ocean-whale-caustic { stroke: #b6f8ff; opacity: 0.23; animation: sk-ocean-caustic-light 12s ease-in-out infinite alternate; }
+    .sk-scene--ocean .sk-ocean-whale-eye { r: 1.25px; }
+    .sk-scene--ocean .sk-ocean-whale-spout { opacity: 0.12; }
+    .sk-scene--ocean .sk-ocean-whale-fin { transform-box: fill-box; transform-origin: 12% 0%; animation: sk-ocean-fin-stroke 14s ease-in-out infinite alternate; }
+    .sk-scene--ocean .sk-ocean-caustics {
+      left: -25%; right: -25%; bottom: -50%; height: 85%; transform: rotateX(62deg) rotateZ(-8deg);
+      background: repeating-radial-gradient(ellipse at 60% 40%, transparent 0 32px, rgb(112 229 247 / 0.12) 34px 35px, transparent 38px 65px);
+      opacity: 0.42; animation: sk-ocean-caustic-drift 27s ease-in-out infinite alternate;
+    }
+    .sk-scene--ocean .sk-ocean-waves { height: 16%; opacity: 0.62; }
+    .sk-scene--ocean .sk-ocean-splash { right: -5%; bottom: 8%; width: 54%; opacity: 0.35; }
+    .sk-scene--ocean .sk-ocean-bubbles { mix-blend-mode: screen; }
+    .sk-scene--ocean .sk-ocean-scrim { background: radial-gradient(ellipse 46% 42% at 43% 35%, var(--sk-ocean-scrim), transparent 100%), linear-gradient(0deg, var(--sk-ocean-haze), transparent 25%); }
+    .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-whale { width: 108%; right: -12%; bottom: -9%; }
+    .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-beams { opacity: 0.92; }
+    .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-waves { height: 20%; }
+    .sk-scene--ocean[data-sk-compact="true"] .sk-ocean-scrim { opacity: 0.08; }
+    @keyframes sk-ocean-surface-roll {
+      from { transform: rotateX(66deg) rotateZ(-7deg) translateY(-2%); }
+      to { transform: rotateX(70deg) rotateZ(-4deg) translateY(3%); }
+    }
+    @keyframes sk-ocean-distant-drift {
+      from { transform: translate3d(0, 0, 0) rotate(-12deg); }
+      to { transform: translate3d(20%, -14%, -30px) rotate(-8deg); }
+    }
+    @keyframes sk-ocean-caustic-light { from { opacity: 0.08; } to { opacity: 0.32; } }
+    @keyframes sk-ocean-fin-stroke { from { transform: rotate(-8deg); } to { transform: rotate(12deg) scaleY(0.84); } }
+    @keyframes sk-ocean-caustic-drift {
+      from { transform: rotateX(62deg) rotateZ(-8deg) translateX(0); }
+      to { transform: rotateX(66deg) rotateZ(-5deg) translateX(5%); }
     }
 
     @keyframes sk-ocean-cloud-drift {
-      0%,
-      100% {
-        transform: translate3d(-2%, 0, 0) scale(1);
-      }
-      50% {
-        transform: translate3d(4%, 2%, 0) scale(1.06);
-      }
-    }
-
-    @keyframes sk-ocean-glow-drift {
-      0%,
-      100% {
-        transform: translate3d(0, 0, 0) scale(1);
-        opacity: 0.68;
-      }
-      50% {
-        transform: translate3d(3%, 2%, 0) scale(1.08);
-        opacity: 1;
-      }
+      from { transform: translate3d(-2%, 0, 0); }
+      to { transform: translate3d(5%, 1%, 0); }
     }
 
     @keyframes sk-ocean-beam-sway {
-      0%,
-      100% {
-        transform: rotate(9deg) translate3d(-2%, 0, 0) scaleY(1);
-        opacity: 0.3;
-      }
-      50% {
-        transform: rotate(13deg) translate3d(2%, 0, 0) scaleY(1.06);
-        opacity: 0.7;
-      }
+      from { transform: rotate(12deg); }
+      to { transform: rotate(17deg); }
     }
 
     @keyframes sk-ocean-star-twinkle {
-      0%,
-      100% {
-        opacity: 0.2;
-        transform: scale(0.85);
-      }
-      50% {
-        opacity: 0.85;
-        transform: scale(1.15);
-      }
+      0%, 100% { opacity: 0.08; }
+      50% { opacity: 0.3; }
     }
 
-    @keyframes sk-ocean-whale-breach {
-      0%,
-      100% {
-        transform: translate3d(0, 2.4%, 0) rotate(23deg) scale(0.985);
-      }
-      44% {
-        transform: translate3d(0, -3.4%, 0) rotate(29deg) scale(1.012);
-      }
-      68% {
-        transform: translate3d(0, -1.2%, 0) rotate(26deg) scale(1.004);
-      }
+    @keyframes sk-ocean-whale-swim {
+      0%, 100% { transform: translate3d(0, 1%, 0) rotate(-12deg) rotateY(-12deg); }
+      50% { transform: translate3d(-1.5%, -2%, 12px) rotate(-9deg) rotateY(-7deg); }
     }
 
     @keyframes sk-ocean-splash-ring {
-      0% {
-        transform: scale(0.22);
-        opacity: 0;
-      }
-      16% {
-        opacity: 0.7;
-      }
-      70% {
-        opacity: 0.24;
-      }
-      100% {
-        transform: scale(1.55);
-        opacity: 0;
-      }
+      0% { transform: scale(0.55); opacity: 0; }
+      18% { opacity: 0.5; }
+      100% { transform: scale(1.35); opacity: 0; }
     }
 
     @keyframes sk-ocean-wave-drift {
-      from {
-        transform: translate3d(0, 0, 0);
-      }
-      to {
-        transform: translate3d(-50%, 0, 0);
-      }
+      from { transform: translate3d(0, 0, 0); }
+      to { transform: translate3d(-50%, 0, 0); }
     }
 
     @keyframes sk-ocean-bubble-rise {
-      0% {
-        transform: translate3d(0, 0, 0) scale(0.7);
-        opacity: 0;
-      }
-      12% {
-        opacity: 0.7;
-      }
-      70% {
-        opacity: 0.45;
-      }
-      100% {
-        transform: translate3d(6px, -160px, 0) scale(1.05);
-        opacity: 0;
-      }
-    }
-
-    /* Busy frames are wasted work for a decorative layer; reduced motion freezes it. */
-    @media (prefers-reduced-motion: reduce) {
-      html[data-sk-palette="ocean"] .sk-scene--ocean,
-      html[data-sk-palette="ocean"] .sk-scene--ocean *,
-      html[data-sk-palette="ocean"] .sk-scene--ocean *::before,
-      html[data-sk-palette="ocean"] .sk-scene--ocean *::after {
-        animation: none !important;
-        transition: none !important;
-      }
-
-      html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-splash {
-        opacity: 0.35;
-      }
-
-      html[data-sk-palette="ocean"] .sk-scene--ocean .sk-ocean-whale {
-        transform: rotate(26deg);
-      }
-    }
-
-    /* 「希望红」· hope palette scene
-     *
-     * 黎明/朝阳：深红到暖金的天光、缓缓升起的太阳光晕、放射状光束、上升的余烬与
-     * 地平线微光。所有规则限定在 html[data-sk-palette="hope"]；场景根节点的定位由
-     * theme-center.css 的 .sk-theme-scene 提供，本文件只负责内部图层。
-     * 循环动画只用 transform/opacity；prefers-reduced-motion 时完全静止。
-     */
-
-    html[data-sk-palette="hope"] .sk-scene--hope {
-      /* 浅色（默认）：晨光暖白，前景深色文字依旧清晰 */
-      --sk-hope-sky-mid: rgba(255, 190, 150, 0.32);
-      --sk-hope-sky-deep: rgba(178, 46, 40, 0.34);
-      --sk-hope-sky-low: rgba(255, 148, 86, 0.42);
-      --sk-hope-dawn-core: rgba(255, 176, 110, 0.42);
-      --sk-hope-dawn-haze: rgba(255, 206, 168, 0.22);
-      --sk-hope-sun-core: #fff6e2;
-      --sk-hope-sun-gold: rgba(255, 186, 96, 0.95);
-      --sk-hope-sun-warm: rgba(255, 138, 72, 0.58);
-      --sk-hope-sun-halo: rgba(255, 126, 72, 0.3);
-      --sk-hope-horizon-glow: rgba(255, 150, 90, 0.62);
-      --sk-hope-horizon-line: rgba(255, 236, 202, 0.95);
-      --sk-hope-ember: rgba(226, 78, 22, 0.95);
-      --sk-hope-ember-glow: rgba(255, 88, 30, 0.5);
-      --sk-hope-scrim: rgba(255, 252, 247, 0.42);
-      --sk-hope-haze: rgba(255, 250, 244, 0.3);
-      --sk-hope-vignette: rgba(126, 30, 26, 0.14);
-      --sk-hope-ray-core: #ffeccc;
-      --sk-hope-ray-mid: #ffae66;
-      --sk-hope-ray-edge: #c2402c;
-      --sk-hope-rays-opacity: 0.92;
-      --sk-hope-glow-opacity: 0.95;
-      isolation: isolate;
-    }
-
-    html[data-sk-palette="hope"] body[data-ds-dark-theme] .sk-scene--hope,
-    html[data-sk-palette="hope"][data-ds-dark-theme] body .sk-scene--hope {
-      /* 深色：黎明前最深的一刻，暗红天光配金色边缘 */
-      --sk-hope-sky-mid: rgba(112, 24, 24, 0.4);
-      --sk-hope-sky-deep: rgba(58, 9, 14, 0.68);
-      --sk-hope-sky-low: rgba(176, 44, 30, 0.42);
-      --sk-hope-dawn-core: rgba(204, 66, 36, 0.36);
-      --sk-hope-dawn-haze: rgba(96, 18, 20, 0.3);
-      --sk-hope-sun-core: #ffecc8;
-      --sk-hope-sun-gold: rgba(255, 174, 86, 0.92);
-      --sk-hope-sun-warm: rgba(224, 84, 42, 0.62);
-      --sk-hope-sun-halo: rgba(164, 38, 28, 0.44);
-      --sk-hope-horizon-glow: rgba(255, 108, 52, 0.5);
-      --sk-hope-horizon-line: rgba(255, 196, 128, 0.72);
-      --sk-hope-ember: rgba(255, 174, 92, 1);
-      --sk-hope-ember-glow: rgba(255, 118, 46, 0.52);
-      --sk-hope-scrim: rgba(10, 6, 7, 0.46);
-      --sk-hope-haze: rgba(12, 7, 8, 0.38);
-      --sk-hope-vignette: rgba(0, 0, 0, 0.34);
-      --sk-hope-ray-core: #ffe6ba;
-      --sk-hope-ray-mid: #ff9c56;
-      --sk-hope-ray-edge: #9e2a1c;
-      --sk-hope-rays-opacity: 0.82;
-      --sk-hope-glow-opacity: 0.9;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope > * {
-      position: absolute;
-      pointer-events: none;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sky,
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-dawn,
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-rays,
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-horizon,
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-embers,
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-scrim {
-      inset: 0;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sky {
-      background:
-        radial-gradient(118% 68% at 50% 112%, var(--sk-hope-sky-low) 0%, transparent 64%),
-        linear-gradient(180deg, transparent 0%, var(--sk-hope-sky-mid) 52%, var(--sk-hope-sky-deep) 100%);
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-dawn {
-      background:
-        radial-gradient(92% 58% at 50% 104%, var(--sk-hope-dawn-core) 0%, transparent 66%),
-        linear-gradient(180deg, transparent 42%, var(--sk-hope-dawn-haze) 100%);
-      opacity: 0.7;
-      animation: sk-hope-dawn 36s ease-in-out infinite alternate;
-      will-change: transform, opacity;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-rays {
-      display: block;
-      width: 100%;
-      height: 100%;
-      overflow: visible;
-      opacity: var(--sk-hope-rays-opacity);
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-beams {
-      transform-box: view-box;
-      transform-origin: 50% 80%;
-      animation: sk-hope-beams 44s ease-in-out infinite alternate;
-      will-change: transform, opacity;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-ray-stop-core {
-      stop-color: var(--sk-hope-ray-core);
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-ray-stop-mid {
-      stop-color: var(--sk-hope-ray-mid);
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-ray-stop-edge {
-      stop-color: var(--sk-hope-ray-edge);
-    }
-
-    /* 太阳：光晕半径与日出方向一致，圆心正好坐在地平线上（bottom: 20%）。 */
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sun {
-      left: 50%;
-      bottom: 20%;
-      width: min(34%, 360px, 54vh);
-      aspect-ratio: 1;
-      transform: translate3d(-50%, 50%, 0);
-      animation: sk-hope-sun-rise 30s ease-in-out infinite alternate;
-      will-change: transform;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sun-halo {
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: radial-gradient(
-        circle at 50% 50%,
-        var(--sk-hope-sun-core) 0%,
-        var(--sk-hope-sun-gold) 7%,
-        var(--sk-hope-sun-warm) 20%,
-        var(--sk-hope-sun-halo) 48%,
-        transparent 72%
-      );
-      opacity: var(--sk-hope-glow-opacity);
-      animation: sk-hope-sun-glow 9s ease-in-out infinite alternate;
-      will-change: transform, opacity;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sun-core {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 21%;
-      aspect-ratio: 1;
-      transform: translate3d(-50%, -50%, 0);
-      border-radius: 50%;
-      background: radial-gradient(
-        circle,
-        var(--sk-hope-sun-core) 0%,
-        var(--sk-hope-sun-core) 38%,
-        var(--sk-hope-sun-gold) 72%,
-        transparent 100%
-      );
-      box-shadow: 0 0 34px 10px var(--sk-hope-sun-halo);
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-horizon-glow {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 46%;
-      background: radial-gradient(56% 108% at 50% 100%, var(--sk-hope-horizon-glow) 0%, transparent 70%);
-      animation: sk-hope-horizon 13s ease-in-out infinite alternate;
-      will-change: opacity, transform;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-horizon-line {
-      position: absolute;
-      left: 7%;
-      right: 7%;
-      bottom: 20%;
-      height: 1px;
-      background: linear-gradient(
-        90deg,
-        transparent 0%,
-        var(--sk-hope-horizon-line) 26%,
-        var(--sk-hope-horizon-line) 74%,
-        transparent 100%
-      );
-      box-shadow: 0 0 12px 1px var(--sk-hope-horizon-glow);
-      opacity: 0.72;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-embers {
-      overflow: hidden;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-ember {
-      position: absolute;
-      left: var(--sk-hope-ember-x, 50%);
-      bottom: var(--sk-hope-ember-y, 14%);
-      width: var(--sk-hope-ember-size, 2px);
-      height: var(--sk-hope-ember-size, 2px);
-      border-radius: 50%;
-      background: var(--sk-hope-ember);
-      box-shadow: 0 0 6px 1px var(--sk-hope-ember-glow);
-      opacity: var(--sk-hope-ember-peak, 0.6);
-      animation-name: sk-hope-ember-rise;
-      animation-timing-function: linear;
-      animation-iteration-count: infinite;
-      will-change: transform, opacity;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-scrim {
-      background:
-        radial-gradient(130% 100% at 50% 50%, transparent 56%, var(--sk-hope-vignette) 100%),
-        linear-gradient(180deg, var(--sk-hope-haze) 0%, transparent 34%),
-        radial-gradient(56% 52% at 50% 38%, var(--sk-hope-scrim) 0%, transparent 74%);
-    }
-
-    /* 卡片缩略图：更小的太阳、更少的粒子与光晕；场景本身仍由 JS 精简。 */
-    html[data-sk-palette="hope"] .sk-scene--hope[data-sk-compact="true"] .sk-hope-sun {
-      width: min(52%, 190px);
-      bottom: 19%;
-      animation-duration: 34s;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope[data-sk-compact="true"] .sk-hope-horizon-line {
-      left: 2%;
-      right: 2%;
-      opacity: 0.6;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope[data-sk-compact="true"] .sk-hope-scrim {
-      opacity: 0.62;
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope[data-sk-compact="true"] .sk-hope-rays {
-      opacity: calc(var(--sk-hope-rays-opacity) * 0.85);
-    }
-
-    html[data-sk-palette="hope"] .sk-scene--hope[data-sk-compact="true"] .sk-hope-ember {
-      box-shadow: 0 0 4px var(--sk-hope-ember-glow);
-    }
-
-    @keyframes sk-hope-dawn {
-      from {
-        transform: translate3d(0, 1.4%, 0) scale(1.01);
-        opacity: 0.42;
-      }
-      to {
-        transform: translate3d(0, -1.2%, 0) scale(1.04);
-        opacity: 0.82;
-      }
-    }
-
-    @keyframes sk-hope-beams {
-      from {
-        transform: rotate(-2.1deg);
-        opacity: 0.7;
-      }
-      to {
-        transform: rotate(2.1deg);
-        opacity: 1;
-      }
-    }
-
-    @keyframes sk-hope-sun-rise {
-      from {
-        transform: translate3d(-50%, 50%, 0);
-      }
-      to {
-        transform: translate3d(-50%, 46%, 0);
-      }
-    }
-
-    @keyframes sk-hope-sun-glow {
-      from {
-        transform: scale(0.97);
-        opacity: calc(var(--sk-hope-glow-opacity) * 0.82);
-      }
-      to {
-        transform: scale(1.05);
-        opacity: var(--sk-hope-glow-opacity);
-      }
-    }
-
-    @keyframes sk-hope-horizon {
-      from {
-        transform: scaleX(0.98);
-        opacity: 0.72;
-      }
-      to {
-        transform: scaleX(1.03);
-        opacity: 1;
-      }
-    }
-
-    @keyframes sk-hope-ember-rise {
-      0% {
-        transform: translate3d(0, 10px, 0) scale(0.55);
-        opacity: 0;
-      }
-      9% {
-        opacity: var(--sk-hope-ember-peak, 0.6);
-      }
-      58% {
-        opacity: calc(var(--sk-hope-ember-peak, 0.6) * 0.68);
-      }
-      100% {
-        transform: translate3d(var(--sk-hope-ember-drift, 16px), calc(var(--sk-hope-ember-rise, 150px) * -1), 0) scale(1.08);
-        opacity: 0;
-      }
+      0% { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0; }
+      16% { opacity: 0.4; }
+      100% { transform: translate3d(8px, -90px, 0) scale(1); opacity: 0; }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      html[data-sk-palette="hope"] .sk-scene--hope,
-      html[data-sk-palette="hope"] .sk-scene--hope *,
-      html[data-sk-palette="hope"] .sk-scene--hope *::before,
-      html[data-sk-palette="hope"] .sk-scene--hope *::after {
+      .sk-scene--ocean,
+      .sk-scene--ocean *,
+      .sk-scene--ocean *::before,
+      .sk-scene--ocean *::after {
         animation: none !important;
         transition: none !important;
         will-change: auto !important;
       }
 
-      html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-sun {
-        transform: translate3d(-50%, 47%, 0);
+      .sk-scene--ocean .sk-ocean-whale { transform: rotate(8deg); }
+      .sk-scene--ocean .sk-ocean-splash { opacity: 0.3; }
+      .sk-scene--ocean .sk-ocean-star { opacity: 0.18 !important; }
+      .sk-scene--ocean .sk-ocean-bubble { opacity: 0.22; }
+    }
+
+    /* Hope pack: warm matte planes, firm corners and a vermilion dawn.
+     * Scene styling is independent of the selected pack so cards remain visible.
+     */
+
+    html[data-sk-palette="hope"] body {
+      --sk-hope-line: color-mix(in srgb, var(--dsw-alias-border-l3) 86%, #ba8a75);
+      --sk-hope-menu: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 96%, #c69475);
+      --sk-hope-content: color-mix(in srgb, var(--dsw-alias-bg-base) 98%, #d0a584);
+    }
+
+    html[data-sk-palette="hope"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav {
+      background: var(--sk-hope-menu);
+      border-inline-end-color: var(--sk-hope-line);
+    }
+
+    html[data-sk-palette="hope"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] {
+      background: var(--sk-hope-content);
+    }
+
+    html[data-sk-palette="hope"] .sk-setnav__search {
+      border-color: var(--sk-hope-line);
+      background: var(--dsw-alias-bg-base);
+    }
+
+    html[data-sk-palette="hope"] .sk-setnav__item[aria-current="true"] {
+      box-shadow: inset 2px 0 0 #c16c50;
+    }
+
+    /* The preview carries its own brightness and corner geometry. */
+    [data-preview-palette="hope"] {
+      --sk-hope-preview-radius: 8px;
+      --sk-hope-preview-rail: #f1eae2;
+      --sk-hope-preview-composer: #fffaf4;
+      --sk-hope-preview-line: rgb(139 88 64 / 0.2);
+    }
+
+    [data-preview-palette="hope"][data-preview-mode="dark"] {
+      --sk-hope-preview-rail: #2b2524;
+      --sk-hope-preview-composer: #302725;
+      --sk-hope-preview-line: rgb(199 155 128 / 0.2);
+    }
+
+    .sk-theme-card__art[data-preview-palette="hope"] { border-radius: 7px; }
+    .sk-theme-preview-window[data-preview-palette="hope"] { border-radius: var(--sk-hope-preview-radius); }
+
+    .sk-theme-preview-window[data-preview-palette="hope"] .sk-theme-preview-rail {
+      background: var(--sk-hope-preview-rail);
+      border-right-color: var(--sk-hope-preview-line);
+    }
+
+    .sk-theme-preview-window[data-preview-palette="hope"] .sk-theme-preview-logo {
+      border-radius: 4px;
+      background: #c46d50;
+    }
+
+    .sk-theme-preview-window[data-preview-palette="hope"] .sk-theme-preview-nav { border-radius: 2px; }
+
+    .sk-theme-preview-window[data-preview-palette="hope"] .sk-theme-preview-composer {
+      border-radius: var(--sk-hope-preview-radius);
+      border-color: var(--sk-hope-preview-line);
+      background: var(--sk-hope-preview-composer);
+      box-shadow: none;
+    }
+
+    .sk-theme-preview-window[data-preview-palette="hope"] .sk-theme-preview-composer i {
+      border-radius: 5px;
+      background: #c46d50;
+    }
+
+    .sk-scene--hope {
+      --sk-hope-sky-top: #fdfaf6;
+      --sk-hope-sky-mid: #f8eee5;
+      --sk-hope-sky-low: #edc5ae;
+      --sk-hope-dawn-core: rgb(222 145 100 / 0.22);
+      --sk-hope-dawn-haze: rgb(235 191 151 / 0.1);
+      --sk-hope-sun-core: #eaa077;
+      --sk-hope-sun-low: #d05c43;
+      --sk-hope-sun-halo: rgb(228 154 106 / 0.22);
+      --sk-hope-ground: #f0e1d4;
+      --sk-hope-horizon-glow: rgb(224 153 108 / 0.24);
+      --sk-hope-horizon-line: rgb(184 113 78 / 0.45);
+      --sk-hope-ember: #bb704c;
+      --sk-hope-ember-glow: rgb(216 140 85 / 0.16);
+      --sk-hope-scrim: rgb(253 250 246 / 0.76);
+      --sk-hope-ray-core: #f2cfa6;
+      --sk-hope-ray-mid: #dea47f;
+      --sk-hope-ray-edge: #cb8261;
+      --sk-hope-rays-opacity: 0.2;
+      isolation: isolate;
+      pointer-events: none;
+    }
+
+    body[data-ds-dark-theme] .sk-scene--hope:not([data-preview-mode="light"] *),
+    [data-preview-mode="dark"] .sk-scene--hope {
+      --sk-hope-sky-top: #1c1b20;
+      --sk-hope-sky-mid: #2c2225;
+      --sk-hope-sky-low: #57352f;
+      --sk-hope-dawn-core: rgb(178 91 55 / 0.19);
+      --sk-hope-dawn-haze: rgb(138 61 42 / 0.12);
+      --sk-hope-sun-core: #e7a777;
+      --sk-hope-sun-low: #bf5943;
+      --sk-hope-sun-halo: rgb(202 119 70 / 0.17);
+      --sk-hope-ground: #2b2425;
+      --sk-hope-horizon-glow: rgb(204 132 80 / 0.18);
+      --sk-hope-horizon-line: rgb(215 157 112 / 0.42);
+      --sk-hope-ember: #dca16b;
+      --sk-hope-ember-glow: rgb(222 143 81 / 0.14);
+      --sk-hope-scrim: rgb(28 27 32 / 0.7);
+      --sk-hope-ray-core: #e9bc89;
+      --sk-hope-ray-mid: #bc7957;
+      --sk-hope-ray-edge: #894c3d;
+      --sk-hope-rays-opacity: 0.16;
+    }
+
+    .sk-scene--hope > * {
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .sk-scene--hope .sk-hope-sky,
+    .sk-scene--hope .sk-hope-dawn,
+    .sk-scene--hope .sk-hope-rays,
+    .sk-scene--hope .sk-hope-horizon,
+    .sk-scene--hope .sk-hope-embers,
+    .sk-scene--hope .sk-hope-scrim { inset: 0; }
+
+    .sk-scene--hope .sk-hope-sky {
+      background: linear-gradient(180deg, var(--sk-hope-sky-top), var(--sk-hope-sky-mid) 62%, var(--sk-hope-sky-low));
+    }
+
+    .sk-scene--hope .sk-hope-dawn {
+      background:
+        radial-gradient(ellipse 64% 42% at 72% 83%, var(--sk-hope-dawn-core), transparent 74%),
+        linear-gradient(180deg, transparent 50%, var(--sk-hope-dawn-haze));
+      animation: sk-hope-dawn 40s ease-in-out infinite alternate;
+    }
+
+    .sk-scene--hope .sk-hope-rays {
+      display: block;
+      width: 100%;
+      height: 100%;
+      opacity: var(--sk-hope-rays-opacity);
+    }
+
+    .sk-scene--hope .sk-hope-beams {
+      transform-box: view-box;
+      transform-origin: 72% 77%;
+      animation: sk-hope-beams 48s ease-in-out infinite alternate;
+    }
+
+    .sk-scene--hope .sk-hope-ray-stop-core { stop-color: var(--sk-hope-ray-core); }
+    .sk-scene--hope .sk-hope-ray-stop-mid { stop-color: var(--sk-hope-ray-mid); }
+    .sk-scene--hope .sk-hope-ray-stop-edge { stop-color: var(--sk-hope-ray-edge); }
+
+    /* A defined solar disc sits to the right of the main reading area. */
+    .sk-scene--hope .sk-hope-sun {
+      z-index: 1;
+      left: 72%;
+      bottom: 23%;
+      width: min(20%, 210px);
+      aspect-ratio: 1;
+      transform: translate3d(-50%, 28%, 0);
+      animation: sk-hope-sun-rise 38s ease-in-out infinite alternate;
+    }
+
+    .sk-scene--hope .sk-hope-sun-halo {
+      position: absolute;
+      inset: -48%;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--sk-hope-sun-halo), transparent 70%);
+    }
+
+    .sk-scene--hope .sk-hope-sun-core {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: linear-gradient(160deg, var(--sk-hope-sun-core), var(--sk-hope-sun-low));
+    }
+
+    /* A matte foreground clips the lower disc at a crisp, unbroken horizon. */
+    .sk-scene--hope .sk-hope-horizon { z-index: 2; }
+
+    .sk-scene--hope .sk-hope-horizon::before {
+      content: "";
+      position: absolute;
+      inset: 77% 0 0;
+      background: var(--sk-hope-ground);
+    }
+
+    .sk-scene--hope .sk-hope-horizon-glow {
+      position: absolute;
+      left: 32%;
+      right: -10%;
+      bottom: 23%;
+      height: 16%;
+      background: radial-gradient(ellipse 50% 100% at 52% 100%, var(--sk-hope-horizon-glow), transparent 85%);
+    }
+
+    .sk-scene--hope .sk-hope-horizon-line {
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      bottom: 23%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--sk-hope-horizon-line) 52%, var(--sk-hope-horizon-line) 82%, transparent);
+    }
+
+    .sk-scene--hope .sk-hope-embers { z-index: 3; overflow: hidden; }
+
+    .sk-scene--hope .sk-hope-ember {
+      position: absolute;
+      left: var(--sk-hope-ember-x, 72%);
+      bottom: var(--sk-hope-ember-y, 18%);
+      width: var(--sk-hope-ember-size, 2px);
+      height: var(--sk-hope-ember-size, 2px);
+      border-radius: 50%;
+      background: var(--sk-hope-ember);
+      box-shadow: 0 0 4px var(--sk-hope-ember-glow);
+      opacity: var(--sk-hope-ember-peak, 0.3);
+      animation: sk-hope-ember-rise 18s linear infinite;
+    }
+
+    .sk-scene--hope .sk-hope-scrim {
+      z-index: 4;
+      background: radial-gradient(ellipse 60% 56% at 42% 36%, var(--sk-hope-scrim), transparent 80%);
+    }
+
+    .sk-scene--hope[data-sk-compact="true"] .sk-hope-sun { width: min(36%, 120px); animation-duration: 44s; }
+    .sk-scene--hope[data-sk-compact="true"] .sk-hope-horizon-line { left: 0; right: 0; }
+    .sk-scene--hope[data-sk-compact="true"] .sk-hope-rays { opacity: calc(var(--sk-hope-rays-opacity) * 0.6); }
+    .sk-scene--hope[data-sk-compact="true"] .sk-hope-scrim { opacity: 0.2; }
+
+    /* Civil-time color and celestial positions belong to this scene only. */
+    .sk-scene--hope { overflow: hidden; }
+    .sk-scene--hope .sk-hope-sky {
+      background: linear-gradient(180deg, var(--sk-hope-time-top, var(--sk-hope-sky-top)), var(--sk-hope-time-mid, var(--sk-hope-sky-mid)) 62%, var(--sk-hope-time-low, var(--sk-hope-sky-low)));
+    }
+    .sk-scene--hope .sk-hope-night { inset: 0; overflow: hidden; opacity: var(--sk-hope-night, 0); }
+    .sk-scene--hope .sk-hope-galaxy {
+      position: absolute; width: 130%; height: 38%; left: -18%; top: 13%; transform: rotate(-29deg);
+      background: radial-gradient(ellipse, rgb(194 176 240 / 0.23), rgb(80 109 173 / 0.12) 34%, transparent 70%);
+      filter: blur(12px); animation: sk-hope-galaxy-drift 100s ease-in-out infinite alternate;
+    }
+    .sk-scene--hope .sk-hope-moon {
+      position: absolute; right: 19%; top: 18%; width: clamp(16px, 4%, 48px); aspect-ratio: 1; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #f5f2df, #cbd2e4 72%); box-shadow: 0 0 35px rgb(205 222 255 / 0.28);
+    }
+    .sk-scene--hope .sk-hope-moon::after { content: ""; position: absolute; inset: -3% -14% 8% 23%; border-radius: 50%; background: #101b34; }
+    .sk-scene--hope .sk-hope-star {
+      position: absolute; border-radius: 50%; background: #eff3ff; box-shadow: 0 0 5px rgb(210 229 255 / 0.5);
+      animation: sk-hope-star-glimmer 8s ease-in-out infinite;
+    }
+    .sk-scene--hope .sk-hope-clouds {
+      inset: 10% -20% 20%; opacity: calc(var(--sk-hope-daylight, 1) * 0.52);
+      background: radial-gradient(ellipse 25% 6% at 23% 20%, rgb(255 245 223 / 0.58), transparent), radial-gradient(ellipse 40% 5% at 69% 35%, rgb(255 239 218 / 0.4), transparent), radial-gradient(ellipse 23% 3% at 58% 18%, rgb(255 255 245 / 0.3), transparent);
+      animation: sk-hope-cloud-drift 80s ease-in-out infinite alternate;
+    }
+    .sk-scene--hope .sk-hope-sun {
+      left: var(--sk-hope-solar-x, 72%); top: var(--sk-hope-solar-y, 54%); bottom: auto;
+      width: min(11%, 128px); opacity: var(--sk-hope-solar-opacity, 1);
+      transform: translate3d(-50%, -50%, 0); animation: none;
+    }
+    .sk-scene--hope .sk-hope-sun-core { background: radial-gradient(circle at 45% 40%, #fffbe4, #ffe0a1 65%, var(--sk-hope-sun-low)); box-shadow: 0 0 30px var(--sk-hope-sun-halo); }
+    .sk-scene--hope .sk-hope-sun-halo { inset: -150%; background: radial-gradient(circle, var(--sk-hope-sun-halo), transparent 68%); }
+    .sk-scene--hope .sk-hope-rays { opacity: calc(var(--sk-hope-rays-opacity) * var(--sk-hope-daylight, 1)); }
+    .sk-scene--hope .sk-hope-dawn { opacity: var(--sk-hope-daylight, 1); animation: none; }
+    .sk-scene--hope .sk-hope-landscape { inset: 0; z-index: 2; overflow: hidden; }
+    .sk-scene--hope .sk-hope-ridge { position: absolute; inset: 58% -2% 0; }
+    .sk-scene--hope .sk-hope-ridge--far { background: color-mix(in srgb, var(--sk-hope-time-mid, #6f779b) 68%, #15243e); clip-path: polygon(0 45%, 9% 32%, 17% 40%, 30% 5%, 40% 30%, 48% 22%, 60% 47%, 72% 29%, 84% 35%, 94% 10%, 100% 18%, 100% 100%, 0 100%); }
+    .sk-scene--hope .sk-hope-ridge--mid { inset-block-start: 69%; background: color-mix(in srgb, var(--sk-hope-time-mid, #5a677d) 45%, #142436); clip-path: polygon(0 23%, 10% 30%, 23% 14%, 36% 49%, 45% 38%, 59% 62%, 78% 26%, 88% 33%, 100% 4%, 100% 100%, 0 100%); }
+    .sk-scene--hope .sk-hope-ridge--near { inset-block-start: 83%; background: #142d3a; opacity: 0.85; clip-path: polygon(0 3%, 17% 30%, 31% 62%, 54% 100%, 0 100%); }
+    .sk-scene--hope .sk-hope-water { position: absolute; inset: 85% 0 0; background: linear-gradient(180deg, color-mix(in srgb, var(--sk-hope-time-low, #c59489) 40%, #1b3549), #152c40); }
+    .sk-scene--hope .sk-hope-reflection { position: absolute; top: 85%; bottom: -10%; left: var(--sk-hope-solar-x, 72%); width: 14%; transform: translateX(-50%); opacity: calc(var(--sk-hope-daylight, 1) * 0.6); background: repeating-linear-gradient(0deg, transparent 0 5px, rgb(255 227 169 / 0.4) 6px 7px, transparent 8px 13px); clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%); animation: sk-hope-reflection-drift 10s ease-in-out infinite alternate; }
+    .sk-scene--hope .sk-hope-horizon { opacity: var(--sk-hope-daylight, 1); z-index: 0; }
+    .sk-scene--hope .sk-hope-horizon::before { opacity: 0; }
+    .sk-scene--hope .sk-hope-horizon-line { opacity: 0.18; }
+    .sk-scene--hope .sk-hope-embers { opacity: calc(var(--sk-hope-daylight, 1) * 0.55); }
+    .sk-scene--hope[data-sk-compact="true"] .sk-hope-sun { width: min(18%, 50px); }
+    .sk-scene--hope[data-sk-compact="true"] .sk-hope-scrim { opacity: 0.06; }
+    @keyframes sk-hope-star-glimmer { 0%, 100% { opacity: 0.26; } 50% { opacity: 1; } }
+    @keyframes sk-hope-galaxy-drift { from { transform: rotate(-29deg) translateX(-1%); } to { transform: rotate(-27deg) translateX(2%); } }
+    @keyframes sk-hope-cloud-drift { from { transform: translateX(-2%); } to { transform: translateX(6%); } }
+    @keyframes sk-hope-reflection-drift { from { transform: translateX(-50%) scaleX(0.88); opacity: 0.25; } to { transform: translateX(-50%) scaleX(1.12); opacity: 0.55; } }
+
+    @keyframes sk-hope-dawn {
+      from { opacity: 0.6; }
+      to { opacity: 1; }
+    }
+
+    @keyframes sk-hope-beams {
+      from { transform: rotate(-0.8deg); opacity: 0.5; }
+      to { transform: rotate(0.8deg); opacity: 0.8; }
+    }
+
+    @keyframes sk-hope-sun-rise {
+      from { transform: translate3d(-50%, 28%, 0); }
+      to { transform: translate3d(-50%, 24%, 0); }
+    }
+
+    @keyframes sk-hope-ember-rise {
+      0% { transform: translate3d(0, 6px, 0); opacity: 0; }
+      12% { opacity: var(--sk-hope-ember-peak, 0.3); }
+      62% { opacity: calc(var(--sk-hope-ember-peak, 0.3) * 0.6); }
+      100% {
+        transform: translate3d(var(--sk-hope-ember-drift, 10px), calc(var(--sk-hope-ember-rise, 100px) * -1), 0);
+        opacity: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sk-scene--hope,
+      .sk-scene--hope *,
+      .sk-scene--hope *::before,
+      .sk-scene--hope *::after {
+        animation: none !important;
+        transition: none !important;
+        will-change: auto !important;
       }
 
-      html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-horizon-glow {
-        opacity: 0.9;
-        transform: none;
-      }
-
-      html[data-sk-palette="hope"] .sk-scene--hope .sk-hope-ember {
-        opacity: var(--sk-hope-ember-peak, 0.55);
-      }
+      .sk-scene--hope .sk-hope-sun { transform: translate3d(-50%, -50%, 0); }
+      .sk-scene--hope .sk-hope-ember { opacity: var(--sk-hope-ember-peak, 0.3); }
     }
 
 
@@ -2462,12 +2318,16 @@ window.__ModuleLoader__.load({
     var RAIL_ROW = '[data-slot="sidebar"] > [class*="_root"] [class*="_panelRow"]';
     function installRailTitles() {
       let queued = 0;
+      const titles = /* @__PURE__ */ new Map();
       const pass = () => {
         queued = 0;
         for (const row of document.querySelectorAll(RAIL_ROW)) {
           const label = row.querySelector('[class*="_panelTitle"]');
           const text = label?.textContent?.trim();
-          if (text && row.getAttribute("title") !== text) row.setAttribute("title", text);
+          if (text && row.getAttribute("title") !== text) {
+            if (!titles.has(row)) titles.set(row, row.getAttribute("title"));
+            row.setAttribute("title", text);
+          }
         }
       };
       const schedule = () => {
@@ -2480,6 +2340,11 @@ window.__ModuleLoader__.load({
       return () => {
         observer.disconnect();
         if (queued) cancelAnimationFrame(queued);
+        for (const [row, title] of titles) {
+          if (title === null) row.removeAttribute("title");
+          else row.setAttribute("title", title);
+        }
+        titles.clear();
       };
     }
     var RAIL_LIST = '[data-slot="sidebar"] > [class*="_root"] [class*="_panelList"]';
@@ -2553,6 +2418,8 @@ window.__ModuleLoader__.load({
     var TITLE_ROW = '[data-slot="main.conversation"] [class*="_titleRow"]';
     function installBandHeight() {
       let queued = 0;
+      const previous = document.body.style.getPropertyValue("--cx-band-h");
+      const priority = document.body.style.getPropertyPriority("--cx-band-h");
       const pass = () => {
         queued = 0;
         if (!isDarwinDesktop()) return;
@@ -2577,7 +2444,8 @@ window.__ModuleLoader__.load({
         observer.disconnect();
         window.removeEventListener("resize", schedule);
         if (queued) cancelAnimationFrame(queued);
-        document.body.style.removeProperty("--cx-band-h");
+        if (previous) document.body.style.setProperty("--cx-band-h", previous, priority);
+        else document.body.style.removeProperty("--cx-band-h");
       };
     }
 
@@ -2605,12 +2473,18 @@ window.__ModuleLoader__.load({
       ) ?? null;
       return frameEl;
     }
-    function installSidebarWidth(ctx) {
+    function installSidebarWidth(ctx, options = {}) {
+      const native = options.native === true;
+      const minWidth = native ? 264 : WORKSPACE_MIN;
+      const maxWidth = native ? 420 : WORKSPACE_MAX;
       let queued = 0;
       let offPanel = null;
-      let workspaceWidth = WORKSPACE_MIN;
+      let workspaceWidth = minWidth;
       let drag = null;
+      let nativeResized = false;
       const handles = /* @__PURE__ */ new Map();
+      const frames = /* @__PURE__ */ new Map();
+      const roots = /* @__PURE__ */ new Map();
       const finishDrag = () => {
         if (!drag) return;
         const { handle, pointerId, frame } = drag;
@@ -2626,10 +2500,24 @@ window.__ModuleLoader__.load({
         if (!frame) return;
         const cols = frame.style.gridTemplateColumns;
         if (!cols) return;
+        const firstColumn = cols.match(/^[\d.]+px/)?.[0];
+        if (!frames.has(frame)) {
+          frames.set(frame, {
+            nativeWidth: firstColumn,
+            ownedWidth: null,
+            expanded: frame.getAttribute("data-sk-workspace-expanded")
+          });
+        }
+        const saved = frames.get(frame);
+        if (firstColumn && firstColumn !== saved.ownedWidth) saved.nativeWidth = firstColumn;
         const collapsed = frame.hasAttribute("data-sidebar-collapsed");
+        if (native && nativeResized && firstColumn && firstColumn !== saved.ownedWidth && !collapsed) {
+          workspaceWidth = Math.min(maxWidth, Math.max(minWidth, parseFloat(firstColumn)));
+        }
         const home = isHomeView(ctx);
         const root = document.querySelector('[data-slot="sidebar"] > [class*="_root"]');
-        if (root) {
+        if (root && !native) {
+          if (!roots.has(root)) roots.set(root, root.getAttribute("data-sk-rail-only"));
           const railOnly = !collapsed && (!home || workspaceCollapsed);
           if (railOnly && !root.hasAttribute("data-sk-rail-only")) {
             root.setAttribute("data-sk-rail-only", "");
@@ -2637,11 +2525,12 @@ window.__ModuleLoader__.load({
             root.removeAttribute("data-sk-rail-only");
           }
         }
-        const expanded = !collapsed && home && !workspaceCollapsed;
-        frame.toggleAttribute("data-sk-workspace-expanded", expanded);
+        const expanded = !collapsed && (native || home && !workspaceCollapsed);
+        if (!native) frame.toggleAttribute("data-sk-workspace-expanded", expanded);
         if (!expanded) finishDrag();
-        const target = collapsed ? "0px" : expanded ? `${RAIL_WIDTH + workspaceWidth}px` : RAIL_W;
+        const target = collapsed ? "0px" : native ? `${workspaceWidth}px` : expanded ? `${RAIL_WIDTH + workspaceWidth}px` : RAIL_W;
         const next = cols.replace(/^[\d.]+px/, target);
+        saved.ownedWidth = target;
         if (next !== cols) frame.style.gridTemplateColumns = next;
         const handle = frame.querySelector('[data-side="sidebar"]');
         if (handle) {
@@ -2652,11 +2541,14 @@ window.__ModuleLoader__.load({
             });
             handle.setAttribute("role", "separator");
             handle.setAttribute("tabindex", "0");
-            handle.setAttribute("aria-label", "调整工作区宽度");
+            handle.setAttribute("aria-label", native ? "调整侧边栏宽度" : "调整工作区宽度");
             handle.setAttribute("aria-orientation", "vertical");
-            handle.setAttribute("aria-valuemin", String(WORKSPACE_MIN));
-            handle.setAttribute("aria-valuemax", String(WORKSPACE_MAX));
+            handle.setAttribute("aria-valuemin", String(minWidth));
+            handle.setAttribute("aria-valuemax", String(maxWidth));
           }
+          const savedHandle = handles.get(handle);
+          if (handle.style.left !== savedHandle.ownedLeft) savedHandle.left = handle.style.left;
+          savedHandle.ownedLeft = target;
           if (handle.style.left !== target) handle.style.left = target;
           const value = String(workspaceWidth);
           if (handle.getAttribute("aria-valuenow") !== value) handle.setAttribute("aria-valuenow", value);
@@ -2668,17 +2560,22 @@ window.__ModuleLoader__.load({
         queued = requestAnimationFrame(pass);
       };
       const setWidth = (width) => {
-        workspaceWidth = Math.min(WORKSPACE_MAX, Math.max(WORKSPACE_MIN, Math.round(width)));
+        workspaceWidth = Math.min(maxWidth, Math.max(minWidth, Math.round(width)));
       };
       const sidebarHandle = (event) => {
         if (!isDesktopShell() || !(event.target instanceof Element)) return null;
         const handle = event.target.closest('[data-side="sidebar"]');
         const frame = findFrame();
-        return handle && handle.parentElement === frame && frame.hasAttribute("data-sk-workspace-expanded") ? handle : null;
+        const expanded = frame && (native ? !frame.hasAttribute("data-sidebar-collapsed") : frame.hasAttribute("data-sk-workspace-expanded"));
+        return handle && handle.parentElement === frame && expanded ? handle : null;
       };
       const onPointerDown = (event) => {
         const handle = sidebarHandle(event);
         if (!handle || event.button !== 0 || drag) return;
+        if (native) {
+          nativeResized = true;
+          return;
+        }
         event.preventDefault();
         event.stopImmediatePropagation();
         const frame = findFrame();
@@ -2705,8 +2602,8 @@ window.__ModuleLoader__.load({
         const widths = {
           ArrowLeft: workspaceWidth - (event.shiftKey ? 50 : 10),
           ArrowRight: workspaceWidth + (event.shiftKey ? 50 : 10),
-          Home: WORKSPACE_MIN,
-          End: WORKSPACE_MAX
+          Home: minWidth,
+          End: maxWidth
         };
         if (!(event.key in widths)) return;
         event.preventDefault();
@@ -2758,7 +2655,21 @@ window.__ModuleLoader__.load({
         window.removeEventListener("resize", schedule);
         if (typeof offPanel === "function") offPanel();
         if (queued) cancelAnimationFrame(queued);
-        frameEl?.removeAttribute("data-sk-workspace-expanded");
+        for (const [frame, saved] of frames) {
+          const cols = frame.style.gridTemplateColumns;
+          if (saved.nativeWidth && cols.match(/^[\d.]+px/)?.[0] === saved.ownedWidth) {
+            frame.style.gridTemplateColumns = cols.replace(/^[\d.]+px/, saved.nativeWidth);
+          }
+          if (saved.expanded === null) frame.removeAttribute("data-sk-workspace-expanded");
+          else frame.setAttribute("data-sk-workspace-expanded", saved.expanded);
+        }
+        for (const [root, value] of roots) {
+          if (value === null) root.removeAttribute("data-sk-rail-only");
+          else root.setAttribute("data-sk-rail-only", value);
+        }
+        frames.clear();
+        roots.clear();
+        workspaceCollapsed = false;
         for (const [handle, { left, attrs }] of handles) {
           handle.style.left = left;
           for (const [name, value] of Object.entries(attrs)) {
@@ -2839,6 +2750,37 @@ window.__ModuleLoader__.load({
         stateObserver.disconnect();
         collapseSync = null;
         hit.remove();
+      };
+    }
+
+    // src/modules/theme/client/shell.js
+    function installCodexShell(ctx, installers, options = {}) {
+      const root = options.root ?? document.documentElement;
+      const Observer = options.MutationObserver ?? MutationObserver;
+      let disposers = null;
+      let codex = null;
+      let active = true;
+      const clear = () => {
+        if (!disposers) return;
+        for (const dispose of disposers.reverse()) dispose?.();
+        disposers = null;
+      };
+      const sync = () => {
+        if (!active) return;
+        const nextCodex = root.getAttribute("data-sk-palette") === "codex";
+        if (nextCodex === codex) return;
+        clear();
+        codex = nextCodex;
+        const selected = codex ? installers : options.nativeInstallers ?? [];
+        disposers = selected.map((install) => install(ctx));
+      };
+      const observer = new Observer(sync);
+      observer.observe(root, { attributes: true, attributeFilter: ["data-sk-palette"] });
+      sync();
+      return () => {
+        active = false;
+        observer.disconnect();
+        clear();
       };
     }
 
@@ -3224,7 +3166,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/theme/client/palette.js
-    var PALETTES = Object.freeze(["codex", "ocean", "hope"]);
+    var PALETTES = Object.freeze(["native", "codex", "ocean", "hope"]);
     var PALETTE_ATTR = "data-sk-palette";
     var SCENE_CLASS = "sk-theme-scene";
     var HERO_SELECTOR = '[data-slot="main.conversation"] > [data-phase="hero"] > [data-conversation-content][data-content-phase="hero"]';
@@ -3258,8 +3200,7 @@ window.__ModuleLoader__.load({
     }
     function applyPalette(palette, root = globalThis.document?.documentElement) {
       if (!root?.setAttribute) return;
-      if (PALETTES.includes(palette) && palette !== "codex") root.setAttribute(PALETTE_ATTR, palette);
-      else root.removeAttribute(PALETTE_ATTR);
+      root.setAttribute(PALETTE_ATTR, PALETTES.includes(palette) ? palette : "codex");
     }
     function scenesIn(scope) {
       return scope ? [...scope.children].filter((child) => child.classList?.contains(SCENE_CLASS)) : [];
@@ -3273,9 +3214,24 @@ window.__ModuleLoader__.load({
       hero.insertBefore(scene, first ?? null);
       return scene;
     }
-    function clearPaletteScenes(scope = globalThis.document) {
-      if (!scope?.querySelectorAll) return;
-      for (const scene of scope.querySelectorAll(`.${SCENE_CLASS}`)) scene.remove();
+    function installSceneClock(updateScene, options = {}) {
+      const doc = options.document ?? globalThis.document;
+      const clock = options.clock ?? globalThis;
+      const now = options.now ?? (() => /* @__PURE__ */ new Date());
+      let disposed = false;
+      const refresh = () => {
+        if (disposed || doc?.hidden) return;
+        const date = now();
+        for (const scene of doc?.querySelectorAll?.(".sk-scene--hope") ?? []) updateScene(scene, date);
+      };
+      const timer = clock.setInterval(refresh, 6e4);
+      doc?.addEventListener?.("visibilitychange", refresh);
+      refresh();
+      return () => {
+        disposed = true;
+        clock.clearInterval(timer);
+        doc?.removeEventListener?.("visibilitychange", refresh);
+      };
     }
     function installPalette(ctx, options = {}) {
       const doc = options.document ?? globalThis.document;
@@ -3284,14 +3240,18 @@ window.__ModuleLoader__.load({
       const read = () => (options.readPalette ?? readPalette)(form);
       const Observer = options.MutationObserver ?? globalThis.MutationObserver;
       let queued = false;
+      let active = true;
+      let mountedHero = null;
       const render = () => {
+        if (!active) return;
         const palette = read();
         applyPalette(palette, root);
         const hero = doc?.querySelector?.(options.heroSelector ?? HERO_SELECTOR) ?? null;
-        if (!hero) {
-          clearPaletteScenes(doc);
-          return;
+        if (mountedHero !== hero) {
+          for (const scene of scenesIn(mountedHero)) scene.remove();
+          mountedHero = hero;
         }
+        if (!hero) return;
         const wanted = paletteSceneFactory(palette);
         if (!wanted) {
           for (const scene of scenesIn(hero)) scene.remove();
@@ -3325,10 +3285,12 @@ window.__ModuleLoader__.load({
       const off = typeof form?.subscribe === "function" ? form.subscribe(schedule) : void 0;
       render();
       return () => {
+        active = false;
         off?.();
         observer?.disconnect();
         root?.removeAttribute?.(PALETTE_ATTR);
-        clearPaletteScenes(doc);
+        for (const scene of scenesIn(mountedHero)) scene.remove();
+        mountedHero = null;
       };
     }
 
@@ -3391,58 +3353,99 @@ window.__ModuleLoader__.load({
       const defs = svgElement(doc, "defs");
       defs.append(
         createGradient(doc, bodyId, [
-          ["0%", "sk-ocean-body-top", "#0b2e4c"],
-          ["48%", "sk-ocean-body-mid", "#1a5885"],
-          ["100%", "sk-ocean-body-low", "#569bc2"]
+          ["0%", "sk-ocean-body-top", "#35718a"],
+          ["48%", "sk-ocean-body-mid", "#5791a8"],
+          ["100%", "sk-ocean-body-low", "#8bb7c4"]
         ]),
         createGradient(doc, finId, [
-          ["0%", "sk-ocean-fin-top", "#0a2740"],
-          ["100%", "sk-ocean-fin-low", "#1a5076"]
+          ["0%", "sk-ocean-fin-top", "#2b6079"],
+          ["100%", "sk-ocean-fin-low", "#4f859c"]
         ])
       );
-      const body = svgPath(doc, "sk-ocean-whale-body", "", { fill: `url(#${bodyId})` });
-      body.setAttribute(
-        "d",
-        "M 22 104 C 24 90 38 84 58 82 C 98 77 150 77 190 83 C 210 86 222 90 226 94 C 240 90 256 80 272 72 C 286 64 300 70 296 82 C 290 94 280 104 268 112 C 278 118 288 128 294 140 C 300 152 288 160 278 152 C 266 142 250 130 226 116 C 212 130 192 140 168 146 C 132 156 86 158 54 154 C 40 158 26 160 22 150 Z"
+      const body = svgPath(
+        doc,
+        "sk-ocean-whale-body",
+        "M 28 102 C 27 91 44 83 71 80 C 117 73 167 77 206 91 C 225 98 241 101 253 98 C 263 87 275 79 293 76 C 289 89 281 102 267 111 C 281 117 290 127 294 141 C 275 139 259 129 249 118 C 235 120 224 127 208 134 C 168 151 117 157 75 150 C 48 146 31 134 28 119 C 27 113 27 107 28 102 Z",
+        { fill: `url(#${bodyId})` }
+      );
+      const belly = svgPath(
+        doc,
+        "sk-ocean-whale-belly",
+        "M 31 121 C 61 142 116 146 169 137 C 197 132 224 119 245 115 C 224 128 212 133 198 138 C 158 155 109 158 75 150 C 52 146 36 135 31 121 Z"
+      );
+      const pleats = svgPath(
+        doc,
+        "sk-ocean-whale-pleats",
+        "M 42 127 C 69 142 104 145 142 140 M 44 132 C 70 146 106 149 139 144 M 50 139 C 76 151 103 152 129 148",
+        { fill: "none", "stroke-width": "0.9", "stroke-linecap": "round" }
       );
       const fin = svgPath(
         doc,
         "sk-ocean-whale-fin",
-        "M 100 152 C 108 164 122 178 140 186 C 143 176 136 162 124 153 C 114 146 106 146 100 152 Z",
+        "M 116 132 C 126 144 140 158 157 166 C 163 169 166 168 163 163 C 151 148 141 138 129 130 Z",
         { fill: `url(#${finId})` }
       );
       const dorsal = svgPath(
         doc,
         "sk-ocean-whale-dorsal",
-        "M 192 83 C 198 79 206 78 211 79 C 208 82 206 85 205 87 Z",
+        "M 196 87 C 202 79 208 78 212 79 C 209 83 210 88 214 93 Z",
         { fill: `url(#${finId})` }
       );
-      const mouth = svgPath(doc, "sk-ocean-whale-mouth", "M 23 146 C 40 138 64 133 88 132", {
+      const highlight = svgPath(
+        doc,
+        "sk-ocean-whale-highlight",
+        "M 47 91 C 91 81 151 84 194 97",
+        { fill: "none", "stroke-width": "1.2", "stroke-linecap": "round" }
+      );
+      const mouth = svgPath(doc, "sk-ocean-whale-mouth", "M 30 116 C 48 122 71 124 95 120", {
         fill: "none",
-        stroke: "var(--sk-ocean-whale-ink)",
-        "stroke-width": "2.4",
+        "stroke-width": "1.3",
         "stroke-linecap": "round",
-        opacity: "0.5"
+        opacity: "0.6"
       });
       const eye = svgElement(doc, "circle");
       eye.setAttribute("class", "sk-ocean-whale-eye");
-      eye.setAttribute("cx", "72");
-      eye.setAttribute("cy", "114");
-      eye.setAttribute("r", "3.2");
-      eye.setAttribute("fill", "var(--sk-ocean-whale-ink)");
+      eye.setAttribute("cx", "67");
+      eye.setAttribute("cy", "112");
+      eye.setAttribute("r", "2");
+      const eyeGlint = svgElement(doc, "circle");
+      eyeGlint.setAttribute("class", "sk-ocean-whale-eye-glint");
+      eyeGlint.setAttribute("cx", "66.5");
+      eyeGlint.setAttribute("cy", "111.4");
+      eyeGlint.setAttribute("r", "0.6");
       const spout = svgPath(
         doc,
         "sk-ocean-whale-spout",
-        "M 62 80 C 59 68 63 58 61 46 M 68 80 C 71 69 75 60 72 49",
-        {
-          fill: "none",
-          stroke: "var(--sk-ocean-spout)",
-          "stroke-width": "2.4",
-          "stroke-linecap": "round",
-          opacity: "0.7"
-        }
+        "M 64 80 C 65 64 62 53 56 43 M 65 68 C 69 57 75 51 83 49",
+        { fill: "none", "stroke-width": "1.5", "stroke-linecap": "round" }
       );
-      svg.append(defs, body, fin, dorsal, mouth, eye, spout);
+      const detail = svgElement(doc, "g");
+      detail.setAttribute("class", "sk-ocean-whale-detail");
+      for (let index = 0; index < 9; index++) {
+        detail.append(svgPath(
+          doc,
+          "sk-ocean-whale-fold",
+          `M ${37 + index * 3} ${121 + index * 2.2} Q ${82 + index * 3} ${149 + index} ${156 + index * 4} ${136 + index * 0.4}`,
+          { fill: "none", "stroke-width": "0.45" }
+        ));
+      }
+      const random = createRandom(4439666);
+      for (let index = 0; index < 38; index++) {
+        const spot = svgElement(doc, "ellipse");
+        spot.setAttribute("class", "sk-ocean-whale-mottle");
+        spot.setAttribute("cx", (48 + random() * 152).toFixed(1));
+        spot.setAttribute("cy", (98 + random() * 29).toFixed(1));
+        spot.setAttribute("rx", (0.5 + random() * 1.6).toFixed(1));
+        spot.setAttribute("ry", (0.3 + random() * 0.65).toFixed(1));
+        detail.append(spot);
+      }
+      const caustic = svgPath(
+        doc,
+        "sk-ocean-whale-caustic",
+        "M 45 100 Q 70 88 93 98 T 143 95 T 192 105 M 61 108 Q 90 99 114 108 T 165 104 T 213 113",
+        { fill: "none", "stroke-width": "1.2" }
+      );
+      svg.append(defs, dorsal, body, belly, pleats, detail, highlight, caustic, fin, mouth, eye, eyeGlint, spout);
       whale.append(svg);
       return whale;
     }
@@ -3459,21 +3462,26 @@ window.__ModuleLoader__.load({
     function createWaves(doc) {
       const waves = element(doc, "div", "sk-ocean-waves");
       const shapes = [
-        "M 0 96 C 180 52 340 132 520 104 C 700 76 860 20 1040 42 C 1180 59 1300 96 1440 74 L 1440 220 L 0 220 Z",
-        "M 0 132 C 160 104 300 148 470 136 C 660 122 780 78 960 92 C 1140 106 1290 152 1440 128 L 1440 220 L 0 220 Z",
-        "M 0 158 C 140 138 300 176 470 166 C 660 154 820 128 1000 142 C 1180 156 1300 184 1440 174 L 1440 220 L 0 220 Z"
+        "M 0 100 C 240 64 480 64 720 100 S 1200 136 1440 100",
+        "M 0 128 C 220 160 500 160 720 128 S 1220 96 1440 128",
+        "M 0 162 C 240 140 480 140 720 162 S 1200 184 1440 162"
       ];
       shapes.forEach((shape, index) => {
         const layer = element(doc, "div", `sk-ocean-wave sk-ocean-wave--${index + 1}`);
         const svg = svgElement(doc, "svg");
         svg.setAttribute("class", "sk-ocean-wave-svg");
-        svg.setAttribute("viewBox", "0 0 1440 220");
+        svg.setAttribute("viewBox", "0 0 2880 220");
         svg.setAttribute("preserveAspectRatio", "none");
         svg.setAttribute("focusable", "false");
-        const path = svgPath(doc, "sk-ocean-wave-path", shape);
-        const echo = svgPath(doc, "sk-ocean-wave-path", shape);
-        echo.setAttribute("transform", "translate(1440 0)");
-        svg.append(path, echo);
+        for (const offset of [0, 1440]) {
+          const path = svgPath(doc, "sk-ocean-wave-path", `${shape} L 1440 220 L 0 220 Z`);
+          const crest = svgPath(doc, "sk-ocean-wave-crest", shape);
+          if (offset) {
+            path.setAttribute("transform", `translate(${offset} 0)`);
+            crest.setAttribute("transform", `translate(${offset} 0)`);
+          }
+          svg.append(path, crest);
+        }
         layer.append(svg);
         waves.append(layer);
       });
@@ -3541,9 +3549,12 @@ window.__ModuleLoader__.load({
       glow.append(element(doc, "span", "sk-ocean-sky-glow sk-ocean-sky-glow--right"));
       root.append(
         glow,
+        element(doc, "div", "sk-ocean-surface"),
         createBeams(doc, compact ? 2 : 3),
         createStars(doc, random, compact ? 6 : 22),
+        element(doc, "div", "sk-ocean-distant-whale"),
         createWhale(doc, uid),
+        element(doc, "div", "sk-ocean-caustics"),
         createWaves(doc),
         createSplash(doc, { compact }),
         createBubbles(doc, bubbleRandom, compact ? 3 : 10),
@@ -3584,7 +3595,7 @@ window.__ModuleLoader__.load({
       const svg = svgElement2(doc, "svg");
       svg.setAttribute("class", "sk-hope-rays");
       svg.setAttribute("viewBox", "0 0 1000 640");
-      svg.setAttribute("preserveAspectRatio", "xMidYMax slice");
+      svg.setAttribute("preserveAspectRatio", "none");
       svg.setAttribute("aria-hidden", "true");
       svg.setAttribute("focusable", "false");
       const gradientId = `sk-hope-ray-${uid}`;
@@ -3592,13 +3603,13 @@ window.__ModuleLoader__.load({
       const gradient = svgElement2(doc, "radialGradient");
       gradient.setAttribute("id", gradientId);
       gradient.setAttribute("gradientUnits", "userSpaceOnUse");
-      gradient.setAttribute("cx", "500");
-      gradient.setAttribute("cy", "512");
-      gradient.setAttribute("r", "560");
+      gradient.setAttribute("cx", "720");
+      gradient.setAttribute("cy", "493");
+      gradient.setAttribute("r", "430");
       for (const [offset, className, color, opacity] of [
-        ["0%", "sk-hope-ray-stop-core", "#fff1d4", "0.95"],
-        ["46%", "sk-hope-ray-stop-mid", "#ffb878", "0.55"],
-        ["100%", "sk-hope-ray-stop-edge", "#b83a28", "0"]
+        ["0%", "sk-hope-ray-stop-core", "#f2cfa6", "0.55"],
+        ["46%", "sk-hope-ray-stop-mid", "#dea47f", "0.28"],
+        ["100%", "sk-hope-ray-stop-edge", "#cb8261", "0"]
       ]) {
         const stop = svgElement2(doc, "stop");
         stop.setAttribute("offset", offset);
@@ -3612,20 +3623,19 @@ window.__ModuleLoader__.load({
       beams.setAttribute("class", "sk-hope-beams");
       const random = createRandom2(RAY_SEED);
       const count = compact ? 12 : 23;
-      const centerX = 500;
-      const centerY = 512;
+      const centerX = 720;
+      const centerY = 493;
       const point = (degrees, distance) => {
         const radians = degrees * Math.PI / 180;
         return [centerX + Math.sin(radians) * distance, centerY - Math.cos(radians) * distance];
       };
       const round = (value) => value.toFixed(1);
       for (let index = 0; index < count; index += 1) {
-        const spreadAlong = count === 1 ? 0.5 : index / (count - 1);
-        const angle = (spreadAlong * 2 - 1) * 84;
-        const wide = index % 5 === 0;
-        const halfWidth = (wide ? 2.1 : 0.55) + random() * (wide ? 1.1 : 0.85);
-        const inner = 26 + random() * 44;
-        const outer = 380 + random() * 300;
+        const spreadAlong = index / (count - 1);
+        const angle = (spreadAlong * 2 - 1) * 76;
+        const halfWidth = 0.2 + random() * 0.5;
+        const inner = 92 + random() * 28;
+        const outer = 240 + random() * 190;
         const [ax, ay] = point(angle - halfWidth, inner);
         const [bx, by] = point(angle + halfWidth, inner);
         const [dx, dy] = point(angle + halfWidth, outer);
@@ -3635,7 +3645,7 @@ window.__ModuleLoader__.load({
         wedge.setAttribute("d", `M ${round(ax)} ${round(ay)} L ${round(ex)} ${round(ey)} L ${round(dx)} ${round(dy)} L ${round(bx)} ${round(by)} Z`);
         wedge.setAttribute("fill", `url(#${gradientId})`);
         const falloff = 1 - Math.abs(spreadAlong * 2 - 1) * 0.35;
-        wedge.setAttribute("opacity", ((0.34 + random() * 0.52) * falloff).toFixed(2));
+        wedge.setAttribute("opacity", ((0.18 + random() * 0.2) * falloff).toFixed(2));
         beams.append(wedge);
       }
       svg.append(defs, beams);
@@ -3656,22 +3666,83 @@ window.__ModuleLoader__.load({
       const count = compact ? 6 : 20;
       for (let index = 0; index < count; index += 1) {
         const ember = element2(doc, "span", "sk-hope-ember");
-        const size = (compact ? 1.6 : 2) + random() * (compact ? 1.8 : 2.6);
-        const rise = (compact ? 55 : 110) + random() * (compact ? 70 : 150);
-        const drift = (random() - 0.5) * (compact ? 26 : 46);
-        placeVar(ember, "--sk-hope-ember-x", `${(6 + random() * 88).toFixed(2)}%`);
-        placeVar(ember, "--sk-hope-ember-y", `${(6 + random() * 22).toFixed(2)}%`);
+        const size = (compact ? 1 : 1.2) + random() * 1.4;
+        const rise = (compact ? 35 : 70) + random() * (compact ? 45 : 100);
+        const drift = (random() - 0.5) * (compact ? 16 : 30);
+        placeVar(ember, "--sk-hope-ember-x", `${(48 + random() * 46).toFixed(2)}%`);
+        placeVar(ember, "--sk-hope-ember-y", `${(14 + random() * 12).toFixed(2)}%`);
         placeVar(ember, "--sk-hope-ember-size", `${size.toFixed(2)}px`);
         placeVar(ember, "--sk-hope-ember-rise", `${rise.toFixed(0)}px`);
         placeVar(ember, "--sk-hope-ember-drift", `${drift.toFixed(1)}px`);
-        placeVar(ember, "--sk-hope-ember-peak", `${(0.42 + random() * 0.4).toFixed(2)}`);
+        placeVar(ember, "--sk-hope-ember-peak", `${(0.2 + random() * 0.2).toFixed(2)}`);
         place2(ember, {
-          animationDuration: `${(10 + random() * 9).toFixed(2)}s`,
-          animationDelay: `${(-random() * 18).toFixed(2)}s`
+          animationDuration: `${(14 + random() * 12).toFixed(2)}s`,
+          animationDelay: `${(-random() * 24).toFixed(2)}s`
         });
         embers.append(ember);
       }
       return embers;
+    }
+    var SKY_STOPS = [
+      [0, ["#050b22", "#101b43", "#243355"], 1],
+      [5, ["#11152f", "#593755", "#bc6d62"], 0.85],
+      [6.5, ["#535e9c", "#ee9a8a", "#ffd6a1"], 0.08],
+      [9, ["#4389c4", "#90cce7", "#e2f0e8"], 0],
+      [12, ["#246bb2", "#75bbdc", "#d2eced"], 0],
+      [16.5, ["#4a76ab", "#b4bad1", "#ffe2ad"], 0],
+      [18.5, ["#302d66", "#ca647d", "#ffb36c"], 0.12],
+      [20, ["#101630", "#34325d", "#805476"], 0.85],
+      [22, ["#050b22", "#101b43", "#243355"], 1],
+      [24, ["#050b22", "#101b43", "#243355"], 1]
+    ];
+    function updateHopeSceneTime(root, date = /* @__PURE__ */ new Date()) {
+      const hour = date.getHours() + date.getMinutes() / 60 + date.getSeconds() / 3600;
+      const index = SKY_STOPS.findIndex((stop) => stop[0] > hour);
+      const before = SKY_STOPS[index - 1];
+      const after = SKY_STOPS[index];
+      const fraction = (hour - before[0]) / (after[0] - before[0]);
+      const smooth = fraction * fraction * (3 - 2 * fraction);
+      const mix = (a, b) => {
+        const channel = (color, offset) => Number.parseInt(color.slice(offset, offset + 2), 16);
+        return `rgb(${[1, 3, 5].map((offset) => Math.round(channel(a, offset) * (1 - smooth) + channel(b, offset) * smooth)).join(" ")})`;
+      };
+      before[1].forEach((color, position) => {
+        root.style.setProperty(`--sk-hope-time-${["top", "mid", "low"][position]}`, mix(color, after[1][position]));
+      });
+      const night = before[2] * (1 - smooth) + after[2] * smooth;
+      const daylight = Math.max(0, Math.sin((hour - 6) / 12 * Math.PI));
+      root.dataset.skTimePhase = hour < 5 || hour >= 20 ? "night" : hour < 8 ? "dawn" : hour < 17 ? "day" : "dusk";
+      root.style.setProperty("--sk-hope-night", night.toFixed(3));
+      root.style.setProperty("--sk-hope-daylight", (1 - night).toFixed(3));
+      root.style.setProperty("--sk-hope-solar-x", `${(54 + (hour - 6) / 12 * 35).toFixed(2)}%`);
+      root.style.setProperty("--sk-hope-solar-y", `${(74 - daylight * 47).toFixed(2)}%`);
+      root.style.setProperty("--sk-hope-solar-opacity", hour >= 5.5 && hour < 19.5 ? "1" : "0");
+      return root;
+    }
+    function createNightSky(doc, compact) {
+      const sky = element2(doc, "div", "sk-hope-night");
+      const random = createRandom2(8563790);
+      sky.append(element2(doc, "div", "sk-hope-galaxy"), element2(doc, "div", "sk-hope-moon"));
+      for (let index = 0; index < (compact ? 32 : 100); index++) {
+        const star = element2(doc, "span", "sk-hope-star");
+        const size = index % 13 === 0 ? 2.5 : 0.7 + random() * 1.2;
+        place2(star, {
+          left: `${(2 + random() * 96).toFixed(2)}%`,
+          top: `${(2 + random() * 73).toFixed(2)}%`,
+          width: `${size.toFixed(2)}px`,
+          height: `${size.toFixed(2)}px`,
+          animationDelay: `${(-random() * 8).toFixed(2)}s`,
+          animationDuration: `${(5 + random() * 7).toFixed(2)}s`
+        });
+        sky.append(star);
+      }
+      return sky;
+    }
+    function createLandscape(doc) {
+      const landscape = element2(doc, "div", "sk-hope-landscape");
+      for (const depth of ["far", "mid", "near"]) landscape.append(element2(doc, "div", `sk-hope-ridge sk-hope-ridge--${depth}`));
+      landscape.append(element2(doc, "div", "sk-hope-water"), element2(doc, "div", "sk-hope-reflection"));
+      return landscape;
     }
     function createHopeScene(options = {}) {
       const doc = globalThis.document;
@@ -3688,13 +3759,16 @@ window.__ModuleLoader__.load({
       root.append(
         element2(doc, "div", "sk-hope-sky"),
         element2(doc, "div", "sk-hope-dawn"),
+        createNightSky(doc, compact),
+        element2(doc, "div", "sk-hope-clouds"),
         createRays(doc, uid, compact),
         createHorizon(doc),
         createSun(doc),
+        createLandscape(doc),
         createEmbers(doc, random, compact),
         element2(doc, "div", "sk-hope-scrim")
       );
-      return root;
+      return updateHopeSceneTime(root, options.now);
     }
 
     // src/modules/theme/client/settings-theme.jsx
@@ -3707,6 +3781,9 @@ window.__ModuleLoader__.load({
       return accepted;
     }
 
+    // src/client/ui/dsh-logo.js
+    var DSH_DESKTOP_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAAAXNSR0IArs4c6QAAAHhlWElmTU0AKgAAAAgABAEaAAUAAAABAAAAPgEbAAUAAAABAAAARgEoAAMAAAABAAIAAIdpAAQAAAABAAAATgAAAAAAAABIAAAAAQAAAEgAAAABAAOgAQADAAAAAQABAACgAgAEAAAAAQAAAQCgAwAEAAAAAQAAAQAAAAAAVGUufgAAAAlwSFlzAAALEwAACxMBAJqcGAAAQABJREFUeAHsXQegXkWVnrz0QCAkkNAh2CB0FRBUlCLYABVFAVFBVIqIguIKoljWrqvrLii6uy6ia0Oagg0UFKnSu7RAQk+AdJK8ZL/vnDlTbvn/++f9772UN+/df2bOnHPmzJk5587Mbc4NhSENDGlgSANDGhjSwJAG1jwNDFtNm7y6tms17a5VplnLVxlJGwq6qhnKqiZvw24YQlvNNLDKOIqV3aBWdvlWs3E71Jx+0sBK6xBWRgNrKlNTvH7q0yG2QxrINNDUyJviZcz7K7OyGFE7OdqVm36a4hn+UDykgRXRQFMjbofXrnxFZOuIZrANplX9VWWEUWnLOmrlEPKQBgZGAz2oxsZoscZWxt6qrMinq/kqI+tqBTXM6uotwk2ZweDPOOOMUUcfffTkMWPGbDRu3LitwH9KT0/P5sOGDZu4bJkb1dMjHVDkUyPGygcODe2WaF1n2JlggzayOxOzKfZyt3zZ8uXD3OJhy4fN6nXLHlm2bNmshfOev3/p0oUzfvjDHz6J8bk4YVbnEOrUUgdPWHY3OdCGUlVfEcY8h60o45JLLhm95557bj1ixIjdYOivGD58+E7Lly/fHMdEwIq03dXOELchDTTQwPOLl7ieYcOexoB9ZGnvstuWLVt69dLFi6+54IIL7j7yyCMXeRYcq3QIRSMv5oleBSO862GgDKiqniKM+V628Be/+MXYAw44YBcY+IHI7oOz+zYw/NEsY4DxO3heiRWiv4201ggp5TpQ6bJgZUgfZek6w87kGeTqOxO2A2yMT4eTkxs+XKefJF28ZClnAndjwvDHJUt6L770tpuuO2SPPRZ6tsMRF9VRzBO1CuZZdCcqGmF3uOZcqupIYcHwn3jiiResv/76b4NxHwal7gSjF069vb0lY8+ryHONtNYIKec7MLmyYGVIHyXpOsPm8gxi1c2F7AImncLIkSNkPQpnQI639AxzP5s9f/4vp0yYcL+vougIqtRTBeuChMoiNcSuMfWMqninsGD48+fP33nkyJHH9Awf/vbhPT0TSd+p0ReFb6S1RkhFzgOVz4XLc12SoV+YNpNtEKtuJmAXsVJnsGTp0mewi/Cr3iVLzlprrbVu8tUMmiNIDbKLTRbHl/JL6wmGP3fu3GmjR48+GdOnd+FsP45Texp+N0OjgdYIqZtSNeVVFqwMacqrBq/rDGvqqQEPcvU1UvUfmLPaEVgqLFnau3D58mU/mzf3+W9OmjT+Dl9jO0fQdXWlhtmtVhd5Wt7i3hkzZkyaMmXKR4cN6/kw1k0TuJ7n0V+hkdYaIfWXhO345sLluXa0Dcq7zrBBnQnKIFefSDJwSe4ZjBwx3C1d2vvc0mW9Z8566qlvbrrpprMgga574/q/qJ5ivk9Cm1H2iUlCXORnecZyal+0aNGBw0eO/PKInp5p/XHGT2QpJRtprhFSifUAAMqClSF9FKPrDDuTZ5Cr70zYLmHHGcGyOxctXHTqOuusdaFnnc4Giqop5ldYGl6W6EaggZuxk1+aF+OfPn36ekuXLv0u1voX0PiR7vp0v11DUgFrcRsh1VL3Y0GqUq2m66J2nWFn6hjk6jsTtkvYXPLyMuKIET3Txo4dff6CRYv+k7YC9jxhmkoYW5o1F/OErVBIma4QAxAVeVje4l5u8uHGnR9g2vOyvm7uraiQRbpGLrQRUpHzQOTLgpUhfZSj6ww7k2eQq+9M2C5hc7NwFK4c4KrBjXOem//BDTaY8A+w7tclgRnpijahSG95xuzDZQsWLDgEG31nwvgn8ay/soW2A60twmC2qCxcGdJH+brOsLk8g1h1cyH7AXP0qJHcG5g9f9HC4yaMH/9zVFG8o7CommK+sVTdWgKwwirj/wSM/ycrq/GnQtdqjK2yltUiDVZBWbAypI+ydZ1hc3lY9SBW31zQLmNySTAMl8PXGjvu3HkLFnwc7O3OWFOHxX2uuS+MUlpLM6Y3Wr5w4cIvYtp/an/v8PdZAwmDtm60LULCbMCTZeHKkD4K1XWGzeUZxKqbC9llTF4pGIErBQsXLPryWmuNPQ3saV9mY6wtVUuaZlmjYIbbCDlBSuksbYItx07/13l9f2VZ7ydyt0020mIjpLZV9QNCWbAypI/Vdp1hZ/IMcvWdCdsFbNsXmL/w+W+tPW4MZwO0M7M11pCqJE2zrG1YkSWAGTyZW9oEWsYz/6pq/NYga1St9ojQFqmWuh8LyoKVIX2svusMO5NnpVR7Z03oCJuXynkr8VpjR580b/78fwVxq+VAx+rp1AGkFVjaYm74fYLT/lXxzF/sFWtUEZ7lGyFlFAOUoWC5cHmuC2J0nWFzmcqta067KmKaE8Dj75+aM2feJ9AGu2vOesFiNi9Nt21uJ8hFXOYN1ovbeg/Bvc3nQtiR/XlXX9sW9QNCo3lVI6R+EK4ty7JgZUhbJq0Rus6wdXXF0kGuvihOv+W5J4DHjpfOm7fg8AkTxv8CFaWXCItqKOYr5ep0BmBMzPCZ733mmWd2hnc6C+nVzvjZwLSxzFeGRkiVlP0MpGC5cHmuC9V3nWFnMg1y9Z0J2wdsObEOGzYCG4JnPfroUy8Fq/TBmRVSQ1MHkDK3NONlt95663o48/83vNNETv1X18DGWsNr29gIqZa6nwty6bsuatcZdqaOQa6+M2H7gM17aXBlYOLEiev8F20PrLgcsM61mDWkaeYrQxOkFMfSFvdi0+9MrPuPXRlv8qlscReAjeZWjZC6IMwKsciFy3MrxDAn6jrDnH273CBX3068rpTzZqF5CxadNX6tsceBYboUIP9UBWm6VLcZcqkgAaQ4lmbcO2fOnANx9j8f6/4eblSsaaFRixshDYbmyoKVIX2Uq+sMO5NnkKvvTNgOsXl5ELPuZfPmznnreuutdxHI6x4eaqmGdksAM3iKZ2nGy/hIL878X4MQa6TxpwphujaY1moRBquAguXC5bkuyNV1hp3JNMjVdyZsh9g84dL2xowd97W77rprEshXaCnQzgEUxTKdLofXORlP9r1kTZr6F5XBPBViSqkqF1gjpFrqfi7Ipe+6qF1n2Jk6Brn6zoTtEHvJkiVuzOhRL9l0081PAqmd6fMObcOzlQNIGaXp3scee4xv8jl+dbvc10ZXLYsbDbRUiy25DXRhWfqui1quYkAb2fX2DKj09ZXhoSE3evSoD+MR4mnASnfh0yan6YxZKweQISITmGAL8hN4kcE6Qw6gqKJESeUihVCLQZN1SIMFzwXrF1HzKga0of3SngFtQbmyXrxJCy8fXWfS+pN5g5CFxlqucwApgzTd++STT+4M43/nkPGbrstxo4GWarXMYhAhZem7Lmq5igFtb9fbM6DSlyvD+wX5HoF3zpjx5E4o7WgWUOcAirWELltnnXWOgwMYO+QAiioq59sOtKDVMu3gQ3Lp+0XUvIoBbXK/tGdAWxAroy1iFjB2vUnjeUmQoXHzqhxA2i1puhfrjK3wsY63Dxm/arnJb6OeaITUpLZu45QFSwdEV2orV9EVtk2ZdL09TSvuMh6+SIS3DY94x733Tt8KrBvPAqocQFE066LlkydPfifO/vIW3yLSUL61BhoNtEZIrevpn9JcMBsQXa0rr6KrrNsx65f2tKu0y+W8CxfLgAkbbjz5ELDmFYFGzWrlANIuWX7OOeesBeM/tMtyr1HsGvVII6TBUFtZsDKkj3J1nWFn8gxy9Z0JW4G9DGaPl4seevHFF49DsV0WJCabVhmKBWk+1Qcf+HkN1v+Xr6l3/VVqrw/AtHdq2TRCqqXux4KyYGVIH6vvOsPO5Bnk6jsT1mPr3YHDlj0ze/ZemK1fCXB6i3DapJBuNQMwIcQpjB079qA1+a4/U0a34tS71vJshFRL3Y8FZcHKkD5W33WGnckzyNV3JqzH5t2BI/ClnXHj1j7Ig9iMlqHOAaSEy7/1rW+NhfHv25LTUOEKaSBVdC2DRki11P1YUBasDOlj9V1n2Jk8g1x9Z8ICm8sA+IDX0WaRDWd6pCubkgKLacv3zpw5c2d8yusaMBm1Jj70g3YPSEh7q7bCRki11P1YUBasDOlj9V1n2Jk8g1x9I2G5DEBY/NSTT+yGT43djHTLh4TqZgBWmXCbMGHCbtgAHDJ+00o/xVS2ed3aKtoi1FL2c0FZ+q6LWq6in9uUs+96e3L2XcnxBI2rAaPWXnvtV3iGLbVW5QBK7cS1/927It0Qk0YaKHVAkapllxaRBzqfS98vouZVDGgD+6U9/dCCkSNHmwNIuZc0V+UAUoLlJ5xwwmis/3dIgUPp/tdAo4HWCKn/ZS3XUBasDClTdQTpOsOOam92kb0zll3D5qs5hg3v2ZG2C6YtVy5UI4PFlrb8svvuu2/TLbbY4mYsAVbrV36JFlbin5a9SLnbIgxm43Lh8lyX5OoXps1kG8SqKwWErbqlvb2zbrv3np133X77GUCyEz1FTcVdbgVVjOgE+Nz/JthYWG/o9t8qFQ0czDxybY1EaItUS93PBblg/SJqXkU/tydn3y/tyavoKEdbxduD19t8gw02BiENvlY7rRyAVIr1/1bwKMOGdv876oN+QW400Gq7ul9E6oBpWfqui1quogP5+o7a9fasoEi0VTwc1DNq1Nit2rFo6wBg/JPbMRkqH1gNtB1og2wIrbWRS98vouZVtBany6X90p4VkFHkaGC7RQdQUh02ADdbgfqHSPpZA40GWiOkfha0kn1ZsNLAq6TrAFiuogPivqN2vT0rIBJuCKqy3Uy0ogMoVYP1/8QScAiw0mgg6806qRoh1RH3JzwXjLkc0oW6u86wuUz90p7m1WPnbzlfFtoytHUAoB7VksNQ4aBroNFAa4Q0GE0pC1aG9FGurjPsTB5WPyihp2dku3qbOIBBk7+d8EPluQYadVQjpJzvwOTKgpUhfZSk6wyby8OqB6H6tvbdFmFw5G6u2CHMXAONBlojpJzvwOTKgpUhfZSk6ww7k4fVD2BoW10TBzCA8g5V1S0NtO15VtQIqVsSdcKnLFgZ0gm/CtyuM6yoowbEqgex+kyqIQeQqWP1yjQaaI2QBkMvZcHKkD7K1XWGncnD6gc7VDmAlUGuwdbLalV/ow5thDQYaqFguXB5rgsydZ1hc5nKrWtOuwKYpZZWOYAV4DtEsrJroNFAa4Q0WC3Nx27XRe06w870NFjVDzmAzvpplcduNNCItFKGsvRdF7VcxYBqouvtaSP9kANoo6DVtbjtQBtkQ2it91z6fhE1r6K1OF0u7Zf21Mg4ogY+BF4DNMCBlj4bWtnkRkiVlH0Ctnv4TF99lUvfdVHJkCGvRmED8Nv19lTIPOQAKpSyJoEaDbIBNIR2hm99Y3j6CjyDxu3CrtpsIyVFGbqZ6m/VDzmAbvbWKsDLDKdK1HZGI2fddkhVjBvCqmSrgunZX5ny7TcMxRlB1222vy1Rm1H72/X2+JqGHECtylePgioDqmtZu0FmvPrDERhvypamq2S18twRLK90AsKvismKwtopaUX5NqDrDx805AAaKH5VQjHjqJO5XXlKZyf71NBYTh7ddAKpTGnaZBk1aqTUxw9g9i5dauAoh4cEuSRv0vfDsqA/LDG0qn2imz5oyAG01/dKj1FlNCZ0qzLDaRenPMwZZMYWba0dq1J5yjtNB0Q4mz9dfqV7ZMajbvddX+Ze9KKt+L473BqkVpjJEYiYKJtJGZIRdJ7pOsPmImjr+74/OeQAmuu8K5hVg9yMqpMKqvgYfasy4rQrNz6MKVtq36Q1eUO6C6OxKBPfa8cz/y/Pu8id+f0fOeYv+s3v3Jc+f5p70Qu3cvwabkkO3zaDV537uyBqqp6qKvLyfs711QcN3QfQpQ7iAG5yVFXXhK6Ik/JpVUa8tJyGlOaZtvMIDaenxx9IM89yDjIzHOPHmEHpNZ0heVCrKKNNEOWllj09bvr0Ge4nPzvP9QzvcWPGjHZPz5rtLrjoUsEkbUqfphNWPplKr6AypEzVEaTrDJvXzqpXtPqhGUBzPQfM1oMtoJUSrejiWatEVgloxSstS9NkpEbeA0PH+2JgRIuXLHGLFixyCxcuknRvL9bY8AkjRo5wY8eMcePHrw3jG0NLl6l3OhuoFMxGYlvESJ3KyDQPynf+xZeK0bP+ZcuX4dPXI9yNN9/qnnp6lltvwrrBAZjuSBecFpxXHiwfBStDcoqOc11n2JkErD62rhntkANooKd0gNahN8GpoyW8m/TGi7EZvLwrHhtos2c/6x56+BF3330PuIemP+Iee+xx9+xzz7n5Cxa6JXAGIAENHADeLT9urXFu0sSJMuV+9Stf4XbYfpo4AmmHIXrZzQiljD9tRqPJGPCRIIwHjf/hGTPdZVj70+g5IyB/snzyqafd3ffc5161x65uKdpTZ/DW9pS/psmFIZpKG1EVvZPfrjNsXrm1rinFkAOo0VTVADXUVmWGUxfHYRcxOu00o0zlsDRjmgoNnlPn+fMXuAenP+xuuukWd9Mtt7kHHpjuZs1+xi1ZvESMh3iKy7hHDQ3GtgRLgYWLFrlZmHbfec+97tI/XObe/tYD3Hvf/U4xHcrcdpxbw6oa7RthclubaOyjRo1yf7niKqmbU396JeItp1yQ+4Ybb4ID2A2OgYzxDnw4DAvSfnowhDRt5THOpW8gaiRtkuo6wyaV5jhRKzk8zQ05gFQbSBcHJIurYAUyybbDqyvnMC6dQasqSGApL0sP74ERjxzuFuBsfufd97qrrr7WXXPtDTjTPyxn+OEwap5Rhw8f4UaLYWm9XPcP86NFzrTegGhYcsD4nn/+eXf7nXe7pUuWyvLARLFxbvnKOLe1ShS2wdpBp3XlX6+WutXIKSfIgEOndtPNt7nn5syRJUpKZzokrCpdrtikjx6qgahlNq0gBYbWxjoSk7uuvNvwIQcAjdZ1Sh2cnVAsK+brOqqqg0mrh55VeWplvoSLcQrMjDVxRo4cJdPhB6ZPd3+76hp3xZV/d//85wNuwcKFMPjhYvSjcVZlIP5yrKfBHmm1eqbJlkbGJMesJJB5fvFiN3G9Ce7wdx3s9tt3LzccDqRKtsI4J4c8CFOAwJP0VYFwOqe7MMV/8KGHZWZieEbSA5mnPzwDTuBW95pX74Fly9KMn+kslTFNG788zqVPRM3RVjAX+qy62RlX0421Iyvsh8wa7wBM4abbYr4KnuJwYNJw2GF2xvQmhIG5TAyzlzew4LIVN9yWIeY0dxkI8fkmnHl7ZKCPGjlSYk7DR8AICKe1kL/gC80yEWcYz+SYurNObohdd/0/3B/+9Bd3yy23Yz0/Jxr9aDX6VF4bWAoDP8rAL8ShHsLwCShtMuA862+Pdf/xx7zfvWCrLdAGyA05OGOoCrkZVWEAZqS+PmKxRtbNgzq89bbbsfxY6EaPHk0NECUELm+WQY5fn/8bt9suL4NDGi5LAVGXx0rbmKZZbPnAMCQSwTysUXsCfXVC9ZwzzGBWBH2ngTj1sqaYfUuvsQ6g2AnFPNWawizNmB3D6Tano8wvWvS8e+bZZ91T2KDiJtVjjz8h6WeffQ5wbLDNmyfGxLOpGBENCc6BZzMOeA7iUTDW0aNGY9d9LexwT3DrrruOmzJlsttwygZugw1wrD/JTQCM6/XZWMPfizM8z/Z/v/o6N3PmY2Io+ByUGzN6JNIYTJArDcxRbm2HDm0bYDQyGpaaov4uhvHvsfuu7mMfOUauBCxatBh1q7wp32LahnFeexEL+VhdkJUic2PvjjvuhqwEq8MjPJWVVyhuuvUO96tfX+SOOPwQtxh6Xb48ZZjgez0E+kK+LFmBj0do254CIxsvBs7yeRWCYuUmJ4GEpXnj1c14jXMApmhTYinPAj9IrIwxDZXrZxY9h13zhx+Z6e659153+x13yXT18SeedHPmzJUpM8/yFngmlzM9ANaZGnMUWFV2ntOzINe9rJNGwHp5Jlxn/HhxCOPGjsUU+BFxNEsxo6AxjBwVu1EHqvKjrKxFa0JdUqP9mDNQBGkrEBgvgRFut+027sQPf9CthSsBS5f2ivGb/CKYsSE5BS0Eg+R1ViB5BG3vMDdv/jy5AsB2i0wgYTus3DjQGf3oxz93E7A8OeCN+/mlAEtjjalcRfpi3vhqXJa+DMkp0pzJTVia1p7w8oHhcLSRMvIWZ2kkesrwTfbWcqa1rlg6jpwVo19lqEyxJnApzwKONInMAHXTjLAnn3za3Xzrbe666/4h8aOPPobNtkXElpkAz8xcU49EDGshSWWwgaSFyAkggSZJ4tCUef/7rNmzYPRPESAzBhrA8OH8/HsMXvwAGDbMOwJUwqk9WZt5cICFwSVA/OCfS5Xxa6/lPnT0e8Xp9C7rhRPS5QZp5Ag1tE+kdVZiJ+0lb16m5FUKOgAGymjtYgyUIPdS3LPwb//+PZkRvfMdb8EMinshdL7SIKHnD/kyWJ+neUsLQumnLH0ZokTGO2URYUal44o4PJnMxBjihufULTaXPJdXFkjbWjbD7Fu8RjiA2BGqrLo84aZ4Xopi51wDg//TZX/GOvtG9zim9pzCc2ON3ns0blVlWA5D04DNNbVony9HxNThyDKji5AqEAlsuaAcabyaavVrOOoIwAQAG1TWzhB7RrwXYN+99nQvxu22S5Yu8cavRkRao7e4Vf1WZq2jyKyPwWKfQbN1ljVr1iwsqehYFcfaoPikJTdzXuqwfvDfP4ZTvt0decS73PbbbYPyHvSTbg6anBajUOq2vMlheZbnIZXel1gbcsSQM54RwHER28yl2iW/u8z9zzk/x17H8+7lL93effjYo9xELP1KtJ6uXr5QywolVnsHkCo0TVNblmfMg0oehXX40xiENPrfXPJ7dzcupy3GteeR2KTTHfV4duegleAjtewso8UGUmyhkmFsYytAPAIiWf6G8gjXlDL047BYGPI2aIiXOgFFUCciZ1RrB05AvO7+6lftLnsUXL6Qhx2BcZKwOhJQbdKaU1CH1S5n/dnYM+HOPo3E2pf2kzInB9EgZNOzKR00l2N7vnJ3d9ABr3fTpm0tZ1Uuk9Jg8hrPurzRGJ7mc8kpQQqJuLGEMIMz5ji66Dd/cN/7wf9K+3owW/zb3693Y7G0+/hHjwnjkPUR3+TT+rv/u9o6AFO6qawqT5jCafij3NPYUb/ot5e6Cy/8rVw713X/cKzBeaZnp5YDWMRg41IgVlBDBxyjVQzDJ7Gn8aDgaIRv1U9NHb6COIjYXqUXh4A081beiynoBjgLbbTRFNnt55KGZelRVXunMErrxUCsKZELBQsWLIDz0+cVyDf2kdYS+5F0dGKUT50AHfXv/ni5u+Kvf3cv23lHd9CBb3C7vGxnuWLC5YK102LjX8xrTVW/Krnq0FqgeMWcyWnyk4ZXes7D1Ysf/PdPxNlxfFH2MWNG4bLm7e6JJ57CPs8G0ma0KhOAfFI5s8I+ZFZLB2DKp17SdJq3juFajHe8XfSbS9y5P/2Fe+D+B2VjjU+ixRA7Qzs/lqQ8BWojIZAQEDI5oc+1xyizyNtVzSEdMJSbg01MD2luNPJyHuHGi4bHdfRI6EQGoBe7OBi92H2KyJpSB08g6eXSF0wKXBAkF2TUXNWvOgKeYfm48FXXXO+uvf4mt8vLd3LvPeKdbntsavIKg7U1141WlMLSGowmhWmfJgL6QsNlrIcWcEbz64sucWf/17m4xEtZvXLJAkkue57DJnJwALzUijLyCLi5AF3JrXYOwDqA2knTltdOUaVysPwDt8ieddYP3Q3/uEk280bDG2vwHVTgozxjmUcuRct5m2p7tBKdAvyoSEsJYqjlWaahrBw8MQY56HnWBRRwXo7EWcjzJu68efPlstq4cWOlqohfW7HKtQK/xlF1qgzohLJA2azt9FZJ0Bx/yYmH3jvBdtDgGK7GnZC33nan3Mj0rkPeKrMBuQQruNSH0arBClHDHxUnysR2MGft4b0e3Cti/sc//ZU7BwevCPEoBn0KM175kPIyWpGsz/nVygGY4qmVNG15wmiYvHTGgf4//3uu+9nPz5Np50ic+QRPBpIwkLzAQJcHzZfAOVIcuGZhUl7dq2kNimGQAn4BnLfTzhYFGtRLPB3sXkjqgkk6gWW8vq+PAc965hn3wIMPu1132VmuCBCnzM3zIHmRbyxaoRSvpkTFKYu8jQlb3wGUUeVQg6Z9cYljjuD5xc+77//XOfJMxMknHuvo3PSGJjW4CntMKqmWIZcpOg+KJDqDDJxN8WGrszHlvxzPNvCEk/WBr4W8eGv22rjkalcCtD1e8606oCRpZ4DVxgGkHZKm2R3SKfghnGv92++80339m/8uD8iMxFSfhwU5czNDpZMwCTlfK2jQO8ZGULOMMcniHEPlzxCYIVJF1SojB3+8jJYOOjaJAx5cceaXhKR55l0GGt7r//s/XiYOgLzEdxHN68J4SVkTyykJXg1gU3jIo8dIiYxSp2kDhUjK/T4JC9JIP4FAbxwihG1nHGm5pOP+AG8aOu2TH5NxQGOz9gC5NljbiUCupLENUoqoulCHo8uqZdhPmu3+jL2IX573G/foY0/IOp90lChKRY5Kz/s7xo4b43lJq7Qw/c2blJascHq1cABpBxXTzBuM97Fzk+9b//Yf7hmc6Xj3nQadJpsWw7izfhCAlRbjGgMtojHPnjeeeaYKuwIjECt+xq/IwoZZpKEe8gEfZeeTdjj9yJUOPojDy5+vxJ2AepednpVz2lif6beuPGK2TlFiGgLXyOVg7clLDGq3MGuem4i6zmazeDDwjHzZn/+KOyvXdx857gOyJ4AZemujAx1nJZzK8+rEPFwa5oNI3Deibhi4ucdK5uGOz0cffdzdhqsRN950m3vsiSfktu4xNs54aWeYXkWinNZK7sdMnDhBb31GgckrzIs/JLJGF8tWIL/KOwAbfGx7Mc08D54NeUPL98482/3vOT8VmJ71tQuMzmLlRYZMIfiesg5L8RTBfg3D8hVx2vMVJl6kyNCLAhG5IKPRa7spjxp5lXGiRM7wZKFtUvzFSxa77/zH991mm27sNt9sEwx8ff2Wtdt4VeWtzOToJOYshLc7jxzBGZk1TA1CfXDUhuaVOw3GsOkING24nOZHo+JM4LzzL3Y777i92/NVrxCjVpmNg/HETV1YKs7FUvHuu/8pLyK5C5eEH8WU/rnn5rpFuFXaput609IwWTLJOxXAYhRoR+EhrVQfKpHJFWXmzGUybvWmI+EGZhhwKkr514ZZLnIZrwFklXYANgDZzmKaeR7snAV4283Xv/Fv7kLswtLwrcOMxuIiH9Wfji4Oq9h1WlL+tR6xHipjCCRDyzKVBOV6y5DWwlEXNAKb6egUm5WxVZzm25qYg493Gc7ACznO+OLX3KmnfExeCMKzXxyyysuEpf5soKdpK28Vk05pKSPOhLi1dzTOmDSwKG/Kodx2to3BHEE6G1i+3N4dqEsi4vFuwR/9+Gdu5522w7MTeOAI9J6F1ElDfOLJp+QBKz5kxScT+WAUp/16+65eviMvhvh+Qm4+6jpfZDG9gDnzcigJflkjgdA9UptusrHUHYqbJDjMTPAm+BU4USsVhSszqM5oCbeDhk4PfvpnPu8uuPA3mPLbJowZAvRnoweNTdPWdnpnWVtS0Th8ZMU1ccNeydCyTIlvud4ypChc3p6ILwM+qw4Z/HPXmjQ4EctA5pnvxJNPdT/7xa/lzjreEmzPKRAv5V+XLjWkBkDjIO8JeNUXH4QSfrQPFKiDSAkz4UOBtYulguEB5LUMM0DtSz5yPNzdedc97qq/Xyc3C0kZlz+Ac1r/U7yH8IPHnYxZ0Nnu3vseEFm4d8TLoxxTlLU6VMsluCKUX5YAQBbmEPj05+abbyL11LKurtAzqitsD19lHYA1rTjwmOfBjuJ11dM+/Tl3+Z+v0BdgiNoxOLgWwxAxWqMxnozLMN+5eZSSFNLS4wVYRTZD88wr0AxUxihDdPQrhbWROU0Tn+1nXiKPDhgMMDoB3rU2HA84zRFD+NTpX8TNUdOxeTaysRNI69aa4m9q1JYmPt9BuCGegrTptVEIDp1BaC4TIWNoErNdchiGB3CJYU6AzuYPl/1FlgAs5pn77nv+6T72ic+4b37nLMeHu7hnMEKuxxvDmpj1kIkExj6dWbPPoEiNX/PU9zp4AnTTjTfCMpX94h1evZfRaoq/wrQIbJ9fJR2AKdtiNhPmLK0ljGt+vhXnjM/9K94sc5VsrqjataOIo7QWR0XFsgiLKd+5eRSLK1MqV2VRCgxonnlaVkiXMcoQUUfgGRlou6mHOifAy4I0FJ0J0PC4Fr7m2usxGzjNXfzb38v9EuRoujKeKcxqTMsM1irmmZbvHqCBmtG3OOWClfZhtSyUkRjxUADP9j147PgeeXSbm8GX4t58tu9G3BdCw7fr90LP8SJ/kU+mWiJVBJgyoGrojNgeOTyMJcsxM9lk4w3dpEnrySVqs3tPVcG1DahDwlXOAVQNKHYO/+2swY2YL335G3iv3N/k3nbpBKKwI5PO0jQ7j4eWS6Ltj+J7MotaUMU6WiCpGJ61ydQKP6AGpDKEwqVtJqrl40xIGSi1EIgu1REoPs+QzzzzrPvK17/tvvaNf3dz587DVJov7FSdGk8TJc2naSsvxmLsHjhtm63FAGn4ZhCSYIYwiJhfKKDkKj1ZsL60TnZ5ODwmrzQ8+9yz7v4HH8QS53z3ha98y81Bm+iAjJvFaCJvl1C+rMAHltcFlRtODNxUbDN+TwFiQETP017yItmLMF6pLixtseG0jDtwAqvUJmDeqYn62UHS6fqo7JnfPcv99tLf+TO/qiobFFBQmRf5daA5G3C8ME1+vkdac2hYR0Brz7WMUYZQODrJdBCx/cxrTH2osSk1yoRGnSrxsKLCQZwedyFe133/Aw+5U04+wb3kxS+UdbNurNI+owasDqom1bdXVSkiLXfBt37JC916660Lg5wr/IxlkQedAI3T2qG9kNdvXUpjY6AjsMA9je//4Bw8lvs4tSPLxrTc8BgLGeviOAOrtJ3ICCphemh5jgMYsQKO0vB1bjvuME37QYoVLgz7+tOA1So3A6BO0oHANA+erbg+/cUvf417+n9eusaf0XDU+JDCfTdbUcMYvMjOs4yc68gT5DoUwjO0ZlxzdgUaZMNNTh7R2q4x9Rg50GEQwDIe8UyP5wUwZb7zrrvdxz/5WXn/IO+i1HJdOhhfckvTkXueSg2HMvJ++G22frHs1tO29FDj8hmKJoFjPB/nLMgaIlm2x9piMet98KFHZBc/n1Eo76rfyJkuI4bU2C1NpyOyg7m8FAYZoyFOL6YVm2y0IZY8W0IGvSnJXh4TOfdvapVxAHEgJV0QBucyrFNHuWuvu8F99z++J56caiMm7/tOB0Tgg8KQJnIIpIp1BHDLhKfxZM04NKwjoLXnWsYIxEF6cQIJ2HSgsRqJIdNoaGks40Ej5z4V01wSzH72GXfGF77qfvmrC+QlJQCjfMWdgNXL+wD42m+GYESYktBoxLh8zPrMosr31yeNJKNCVkBgwEuelrYNQmuvxYJQ/CE/CgCLNrk0jnkh8bKK4QuulpOuF5cj+bDSOuNx1QPIQPUk6ih8VoH99LvKOABrv3Q6MjI4GQPAZ6ofe/xx95WvfkvehKt3ksVLfdxpFQojDswEbLlCTJpOA2i0KiFszyFBblVVhtaMa2SXEatc1EPChjpksAFveYEREeVpmZ3tuVHGx2x5uez7P/gR0RBU74ZPCEPKUyHeECyD2AyIryTbbZeXuo033DCcGa3MjCQhY5USGOVGQ7mjQ6qSIeMjmUQx5cJgpCySuycRS71i6EjLMkncluBmzsHzYxsoy9p489KrXrGr7P6byRPfgtCSfwKzsm7Fq4QDsI6zWBqPfrJNKr4l9tvf+U+sSx+QHetUOUaj3VrTuQRXFtUWpFUU0p7G82vGwSMXOJWyAa091zJGIBa2opcEZHpiIdN2SL7SCaj+OTh5Fv3xuT933/7u9+R+AcKMvshXKq/4kcEuA11p18edcXu95pXybIIaBw1BjUEMAhmJfRskEnrglPjHhga50Cb+VQfCtUzq8EievfK3jJo/fnWGwjc3iflTVnMGXtbQRpTx0eSdd9zOTZ26ubzlmGW6j0Lp8xbkuWqJVxS60juAOIBiZ4VOxEDluv+Ci37j/oAHPfhEleLrIEqVIjQAaKeXO1dwYxUpqVAVAA2yYEZ+nmct68ApQQ6wikTGKMtUIIfqfVleh+gqWSGp7hTV0iFmQ3g25TIgOAh1AqTgHZa/vuBiXCX4jrwlmZuFpLXDC5DljbeVqRGI+ci6/I2v39etv/5EGAhmeTQsMSQ6AT1oJ4RRNEYSfMKyxls1kegrV0VE8ymrywqkTmSELzIqq74lGaKJAAGHSILjXwjr8ZWnSsY3L71x/32ET1oX0wwWS4Z5f1i+W/FK7wCsoRhLEqwLOXh4Ger+Bx503z/7v5AuG73RMk4Vqjz0V5WvHSo4VkFKLGkW1BaWsBXg8ZOoPYf2GCJGQGMiZCrlKGNEfDkPUrkelBqlpTW28yUQsc6vcgJ8e/Glv7/MffHL38SXiBbIrbNx8zDWSSGNd5XAtAHSbbbZxu5Nb3idvJuQeHQNEnuDkkzFD2viUW00uRxCrmwDp3Ss6GPFyYZfwZgpq4whnu35FKJnr1dMvKMgEoLh8bbqXV++s9t2mxfLEoeCSpnHU0FIo/Saj9A039f0Su0A4iBJOg2D1dZ1fMDnzLN+IO/g1+mTdjvHc1VIO5YoOqRzZOkIKt7+fIdHfjl+hNeltCYZGJ60PQdPU8fS4BmjLGMYWZxj5HWIrj2IadN9jMmKGvNcKpwAl2Q8s/3lyr+5L3zpG/J0HJcHZSegBpEJh4wZgcW8Z/+tB73RTd1yc10KsC/kTymlP8V4RDTQJ3AFkSkoaEpp0DYIPcHMCh/geiaM5NAiZUBeYSbCNHF06o5zPTnFaT8Y2s6/wD0z6oi3OvM7i55BwLO6hVH4oeQ8YihDYlmnqZXaAVhjzKBtYHJAcdf/8suvcH/+y5VyWUpwpV/5ox1s9GlMJaeHdkKKUUh7VikN+7Lz4BklUb2Uxr09hjQ1oDERMsYki8sYEd+M3VhYPsZkRReApQCRMJitT9hHTHOAcybwt6uudl/44tfl5ho654iXSpAqUtNRz+Tn8Jjseu6o9x6GGd5w4RHKYRTyFzpD+YZs1mrNmOEoD22LoZEXA6fz5GG4ZqSk0Zem6P0QmvZLAEoCAsKYkHcFoM3CQ0CEEYdPDC5zbzngDW7qlpth84/7BiTRsiALgZTFxwonTOGaL+YM2lm80jqAOOjYsTEQTi/Mr+789/+co4MiFsv4VzUpnSk3V2ZK4NMgSjvD6KQ0F0FAiqs0FdxqQDpIaTtyxKgGn+AEuQWW8VOUCoELtDlGrMP0btVaPsbGSGcDen890ugXGixjcwJXXXOd+1dZDsyXPlMcxSUXctBhHAc2U6Z7xrwi8Go8tvtmfPxj8fOLpYy01lfKwhuQNEp+Ah5xPbLAhLcA9cf6MaBhT0Sk8QXEpwOLZ35jxzqTDT/g0fCJK/jGUJwDcR2eO1jiXrrTDu5N2Nvg7IYzBJslsJ5mIcdjLoc042JYK60DMAEtTgcPX+l1wYUX48s8/5QntLTLDVNjqLykGOl8dlTNIb2Us4m4wq9a1ew741kgr8l6ifOoBtfAVa20Mh8TJaBlmQKiZgNqKC1DhJ8Hsw8YfMSUHK2cwF/x+bIv4TZbfqiUBpP2I7VJJxD/AKjoG97LcdT7DsMdc9vhsVx1AmYwovdCT3PdXhVUWi1h3XbvgPYfTiyBTEePGr6OF9i1nOHNwMVwwUPqp4MoGL+NB5ETldHgN9pwijv6yMPxrAHfd5CPQ5VK+TEtdAYsxZSeRwx5LsLbpVZKBxAHWugRaQfhHET8QMcvzztfHuUsNzDtZlVTaqBpxxTTwguaVHzthGJHyNDwgzSvW2VNeeblxZyXM4+KSIW81lEAlrMZWpYp4frqE3gFhBbv2cS+URI9i3MpULMcwEtW+bXiL3/13+QtOtRP0QlUDV41NDVS3qbMa+YfP+l4eUkJX1vGwH6KQY3W5KTAeXnEZIH0E0Aya0fbxPjZ9zJV5xlf+clZGrBo+HbWJ4z4lMNmCYjBU2itDtByRsRPrB33wSPlwZ9eGcekiXSJdB0kMwWIS8gh7VmtlA6gKLYNGK79efa/EJf9Zs58VNaFxGVXSQylx2ADmYOXabvelcBltMQ8ydl5+PGHcss6lGUkQUjhCjFemrNyzdX9emZ5VIcMeF5HLWKGlmUqSXz1SVkZYu1OkCQpmNBxlRPgZUM+bXf5X/7qvvqN78gZHJrLnIA4dnCCZiVIHzDPKTb0TSPk2plvJ/rUKR91k3BpkNfRGQxXMvwpiM3uspD1B+E8DB+IVh7P9gmMssifzgTEUYSzPmVUZwUmKjPKiGPLoeM+cKTbAV9a1qk/lwmRdyof06U2GUJlbA2JhYQ0DSudA7AzTOwZbQrh9MJP4Dnti/EOf33tM3rPt5adw2CdWIrZeUApwZOO1zJy4ajwh9yCGulYoeAxxp+FlK/BLLYyy5djX1celdEyCJEbhAwty5SI5c42KimECnyArI/Er3pcmQkEJ2CzAcUlPp8f+CPervM1vIyVa2HqkfDIq1yX6c3OlDT6bae9xJ3+qZPl/gDlo30TRGYCrNJWaL9HDGuiyO8Lra4YK1858+O8Tn5ShsvNHEhhRkAngDzLGExWEvBNQXzH4Qn4vPord99FnJbSlc/8Ri9MVuhH609Jy5C0VNMrnQMwEaVzkLFBwjMJP+Lxpz9dnp39DZ+xmmTyK2cQnkX8IR2pnRVgoSzSxZtOFFdGlJ9B2OumtcMiTdqBfkylokmaOCleCcFOR94WyiZRpCBGeyzzZUpdTSOyefY5x4qpdDULVIMCb9RxNhD7kE7g97hh6xt4KauewXmGrHYCpifTmegUT+9xU3BHnEm/8NlTMSPYVF7VRbENX5pgDbDYt4u68nYqahMa9gnP1hLTMO2ws7Q3fJSroftNPm/4Zvykt7M6jZ/X+ifj5aOnnPRhfGZ9F7cEzmAY5Aea1sX6mCmEKlgBpUWW/Mo8WxD4i5etMFaCMjlLQFlz583FY76/x4Mn+hRzUJa1W7VLDcdOZdofwWvD6Nlx1mFSzkGAg7RCnzoGpBWukYweGUwcUNaRsR5TmWclpAZjHGlSqKW9deWRFdbEpZFejZehaaZOFikNbSO7SEwaCQBh6Z+Fdk6Az9v/9tI/um9++z/lDEleRSdgswIyNvmk71AtnTONiY8Mf/mLp+PDmjvKV3VsjATZhBY/FNuLrmJTaO8IfPukDnMCKQyoYuDsfj8+WL8cXjbaG+kpH3FY1RK8VHWnHbaVmQqdFR9xVjrOELwDUWGArfRpLMA+/fj+acBjpXofgHW8xZSfaR4j8ITYDX+/0f3zvvvj5p90ZLGxZpBRsake0gHCwar9EHlY3RYTgWlwVTZSZ+RoeFrucSI7oSW21WP4ClPEFJZwJpUO3hjF4lLKj3KTs1TuAQlaMgYz7FxHIoWUV+ELjDyTNgsy9KRV0UOwkJNNhXAmwA+vsp6TP3qc3NFJJwDbkEB4qhOTh7Hg4EMmNKqN8Q3DL3zuVFwO/on7Nd75yFuG7ek+5YSaS3IRFoFM6+HhzNsf5UFejDvgaSn5S8rDicclCTf7Djn4QHfgm14vN0XRWQ2XM7+ecIxXlC/KYrCBjFcqB1BsuA0CjCV5rPcPf7hcHqHUr8cAG0pnSFVonasxusjjCCJxE2TuLkuogFndLGc65MHA0rZzrEwUj2kODAZ5cYSkrExnDFLGRvlgMhpfg4NKk17OCnEjakiRJmlQgOcJkzHUQalT5Xj0KpjSED/hmVQrjpUyBCdAPHMESsPHiS/6ze9Elyd/9Hhx6uoEvMPNmLPf1BC5qcYinEcxc+h1Y3Hn4Yfxjv/t8Fnw7/7n2W7WrGfEYBPJYjIVAUzIJx7KX5FRlmzSWd3WXKXRZQMZ8IlIziY5Gznk4LfgJSkvkNkN29PU+Kv1HEXvr9RK7QDYaBoFveajjz7m/nHjTfIcOroHphENiJ3AzjElFmMaBDutGAQWbExHsOGZc2D95GfGmeU5gEhmovg6DFekIi1QrPpQlvA0udJ6DKax55BHOUqWKwiUlSWZBM3abaWmw5jXlLWj1GgWJ/yMLncCRPCneaT4INfFv/2d7JR//GPHy+u4aDQmS1EG8iSMswD4AcR8S3EvjG2J22evPd1a+OTXqZ/5Im4btleBk8IHL5sfKcKHvFiXHDBgyq/8FcgpfVjjeza6JOB4wFQf+xGccUzb+kV4ZmE/PNu/s9yXIg4BHwAxXhp7h+H5EGYhTRtsoOKVxgGYYYQYGmCaB88W19/wD3j3WRgko0U32pFISl95ZUKp7CAN6UAiROFFZVt9xs8cC9mwkw0/dQgKV9k4eoQHcVmHFqI+X86ayUzwJKIwQhN5g9iHKpgWeRw/rTAKbZVRF2NilTGsDsO2tlNmLVMail0M5Xor6gBoOa+eJHWrnsmQVwhQwn0V1Mc9AS4H+KWdf/n4iW4tXO/nizJkqu8rT+W1tMkma3PUx9d5v/CFW+HDIuu6J596yuFbPqDOGxBpKRllQDn/EROTWZ7JmQhTdV8mhehbTukd/nk//3b44vBr93ylXN4bO3aMbGzyISm+nwLmLnyNj9XNJtWlWTbQobEDqOjm/pWVhoTAiDvGV+GOMuko9I8NJlOkdJ/0G8+26AB2GgYYOxTq9gqXDHMExoCsGT2B5hAII3/Lc/efsiiMmFrG8oAnSiJDJAyX3IXQOp50TJOHolo7rC7CA09mskDenlhkpyStAvAlKJbVZRQh7+VVuDkCw4pxUX9Wt9VimPLdQWaI4Bus7RMAgHE+TifwJzzXwReNnvYvJ+GVYJNlPa1L8NgHZGdB9MM+4h+MdkTPCPfIIzPd7NnpEsBLZfoisSmeSRxmqOSjm8KKw5mIPP6MXU7WRRn5XMLUqVvIHYl8lp939g0fMVzGp2z0ca0PWcKsAXSk5Z+FoG+pJsKtfKDjxg6AA1rUCZkHSmwOGHrQJ596Eu+guyts/hWVqHkOBhzAN6Wzr0X9TEjQDikqWdrFQYrAM5c2lBHSoGUJZSEbjVNnQN7M+4GqbJSONMKCPPSPdai8iq88CVW4GknMM5XCtMRXwoFNmRTYpl+IRVljKOqRJYIhP5FrOoCFOujT68PotFB+w49VS/1Sl6JHrysgab5HXsV9Lb5HePInT5evEfHsunjxEl9O0lx28hcY+SHNfaHrb7jRLcRXoMaM1VkicTSYEJojnR3SYhENXCgfUEbCqDecMgVfKVrXbQgj32zTTdzULTaTr/eshw+X8GY0XuOn7Iy5FDF+2ZUlk5lMEUReTWZpDxqUqLkDsGHGgS6N6Z68NsBDDNZM8+C1f36Tbdas2cEBWM3Ur+pYjVPP+r5zMSysUzhAKDP5yTsCfYcoH+JZ59B747wDPIZMHu8Y6CAIJ43GzCuPzAmABesnjuAxjz/k5I/844Cw+iKMNBaMj+VjDBw6AQbKo5Fkq35UV+USkyOUe0aUV4JEmjbcwEUVEbKSiKIrPOQ1EbKBSpcFPMved9+D7qRTTncfOf6D7g2v3wdrfOiLZ2NpXSDIEpSJS4jrb7gJZ2TOG5LgK5O2oQkmP/N6sJX4Y/OAyysUHz3hQ/hs2PZ4yQm/BjTSDceY4BOQ3IAkO57tyYdjRTYLSY8zP2F2JBJImeSDLKrLFGew0h04ABNRW8HBziCKs6JuxcEAlf8tt9wqnpbOwEKqaMpgeXQBzrq4dRSbQ7Iew4yA33rjGm3smDHybXgONPnwA3CX4tINBw8/JLII8aJF/OijfqCRsw/icUon5xkxfqQLziAOTjoGGj0P6ImqomyY7fIuO3ME1ga6AiIojTkVLTWY4TLPkDoGLdP+EEcAFJ9jtTVBMXQNXoMCsEzhyQT1Wt0ma5HK6iScJNouSRAUAxEFQSmMTsH6yz7mxzf5PoFbb7vDfejo97qJ+GgGZwPsW4acWs/+/7zvAXlVeTpGBLniJ20PiyXv+2fyBhvIh0NHY6+Jul7GM/0wNXjZFKQUohOl03SiI99PVm2sixXxX9tg5YMdR4uqkcQ6qVzsu6GfHIENdBrnnXfeLVM8k8GUbnnG1in00vTa2+DjEtvgjSubb765mzJ5sqzfeFsmjZ9TODVqvV2T12/58Uc+YvzUU0+7R2bMkLsNH3lkBj4S+aSsTbnjS4/PXV+ZJaAfKaPNCCiD5MV5mSMgEAc3lgCnjNIu4ggei1WPcaCYXrVNxpcxQ+Ch2eSXPP3gYnXETUrLSatXz5jpuJVB6gE2YE0+i8v8PMS3kzlrm2+iImi1KpzXAcspOnVD/rIRB+l/9euL3M233OaO/dBR+JLv7sKmF/3giQWfs4MeTNm5fOBbiPhCklZBm8V6ZPUvBkmYtYsnjfCKbq7n/ZISCB4XsccnjR1aJzXuG0ikJBj/ADI9BMDgJNo6AGuPyZs3i0KzhANbIqS6FMCPA+HJJ2fJl2q5xispkVWiQusEGj+N/YQPH+t2wOef6cVVfn1GXSWzlng54QzGYXbg3Hih3eYlL5Z9BK7tOBuY/cwzuAT5qDx6fNfd97jp0x92s7DRxI1JysTrvAwc7PLnlwhi6IBQNtENq02qZpITCQ4royUfxScd0D2+wVjOUMwrlL/CNYsIbd0nnoaICJTHAuvhwSBwJH1WIFLAFIDa3qSJED7AycK3xWhMVM2j0JfrONINQjrrBx6Y7j556ufcvnu/xr3vPYfiS8VToXte+vPPG4ABZ25X49NlNFalp7wxhDZYW6wd7IAEk3i8msC+txuKZE8JOOqUOCbNYUbdxJq0zcynzbX6Ix5SVTrJEAYm094BmBxeV7nK0kKkOfUliAq2ojZxGDh+tJOeMP4N587uzJn4yOdzQfFklyqUfWp50h1xxGHuFXjV8iJsBnF6zzLdmPF48PwSRFBNBmFBz0c1scgTGUaNGiE7vfxw4267vtwtxv3dz8Ah3Hf/A+7mm291t91+h8wWFi18Xp0BHILJbjMDbZ8ZA2QAe1siCC7qk3EIUdhm/lJmiqFXHgjTwaa8VGbFYVkxeFhhNsAZT10oFQFA/jwYsrQA+KNyMcWg8lisLRG4lPq2FcQN7UlEkxEkshOZe0Bq1Jf87o/u73jBCN8ReDBep7XFZnyjDh2Fk/645977pQ+EJ+itmwWBP0lbAkz0qmXWRr50hMtHcSYo0h19zPpsjU9iz4tJC6Yry8soA16hyVassbW7JVJO0u1ccwfAmr2gydgqyBMRJIUGWhsLiG2zNAB2woMPPiSXhPiaqeKgUyZaA/H5gYVttn6JW4L1Imml0xBjOEinCSaTWe3sJBBTYF/AJC3QhjG/4OKWwjABnoRLQZM32NXt8Yrd3Lz583GGelA+SHLDP25yDz/8iMjKdSiXCcIB1s1BqYMdnDl4WAGTOOgM5O42cJfPTimVGFQQSMSJjkEZkBUdBZlVBcJ9XTESxOJgVWq2jy3MgxkGoRQ90AbUkACGyQJOXjaBQEbJs9xQ0moI82y0uICEMm7OzYe+z/3pL/Ehzz+517721Xir7r5uU7w4lEsFlnHGoIGbvXD8qWhJfdIm31ptk7aNKOwLzgCknRCDS4Vg/EQuBMFrATOKQotyCiK1RMjRu5lr6wDUxxaq9MI2dQQVeiswTLLBWNAZMDxOufNgmuIg0xIZXADzq65jx4yVzovXY/1lwQQ358ecdRP6wRuUbnJqXQRJirLhj2cevgVnDAbl9ttNk+vC73rn2+Wb83+54krcsXizm42rFlwi6JlE6bCPjLqUZ1qn4AhvQJVDmd4AAEAASURBVH0xKUQyNJIyaRs1Jq3JaQPQ8kIUfoyZtq/YX0Yb0C0BdNVt1AvznHbL2REZkYfagGyUnw9oWTuKbRQprA1sF9KlYKBYZQFF6+Eanx/xPA9GfwkeKhqPG4eewd4NbxbLAupQltGtZe2tqIenArZT8XR8qR5MH7GGjJcHV8GMgtVZEw2WxSZPS6SMoiuZtg7AaqFcJqPBpEUAmsylcl+ixlRWYuBTk+A6my/+qN6xVolM6aybhqnXZVUS2bWFB4+dap1bU6EHmzFZTDDT5hQ4fpf7Mzw3jZZBTl5h2O3lL8Xrnl/qZj72mLvyyr+5y/58hXt4+gzhapuHypOy46BgPim+QaHiBNgCLTLj9+isHIHtTuUr5gUp/JDG1xWjUJolUM66GaLelsulr6lbbuF22nEHeQx3HG675ZWTx594Qh7Q4sdCuYnKV7WPwKZcbKdyk7ZQdjJlQJopbY1A9AeAEiwUawkdDWeEHB+z8cVi5hlYp42HQAJu7DeDxzZRFEiAg7GkQc8rRrxF2UIoC1rxdB5B6Ay5Texb3qJ9YFCplDaM+1DcwAHE7mDKGhHqtGIUJMlQrAkt6dQRLMQAe/rpWXIprpo5+fLQDuSA4G6+nYm087TDYkcWRKvIWqemBmZpxppWA0QWEiiMZ0dKsxFuIjn80EOwXn09Nqeuc7/57aWyichCzgri/oDNryA/xjD1Y/wZc0nAQP6USQcy8QgnjGlBkR/FSQCxSPAl66cBxdlAhhoy2i7q8+gj3+sOePP+eDXX2qFU9c7bcJeII7j22hvwvP9l7oEHp8s9G6TjlFpHDUeObtwJgyA85Y2jKm1PAvZtFkr8KE1Vn4reyDsLxM/ryYp9hrKus+54bAqPAzZmHMYnYWdjgyRpuopfHYzsKE1tsPpaItVSd1TQ3gHYGPUiY9hJBSZjqM2ERUGSDMWaYAkHskRp/0Y8FFonLli4wM2ZM8cPfuUKU0nHS6RDyi7ncf3NdTtxbZCsSGfpzMPXi8EgYvsRShntoECcCdCKFbYMZ6clMJZx7g1Yp776VXu4q6++1p2PR1bvuedecVBiHCI9uZIW7Qq61mZpfZZWJ5A2XvUEaiL6wHYSXh+Eq3aS7ytEtYFG8f4jj3CHYonDHXIau2yMkULqokTD8JXbjd0hb3+b23+/ffDGpkvdz391vlswf6FccuXLQcQPAI+BEojskjMI41wSuQEoBwUK5WLZWiRFoG4LQccGm+DHCMop0/qTJsk9I6JCT0bcYliR8ZTyMI6teipU2xIp5dp5ur0DMJ4mhF+kNnUE1lBjEzqOZzsAeWQ4PkMFz5kzV27tjLQ+FWSxEjUOOgD9Ig2YwJgq+l0IGnUeRgD/0iCieabkYYYmg5n4chDOQzcBOSvh3sS+++wlVycux7LgfHxCa/r0R+S1ZtyrUDrU1YODp2ZW650Bk2FfgKMS9VrdMQYJEX0weJq3tMYemXX56giX9iWIvONty803c2/Gs+18yQUReFcc+fNIA9tAnLXGjXPvPuxdbge8wffb3zkTn99+WN4J2NNDJ1CgIQMRxYRnrDjkJ8GKAA4wLcl+i/JYYZXxsszYGh71yrsON8bnujlL46VGhpRvmg50fUywtSVZijwbIRWJmuV18dQMV7GCtJrgbwClfHxBbTmpuLuOiGcHw7N+p7K5s/s8zjrsnMpAFkYABE7BeZlOOsqTMJ12XJqu5GlAT2f0VXRWxrN5PPCxTBi15GEsvE+8BzcP9eKZcT67ftABb3Lf/NqX3OGHHYIzzdj4xZtQnw462cSUS0/oIpbxD7FYOtps8sTYBNfYZLPyvFRzPDMHxQMkPocdYYH6xR952Iam3EAjTkB3x7lDzoN7HDwoIh3BDtttizf2nIFbaneQZZnupvu2sT3+sKpibCMhgaC9ejtwhOUpOl+RPoApRxpKeiBPOhuTw+t0k403FNlIW6LxDOvgaX2dpClqQdwyeSOkMlk7SGMHkI6LOGhiZ8VUoUpfUFVOmI5AHYjogxCoZN7gwTMog9HT4FOjlwJPxds2+TSYdFDCyxdnEXFaHRmyz2T4BQSWBSeAM4gZhG3+8RFRbkouWboYj5KOx7T6Pe5rX/mi252fh+Z9B7yjDeVahx98wtPffMIy/IV1qR+wFIM0GvO3TcMFM/3xmpWIRhH1S9n5hN2P/vcncjckb6wag9d8j8XDNtyN5+VO0wnlkvaDhtfu2W+TJ6/vPvvpT7pX7rEbnMAiVEqdR3lFCpEdsyBkcsnznOCWkQQcfypoYmFWt8jNGvVfsPii2U022dgv5xLCAUq2dQKUoxFSc4GbLwHA09QbZAiAkCjjmCxEAWHEtAKLxR9D+TgT4eDLV+fPX+CNPVIxZfXTYcj4CcBh7qmnn5KTpHFNYzOUFFaXLuJmTodEqDjKYfIR7KEs986KN/Rwj4BGblN+GgjvavvM6Z/Cl40vc+f+5Ge46/Ep+cou6+Lam7z0xAbngNqWwQlQOT14uED2HIBHKWi0gss8aRBrMAl91kcsD3LmRdpBICN/M+rzzr/IXYPNzG2nbePWWWcdeUc/n5DbdtrWuNV6M8iqd+axNpNn+HC2oRf4a+PpvpPxItB/d3++4q/YYdf7OdL6o7zCIA4StkzakrfD9gZSHrEZYTAEUDWeFrO7yJ3tHY8Nzg03nKy6Z0ukMK87MO2nhNVmPVhZTSOkSsoSsCMHYNQmnMkRrTqWlLsB1LE4JI1njIGEzmC/c0dfp3Z6u60x4LBnsPo5SGRQA/bE40/KUkAQan5aDYgakpLBpIM28KMcnoHI5gcQHQEP3gdgO/2k4X0ONLID3vQG3EuwvTv7h//j/v73a2TJwLOpOAFMr+UOSzgETteWI78c78QLTgA1mtGRp+jBx6ov01Jdy4BF+UCj+Ii4Vkdl3CJg4Jn+cbyOfeZjjxNZ6uPShi/F2Bs35LzvfYe79dZbL8zWhBfwhoMn2zBu3Bh3yskfBadh7nLcJ8E9Ea1P60ZG9jlMe6ZD1m1tst4OeucwYdtFbmKmwTigAb6ceOFgCwhPaHlfB2/yYpvEUSdlKeeBSlP11oraOhsh1VJLAcdUyxCECImITlAGDgBNWDbDIbkvKJaHzgUK28Zr+mmwcnUKOlwMRjyutXkW5dKBHSxlGIil+lOmK5gOgykdKEgb3NiyHQKDQXMdLUsCWzf7/QFeMeDtxqef+kk8+HK07A3oW3HikoAOgQOW1WEJLj+yHGAFaCFKmJC60jgoW0rLP6n+QA1O/OOSDDGnYvqP6f1wuUbOG25GY/rPz1stxOe++DLOUz/9edE720d8ysI2U1jKzTq4dPjYicfjbbnby9UEfb26yiu4RdFAy37joSHPCawClPJSjdQ5CeVq+LyHZNNNN5b3+JMtxWfwkWYG+Jd1t62/EVK94G0dgJFKR1QonOUlcACERBmnQGiY6YBMHYDB81iNmzAe7MxZs2e7uf7SoVXBmCGnVVg3flmvHcavlEeBwWStDMOQDTS/UYi5ARzYMPeOt7/VffFzn3FTt9xSLrkZDQck6biE4Ohknqdp/uko8U4AiqQBMpA2Bmo4BtOFQYp561XC8e8WY8nC+tdZZ7w4ZhoM+fMGqDvuuNud+b0fisMQGQHnpVgeuvmHex9Q0bpYDpxy0ol4scYmyWzBSwCaKLdJpXFBcgBzCLNGS4qs2cKCYyPqQ3Ua84qy3PEz5HRiprVUf5a2WGgG6IfymEy1VTZCKlM3cABxd5VqF9UX9G9sQ3kJEEsqSWOx8DecJsqWAerlIv5cXDrkdJUDkQNXQkj4fD9GlCGVuypP2ezQKwa8cqC3DXM2sMP227qvfOlzbu/X7inPNVBc5cNYZwUyon3vZU7Aj34ziFQWM+p2zadbFYcgxo/Le7gSM23rF2PT8vPuzO9+y33i5BPd+PFry/SevLgheM0117t7/3mfGBDrMYOz9rO9dOibb7axO+kjx+M26jFwGDq2vMgtxbKujEhaR8wjVUYSvWU4ScZkI4ivnd8Kr/uSvRXkc70lRIOYbOsEKFsjpNiIBg7AkKld1bCkYtYQQlwqCgBNhGyg8AkW+MAzIt/IUtUiPStFZMsTwsuGjzw8QwyMrGQgMzHAIR1crFrzUQjJ0xHgjKPOwJ814Qh4yXDSxAnuX045yR3x7kOFiO0wHsQP/H0PmsFbXbGmqsEcdUc805HGOoLoBKQMRsqXqXzkw8e47bfdVl66+Yb9X+fejtdf874Lo12E/ZqH8NwGZbNAw9ZZDqXjckC/7LPLLju79+GpTbnC40VRJ5DLZXwsri4tQJk1kPcspjdm2Trm8WNsqQDZrNwUG5u2+RoLV66UyN9OpKRp7VBjb7XDDOVRw6LnmA0YligVCQFLtaRUjhIZyL5AHvBAYwKZMfaxDT7NKhE31v55//2g0b8CyYBng6FKzWhdMvCkM5FXB8BZAdM4cD89W8P9gqPed4Q76aMnyENONjjJIjoBzHTQi2Jiwlu1JfVyuKtaosMIGvBneZ/PdUnJaBfYDYA+18HZfkO8Z8E2ZWn4W+K5ABqR0SlF3lfW9nhPg7aVhn/w2w5wr9htV9kPEBm9HCmHVFehmHUyI20NUEmk+PZS0ggzCYkaZyjM8SGnjXADEDcB5WWggJnsLF8ZA1uTtmhFZWzrALgPVB10ZOkvMEKijJ0VlTIJadKpHFhcX1ojSZYGG3iEMW0HDeh+PK//PF7mQVoUrRQhDsTy4GIZDdputuHmnn5HTm8g4jvnTz/tk269CRPkrKmDMzoBefTYK0pVGBsd6o2gRB8E5gWZXsVQhsm9FdQp7/IbOXIULuWNkDf12LMPnDbzacApkzcIy4KkkmBM7BsuYWi8fOjmWHwueyKuHtCx5WLkcoU2eKaWN8ljm/NlAZ0ig+mrmLZKWf8Lt5qKpQxfDCPiSbwq/Jh9rKisbR2AMaYhmcINprF2lv4CEhI5FnMZfcALCSEIOEjwFV4jeDb0a0XBTCw6HazCnwMRU+oZM2a6p2c9DSNi87xzEO7IeXqLPXhAIh2IsctsIFvlzOtsIN5NSEfAM+5uu77MfeGM0+UNtfzwpA3qMBNgW8USaGTkqEsGpkI9UKAZBeEMqgfVuulEY288wFmM+r/x7f9wfCnHHXfe5b7/gx+5C7H7z1evEZcGxL5af9JEfYeeshP+Kidlioc8q0Gjw30Q7zniXWFDkNLl4ydhJNzKP2UMD1ElSHvZEj1UBiooyIMyzrSm4fVxDILnywVAmPHyscFXltjatyLyNHYAwhy6pf2Ulc5ShfJXUiEhlOGnBBZkFidTdrSIZ5VxOOPISx6Ig6kIL0tJMnADVTDoCHz2uefwoo6HZGPNi0XEiDDIKRtQFMMGoonEvDoBvySQvL57fho+jf15OIGtpm4pTkFplYfMGjhAZZAyJscKJwAohj8LC4H6UWcZC/SyIF+MOhNO9Qtf+po78aR/cT8656fiFFgV9c/NPZ4918az+VwyVAVrp84CIAF40pEd+OY3uF13eZkuBVLC0F0qV1qUpSGEoErbtcRaxzpjSNMRSvkp91ZbbSmOLCOJaKtEqrqFrUXvzAEYL2i82p5iZ4WU9I4RxjgDG7IANcOBtDbWnnzu24xcKuWaBGcPYtFJCAnZMu2F4hrztttuB5A32+ggJcrKFMwgTKZ0sFqZzQZkXwAzAbZr6pabYSbwaXx/7kX+ejptXs9oNhugE+CfvL0YGjLeFrNOWSN75ZneVBYCoy4Jo5bpBHhDEHH15RvgL/omLi4JYnpvX21WPuVfk5NGRvkoJ9/084H3v0eWFzbTC5Qqis96YUOhJuoGPetgsDolrbVmMN6tyLsauXzp5WAhDvVnDEi4CgU2u04nVc1YMQfgObH/vc0VeMeek1TM5nhQMougbYHLr8fl4BqLGQAvN+UDFKjACTepAC84AmHGZUAPXil9O25UWSB8i3IaP4sFaZB+0oFWTNtMgPDoBHpxv/pG7ozTT3UvFifA5UAc6MRVPjQx6lf/vIpjK22UiM7Yjz4BDE3TsAlTRFWt4hBOo+fKzOh4+ZKvYiM2a6wLJp/GemmQHwF50xv31we/qggDOyZCJmBqezUrGL6xqhfdFxBtKED0otrB6+OxAciZ1aq4/g8K6EOikQOoVnustWhgSQmS2mHy24JRqQjemE/P8UssskkUmWrKKpVTvNbCySez3Afgq8Rm4oWivLmGg5UD1aMWOQ16Ph3AaZqCmROIMS4T4qy1ET6NfcanPyXLAc4MdGxjWCMhPLjhxj8WJCaZ8g9pr3wzZtar6egEaNQCE+PXtDkB8nnuuTl4DuNpkZddzu6pC8SnWJSMaS4h3n7wQW6D9SdlfZ3K44eRZ6nMg/zCR4vYZgmsoEHgbIZPLrIulUdlMlKrw2KDry5xeweQLOla9Knog51e3fGk5BDir/+RBDOFkHQcO2cSBgUHmqfMkNlpcpgTsDyw5syb62659TZxBioXT1c88M8j4zT4mXSAMZ3mo/H7/QF8eZZGw1tXP33qKfIZKz6/TtURl7R6mzDNwXihxWITekasbLHoJmpGDZB5hbEHBWZ6lpjO1bl58+bLlQE6X+tp65+qukIbISsd/OaYhu+/396yt1DEVzm8GEG8KFcRP+iOCuGBYMlQL2DLcPafvMH67oUvmAqnirEhqIovRGvAT3sHYEoQq7GuNWB1LKiVRTaQ/JCq60P0Fot4d9xmm26qg074KUF5YEEumY9646YACNded708by+Z8KNlrECb5POhfPAS6eCkFGEg+7Q6Atsk1D0BDl7eMMRHjDmd1YGuRi/0APDPjJ8IaYvTOqTlLEwRmPX6ZDlHgOQBs35gTNn4tl6+xIXOR5ZlwifiCX3Cy8SiDDTA1++3L+45GA+HUBCAhGlAsbQJMJCGoO1UAHmyTNvHtOpAYQqnE522zUtkliltEBqPG7iu3onmDsD0wA5k5yPfspsUzaiSOFKGVA0jjgPenWVnNe1MsgqU2SCkXJznc3+Alw/vuOtuNxMf9eCOczpYZRj7WYU0J5FuZUjGdtoAVqkIr3ICL9t5J3zP7nhs0unLOImXHuASDIachL/YiSpe8knDqSvrXEmjzGKisfcVR2Omeea/G687O+fc/5PNQrInXPwy+fl8GlMuCzTGLXErLg2S+wlBAENI4qK8fLDIAsvSg/CA78sUV53WLi/fWcYHNZThpnRKsFr+tnUAVG1Ub6IDP0hqyz2qoFUzCJyluMAIfQVbXuY23nhjvRRYIYUuDaJMHHA2MAl9Zvaz7gZ8MXYEBiediZRFdJ+SApTVtLOEPzCAMGhRXTHNvG4K8lLhcEybF7u999rTHfmew/2NQkpjjhMM1AVQqakekacxZzDfPNWjZkxvFhNf/nznEs5pPK8SnPvTX+Ay4f+JQ2B1LFM0xnYQTt7y42vU17pP4r0E4KV15eUB0SfEaAMKEmrDmb4CjbTdcmg3BsQG668nG4B89RlpUz0bJuM6eIqzqqbbOgBrWNCzASQGVHpXu7IaRwl0EGTEPkMqDicbDjpY2SMcCPxW/Lp4Ao3pqqAbfDZgFEMGF37Y51dc+Ve5hZUVWB2MGXSQWawIvjmKMMi/6cBL02bYbJ9dHeAZ9J2HHCzT6MW4L59lpOFBHALkjwXQRMpP9EFwIYh+vNJyXSkPmL3oUK/ImFYdngz8gfvWt/9T7lXQWYm+wMTGgLL0v9JZw+SBopmPPuZuueV2cSQmitVr+VRuwnxz9LKmzxOmR2yz5bUA33nBxun2eOiKLwGl/EE3wtBqW/3jxg6AqvBjoUIrKJGObIWjZDYIikxSvbMeBnbMBNz+OgX3aasDsBItz395dvEDEpWwHp7577rrLrk1WDanwI8DSo6c2OfIHwf/mVwJQjrg07QuBZKHgqBAwo4/9oNuO+xq8wk+G/SkE1rG+NOgTiDlKQ2XXo4NDwYoOlGlKIx8OIOAzoMjwB4EoNT1T/7vl/im3xny2S7ezDUSswPKY3UIHmYvdp/H1XiakO8VeBTfVGA7YmCd5c7I5Sa2ts3ap3XREQDCjMWCCceJ5dLuu+8q9y8oDnmQy5oVmr0RyPrAa8e6o6Qssxoomzil8kS3ggoEKj8MMt/R7C8G4vCx0RdstZW7lTv6HEQ0ci0Ov5Ge/LSUzoD3nXN3+s9/uQJfCt5Gds7F2/OMiGBvvGGOPGSgaIn+egSTR4CD8JPqqJhWY8HsCG8J4k0tfKMNHx76xCdPw6W552R9S5GtbdRpysPKRIehL/SMaE0NugGtpKE/wU/58iUi7HHfOXxhyN/+9nd3++13uL3wWPNer3m12woblnywiDLzq8+PPfq4uwFfUbriyqvkFmOelbmMsGB1aD7tH4VYv4jRo2prI+FMs1817fOE4eBmKa+gbIdXnPHFK4Lry6zuyItcVt8Qtd2kjb5zzbIL2chBrJsGpsqrVSEHFKh4FHE8qfTgNltv7S4YdpHwJ0+6Fx0cRSrw8nUTmWkOqCuu/Bumx++AcawrMMEhH6kfP7VyUjLyQT36L/nB+OGAtLZZ2gapOQFsxYmTe/GLXiBvFvrK175J4SE6B75vC9vh20N+xsvaZHlomE1G0F/DJUSm/OTjZVI5PJ70JrGcvN9wLhzweedf6C68+Lfy2jA+/MM+mTt3ntw3sACf9OY+Bj/ZTgdPKcnJ2ko+DFoHU2VHgEIpJ44c5MBuhaMSOi+r8EEZl0u77/ZyzC7XxUta8aITwIyWOGtSSOdale2mX9ehkxQTkAAL2YhIY8RRW26Yima5EHPQ8qaXF73ohfJcgBWQn4bImQPGjlAKGNe/M2bMcFddfbX/SIWRei6RRQs5gcR/jYz9gMcymAu12sBlrE8R8s3DS91+r9vbHXTgm8M9+ykeRjuHvFoa+FlZgbXvYipIQ6Zf6gJLKgaDM46BZqzLktGYxXFZwE+H8cvK/Mw6r87wjM8lAPcJUuXzEmJdoKwMPtJ2SN6MOLbHt9K3T2k4Gnnv/6te+Qq59Gh6ML7CfA36aesAtGey/onqKfQTswWQ4nrLqS33HAVNGGhncgDxZo1N8apmPq9Nz10d8lrTAck0B8sll1zqFuAddsQMtw6HegHlvw3oykpI6fE0qsTqb6ANVItZH9OcBciGIJY98ngw2s13CfBNvnyaUM5yNBfavdqQNx62S4PxtJhQbXXEERg7ygfqzPRtZZpP92OIo3LSEXAGwNjwlZWviX2g/1I3y1J5Yt7PUKQ9Nl4iLg1b6NBY/gkdYl5i3BEfLeEDVRxbqg+vEMFKeJiiPHx1jBo4AGu27yBkmQpBwSHLRFYeSgDlKND/DMc62GIjof7Ja23cHDJtm2niAIhjHWt4GnOQxUFnZaySH6y8C/cE3PiPG+VrPDZgJTZEi1lhhYxWrBIpgm9OLBrgVKov04sNaDaDV09OOP4YnPHw+i7ZE1FjEIOg4fBPBnl5Wp3yZrN45tS2M4cUGs9DMz7yMCtjfxhNhCldoFXShF+Bpy9nVJTJYNpmlitOUReS906AG8P77r2nOiAQRNzcCSTVrtbJ9g4g73coQzuoEuz7jhorlQc1osQPnHocIrNDcBAJHfWyl+4kZzZfPRFCSAeTDbp0wBGR080LLrhQzoZaxs1EMveymkzFQe3LBTH78dIjMpKsuB8zqSGkaZ0FxJkAr2/zUtd75PVb+a3C4gQgYzrszRjqRNcWq84MJ+jZn7kNbrHp2vJpHGhLCoy6pZxpjdpenv0hOS0eweQ2XbBM0t7ADacXY+BFL3yBfK3Ibp02WmHkeVl6TYjbOwBoQTrA94kqJWZiyqurAChko07Z6b7jiVMX2MfsrG23neYmTpwoZ4psRHhCDiYLxYHFPKedN2AGcNNNN0u6NHUFceRgTCOQZaVyQdOSpDmeuH8jG+yspZi2Qc07IJfimfu3veUAt8fuu5UeHzY6taPYughP3UNsT3E2YCWi92RJkPZDOjszuNHVxd6+VfEh47GRD+2UtPoDoincYu8MQMY+ev1++8hr18kldRSea4hMBwGwmiYaOQC2PQyPkDCoAvhbU0REKcvKBcoCQHEU6a1z2U16Q9AUXMp7SVwG8AwghzEiG61BY6bzJQG/bvurX50nswGpVs5arFtrl4EpIimfwFmLJZskQ7EmjIe2tVDYL9mqQUpY3A/Qwc/r8PzewPrrrw/9cd2rOEoPHFwVUFPXslTYqjpY7lubosZ0rZJqCyJtKaV7OFIh5Na+UmkpW3qQlC0BGAktExjS/Gwc3/q7B679cy+JdNwzEXoiraGhsQOgfkL3hYRpLQKYykIsEnAhG1DlKpUZMKDE087VTuVrm/fYfXcxculgM34gstOLwR5GsSUBHzAhj+uuvwG3B/8DVwT0dVbiLML0VaXjb+VOtBZLVUmyUDVK+K9Roaz/stSVBdWbH9yA0+i3whtvjsJnvqkPohqOXEIEQP/IIZYbv6pYnCUayb2F9Oye4VJJlaG2IGCn7SFQmof6xFlRXm2Eb4eS6XcIrN1KY3zYn29+0/54v8R46Rtrfzp0DNfiIMxqnOjIAZge2H3ShSGRl5TALBYCw9NsBorjN+CyXDtK1/Avf/nLHO8V5+DjJULpKBkZkb8YNKuRwYnzBWKFqVR8DdVP/+9n8rFK2r06Cj2vqOEqHoWwFNllISlgshw8AiJUX2x6Gb0PkHSwFtMyE6CxYCnAKwFv2H8/9xrckPP88y3uEpQG4cc7CYqW8q0SlSReg0HfpndZakHRIe/7Q52GztCqeBqMdWv9Wot2twgncCu3mG0O1//BhPi69t/KvfpVuzvuiyiu1gDuVtUaGa+QAzBNaZcgFxJ5SQ3YkCQmTjkASsthkB7nMoDfbt/I7Ywn3+ylmCXT8hWqwYOWgw1RMHLkuRfAfQDeHTgKd6uRr5BZfciEy4Gyi621EKcUhLBFuSmGPHmUGHQHoAaS8zKDkFdyi73o57s/ePSR8gFMWwoEPK9n4QVB9b4hP/0G66o68hrZPrawppU14Cp8q8tiq8eMlaIyLX/IkLWlkfAGDgjKaN6MD37rAXI1hMgCZxkOC5a22OCre9zWAdAGzDbqlMEOkP4NCcMUqJRpysMLeCHrO8Q6QTqPJNqLcibbZ++9cQlHxSae9aHRSA1gaE7AzjziBFCoSwLnfvKTn7rZz+BT4lgH2oag4RgPCq74lFDbqCnJxh8PZFRZbhpAYTtdRqadpaz9FpNa9eMNAYqis9t8s03l0+TUC3WX4hAgf6JUlIviq+VI60kxtP3VWjA1pPiaJr7SGN88VlkERhnloOxKzam/yB7KDGeYnCxeuvMO+Az7LrL3Q1pMEjwPz6As0BoDaesAuCZkkDNYTb+atkJx7E9S+iNNeYpYZCz8MAhZSYj9I8U73DgDmIp3uNtGTkAoUhpvCG5OQGIQ8CYUvuf+vF/9WmYENkMQXvgRUrNU49OqHSQMeFnSWPpYkZroskDYUdaMh0Q64P2lQS4FoMP9XreP4+PDLZcCUqM3PEubxUleeftkFvlWAsZURUjAqaxFTC2rMn4zcLF7cVTqBKJMQot6+FWjd+EpSX7PAKXe8LFMSNpiaYuLcqzO+QYOwJqvvdZu8BIr9G9IkEcsiSnPuwBIydgp1jE04PG4uYWzALsrMJQLnudnbEVYrVqqQJ48aPBcCvzqvF+7u/Cee6ZTJ0Fyw5d0wqfYDpZnIWlLksxQjIexLRSucNb0RAY2vk0/GosJyFWCo9//PiyppgRHmuKROOWlVHTDMMYOTppsv7ZVEvlPhXKUd00dXiaTUx5xBsfQLshlHx1RIXn2XyKX/fjST1v7h53/ThqSS75a5TpwAGx37DUZvNrDlQoJmCFhaBFQIgcAQ08R0UGGGToZZbyhZ5+998LLHNYXo80HKkmNStnQsIHIjYBg5FIC/nPmznXfP/uH/n0BcSkgNAkn4UgeDJKJiZCVwuQnKUiSCYLngUIRsVAipSgwx1RRXAmK+oiWSphsjiFmmksBvgr7/Ue9jwoXeyHcDjJmPzDPBkvkYWy/5QUvzRBQCNr2ag0IfxYhaF2a1jx/k7M/ciafVSltMjmtHcTDH7+vuMUWm+ETZAdJe+2jqlKPMfA8EZXqJ2xNCG0dQLyZM1VH7FAZvL4TUwxLB8yQyEtKYBYX+DGrnQ877sVm4MYbude+9jXi4eOg0BEgHSxVFJnAmLwTsJeL8Mx/7XXXyUyAlwVlQ7BgjZkzYJmFkGQCvOXXCpM4KQgkSbE2FiX458zEliNWr6GaI7DY4K3iqAtgYdDLVQHseTDm2fF1++7l9ttnb7yOW18gYk6CMfFzJ0Bn4A0FsmpOW5TVI1jlH8XU31Ipwb7I+pMA1iG2SlmqDmCYzCaDxXyf5BGHv8tNnIRPj0GvaDZwPR8vgOGW5FmDAG0dAHVRsIlEPbHnxDZq+ld4kE+WMDbKI3Ly8ISXdL4flBwRNNQDDnizvCyEBiHlMlKUNnas5y3CoQyxOQEzMD6Ces6Pz8V3BG6VewPIW4wQsQXDJUTKQgESAU0T/A0gw2PsC6rK1aj9bisQKC7xWgWl0RlCES+23xsQENSYUkPSdTCXAltstpmcMalC06XwoNHxT3Srek7rYplJmtaZ4qRpbbv+Jt3l+VNG8iuHXC4tz+XM5ebLUPZ73V668bekV24hz/ALVTSRvUCy2mQbOQBprR+U1QMz6dpqhKAwxUQ2JKxICeXXjw4ZEAmediLuCZAbW6a6vffey9/eqoNUOjIdWcYalZkRCwg8zRHwEdq5WAr827e/g8dVcVUA+cwJqFg5vRc/Ye/tIAobUwFLE8bP88jkIkxurFFHZTOS1NgtnXKtgsXyaFRsm54xYTA4G9KZbbjhFPehD75fNkZZN9Wnh+qUmcihwtlKqTZK9B8rrk15FVSWa5/z7B/rJ2JRrljOMpWQMZeIL3jBVu7wQw+RPrN7AlhmeMovtqpSkDUE2NwBUCF+VPuoQkVaImewVr3sWQmDjFnMxJRWYx1uHcnXSL/loIPkJRNmRFYmg9YPiigknYCeZc1gzAnw+wN33nm3O/Os74lkwJTBI2d7Ox1DIKsnxIIdazD9BEX5crYlC75xIgcKJIt6jG9GL/UqJOUhtJQtCQaLfLQwHfjUDZ2AvDsAl8+4FNjz1a90bz3oQL+kUoPSCZcZjcWRX8ZTG4DC8iwhES9LCom0PAOXMtanGrM4OqG8TPdw+JHSD33gfRgXE4Q728mpvy0VihVk7SgWrgH5zhyAKUR7TxScD8EUAV2FwsIYNQSJPRuFZYzYyR4VCSsSJyDnBn7TfbmbittbX//6/TELwCepgGeHVVLVuXVOgN+o+y3eGfBLXBrUG4T8La6oPUz7E4FTI0vAsS0idCyRrAmGWOh9sRguYb6ccvNeB93pVsdlziqtl+hC20rJnqdFVKvpietibo5xT+S97zlcHrhaCoeg5VwisFwI4hk5Sil45Bv0LA1o7wQCvhDzp0zDvgZnFkb+Pu1FkrL0hyeFd2PdvwOegOQDZLw0aG1N67S0xSmPNS3dyAHYwCwpxwZwqYAAX8gUkq3GaMAMCWMYAUyhN2OHYnDwbraDD36bfCvP7guwDiduXVAnEB8UEuPCmp9nibN/8EN3xRVXulFwCDYFt7ZQBjoDs4GSMaJc5LSKmRGAJkLWyi22AsS8bZef457+8Az3KN6awzM0Zyh0BrI0sT2KgkLbOYJ0sDMtswDUxTSrXweXVz/y4WNxmXUd1GMPy2i5OCLqnn+i1+igja/F1l5Bs/a1ibX5xjN3BqyTwfhbrEClIYwPeu2792vcm9+4n97w49tWPPNn9MJkzf5p5AA4im2MVqoLhfXlsaRTRxA7P6mVA1EOGCM8/pQpU9w73vEOGbTE4sDTckmEgZNwiElbb0MwGhDrW4z75L/29W+6O26/M5kJ2PScbfEbgb5ZRSfA8thi5hCUzCeSGQUhiSFT7scee9x9/JRPuaM+cIw76oPHu+M+/FEsTc529957nzgB+cYBHJ86g/K99K0cAXVjwXQk02OcKXnG3A6PXL///e/zM55oXKZv2iJ1xDwbpXGFcXoFpPWl9Vq6GKuagrIif6k1YpvsVj+Nn7IffdR7hIazGpv6G26k1pTRFuFrWr69A/CdaaM4ZIua8gW15YlZyJgnYk3IeAQ8hcqg4g8OnMfkeffX77+/23HHHTGI+UWZ6ACkk4knRHllwfDECcTZAO8SnD1rtjvj819wDzz4EG4S4uXBWB70QKdBlvix6Xleg2IWxPcoCuWvlVMeGjeXIFdddbVbtHARNifnyNeNfvjf/+uOPf4j7tOf+by76ZZbZMOOZ7Z2M4KiPDTfNJhxSAx+nG0c9OY3ykNDNCriZziid+WiOm3hBFgRGickvlqliRJY3mJPAjISRryQShXmgdz023DDye7EE46RNw4Thfx0eZP3fVpP4LmGJ9o7AFOQKD/2QEwZgo99QW25DHk1nuTkV2CiWfKQEYQEzd2CDirk8U+ccfiM+FFHHikveiBnG3Rph6dp4xOdAKj8bIDGzin3Iw8/4s444/P4wvCjMLgRFU6ANMnZHIIEflaBj6UdBmNGAFonwXKvBXjxNt2HHpoudyYKOp7Tp6GPwoszF2Fm8oc/XuZOPPHj7ozP/au8XJNyCr2fEUj9QamY2iNdJxPpxFDAX2cBzOtwOAZXBbbZZmv54hCVSbz0EJjQk0t7J8D2sk86CaqzyJu0oQ+1UJaA3PQ7EUuXLTbHpUwu43j2h/VzKRXwU9pCmnzX5NDWAXhdRx0RIIPMuigWZSnB07Fe4iGIikBWYcxmDGIm0CuJdCz61w8q3PIJw+EM4MADD3RLF/NT2TZg/aDxoy8dEMY9GIgYi57p6QT4Eo177vmnO/30z7rHH38CTqA4EyAHawMMjTn8cDYgGavAx4qZFBmAyHA+utE4TJwP+YT9B8FT/nQESyDbJZf+3h13/InurO+dLZcwR+KV2nRglDtcuQhCREcQ2prIFnWlOmN1fF32xz92opuENzDxjjoq2gzK8BMWSEZDNR1bHPDIWGSSRAC3SkjTQztAnQwU6pndeuwxH5DXxXEM2N1+4gD8GCjyL8lVRFjD8m0dAPWhHVHQTNKhleWG7gvrcYSRGo8mjTLE7DQpYo8zSIaenoca+VJsXB166KHyARC+BouBdCSRTve0VQMgDKzgBNSYeDXgTnxZ6LTTTnczZs7Ae+tHylnHjDPQQSDZWGSMetONQhGk8JM1kxkBcBPS4e3HG0kdJCF/HrIEoXHjWXbmR2KDcv78+e6/sDTgHsHlf77C9WD5wLaJE8g2Csm87vSrcNKpLjl17kH9vW6brV+MTcHjZLmhbRNFqi4pHGjkT1hoi4q6Lealnb6tZNE0UKuqWaWgDpZguXfEYYe61+39Wlm66Jnf7varPvuX5GkqwGqM18gBWPvZd9rVHhIAmghZI0hjX8ioHCIl+haDvIxhkIjJYU0D56HGwp3sY445Rr8h4HlwYLOch/4wklFrLCXmoPIJb3icDehMgE7gU586zT1w//342AWvDqiDIE2gA7GmlY+ciStmA4aftoNa5RmNjoWvPRs+PJ61xfh9PVKfOQK0nbLc/8CD7rRPf87965e+6p588il56o1y83PpVbMBbaT9UgrTYRLjNlruB+yDXfX3vPswfGaMlwb9WR66U52rUpHz+tSbxkOZr6KYFzCq1R5QXZk0VXHQl6CqI3ge+xNve8uB+NjL23BTGD7sAXmHbvip0l57WDMHUOgnZjNQACg0ZKvqR2F9eSyhPfKwYEZrscA5GJM/bgjtsNP27rDDDpOBwTJWZoOwcydAA6cTGOnuu+8Bdwp252/Gy0S4PIB9icGKUSaCal6NgeKrESLBTNIekb8A5sxlu2nT8O6+STL1Nt6MzemYQ+ClOqbp4NjMCy/8LWYDH3N//NNlctYmUJyAdyzkoQKo6Vn9FpuOwn4A+FKf7z7snXiV1hvc84v4vIA3dioySUsfiHKtDtW58WZstBZLGdBNGsLrgsqu0i/CJ8XomMLrzXS3L9v1r+LTin8V/poCa+8AdCzXDt5MUdL/cRDEVIalvFBYW56UhHGbsMg6kwMRg1XubONVAQzag9/+Nvfa18SpoQ1QHXxg5MdaxsfzN6Oj90kNb9SoEe6xxx93/4KZwB/+8Eddq4Mm7MTD0ETWhI+1UPh4flVOQARCO2jQkydPxj3su8kTinIm59kchzBnBeQDvCibzhy4LODXdj7z2S+4r3z1m7it+Vn/bIPSywyDtPJHIakEVQT7gUH1o0auOtNlFr8t8IrddoUTWESsgEcnkAbVp67NCTd+KU512kaCSQIstrUQnsdXj3fBa+FOPOFYbJTirI9yu+SndVfJU2AylM000NYB0P5DKPdJYqoBy49761SfTYpD0qNEzFDiE1oiv/jRTs5xwiDjYOQ/ds75lN+xxx7jpk6dqjMBOgn+MfbH/7f3JVCfFdWdj953mlVskbC1MrIIiguKEbdkTuYcHTMxmhnHcTYn55DjYFwSHXP0TJTEM5EZM9FEjBM8mrhrInPGE/cjCiICAo1shq0bbKC7WaWXr5f5/e5Sdate1ff9m+6Gbrrr+/6v7vK7t27Vq6q3v0csU8sn5Rxg0gk5aPDj4OTdeXxu4I8/cP5w0UWfkoqxA8ZzAmJHB0iklWcNBK7jX1yrTBS24Cf7+JLNV+NBp8WLF0uZKQa+4Tj+2aSwQ/YEsDeAKwGcCOmV3+L7vbf+/nD55VfI3ovEz4mEEwcmKoLoS5fMNTZvGz8fQJ7aRYsWDn/wzrcNz3zmM/Srw954NCSGbWoybU+dBCCW5H6Va8g0FCg0Fsfl9htkQlx54onDO99+nhzicfWwbPkL5bgtc217lUQ6YvZ3Wr/PhKa0hmAe6e3veNcf/hbuijuFZ1mZXJkJEadF0ieJG6mmqXesKfuYrNGOpoaRZh9iR1+Kr9CecMKJw6X4JuAWbDkKTHYDB3Zs6zFUeWEHHXeR2Zl+fMUV8s3BZ59+2rB0yVI5cVZ2YHTNUTnqXDovyKiWDorYeXfjkUccjs9krx1WXbdKJjMZ+GLEXs+fJXPgfghhvLxsuX7DBrz38PuyR3QqPhcujzvLCzHNVtyUMdJPXV8OME5+bM/Tn33acAXeqHz//Q8MfNw2VoDuPA71oRK2gbcD5f6zKCSLZQpNHL0ZnuXz/QXv+6N341FwfCoebZQmKV7ywyRcl+H+o2/Kat5xT7ac7YO94VUf/OAHv4y6dTf0XcW4QaTHSPcTigsVFdCmOBg09e7BlH0MNRyAKBo/6SRmqx0CHUGOCfXVV6eeesrwe+eeK2fIxdI7oFiy43jv7E8CacuBAkmzM7LivPT2j//4jeG8894+XHXVVXJeQGNTnGDFxivHmFXnDceY+KvbkWW8EWe4n/KUI+Vst9rR3n+5DNHBgR4m8OSknxvAiTycLPv4hZ8c3vWH7x3uxH0N8+bNh16xfnjhVyx88Hq0aYCxzTDYeWXg2GOPGd733ncjriNkYmH7pz/g9GvQ6kkHWqqhDFDKWj8tU1rCyGxHASdFXh057NBDhrnYu2Pbe7yeq+F4yfaJqeajbn+kJ9oDwBdcT/G77LSRbCXHFuusiZE4CRo+oj/SgCR40KEfTZD0rTDHH388tqJzZZCyU7updFD2jSTIZM+5Q13PQ41169bJG4Y5Op/1rJPkLDw77GhUo6BW3Kl/gpBuj5yHAYews+NGnx/84Id2oq8u3aPQSUE4QAoUtozcG7gDNxdd8sNLhyMxoZx4wgkyCXh8jscUKMbOu3eNGZHxUAeTACelk056Jl6kcgUOhx7R2Aysgz5ZpkHvZeXcMWXu9pxU1Fgz3p25evVdw2U4pOF9CYsXL8Gn3pcPCxbMFwfacnXktC1lM/FlNPs2N+kewGOcALxxtIGLZi4Yx2FlZFIpEWRppiqgKWp96pjwLIMIAK7gvJJ1dHOLePLJJw+bcBZ71apVwywMWvclWJsE3I66qt8UATmOQm5NeF6Ah0eXX/5juWfghBOOl+cTuBWnnr4kPjFQV+7Dt0bMGQaTYLHYhnvzjz/uODnU4OU9rlDRy1IX7sc4yehJ6geH7nUOJoGHH3kEDzldgi8kP4qbpk6ViYoxejtmm7yu3H9uD0yqaM8V+FLzPzvpJMR25fDIIw+jDbwb6TqQQJKRTnz0pT9t38y7XCJA7JozMCkfLF2xjPvvf3C47Ec/Hr79ne8OV//0p8Ojj27E5+KWD8sPPhjtM9v2zrQ1fCk+nEE+Ex+g+zS5WycA7DqewuvCaZ2OmsZXXlDYegwSX7VRhDVCNoMzVcIc0tJLXD6CDJhXtB6z807B++/fMNyEb9PLS0DNPXGp04VQ+nVVwxgH6dk4K33nnXcO3/nO92QL/sxnrMQWaqHsOtMiD3a110lBg046BcokQNnCRQuG2269bbjmmmuLQVaviFxXOrDIkOUY9UlHlnnVlVcPN95083AKHpk9FHsZnGg88Vq/JrVkG2g7ZE9sK04CT8Nr2U7FAzg/uerq4cEHH0R8c8RU2lLszIbtyx+0XOa/mleNFKiFqh1p8aeTANcdr/2vXnM3JoPL5TzHbbffib2CRcMRRx4+zJfDHJ18rTIal/l0WWyzSLt+X893+wTghwCyWmVRN1EWJioRJbYpFmHWZKq0ZWdgYhZXXFy/Uc5N6w50bF4mfO5zz5Rd9ptvvlkmAelsGBUF3p2LfzLTpxgnt1J81faP0DGvwsDgLvfReA8/O61fKaA32eKjXB9uKpMllTpZQDlbzjN8E08C3qLxmq3MEIQjxdgjrUq2ExtA/kXEV6DdgQHzgx9cOjwNJ9aOP/5YOcYWpTVunAgYo9cxt7EeXvFtQs8544zhWuxZ3XfffRKjxyDDmedjmGjoxk5LHnQmp338qbnKGIjCeKJzthwicc/uphtvlongmmuuQ9PopdSlOExgO+s5G3qhrddkzNc6Rey7yz02AXiTSFOW7WmqLExUItxa86ZYhKpp6t0FlNTHFafr17qsr2zicH2Nk8Ac7K6feeaZcsfcLbfYoDJcXZb4TWV4of3c7emOhwV8rPfb3/6O7HHwWJ6fNFuCS3vcVUW/lM4pA9NpOrDBz5W3YMECPBV46fB//uZTRScuIvBCIfR28FxxNskAl6EYPJgEHnrooeF7uEpA/GmnnWK70Gw7JkdbW7rMxJJhwXMCrBfvEfg57pJcs+auMAnoFp3+5cQsvZLGT+7ZQM7ELMl5jsYwda5Ynwh00hZfsOEES5r3afzg0stw5efy4RHcKv0U3FOxfPlyKcf3sojz1KNdvy/ne3wC8MaR5sxt6mLkKixUBZOhI3ESKJHYbKKUK8JKdQhVuoJlG0hOBh1vIDnzzOcNG3CZjJNAcfxqNrFj+FhgEY1ivLgipz0nAW6N+AGS72Ai+D5eMnLHHXfKIQFPXi3AByt4hyHjYQzEc3Jguufee4fPf/4Lw//6yP/Gce6jRYxFQc5YYDHuSMv2HxhpLk4ysGMH4daR9wqswQm203EH5RLcSi3fW/B5ADivMyctSe6HDGji+cHNs1/8omH9+vVo059LvLxcyjZnHPInl+ucp6nRnZzxtTC+LxN1fA6AvLQj2vOhhx6WQ5NLLvnhcC/2TA477DCZqIjhRMDcU492/b6aTzoBeEvEPNJbf3HfA5/Fde43bMTJo+mSGLllAVRhoSqYDB6Jk0CJxGYTpVxhvdRneypJ8+e74ByUHAlb8bbYCy+8cLj44otlC0Ks7C4GH24rfnxzLT4p2bnED1PwVl9urQ7FVpOHBk8/+mi582/JEt70swOT0v2YJG4fbrjhxuGee+6VXVyuyFgfllrz0omlDXRQeWRl57ZB55eEbeCxMfjs/zNXnohHjc8dXvCC58nty9y6y8D1tjWnO7g3xTaVaQRLTCK6m62TwWf+7nPDZ/72c4KJk6vH5PMI+cq1QwpNrENr8FPvTwH68wB05O3GE7QHL12GvZQz5bbmo3HYw3jdr+e0iTT5fTmxn+G26c8tXLjwd1APnqDxpmeeaF8HMY/01l/c+8Bnl3AC2PToNCssN1WYXLNQKHXrzoOowBV614gwazLlAM21U2rHioNEOmw9CcCE8s985jPY2n7eVr51bnZw/FiO20ru7QYdk2VC+8JjcL7M6V8nGm45+Q47rgv69sSOyxeDMGcKKuMzVgRYFB03DWzVRp2vGxkwrJ0IMICwdebktADPOPzGb/w6nqV4/XDsccfK4Oabgur29jryrkJvHw4q0jy84Fn6j37sr+SsPfdyLBLJUvTSuLquDIAsaUETYCBSFnzMScuf7V2wPiILud64hTsJcRvzabgv5PwPvE8Or9wPXI98U7avp0knAL9+4+vYW531J739He9812/xKgBfFikiSB1MUC/Z+qrU2TJTgBSMmjREhlNNS8/OkFIIwFe2itjJMBCts52Bk1gH4zISz7TzOYK41RJk8EPfUoYVQ5X79nKLGFyIPA9k7aS62z8bg30O7tLDDwOHPykfjnNNNF53VZdH+XSyWqcx6+TG2khBKILl8qagVatuwLmL7w6/uPsX8p5AHuPPxyEL/chg90EqFWJsnjRiTmwrV54wnHH6s4fbbr8d71JYK/UqDglYv+qn5wXoS3Wc/xSTDwU4KVLGXHb7DUsZFLxVIdgHOyg4Ea3DYd8ZuHOTX5lu7QWIH7p4EiS20SR3Ak4wAfyBTgD2ui1tG+04usr7rSX6JigLE5WI0t9InARKJNbMZOh4v2THcLnRupI5ADgJ8ETWdjyC+6zh2GOPHa7Dx0H4nD0HA3GxQ8QTVzAtdBHH4iQGK7eX5QnBEBYqB1k7lXXx+OqyaZtkVR1UZ96pExLlCU7tuAXnlYzrrrseTxZ+d/gJrvXft249IfLGpQV4KQlParKN4oAU3xyY2BpzcPEE3Et/9WyZNG6/4w650uD4GLvvtouMLWcxey7tLlt4G/w83jec+/P4NQb6yIOffuiDiXHxQSt+IZntTB1TnYtwH19MOgHoxdudriw6DY8FaYc21GYcOxE9+5fhMkI0YpyoRGQUqZE4CZQI27JkyBUqA0kgjFOxvqLZOOwM7Eo7sNWYmtoynHXWWXI8/ud//hEcg98gt/byeJc4SdZh3Lf4Z8Xwk85krSByEedy1UG9ZEyh5TRE6YzuQyzYSWVSMEC0qV3So3VqUdEu8iO8x8BdeVUSzvbh24e4Nb/m2lXDVVdfK3fd8RbgY/C9PQ4gnr/gY8s8y447RXGL7lxsgXXgcU9qy9RmOc/yguediScTH5SbkHTKsYEn9QoBsSmkqr5GLR5mqQ4KEtZkSSUwmRoETjnbQstUX3x1nDxLgHWq6y9qbT1Gh2r2pF5ONAF41ytbwqRyiU01XD2tJEgsRF+A3DMHi+mzqHA1EieBWibWrHygkuVq5iQgGKxgbFCQdBIQCh2Xk8Bxxx0/8D2An/zkJ4ZvfetbGAh6dj6fQIQHmwhopw6R0x9+9UTg3Ysle7/KAw0xOSMO6BAJRcTYRWbGRdNFGwGNFzIZeBkeQAGLHtk65JnrIOWWdC7aBht8kfHVaHzk+NJLL5fdbe4J8HwFBz/vz2d70YaTJicPTgQ8z8EJhXsMPBHKS6G8hZhF8ZDH24gleJW0HUWiiyJ2WMSwaQaB/2hAn/pHneo3ynsEzpGJi3HInoV6T0tpr8TtH8REEwCbgt2CqWp7SKARJTq0KccYMVUYsKIvQOrd535RqWhUIMVj0+w0mnGF+iBjhxAaxiyHHYMdkzLZGwC9bftWeertrW89D8exz8AJwk/L4798loC4+GMM7l98a+0kOI65cYwst5wIvMP5GNVWwlLs4aFwQrnWjmKvp4JMzkr1EmyL6/Hu3GwYSzanPy1F2oocZk1GaQVyAAAo9klEQVTs4OugFSz0/ActJzQxqNwBJwEm+uPA55UXno1/1Stfgbf4/CvcxnstXmP2PVwivY1nqtMEweN6GtEOBBe2zPGIkHIFFbnWweyohxknIbb7i1/0wuHf/dt/LeuQCLd3f/trPvME4M+12DpgxqTNrLQuoRGlTgRjfcYKDAtbh1mhDrBUa1kKGJDgsCGysumU7hCDeeWKloFPaaC5CZM73mwLxctZ1HMyYFyvfvVrZBK48MK/kkMCbu3YseMkQDqFxaLpX0oWBlgNImIsLIBVSQzL8+Q2whMSdA6sxSXIPWkefbsrTliSTMm4+WNyWlmNUScOtlfU04v+YV6gwr0WvjgA2XZveuO/GV772tfgMeKDhqNx+PCqV758uPXW24af4uTrz3DZc/XqNbil+CF57p8PQ6U4MDFza829No9R45QlF5K43nzdMBKWyUeYjznmmOGcc14yvPQlZ+NQRb8ArSck3XL/zq0n5HWH5oiyrb9Yu+Gzi5cuK+8DcEQAj5uRayw7G+uzRDtb5pXKhSQqESW2KRaharhk5/AUacYoHSd0IPLsULy/nburX/riF4aL/+/F0jm520pXYgNCfHluBcgkQJmUq0LBkaSxZCGeNF2JChCNWzlbmij5gdhRcWBEG9GHxk1DlDL8fJDRpqazzHWcAPBzLCgp1/3TJUapuBbjQT7ZtuKpK4bf/c//cXj+88/EYRbfKYFJUwOTvYPZGODcO3gAzxPwoae199yDLyKtlRt4eGPRQ3gBC0/M8sGfbcD5QGfZvHmK62jRwkUy2Hk+gk8r8mGlY/DF46fi3QGHH87nA+ZhL0XfFs29Pqkrc6sLw2WS+ii5zy/ZT3fLfQB3YQJYWk8A0lplG8k6LUXGsWfIf1PrQrFvOsnCRCXCrTUfiZPACBt8bhUHE4creXlrDnP8eFmMlrNmzcFlwmuGT3/6U/iI6M/SbjDUaqNEpq0A+mSiWnPnk0AVWMZYXGgoZzVPdcriLIpUpgVpA9U7ueSQpRwg1xFPmiaaK05obO5lIjB/ESvrGZMAz5nwKcwXn/VCfK3nzfIFYnmYTAadOIVZbgNSKAHtzJ/sTqA9tmP3fZu8nJTH73wdGG9YYk7/xM6bO08+4cYBzhN8emel3hbMdcfJgsUwbuIZt+ZaH4+dORNxT5Y06QQw8yEAWoQrSFdSaB4KmKzNKlZ1soSGJwoN22ti0WMh+gIkGimIlKiySErwxUicBEb4CrYRyRXuA48dUJyzA8qAxh4A4mZH2rZtCo/QnjaceOIf4538/2/4h7//qtxKrIcF9GF+gD3IfLtfxsZiybMDsiUT3uJRnVXa7MWOC62xUNGnCGwx7rjmi9Ze50C7rM7pjjKaaB4Him8xqSMSCQTGlUSohwn8tNqUPKL7hjf89vDPf/1VmCz15J88LSjYZEwHasw2kXbhyz/46nM61z0FDmq+hFXL1Nio9cQ2cTxlnDTELQz4NwtvWI51UVrXA2lPkXbZ/pBPNAFwZUjHZcsi5WYTschcSGShF60NQA4UU44x6sbWvfooQOpDt8mp3xRlK6PRkk7mVrwed0OKFS+DjhijFa+dBUeTZJGwpeESkwK3aLyH/7fxHcIXvuCFw1e+8qXh+9//vpzE4myrfuCbHRI2nAh8wFLCWNQryyCMEk2OIxdpU9OlJJYhVmbqUTou6RWdbKK+SVNI3/ArPoRmWRTwnzr9ib2VL+dQOKlBx4FLzNlnnyVvMzr22F+Rtxlxa803CtFEfWie64l1ISXQM2oUKuUYbVEpObWFcOpUzhGoVn2TRihWnsXN+KUe1IZCyO7HacIJwFuIDccVpsn6gTJBGEhDegaNKB+/iWAcIwKQzoFQLFB2TO9sjJQnnXagY8sLNHmyDruSxHBvgI9FH330iuGtb/2vwyte8arhK1/98nD1VVfK8S73CDiw2UKSWwH0zacRGYuXA3egtV3o25PrI6/qjHFdMHORdvrMCZ9YI2J5TtMXaV7LZxIaEUvuBVmuMsVwYty6dTteXnI8JsffHF6Es+28NMgPd8jdetytF7/my3xLIdJOSrFfSAvJjGsNIy3mbeb1dx3tXMZYzA+lRZymYAwGcb1b1LzL94d8sgmAbc6ftKCvAHZzTd6wwgVhIA3pGTSi5ECLq9H1ORcYFnEFq5aaKgYVZWNQYi/IIDYhfXIQCmsdxAcguwt3a3lGGgeOMnClb/IpP2zVeIx6yinPwuuxThquu/ZanCT82vBTvKWGx6h6aMDCZSrA3oC2kE8EjIS01gkYnwkgZ2eseeLLVLR4swHpp2qdNDDoy8tmnmmptQjEXhUOEHvF8zgfl/Zwe/hTjzpq+Bf4bgAv8S3Dp8V5jZ3f6ONLQx3rT+ux//hg0xqgvFCV1AxJ5mtP20vbICmFdX+qy/5NySKLNC2+QO4fzIwTAFdBWg1OSKtmJlOh0YIwkAFAEhr5h0P9r/SZZeeQYmXh8uw5UYlwjOZNMYTujnr+2EHiAGTn5S6o/HFvgAN3FicAPcnE3eAznnPGcOpppw7X4wThN7/xjeHKK38iz9vzGjh/tBHfYm4lYjbxcurDgbqTOq6skUeuUrEpRagbB1gWtmjKXC54uqONm5ne3egx+g7cUffU4RUvf9nwyle8fDjy8COGKZxl51l6OcuOCdP9ytY/lCENgSJsTkzFeLHMQ+GJlMlXlaOlhzpSBIHXMYhSvaNsf6NnnAC8QdiBmaSxO4x0coXlZRAWZhkBChr5147XW6Fij4XoC5Bo4Cds87KoLkn4wlwsJQTtn97bOetQZx1YBr0gsFdAGQe2TAQ8/h2GZ2MSOO3UU+W5/0su+T7umLsUXxdeI1tLnifQM9wox/zqW3TpQ4qxBSegyJPOglLHwVthheeCexiqdIjyNsxNKFx04jYh514QT65xz+YZeNXZy1/2MtxYc9Zw6CGHyOu5OPjp27f0NPWz7h5DFSXWVApAVUXFvL7AkJRY5AChdjMt3y3b6jat8X6inHgC8PYIqyb3S1mXqvHVZKtXzQqjyswdSw6g7DaDgYPCR8CJOyxEX4ByQaRElUXBQzsGd2XbaziAJHRMdqjZ+GEPdyTXiUBvRuH98m867k3Da17zL/Fu/+uGH176w+H661cNG3Bdm+cR/HFfLQ/LsDfgQYZivSauauQeuanAYjhaA6jMhr0wOjDMJgyGOGB4iMOtPSetI444Ai8MeTZO8J09PAtvBOYlN76Xj8f5emmNW3w9d0IfPvhHKxC6KlJdERRaHCO9RJzWiMWPDOsgrVqzFeU0i1i/aWD7lWqnJwBvndT4FDSYSSeC8Qo3Z5wITDnGaBSCxGK8/tVHEYO5rXtgS8xumrqcOw8jMh0W2CEBBz87l+8R0JYnCxcvXji8CG/KOQtbS74+/AYcIvzkyivxmrAb5R16W7Zslq0mXygq9l4Wm7RXaa16Y1kapKFWiqWcbKwDl/Hzx5tlmPPhnqc8ZYV8CYjv/DsFHxY5FJ8Kpyse4/vAl8MbCONuPum0Qti4PPkZ60WRBeBylulCMTF9zNRGl4JhMRHQoN1/Q3VAZC0w8wTA1uavk1wlK2PEhF3yaB9wgYwI0NCIcoKJwJyEfma+VDHpRBA7lA+g3kQgAxZdUPTo5DKIWCqCkHsBcOivN6PoJ70PPfSw4VfPOWd4ya++FOcHHsRhwh3DjXjqkC8oXY23CW/AG4v5BSPayHE0/GjOo9/JkscsQ8MrY7m0BAc5Tt5JrHZlg4OYW3QOcD7ht/IZz8DAXzn8Cm6h5Uk9tin3BPROOkwYOLmnA94Gvtxgg5JZb4ItsTyZDMiTMZVCMo7qaEfesRUpcYsS/jhB0svIlkYH0sQtMPMEoF0cjW/rpVx3qaCwjsMKp5Rp900EneKlFMbIFPqhCqwH5mggLgJWWKE3Sw4qnQQoYK+zCKww7YDs/HAJmfxsQpChC4VPDtuxheUAX7JkCV7EeRp2q0/HnsJWOWF4D26B5URw5+rVuBX2rmE99hh4e+ymjRtxZWGLnEdI/uFj2o6PMv1uPU4iPHbH593kPgbc1Snv0edHSPm1naetWIH8KHlNGZ/U44TAM/y8vMeTenKDD/zJZIT6s54s23++9WfTxER9bGJYBLVqWu0toGAYSCkzOAHJts2rpNQd4CZpgRknAJyoQhPziSAdM1yrsirj+rSSuLKYRNVhCrHCzbEaNvWCg0b+4V3/3XqUS6egtIgxe05UIkoXtdg773QTgRSno0MPBdhsCISDVgaD9VQ5TACYg4xbVsa4DC/jXL78YLmkSBc84can5H6JF4I+jLf3co/hEXzYg2/yZc5bYnkJjpPH9m0oBzYcuBzoPNm4EC8c5UDnyzr5dmG8F25YBnohPvK5EDx38XnYwUEtk4rsFei7/cjTody1yLP55DjgMZv5Fp3H+AkDSiwYhoIhCUmEgSeYie0jSScKkjRPKavFP+WFXoAK8qsodVHJ1/5LeCt2W6A1AdAotDVPeZF1X7bCTBqRXkpGFmYFQ0woRE2DsPChWltCszPnB2hVFJQ9JyoRRUGhxiqfZCKQojhg8Cc3/zBc/Pn5gTwZaGAy3ogAsWOHHi5Qw7sOOZAPxxtt5aQaK8F/6+U6UG3wSXjYSqcRwBKZbCm+GQh5/XGXfvs2cSixcoTHrTnrIQPffOokgFpJ3eibSf1bYMLJuA5xKq5AqiiZJkLt3cDzrI6ludZyBclEwLIr7X7M6pY7N4C3ZpK0JoCkJIEVvqUQhNUg3rCQBm+0upcmqgZTHJt7IQWu0XEEB5DgOMjUsFG8IwUr+gKUCyIlqixSp7asxdNNBL6Fp6ng4DhNBhT6YBSSewcU5cB0vGmJOsh5v4HxqHSKMxF0qvb8xo/HRinForFBzMIwTYhQt+2CkhhUBz1tBEd78iJQP4QjlHz8TYGUoArSbsuQXUWYJa1JUCWBEs0+QduEK0h3m71z40COoVTa/Y3FHl41dsctMOMEgO6CF8KNDeNqYIP7zD89EtqwIp1prvQCp8hxGAAJbicmgpETLaiIoSrb61SLfbC5nDhe2/cifCtNuUipcL1sjYEPEwJxKlYPHHtWQRKmExfC6wKlK9BkZhsQSW0EM0e5TgY6bNKAd6z4ITrXMtcwF+L2xKW2dBMtLIODt6QiVhgluqZBkUxang9MBOxb64umaTAzTgBT27atXtQwzCJdI7LSQco6TGs1o0iFdddgbOYGrjAPRoEsHdOzKHUiKOxrpDnxjp/VqkidlwrDlgGpOJYRaZokMy+Eg7z2Bx3tOHBU51awTySJ6J26pKRHaE0fYVau61wlYtd5Ll40DiMbGVrF8FHJUCgfqzTG1JYesgcSnFCVxAmXiNyWwUZIg/jOU/KRcBkgFABjTAI/KQmcI1ozU8VmnAB2bNt+n5ysmsmTrapJJ4K0Mrh2hLEVBiZTodCECwMsqJUESP51bacyRjgdZKIfgbQgLplErSIV2LLQB427Y8f0sSqDJGCooL13XqriAPMBlQZQtO3QXq6oE5OI5D9JEkELMl4j8SDnLHRkQ1dgTe9B0tLaZwxThXsO5/3UiS2T3qVJkIgU3agMQiDMSHfiuWlsjyCE7YAnbY5xe+9MlZtxAnh008Zb5y9YiD1bXA7wHj2tV10j0uxYyAobrbVqhdk6UnBmMmUFVoKKDVFBYyucPhvFC1bssRjHmD0nKhGhGJAdcXlIJCPdkTBCL4wx+Sm70rPHnZGTdN6ETgS9FowW4+FQhR9X7WiiEiSBOim39eqODSHIUVGUMoWJPYtUZcuROAkSoWUUVmCyOpIVSkF+vmWStqwc7DMs1xMG//aNGzfeOlPQcql6GtCsDfesvxutukFfZjENslCxsa3BSWW2QJEpVB1GPQXTAuclBb2QBkJWwWug6pugLCQlKYtc0he7ETd97HH+Kyw5NGwUml4GGmiV5gLZjjPNwV6kNb+VZPsS4lDjyGVYOSwbKdmDzhjGqMocDQXj1I8xWyYqFhZcJb3LkkCJxLre86AIpGstp0bbUSkTP4kyu7x7P77YfDeqNe0Yr5V1m8z667/+i3uxhVrN68w7n/JqECqzI1eFqsEUIrcOwkC61nJopFdq5yaul8RH05EKC1XBZI8jcRIkQiaCNLhs4IkHgzCTVEwIYiZziA5HDFxOEo2fgCgPfxzBcYinMlCQ75oL3sq0giwQz2A1aVsa1C1zzpK1dFlmNkOMGqmSQInE1pZBQXKcDIDMqjOG7MMS9gnsra/+8Ic/fB+qMe0Y1z7hfUMrTVn8Ta25Z8OnFi9a8qaZPhA6c5tpcbJUsmtSqBOTCOvMlXlWt/UCB0j/K+Mxy7HQTqoo1AWjVg2RtXTWZKpVEnooAc1enC37cVpxcJEwiWB56iN7ogypElSsYgSXNZnK6kgVxUZFHcM0jgpVYhJRh51LMUhGZpVSGdDH1DZ7L8+bwXCz2Kdww9ebESW/6mAzXso9eH4Xp5vcaJjaPPWjTi/sGrcV6lKWWHD2bXfuHLH4STgn7CRaXYirzS3ZcYIUBfvM38aolWCCz+xLhYWqYMwe2UgsApd26pEKYnfED6NnvKUXsch1xLYwakt7PQgAz6JT0jg8mko8YgtTar2BoBj5SNZKOLQS04n83J64MsZsUaicSQbTtKVhk0l2aVQGSJwj/b4nwASAMSvJq92shE8ABMVU8A898tDlm3BDOjvh7kk5JimoKK0sISMhHzGVyE0DLpCutRwaW9t9jEJF3wSpsFAVTC5yJE4CEp16BEW/YyZHUh1x1lkkZCIcqIKO2EGSEzNOkE7algZt+rCRL2VwIcR0SNMlrBKJrU2DguQ4GQBZv73HVnuThGMUl/+24JXql1dx1VUW3ieACluwc776hb+9cce2bTfxCzm7N2mDy1LJrnuJ1rWJyUaZchDyIAxkAJCEJnTeSlmw4oOLUVLvujRlwWSDkbngMjhT2SZRUPb1qpGq9EHiKqkT4SVQ0CijwlWsG6slA1CqN35VD5hBhc8L9Z7KSERGODVSUSBJiZE+qqHs6l1DjOHcdG/P7VzdjRdddNFNiHXGq3xxk17T5P03tWbt+guWLFn6tkfxgMqeSxqCLJVsFlWoOkwhdi9BGEjXWg6N/lfyMdveIcqeMwXbglFfDZHhsiZTVfmm6OqtwHaM2Vdh32EKMU0rQcUG56rp6jOSRymdVPno4EbiJEhEHXYuzyAZmVVKqaYfY41/4nge/+O9lB/GQ2DvQBTTHv8zykn2ADhR4gs5D30NxxXb+41E1K4mKUrnX5LKjpwWqg7TNA3CwqwoARpM+5PM/LIFCz7VTfacqXZdCr3HIMKsIdVMBsnIGqUaqUfXSbUVLHDZc6asjEpQsTkQK7yrz8hp2pvWIc6Os5E4CRLh2/VQqpGEIGWk8nmpmpnaMuOfGIq7/3jKdPvDDz98sUVgNevHEyeAGhzbY84Vl11yxdapqevn4GssezblYoXK7KjYQtVgCpFbV8KKdRRyaPivWZCXpNjLopTH7pTUiSixTbEIVdPUuwtT9jHUWD2UdMsiT/aJcHUWjMyzSsAV6w5S4V29IwFge49TtkxUIkr0SJwEiZCBXlqBy+pIVjAF7a0TAXf/cQPQqq9//es/QeC++x9qlqpDmaR6g+58zEnzN7Xm7nXvXrJs2fl79jBAA8tLDwVBZDKrA1WoG0whcrsgDKRrLYfGlH2MQkXfBKmwUBVMLnIkTgIlEptNMgVlX581E7dlNrEyVNAR5zhAjTCihdQUbX120Y8xWwqV2Wxs1EiVBEoktrYMikAGlEmRtfUB+jiR3P3HeyTejfc//CmKrHf/GYUPfM+7hwAJYLGTn3Xn7Xd8EW+oeYB3Gj1+iUVrOLJ1qCMLgWSkmSSs2SdPbaPCPkCkfNsV6GPUQPRNkAoLVcHkAkfiJCBRbKyykVOAJLjLUp41M23FEjIR7kQFHbGDJCdmnCCdtC0N2vThfYLKUTDZYqRKAiUSm02UCgqS42QAZFadMeRxlHBMYuv/wK233volFMsBWodd8xJdPXlF3mnm/ptavXb9J5YuWfqfHt+9AInVFhqWLJWMykQXqg5TiN0yCAPpWsuh0f9KPmZn2ooVZRSM+mqIbJOTNZmqyjdFV2/brn6M2V/ykQjqMpMps6kEFRscZ02msjpS/TjVMtknIlorXagSk4hQo8rWIBlZ6d0SgD6mttl9vJ38+wRO/r0FXqfb+rPQNBnUm/Kk6IR20IZ77vnLTZs2b3x89wJiNBoil5x5c1UiRsWpMgUuM5kKtkEYyAAgCQ0Kn2TmFwwdjZIKizIKRg0aIqtc1mSqKsQUXb00ntWDoGlSUhfOMpMpc1IJKjaXFBqImOlSgFYw9Z7KSEQFA1uUkXCJsBYZ27lhRtYY0yBjnI9nsq3/xrVr1/4lyp1p/imia4GjjLTzTuPW4PV/s2Tx0jc/cXsB3rwemgWZWQekvFA1mELkVpWwYh2FHBr9D7IxKfZNJ1mYqESUfppiEaqmqXcXpmxjsrS/pVVHCZmIqgCw06gEPNInF6rp6hOuUUblOflIhBtrPhInQSLG9aBpVkcyODcAsgAN+t1L2rH/RTj2//fwHLf+LMhmplRmMQHUewBukNDmIPIHrVu39s9wsuGhJ24vwMPJdRMqsw5IeaFqMIXIrSphxToKOTT81yzIS1LsZVHK4zpK6kSU2KaYQlvPTb27MGUbk6X9La06SshEVAVYNC6VvMJWbIZa4V29IwFob2mzZaIS4caaj8RJkAhp1dIKXFZHMsAMgGymPhGMHhNpW/8H16xZ82dwUM83DCSmmu+eBHSjaECavzmnn3zy9bgn4KMLFix03BOce2gaYHutaYgZCb7BFCKvVSUkO04GQlbBR1DRN0FZSEpSFrmkLU44JRJbWBljSmbjlC13dSLInkIpVaFNDOE2crp6c9mPMVsmikQjJb3rkkCJxLre86AIpGuRmxTZnpoIOAHgxp+Prly58noUyEt/dSjku6m1B9AC105m/9Pdt1/w6KO/vGnevD19X0ArnJ5M6y5LJXvAspUKLJlxK9bCwkSUvoBm0s7LcpqOVFioCsbLasSZcCQa+mwqygSPcqGzph1jNkjIRLhOBR2xg1JphcClk7YlCpE4R05y6aTKFV+CM9LkYpCNRno3D4pk4jrJDYCsHWMBnpjhrj9eD3/TDTfc8D9hVD+v3w6l8l7vMkR11JF23umpW2656zXLD1/+FTx8MGuytwVF948HrSHL0qNvFFuoOkwhdh9BGEjXWg6N/lfyMds/9lbvRRkFo74aIltrWZOpqnxTdPW2+vsxZn/JRyKoy0ymzKYSVGxwnDWZyupI9eNUy2SfiGitdKFKTCJCjSpbg2Rkpd+JtqwtnbenQ7fjWxGvPeSQQ74G+U4d+7ufSfcAiK9nlLkrVz7tHzZv2vhxfnhi70waMpfTbcVE7xXoMIW4gW3qBQcNCmf5xEyXBNMEqZDLpE5E9ljoXSzCrMmUAyw3RVdvm85+jNkffUgqnGUmUy2c1jH5MIj6g5QBIDX1otFFP05aYn24j0QEYyOLMhIuEdlHbWqGGdkCTHb1pbZ0nnf94Tzcx8PgdxVziyCK2vR0E0B0UtPOz151zc3vxdWAn87HF2f2zsRQNVyhMjsKt1B1GIpHKQgLswIIDXqldMxCPmakjwefisieE5WI0kdTLMKsIdVMBsnIGqWW/QGm+MJeTcxR1mRqpBLBSG8wbcQwiF3eyPvtrUGlMhJROhmJkyAR7Ykgq9t6KYYg6RaTj1jgbdf/6muuuea9YH3XP5RIr4VLLUjE5aK/l6K4qHeaeaSnfnbL7c857LDDvolXUhzKz1Xt3clDH+0dj8LOyFBjQamm0Lt1JaxYQ5kUWVvvzqaLMVsmKhHZntRInARKJLY0Uw7Kvj5r+rvcyU1FeGHqI3tyOfJKWLEZaIV39Ybsx5gthcpsLsN91JKEVSKxHVxX75UFoI/RT8DheZ8N995776tWrFhxFYrxXX+WGCeBOOgjXUQ2XVkOjBinmcffltvuXPv6pcuWfhrftZvL797t/UmrIksluyEX6gZTiNxLEAbStZZDY8o+RqGib4JUWKgKJhc5EosgSzOVbYQyRVfvlQC4P8jUZ/KRCC9LBR2xgyQfYVxqirY+u+jHmC2Fymw2NmqkSgIlEltbmqKr97YEoMbYZfeteNrvjcuXL/88XPMMvA96z1liHPCRpq5I0x0CODA6qGny/M077pijPv/oxkffww9U7r43B3kIeyLX0GXptegUU6hHTF4DhXnABbKAiKXto/YxaiJ6LkZJLQv7gskGI7EIsjRT2UYoU3T1qQ+iRn1QdNVoNDUcmY8EalpFCBbASdvSoE0fNnZYbKjWCDoKSwzcaBpTMxzZpxIyQNrS5BxTnADwqu/3dAa/e0iRQBBp1xd5PckUysBEnNMxdxovDtnwQXxv/j24Non1MWP5oYgnmtQqyNJr0wipUHWYQuw+gjCQrrUcGv2v5GN2pq1YUUbBqK+GyDY5qmnqPQxT9jHmow9wT3krV2AzkykzqQQVm/zGXZEuxl12AapI6kTkYpwqVIlJRK6nGzDP6khGhID4ifY5etLvT3DC/T0QcrefyWaLRLtMBKZ3upmHEJr6KIxYp5lHmvhta36x/n8sWrzk9zdv3rRPTgKshFTKa0ZBlQpVhynEtK8EFRtKgEb/g6xNtieC7DlRiSj9NMUiVE1T7y5M2cZkaTtGd1I1SzYDIDOZMrtKULHBuWq6ekcC0MdUPjrAkTgJKnsv0/OEG8fALT9P+m3cuPmCRYsWvBMm8aQfPbQmAZcznzaFoqfFuTLinWYeaQkIewL/nbMVv2O/b5wT8Coy9+oYldkIErpQNZhC5NaVsGIdhRwa/Q+yMSn2TSdZmKhElH5G4iRQIrGlmXJQ9vVZM/FEkE2stCzI1EglgpHeYL5H0NUnXK8u2TJRiXBjzUfiJFAisaVZUTAx3OXn5T5cZfuTxYsX/xFEFPPnu9a7NPjhZ5r1Ru041bE774F5zsC23n7XPW/H9wTOx6HA3L3/6sC4srF5pKJe2wa0UDWYQuT2lbBiDQWpKdp6d2awJigLE5WIbE9qJBZBlmaqtBMOyr4+a3Z1IsieQgyVsGIz0Arv6g3ZjzFbCpXZXIb7qCUJq0RiGzhu9bH7PIVj/v+2ZMkS3ufP23xp4oPec1qTjqnmo66guzEUqJKJNk7HnDR/DGLqtrvWvh6TwF/MmT3ncNy4UHraZzitniyV7EZeqBtMIXIvQRhI11oOjSn7GIWKvglSYaEqmGBfla5lZ3CmKqApunqrhOj7IHGa1InwslTQETuo9FFLzXjko8ChybuArBAqs5WHtNpUnnCJ8NWa7ObNm4uXe2xfjw/xnLt06VKe7ecxPw180PsAr3P6cBnpGVOOYkZoAYh2Tsc80ltuuf3u5yxbsvTC+QvmPxcz2j52XiDWW6slS69hVAc6qRNBZWYy1TKKyKAXEpZm3PQR4DN13sK+YNRJQ2RlZ02mQsEkTdHVG0D0fZA4TepEhAJyUYItDVRUmGUUYsyaTEVApgM0C4VSy2SfiBI2EidBIoZZKGTuXN7fv/XKBx984L8cccQRV8KLX+qjQ58AnI55TZOfMU1yGbDlJM4yTsfcA2U+b+WxK666+ubrfm3jo7/86KxZs3fsXQ8QtarXk2m1ZOk17ECpllTgMpMpByIPwkAGAElowuWuSlmwAqOjUVLvRRkNXKF3HyLMmoaZIg2Ske7Ac9XIkotpUlKriSEzk6mRSgQjvZcVGqiLcZcAtC9qqWWyT4QXovlInARKcKuPs/07cPXsY7fccvOvVYPf0cyZ6jzKBDDpIk8/k1qUuGjvdCunbBt/d95136sXLlxw/tx580/G14aG7dso3heTV3O0URxVJiOh6jCFmB4qQcWGMqDR/yBrk+2tWPacqESUfppiEaqmqXcXpmxjsrQdozsJzZJNTJkFmRqpRDDSu3srvKtPuBCHy1Ku1slHIhJACBfzJN+cObOHqa1bf/ZLHO8fsmzZ3wPAM/38+cCnTT3onY860juVHusegBfSCsKDdp3zLGveMU874mtXrLr6ZZs2bfwABA/gngE52+kO953cq2VrKbOjKhSqDkNxkQpc2RMKnO0R2E5Bqao42YJNU1BSVWW7m6ZYjFTT1FfGAndZyrNl2CgnbSQSMhGuzQJSRcoqEVdshlrhXb0jAei3N63D+lLWLVN+EM7wz58vj9I/gHNj5//ossvOscFPIcdKDMNp9+Y5/UWa/E4ln4h2yqgBjn5aNGUuZ857hbfecscdJy9ddPDbhoNm/86CBfMX4V2DuGT4JNgj8Jo2GoqiQt1gCpH7qIQVayhITdHWuzODNUEqLFQFU/nI7Mhpx0wtoOzrs2ZX9wiyJwt0JOjFAaBhGyax1vFUQiF3B8keBLf4c7HF3zK1lSfDPnf//RsuOOqoo1bBkGf5feDTjw96p5kzxQEfadXu5DLFtpN2LXjty/lW7jI+ObSdJwmXLl3yFtCvWzB/waHYHRrwERK0zy7XrxXnHpZp1WTpteyUWKgbTCFyH0EYSNdaDo0p+xiF9geYWhb2BWP2VcnCCi6DM1WBTdHVWyVE3wflIkmNcCroiFNAI33UmLKPUXCvLQ86aBZO7s0dZmN44wTfBmzkvrxhw8MfX7FCTvLR7SR39tWDoeZTxDtDzFSnnfFFbO3P+ZnyKdjuuPL6n5941OGH/yZue3wDHvY8Ha84PggNhq+d7ouTgVZZll77TmsmdSLKpizE7iMIA+lay6ExZR+j0HbnzVaZAr5gzN5KLDLBZXCmClTy19Vbge0YS1/JRyKoz0ymzK4SVGx2HgrvYtwlALyDTwf9QcPmLVMcrNfu2L7jc3ffvebLJ5xwwi3g6SYOfFr7oO7lxDC5XrldWM5Ul8fiuvYZead7uZwofP/737/kTf/hLc+ZN3f+a+bOnfey7Tt2PAuHCPMZDJ42HLbhMGEHnjjc+/cQvJrWBTM7atdC1WEKsXsIwkC61nJo9L+Sl6zYN51kYaIS0fBRiorKd8zUwpR9jGrCWKxLEr6w7zCFmFaVoGJzOVZ41PuDOnJCb7ZqNm3esgXyG7Cr/+1tU5sv/sjffeQn7z/3/Y/AkZ/go08fyL08YkgzOVa5XVzGeuyiq8K85ddlntPA6TpnJblXMLzlLW9ZdO6555207LDDnj9v7pwXzJo959logqdj8B82f/78g9jo0iK7tVlY8u5IDMqrRgp0ZpsFFOqCIVw8jO0CLpAdXMdHQE8/wIJ9LCzQgdTuGgVwHtlQbEF6DDXWV7PLHVcYB8Zx0xWaMLQrGHXUEImC8u0IaPOmzTtgtx6b/dVbt2xbtXX7lss2rFv34wsuuOCmj33sYxz0TH4zD2mvRp23dJR5crzzu5z36rbLjs1B7T/yLbolY6W5ZyAvGXjd61638HfPO+/Iw5cc8tRlhxx6HB6UOnL2nLlPh/4wTArz8OOJlOgH7N6SGJqlQLoo5jOoxxWcuMYAmvOZyojxlPSssvxO2U3/TWHpPXId14CYJlcnmrXpUdkq6JeR3QjyIBm4+EL2ji04PbV+atu2NZgA1m985MF/Wrdu3ZoPfehD933xi1/caFZ067fvUhQHr9Oe9/SUM0WcSnbTcpK672pRrTKibGdpNgYnA/72WMPsaqUP2O9XLcA+zDnCn9Tzysf+ubN0y4fLdlseB99uc9px1CoryiJNF5GPdK3rFHdAfKAFHvcWiIOchUc+0jPpaj35PZLqGWuPFFI5rQcz1bWs5isXB9gDLbBXtsB0g5wBz6RvYfZoRZ+ICYAV6g3wlrwl26ONcsD5gRZ4jC1QD3C6mVTWwz7GUCYze6IH13Tl93Q9+WQ1PoA60AJ7tgVaA54l9uQz6fZotHvTYJoplpn0e7ShDjg/0AI72QLTDXi6mkm/k8U9NvjeOqh2Nq6dxT+21jpgdaAFyhbY2UG8s/iytD3A7QsDZ1+IcQ+smgMunyQtsNcN+tiu/x+iS8Y3tBJMAAAAAABJRU5ErkJggg==";
+
     // src/modules/theme/client/settings-theme.jsx
     var MODE_CARDS = [
       { id: "light", label: "浅色", hint: "明亮界面" },
@@ -3714,9 +3791,10 @@ window.__ModuleLoader__.load({
       { id: "system", label: "跟随系统", hint: "随系统切换" }
     ];
     var PALETTE_CARDS = [
-      { id: "codex", label: "Codex", hint: "当前桌面风格" },
-      { id: "ocean", label: "大海蓝鲸", hint: "深海呼吸，鲸跃海面" },
-      { id: "hope", label: "希望红", hint: "朝阳与余烬" }
+      { id: "native", label: "原始 DSH", hint: "纯粹，熟悉的界面" },
+      { id: "codex", label: "Codex", hint: "专注的工作空间" },
+      { id: "ocean", label: "大海蓝鲸", hint: "潜入深蓝，与巨鲸同行" },
+      { id: "hope", label: "昼夜流光", hint: "随当地时间，日升星落" }
     ];
     var isWritable = (form) => {
       let writable = form?.writable;
@@ -3742,21 +3820,25 @@ window.__ModuleLoader__.load({
       return /* @__PURE__ */ __dshReact.createElement("span", { ref: host, className: "sk-theme-scene-mount", "aria-hidden": "true" });
     }
     function PreviewWindow({ palette, colorScheme }) {
-      return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-window", "data-preview-mode": colorScheme }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-rail", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-preview-logo" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-preview-nav" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-preview-nav sk-theme-preview-nav--short" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-preview-nav" })), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-main" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-hero", "data-sk-preview-hero": "" }, /* @__PURE__ */ __dshReact.createElement(SceneBox, { palette }), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-copy", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("b", null, "DeepSeek"), /* @__PURE__ */ __dshReact.createElement("span", null, "今天想一起探索什么？")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-composer", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("span", null, "给 DeepSeek 发送消息"), /* @__PURE__ */ __dshReact.createElement("i", null)))));
+      return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-window", "data-preview-mode": colorScheme, "data-preview-palette": palette }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-rail", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-preview-logo" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-preview-nav" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-preview-nav sk-theme-preview-nav--short" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-preview-nav" })), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-main" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-hero", "data-sk-preview-hero": "" }, /* @__PURE__ */ __dshReact.createElement(SceneBox, { palette }), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-copy", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("b", null, "DeepSeek"), /* @__PURE__ */ __dshReact.createElement("span", null, "今天想一起探索什么？")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-preview-composer", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("span", null, "给 DeepSeek 发送消息"), /* @__PURE__ */ __dshReact.createElement("i", null)))));
     }
-    function ThemeCard({ selected, label, hint, onClick, children, disabled = false }) {
+    function ThemeEmblem({ palette }) {
+      if (palette === "codex") return /* @__PURE__ */ __dshReact.createElement("svg", { className: "sk-theme-emblem sk-theme-emblem--codex", viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("path", { d: "M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z" }));
+      return /* @__PURE__ */ __dshReact.createElement("img", { className: "sk-theme-emblem sk-theme-emblem--native", src: DSH_DESKTOP_LOGO, alt: "", draggable: false, "aria-hidden": "true" });
+    }
+    function ThemeCard({ selected, label, hint, onClick, children, disabled = false, colorScheme, palette }) {
       return /* @__PURE__ */ __dshReact.createElement(
         "button",
         {
           type: "button",
           role: "radio",
+          "aria-label": label,
           "aria-checked": selected,
-          "aria-disabled": disabled || void 0,
           disabled,
-          className: `sk-theme-card${selected ? " is-selected" : ""}${disabled ? " is-disabled" : ""}`,
-          onClick: disabled ? void 0 : onClick
+          className: `sk-theme-card${selected ? " is-selected" : ""}`,
+          onClick
         },
-        /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-card__art" }, children),
+        /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-card__art", "data-preview-mode": colorScheme, "data-preview-palette": palette }, children),
         /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-card__caption" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-card__name" }, label), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-card__hint" }, hint))
       );
     }
@@ -3773,19 +3855,16 @@ window.__ModuleLoader__.load({
         if (typeof form?.subscribe !== "function") return void 0;
         return form.subscribe(() => setPalette(readPalette(form)));
       }, [form]);
-      const writable = isWritable(form);
+      const writable = isWritable(form) && typeof form?.set === "function";
       const preference = snapshot.preference ?? "system";
       const colorScheme = snapshot.colorScheme ?? "light";
       const pickMode = async (id) => {
-        if (!writable || busy) return;
+        if (typeof theme?.setTheme !== "function" || busy || preference === id) return;
         setBusy(true);
         setError("");
         try {
-          theme?.setTheme?.(id);
-          if (readPalette(form) !== "codex") {
-            acceptConfigWrite(() => form?.set?.("palette", "codex"), "palette");
-            setPalette("codex");
-          }
+          await theme.setTheme(id);
+          setSnapshot(theme.getTheme?.() ?? {});
         } catch (err) {
           setError(String(err?.message ?? err));
         } finally {
@@ -3797,7 +3876,7 @@ window.__ModuleLoader__.load({
         setBusy(true);
         setError("");
         try {
-          acceptConfigWrite(() => form?.set?.("palette", id), "palette");
+          await acceptConfigWrite(() => form?.set?.("palette", id), "palette");
           setPalette(id);
         } catch (err) {
           setError(String(err?.message ?? err));
@@ -3805,27 +3884,31 @@ window.__ModuleLoader__.load({
           setBusy(false);
         }
       };
-      return /* @__PURE__ */ __dshReact.createElement("section", { className: "sk-theme-page", "aria-label": "外观" }, /* @__PURE__ */ __dshReact.createElement("header", { className: "sk-theme-head" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-head__copy" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "sk-theme-title" }, "外观"), /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-subtitle" }, "选择原始外观，或为空白新对话换上一套有呼吸感的主题。")), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-badge" }, "实时预览")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-stage", "aria-label": "主题实时预览" }, /* @__PURE__ */ __dshReact.createElement(PreviewWindow, { palette, colorScheme })), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid-section" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid-head" }, /* @__PURE__ */ __dshReact.createElement("h3", null, "全部主题"), /* @__PURE__ */ __dshReact.createElement("span", null, "系统原生明暗与主题风格独立保存")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid", role: "radiogroup", "aria-label": "全部主题" }, MODE_CARDS.map((card) => /* @__PURE__ */ __dshReact.createElement(
+      return /* @__PURE__ */ __dshReact.createElement("section", { className: "sk-theme-page", "aria-label": "外观" }, /* @__PURE__ */ __dshReact.createElement("header", { className: "sk-theme-head" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-head__copy" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "sk-theme-title" }, "外观"), /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-subtitle" }, "分别选择界面明暗与主题风格，搭配你喜欢的外观。")), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-badge" }, "实时预览")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-stage", "aria-label": "主题实时预览" }, /* @__PURE__ */ __dshReact.createElement(PreviewWindow, { palette, colorScheme })), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid-section" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid-head" }, /* @__PURE__ */ __dshReact.createElement("h3", null, "颜色模式"), /* @__PURE__ */ __dshReact.createElement("span", null, "控制界面明暗")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid sk-theme-grid--modes", role: "radiogroup", "aria-label": "颜色模式" }, MODE_CARDS.map((card) => /* @__PURE__ */ __dshReact.createElement(
         ThemeCard,
         {
           key: card.id,
           label: card.label,
           hint: card.hint,
-          selected: palette === "codex" && preference === card.id,
+          selected: preference === card.id,
+          disabled: busy || typeof theme?.setTheme !== "function",
           onClick: () => pickMode(card.id)
         },
-        /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-mode-art", "data-mode": card.id })
-      )), PALETTE_CARDS.map((card) => /* @__PURE__ */ __dshReact.createElement(
+        /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-mode-art", "data-mode": card.id, "data-resolved-mode": colorScheme })
+      )))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid-section" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid-head" }, /* @__PURE__ */ __dshReact.createElement("h3", null, "主题风格"), /* @__PURE__ */ __dshReact.createElement("span", null, "保留所选颜色模式")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid", role: "radiogroup", "aria-label": "主题风格" }, PALETTE_CARDS.map((card) => /* @__PURE__ */ __dshReact.createElement(
         ThemeCard,
         {
           key: card.id,
           label: card.label,
           hint: card.hint,
           selected: palette === card.id,
+          disabled: !writable || busy,
+          colorScheme,
+          palette: card.id,
           onClick: () => pickPalette(card.id)
         },
-        /* @__PURE__ */ __dshReact.createElement(SceneBox, { palette: card.id, compact: true })
-      )), /* @__PURE__ */ __dshReact.createElement(ThemeCard, { label: "敬请期待", hint: "更多主题正在打磨", disabled: true }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-mode-art", "data-mode": "soon" })))), !writable || error || busy ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-status", role: "status", "data-tone": error ? "error" : "idle" }, error || (busy ? "正在保存…" : "当前配置为只读，主题选择暂不可修改。")) : null);
+        ["native", "codex"].includes(card.id) ? /* @__PURE__ */ __dshReact.createElement(ThemeEmblem, { palette: card.id }) : /* @__PURE__ */ __dshReact.createElement(SceneBox, { palette: card.id, compact: true })
+      )))), !writable || error || busy ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-status", role: "status", "data-tone": error ? "error" : "idle" }, error || (busy ? "正在保存…" : "当前配置为只读，主题风格暂不可修改。")) : null);
     }
     var themeCenterMeta = Object.freeze({
       name: "settings.section",
@@ -3837,11 +3920,13 @@ window.__ModuleLoader__.load({
     // src/modules/theme/client/index.js
     var inject = ["layout", "slots", "locale", "configForms", "theme"];
     function registerScenes() {
-      registerPaletteScene("ocean", createOceanScene);
-      registerPaletteScene("hope", createHopeScene);
+      const disposers = [
+        registerPaletteScene("ocean", createOceanScene),
+        registerPaletteScene("hope", createHopeScene)
+      ];
+      return () => disposers.reverse().forEach((dispose) => dispose());
     }
     function installThemeCenter(ctx) {
-      registerScenes();
       const dispose = ctx.slots.inject(
         "settings.section",
         () => ctx.slots.register(
@@ -3866,15 +3951,19 @@ window.__ModuleLoader__.load({
       return dispose;
     }
     function apply(ctx) {
+      ctx.effect(registerScenes, "toolkit-theme:scene-builders");
+      ctx.effect(() => installSceneClock(updateHopeSceneTime), "toolkit-theme:scene-clock");
       ctx.effect(installDesktopMarker, "toolkit-theme:desktop-marker");
       ctx.effect(() => installStylesheet(styles_default, "toolkit-theme"), "toolkit-theme:stylesheet");
-      ctx.effect(installRailTitles, "toolkit-theme:rail-titles");
-      ctx.effect(() => installHomeRail(ctx), "toolkit-theme:home-rail");
-      ctx.effect(installBandHeight, "toolkit-theme:band-height");
-      ctx.effect(() => installSidebarWidth(ctx), "toolkit-theme:sidebar-width");
-      ctx.effect(() => installWorkspaceCollapse(ctx), "toolkit-theme:workspace-collapse");
-      ctx.effect(() => installSettingsNav(ctx), "toolkit-theme:settings-nav");
       ctx.effect(() => installPalette(ctx), "toolkit-theme:palette");
+      ctx.effect(() => installCodexShell(ctx, [
+        installRailTitles,
+        installHomeRail,
+        installBandHeight,
+        installSidebarWidth,
+        installWorkspaceCollapse
+      ], { nativeInstallers: [(ctx2) => installSidebarWidth(ctx2, { native: true })] }), "toolkit-theme:codex-shell");
+      ctx.effect(() => installSettingsNav(ctx), "toolkit-theme:settings-nav");
       ctx.effect(() => installThemeCenter(ctx), "toolkit-theme:settings-section");
     }
 

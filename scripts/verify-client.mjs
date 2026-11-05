@@ -31,14 +31,14 @@ const check = (name, ok, detail = "") => results.push({ name, ok, detail });
 const oldGate = ':is(html[data-platform="darwin"], html:has([class*="_topStrip"]))';
 check("旧的双条件门禁已清零", !css.includes(oldGate), `仍有 ${css.split(oldGate).length - 1} 处`);
 check(
-  "统一门禁 html[data-sk-desktop] 存在",
-  css.includes("html[data-sk-desktop]"),
-  `${css.split("html[data-sk-desktop]").length - 1} 处`,
+  '统一门禁 html[data-sk-palette="codex"][data-sk-desktop] 存在',
+  css.includes('html[data-sk-palette="codex"][data-sk-desktop]'),
+  `${css.split('html[data-sk-palette="codex"][data-sk-desktop]').length - 1} 处`,
 );
 
 /* ── 2) 平台变量组与层叠顺序 ─────────────────────────────────────────── */
-const darwinAt = css.indexOf('html[data-platform="darwin"] body');
-const windowsAt = css.indexOf("html[data-windows-titlebar] body");
+const darwinAt = css.indexOf('html[data-sk-palette="codex"][data-platform="darwin"] body');
+const windowsAt = css.indexOf('html[data-sk-palette="codex"][data-windows-titlebar] body');
 check("darwin 变量组存在", darwinAt >= 0);
 check("windows 变量组存在", windowsAt >= 0);
 check("windows 组在 darwin 组之后", windowsAt > darwinAt, `darwin@${darwinAt} windows@${windowsAt}`);
@@ -80,17 +80,17 @@ check(
 /* ── 5) Windows 结构分支 ─────────────────────────────────────────────── */
 check(
   "windows: rail-only 用 display:flex 保留 _logoRow",
-  /html\[data-windows-titlebar\][\s\S]{0,220}?_logoRow"\]\s*\{[^}]*display:\s*flex/.test(rulesOnly),
+  /html\[data-sk-palette="codex"\]\[data-windows-titlebar\][\s\S]{0,220}?_logoRow"\]\s*\{[^}]*display:\s*flex/.test(rulesOnly),
 );
 check(
   "windows: rail-only 只隐藏 _brand",
-  /html\[data-windows-titlebar\][\s\S]{0,320}?_logoRow"\]\s*>\s*\[class\*="_brand"\]\s*\{[^}]*display:\s*none/.test(
+  /html\[data-sk-palette="codex"\]\[data-windows-titlebar\][\s\S]{0,320}?_logoRow"\]\s*>\s*\[class\*="_brand"\]\s*\{[^}]*display:\s*none/.test(
     rulesOnly,
   ),
 );
 check(
   "windows: macOS 专用折叠热区已关闭",
-  /html\[data-windows-titlebar\]\s+\.sk-collapse-hit\s*\{[^}]*display:\s*none/.test(rulesOnly),
+  /html\[data-sk-palette="codex"\]\[data-windows-titlebar\]\s+\.sk-collapse-hit\s*\{[^}]*display:\s*none/.test(rulesOnly),
 );
 
 /* ── 6) JS 侧谓词 ────────────────────────────────────────────────────── */

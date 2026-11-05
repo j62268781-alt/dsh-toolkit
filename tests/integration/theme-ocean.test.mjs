@@ -11,15 +11,18 @@ const [sceneSource, cssSource] = await Promise.all([
 ])
 
 const PALETTE_SCOPE = 'html[data-sk-palette="ocean"]'
-const LIGHT_TOKENS_SELECTOR = `${PALETTE_SCOPE} .sk-scene--ocean`
-const DARK_TOKENS_SELECTOR = `${PALETTE_SCOPE} body[data-ds-dark-theme] .sk-scene--ocean`
+const PREVIEW_SCOPE = '[data-preview-palette="ocean"]'
+const SCENE_SCOPE = '.sk-scene--ocean'
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
 
 const LAYER_ORDER = [
   'sk-ocean-sky',
+  'sk-ocean-surface',
   'sk-ocean-beams',
   'sk-ocean-stars',
+  'sk-ocean-distant-whale',
   'sk-ocean-whale',
+  'sk-ocean-caustics',
   'sk-ocean-waves',
   'sk-ocean-splash',
   'sk-ocean-bubbles',
@@ -115,7 +118,20 @@ function declarations(body) {
 }
 
 function selectorList(selector) {
-  return selector.split(',').map((part) => part.trim()).filter(Boolean)
+  const selectors = []
+  let depth = 0
+  let start = 0
+  for (let index = 0; index < selector.length; index += 1) {
+    const character = selector[index]
+    if (character === '(' || character === '[') depth += 1
+    else if (character === ')' || character === ']') depth -= 1
+    else if (character === ',' && depth === 0) {
+      selectors.push(selector.slice(start, index).trim())
+      start = index + 1
+    }
+  }
+  selectors.push(selector.slice(start).trim())
+  return selectors.filter(Boolean)
 }
 
 function classTokens(selector) {
@@ -126,19 +142,15 @@ function ruleSelectors(rule) {
   return selectorList(rule.selector)
 }
 
-function classesWithProperty(predicate, property) {
-  const classes = new Set()
-  for (const rule of stylesheet.rules) {
-    if (!predicate(ruleSelectors(rule)) || !declarations(rule.body).has(property)) continue
-    for (const selector of ruleSelectors(rule)) {
-      for (const token of classTokens(selector)) classes.add(token)
-    }
-  }
-  return classes
-}
-
-function customProperties(body) {
-  return new Set(body.match(/--sk-ocean-[a-z0-9-]+/g) ?? [])
+function sceneTokenSets() {
+  const light = stylesheet.rules.find((rule) => rule.selector.trim() === SCENE_SCOPE)
+  const dark = stylesheet.rules.find((rule) => ruleSelectors(rule).some((selector) => (
+    selector.startsWith('body[data-ds-dark-theme]') && classTokens(selector).includes('sk-scene--ocean')
+  )))
+  assert.ok(light, 'missing default scene tokens')
+  assert.ok(dark, 'missing dark scene tokens')
+  const tokens = (rule) => new Map([...declarations(rule.body)].filter(([name]) => name.startsWith('--sk-ocean-')))
+  return { light: tokens(light), dark: tokens(dark) }
 }
 
 function renderedClasses(scene) {
@@ -150,6 +162,11 @@ function renderedClasses(scene) {
 }
 
 /* ── the scene element contract ──────────────────────────────────────── */
+
+test('ocean retains native DSH geometry and needs no Codex tokens', () => {
+  assert.doesNotMatch(cssSource, /--cx-/)
+  assert.doesNotMatch(cssSource, /--dsw-radius-[\w-]+\s*:/)
+})
 
 test('createOceanScene paints the shared theme-scene contract', (t) => {
   installDocument(t)
@@ -279,16 +296,30 @@ test('neither the markup nor the stylesheet leaks bundled or hashed class names'
   assert.doesNotMatch(cssSource, /\.[a-z]+__[A-Za-z0-9]/i, 'no CSS-module style names')
 })
 
-test('every stylesheet rule stays inside the ocean palette scope', () => {
+test('scene, selected-pack shell and local preview rules keep their own scopes', () => {
   assert.equal(stylesheet.atRules.length, 0, 'only plain rules, @media and @keyframes are used')
   assert.ok(stylesheet.rules.length >= 20)
+  const scopes = new Set()
   for (const rule of stylesheet.rules) {
     assert.ok(ruleSelectors(rule).length > 0)
     for (const selector of ruleSelectors(rule)) {
-      assert.ok(selector.startsWith(PALETTE_SCOPE), `unscoped selector: ${selector}`)
+      const classes = classTokens(selector)
+      if (classes.some((token) => token === 'sk-scene--ocean' || token.startsWith('sk-ocean-'))) {
+        scopes.add('scene')
+        assert.ok(classes.includes('sk-scene--ocean'), `artwork escapes its scene: ${selector}`)
+        assert.doesNotMatch(selector, /data-sk-palette|data-preview-palette/, 'unselected scenes must still paint')
+      } else if (selector.includes(PREVIEW_SCOPE)) {
+        scopes.add('preview')
+        assert.match(selector.slice(0, selector.indexOf(PREVIEW_SCOPE)), /^(?:\.[A-Za-z0-9_-]+)?$/, `preview scope must be local: ${selector}`)
+        assert.doesNotMatch(selector, /data-sk-palette/)
+      } else {
+        scopes.add('shell')
+        assert.ok(selector.startsWith(PALETTE_SCOPE), `unscoped shell selector: ${selector}`)
+      }
     }
     if (rule.media) assert.ok(rule.media.includes(REDUCED_MOTION), `unexpected media query: ${rule.media}`)
   }
+  assert.deepEqual([...scopes].sort(), ['preview', 'scene', 'shell'])
   assert.doesNotMatch(cssSource, /\.sk-theme-scene/, 'the base layer geometry belongs to theme-center.css')
 })
 
@@ -316,35 +347,81 @@ test('every keyframe is sk-ocean- prefixed and the references are a closed set',
 })
 
 test('light and dark palettes declare the same token set', () => {
-  const findTokens = (selector) => {
-    const rule = stylesheet.rules.find((candidate) => {
-      const selectors = ruleSelectors(candidate)
-      return selectors.length === 1 && selectors[0] === selector
-    })
-    assert.ok(rule, `missing token block: ${selector}`)
-    return customProperties(rule.body)
-  }
-
-  const light = findTokens(LIGHT_TOKENS_SELECTOR)
-  const dark = findTokens(DARK_TOKENS_SELECTOR)
+  const { light, dark } = sceneTokenSets()
   assert.ok(light.size >= 15, 'the palette is token driven')
-  assert.deepEqual([...dark].sort(), [...light].sort(), 'every light token has a dark twin')
+  assert.deepEqual([...dark.keys()].sort(), [...light.keys()].sort(), 'every light token has a dark twin')
 
-  for (const name of light) {
+  for (const name of light.keys()) {
     assert.match(cssSource, new RegExp(`var\\(${name}\\)`), `unused custom property: ${name}`)
   }
 })
 
-test('both themes override the whale gradient stops and the ink', () => {
-  // Composite selectors also name the layers above the stops; only the stop
-  // classes themselves are expected to be repainted here.
-  const stopClasses = (classes) => [...classes].filter((token) => /^sk-ocean-(?:body|fin)-(?:top|mid|low)$/.test(token))
-  const lightStops = stopClasses(classesWithProperty((selectors) => selectors.every((selector) => !selector.includes('data-ds-dark-theme')), 'stop-color'))
-  const darkStops = stopClasses(classesWithProperty((selectors) => selectors.every((selector) => selector.includes('data-ds-dark-theme')), 'stop-color'))
+test('scene tokens honor body and preview brightness in all 18 selected-style combinations', (t) => {
+  const document = installDocument(t)
+  const style = document.createElement('style')
+  style.textContent = cssSource
+  document.head.append(style)
+  const tokens = sceneTokenSets()
+  let combinations = 0
 
-  assert.deepEqual([...lightStops].sort(), WHALE_STOP_CLASSES)
-  assert.deepEqual([...darkStops].sort(), WHALE_STOP_CLASSES)
-  assert.match(cssSource, /body\[data-ds-dark-theme\]/)
+  for (const bodyDark of [false, true]) {
+    document.body.toggleAttribute('data-ds-dark-theme', bodyDark)
+    for (const previewMode of [null, 'light', 'dark']) {
+      for (const selected of ['codex', 'ocean', 'hope']) {
+        document.documentElement.dataset.skPalette = selected
+        const preview = document.createElement('div')
+        if (previewMode) {
+          preview.dataset.previewMode = previewMode
+          preview.dataset.previewPalette = 'ocean'
+        }
+        const scene = createOceanScene({ compact: previewMode !== null })
+        preview.append(scene)
+        document.body.replaceChildren(preview)
+
+        const expected = tokens[previewMode === 'dark' || (previewMode === null && bodyDark) ? 'dark' : 'light']
+        const computed = document.defaultView.getComputedStyle(scene)
+        const context = `body=${bodyDark ? 'dark' : 'light'}, preview=${previewMode ?? 'none'}, selected=${selected}`
+        for (const [name, value] of expected) {
+          // CSSOM removes optional whitespace around the alpha separator.
+          const actual = computed.getPropertyValue(name).trim().replace(/\s*\/\s*/g, '/')
+          assert.equal(actual, value.replace(/\s*\/\s*/g, '/'), `${context}: ${name}`)
+        }
+        combinations += 1
+      }
+    }
+  }
+  assert.equal(combinations, 18)
+})
+
+test('whale gradient stops and ink resolve through scene tokens in both modes', (t) => {
+  const document = installDocument(t)
+  const style = document.createElement('style')
+  style.textContent = cssSource
+  document.head.append(style)
+  const scene = createOceanScene()
+  document.body.append(scene)
+  const stops = [...scene.querySelectorAll('.sk-ocean-whale-svg stop')]
+  assert.deepEqual(stops.map((stop) => stop.getAttribute('class')).sort(), WHALE_STOP_CLASSES)
+  const colors = []
+
+  for (const dark of [false, true]) {
+    document.body.toggleAttribute('data-ds-dark-theme', dark)
+    const tokens = document.defaultView.getComputedStyle(scene)
+    const resolved = new Map()
+    const paints = [...stops.map((stop) => [stop, 'stop-color']),
+      [scene.querySelector('.sk-ocean-whale-eye'), 'fill'],
+      [scene.querySelector('.sk-ocean-whale-mouth'), 'stroke']]
+    for (const [node, property] of paints) {
+      const paint = document.defaultView.getComputedStyle(node).getPropertyValue(property).trim()
+      const reference = /^var\((--sk-ocean-[a-z0-9-]+)\)$/.exec(paint)
+      assert.ok(reference, `${node.getAttribute('class')} ${property} must use a scene token`)
+      const color = tokens.getPropertyValue(reference[1]).trim()
+      assert.ok(color, `unresolved whale color: ${reference[1]}`)
+      resolved.set(node.getAttribute('class'), color)
+    }
+    colors.push(resolved)
+  }
+  for (const [name, light] of colors[0]) assert.notEqual(light, colors[1].get(name), `${name} must adapt to dark mode`)
 })
 
 test('reduced motion freezes every animation and parks the whale in a static pose', () => {
@@ -354,7 +431,7 @@ test('reduced motion freezes every animation and parks the whale in a static pos
   const animated = frozen.filter((rule) => declarations(rule.body).get('animation')?.includes('none'))
   assert.ok(animated.length >= 1)
   const covered = animated.flatMap((rule) => ruleSelectors(rule))
-  for (const selector of [LIGHT_TOKENS_SELECTOR, `${PALETTE_SCOPE} .sk-scene--ocean *`, `${PALETTE_SCOPE} .sk-scene--ocean *::before`, `${PALETTE_SCOPE} .sk-scene--ocean *::after`]) {
+  for (const selector of [SCENE_SCOPE, `${SCENE_SCOPE} *`, `${SCENE_SCOPE} *::before`, `${SCENE_SCOPE} *::after`]) {
     assert.ok(covered.includes(selector), `reduced motion must stop: ${selector}`)
   }
   for (const rule of animated) {
@@ -371,13 +448,14 @@ test('reduced motion freezes every animation and parks the whale in a static pos
   assert.match(declarations(whale.body).get('transform'), /rotate\(-?\d+deg\)/)
 })
 
-test('every class the stylesheet paints is rendered by the scene', (t) => {
+test('every class the scene rules paint is rendered by the scene', (t) => {
   installDocument(t)
   const scene = createOceanScene()
   const rendered = renderedClasses(scene)
   const painted = new Set()
   for (const rule of stylesheet.rules) {
     for (const selector of ruleSelectors(rule)) {
+      if (!classTokens(selector).includes('sk-scene--ocean')) continue
       for (const token of classTokens(selector)) painted.add(token)
     }
   }

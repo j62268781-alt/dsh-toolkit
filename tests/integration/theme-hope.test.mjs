@@ -3,11 +3,13 @@ import { readFile } from 'node:fs/promises'
 import { after, before, describe, test } from 'node:test'
 import { JSDOM } from 'jsdom'
 
-import { createHopeScene } from '../../src/modules/theme/client/scenes/hope.js'
+import { createHopeScene, updateHopeSceneTime } from '../../src/modules/theme/client/scenes/hope.js'
 
 const SCENE_URL = new URL('../../src/modules/theme/client/scenes/hope.js', import.meta.url)
 const CSS_URL = new URL('../../src/modules/theme/client/styles/hope.css', import.meta.url)
 const SCOPE = 'html[data-sk-palette="hope"]'
+const PREVIEW_SCOPE = '[data-preview-palette="hope"]'
+const SCENE_SCOPE = '.sk-scene--hope'
 
 const sceneSource = await readFile(SCENE_URL, 'utf8')
 const sceneCss = await readFile(CSS_URL, 'utf8')
@@ -65,10 +67,21 @@ function parseCss(source) {
 }
 
 function selectorsOf(rule) {
-  return rule.selector
-    .split(',')
-    .map((selector) => selector.trim())
-    .filter(Boolean)
+  const selectors = []
+  const text = rule.selector
+  let depth = 0
+  let start = 0
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index]
+    if (character === '(' || character === '[') depth += 1
+    else if (character === ')' || character === ']') depth -= 1
+    else if (character === ',' && depth === 0) {
+      selectors.push(text.slice(start, index).trim())
+      start = index + 1
+    }
+  }
+  selectors.push(text.slice(start).trim())
+  return selectors.filter(Boolean)
 }
 
 function declarationsOf(body) {
@@ -91,10 +104,71 @@ function tokensOf(body) {
   return tokens
 }
 
+function sceneTokenSets() {
+  const light = parsed.rules.find((rule) => rule.selector.trim() === SCENE_SCOPE)
+  const dark = parsed.rules.find((rule) => selectorsOf(rule).some((selector) => (
+    selector.startsWith('body[data-ds-dark-theme]') && selector.includes(SCENE_SCOPE)
+  )))
+  assert.ok(light, 'missing default scene tokens')
+  assert.ok(dark, 'missing dark scene tokens')
+  return { light: tokensOf(light.body), dark: tokensOf(dark.body) }
+}
+
 const parsed = parseCss(sceneCss)
 const CLASS_TOKEN = /^(sk-theme-scene|sk-scene--hope|sk-hope-[a-z0-9-]+)$/
 
 describe('hope scene', () => {
+  test('retains native DSH geometry and needs no Codex tokens', () => {
+    assert.doesNotMatch(sceneCss, /--cx-/)
+    assert.doesNotMatch(sceneCss, /--dsw-radius-[\w-]+\s*:/)
+  })
+
+  test('local time selects dawn, day, dusk and a fully starry night', () => {
+    for (const [hour, phase] of [[6, 'dawn'], [12, 'day'], [18, 'dusk'], [23, 'night'], [0, 'night']]) {
+      const timed = createHopeScene({ now: new Date(2026, 10, 5, hour) })
+      assert.equal(timed.dataset.skTimePhase, phase)
+      const night = Number(timed.style.getPropertyValue('--sk-hope-night'))
+      assert.ok(night >= 0 && night <= 1)
+      if (phase === 'night') {
+        assert.equal(night, 1)
+        assert.equal(timed.style.getPropertyValue('--sk-hope-solar-opacity'), '0')
+      }
+      if (phase === 'day') assert.equal(night, 0)
+    }
+  })
+
+  test('refresh moves the sun and sky in place after sleep without changing sibling scenes', () => {
+    const morning = new Date(2026, 10, 5, 6)
+    const noon = new Date(2026, 10, 5, 12)
+    const timed = createHopeScene({ now: morning })
+    const sibling = createHopeScene({ compact: true, now: morning })
+    const siblingStyle = sibling.style.cssText
+    const sun = timed.querySelector('.sk-hope-sun')
+    const oldX = Number.parseFloat(timed.style.getPropertyValue('--sk-hope-solar-x'))
+    const oldY = Number.parseFloat(timed.style.getPropertyValue('--sk-hope-solar-y'))
+    const oldSky = timed.style.getPropertyValue('--sk-hope-time-top')
+    assert.equal(updateHopeSceneTime(timed, noon), timed)
+    assert.equal(timed.querySelector('.sk-hope-sun'), sun)
+    assert.ok(Number.parseFloat(timed.style.getPropertyValue('--sk-hope-solar-x')) > oldX)
+    assert.ok(Number.parseFloat(timed.style.getPropertyValue('--sk-hope-solar-y')) < oldY)
+    assert.notEqual(timed.style.getPropertyValue('--sk-hope-time-top'), oldSky)
+    assert.equal(sibling.style.cssText, siblingStyle)
+    assert.equal(sibling.dataset.skTimePhase, 'dawn')
+  })
+
+  test('midnight wraps continuously and card night stars use a reduced budget', () => {
+    const timed = createHopeScene({ now: new Date(2026, 10, 5, 23, 59, 59) })
+    const sky = timed.style.getPropertyValue('--sk-hope-time-top')
+    updateHopeSceneTime(timed, new Date(2026, 10, 6, 0, 0, 0))
+    assert.equal(timed.style.getPropertyValue('--sk-hope-time-top'), sky)
+    assert.equal(timed.style.getPropertyValue('--sk-hope-night'), '1.000')
+    assert.equal(timed.querySelectorAll('.sk-hope-star').length, 100)
+    const compact = createHopeScene({ compact: true, now: new Date(2026, 10, 6, 0) })
+    assert.equal(compact.querySelectorAll('.sk-hope-star').length, 32)
+    assert.ok(compact.querySelector('.sk-hope-moon'))
+    assert.equal(compact.querySelectorAll('.sk-hope-ridge').length, 3)
+  })
+
   test('exports a decorative element matching the palette contract', () => {
     scene = createHopeScene()
     assert.ok(scene instanceof dom.window.HTMLElement)
@@ -130,9 +204,12 @@ describe('hope scene', () => {
       [
         'sk-hope-sky',
         'sk-hope-dawn',
+        'sk-hope-night',
+        'sk-hope-clouds',
         'sk-hope-rays',
         'sk-hope-horizon',
         'sk-hope-sun',
+        'sk-hope-landscape',
         'sk-hope-embers',
         'sk-hope-scrim',
       ],
@@ -144,8 +221,9 @@ describe('hope scene', () => {
     assert.ok(rays instanceof dom.window.SVGElement)
     assert.equal(rays.tagName.toLowerCase(), 'svg')
     assert.equal(rays.getAttribute('viewBox'), '0 0 1000 640')
-    assert.equal(rays.getAttribute('preserveAspectRatio'), 'xMidYMax slice')
+    assert.equal(rays.getAttribute('preserveAspectRatio'), 'none')
     assert.equal(rays.getAttribute('aria-hidden'), 'true')
+    assert.equal(rays.getAttribute('focusable'), 'false')
 
     const gradient = rays.querySelector('radialGradient')
     assert.ok(gradient)
@@ -208,6 +286,7 @@ describe('hope scene', () => {
   })
 
   test('stays self-contained: no external assets, no scripts, no React', () => {
+    assert.equal(scene.querySelectorAll('a, button, input, textarea, select, [tabindex], [contenteditable]').length, 0)
     assert.equal(scene.querySelectorAll('img, script, link, iframe, object, embed, video, audio, canvas').length, 0)
     for (const node of [scene, ...scene.querySelectorAll('*')]) {
       for (const attribute of node.attributes) {
@@ -242,13 +321,27 @@ describe('hope scene', () => {
 })
 
 describe('hope stylesheet', () => {
-  test('scopes every rule to html[data-sk-palette="hope"]', () => {
+  test('scene, selected-pack shell and local preview rules keep their own scopes', () => {
     assert.ok(parsed.rules.length >= 20, 'expected a full layer sheet')
+    const scopes = new Set()
     for (const rule of parsed.rules) {
       for (const selector of selectorsOf(rule)) {
-        assert.ok(selector.startsWith(SCOPE), `unscoped selector: ${selector}`)
+        const classes = (selector.match(/\.[A-Za-z0-9_-]+/g) ?? []).map((token) => token.slice(1))
+        if (classes.some((token) => token === 'sk-scene--hope' || token.startsWith('sk-hope-'))) {
+          scopes.add('scene')
+          assert.ok(classes.includes('sk-scene--hope'), `artwork escapes its scene: ${selector}`)
+          assert.doesNotMatch(selector, /data-sk-palette|data-preview-palette/, 'unselected scenes must still paint')
+        } else if (selector.includes(PREVIEW_SCOPE)) {
+          scopes.add('preview')
+          assert.match(selector.slice(0, selector.indexOf(PREVIEW_SCOPE)), /^(?:\.[A-Za-z0-9_-]+)?$/, `preview scope must be local: ${selector}`)
+          assert.doesNotMatch(selector, /data-sk-palette/)
+        } else {
+          scopes.add('shell')
+          assert.ok(selector.startsWith(SCOPE), `unscoped shell selector: ${selector}`)
+        }
       }
     }
+    assert.deepEqual([...scopes].sort(), ['preview', 'scene', 'shell'])
     assert.doesNotMatch(sceneCss, /@import\b/)
     assert.doesNotMatch(sceneCss, /url\(\s*['"]?https?:/i)
   })
@@ -287,26 +380,55 @@ describe('hope stylesheet', () => {
   })
 
   test('ships matched light and dark token sets on the scene root', () => {
-    const lightRule = parsed.rules.find((rule) => rule.selector.trim() === `${SCOPE} .sk-scene--hope`)
-    assert.ok(lightRule, 'expected the light token block on the scene root')
-    const darkRule = parsed.rules.find((rule) => rule.selector.includes('[data-ds-dark-theme]'))
-    assert.ok(darkRule, 'expected a body[data-ds-dark-theme] override block')
-    const darkSelectors = selectorsOf(darkRule)
-    assert.ok(darkSelectors.some((selector) => selector.includes('body[data-ds-dark-theme]')))
-    for (const selector of darkSelectors) {
-      assert.ok(selector.startsWith(SCOPE))
-      assert.match(selector, /\[data-ds-dark-theme\]/)
-    }
-
-    const lightTokens = tokensOf(lightRule.body)
-    const darkTokens = tokensOf(darkRule.body)
-    assert.ok(lightTokens.size >= 15, 'expected a complete light token set')
-    assert.equal(darkTokens.size, lightTokens.size)
-    assert.deepEqual([...darkTokens.keys()].sort(), [...lightTokens.keys()].sort())
+    const { light, dark } = sceneTokenSets()
+    assert.ok(light.size >= 15, 'expected a complete light token set')
+    assert.deepEqual([...dark.keys()].sort(), [...light.keys()].sort())
     // Light is warm and bright; dark turns deep red with golden edges.
-    assert.notEqual(lightTokens.get('--sk-hope-sky-deep'), darkTokens.get('--sk-hope-sky-deep'))
-    assert.notEqual(lightTokens.get('--sk-hope-sun-core'), darkTokens.get('--sk-hope-sun-core'))
-    assert.notEqual(lightTokens.get('--sk-hope-ember'), darkTokens.get('--sk-hope-ember'))
+    for (const name of ['--sk-hope-sky-top', '--sk-hope-sun-core', '--sk-hope-ember']) {
+      assert.notEqual(light.get(name), dark.get(name), `${name} must adapt to dark mode`)
+    }
+  })
+
+  test('scene tokens honor body and preview brightness in all 18 selected-style combinations', (t) => {
+    const style = document.createElement('style')
+    style.textContent = sceneCss
+    document.head.append(style)
+    t.after(() => {
+      style.remove()
+      document.body.replaceChildren()
+      document.body.removeAttribute('data-ds-dark-theme')
+      delete document.documentElement.dataset.skPalette
+    })
+    const tokens = sceneTokenSets()
+    let combinations = 0
+
+    for (const bodyDark of [false, true]) {
+      document.body.toggleAttribute('data-ds-dark-theme', bodyDark)
+      for (const previewMode of [null, 'light', 'dark']) {
+        for (const selected of ['codex', 'ocean', 'hope']) {
+          document.documentElement.dataset.skPalette = selected
+          const preview = document.createElement('div')
+          if (previewMode) {
+            preview.dataset.previewMode = previewMode
+            preview.dataset.previewPalette = 'hope'
+          }
+          const scene = createHopeScene({ compact: previewMode !== null })
+          preview.append(scene)
+          document.body.replaceChildren(preview)
+
+          const expected = tokens[previewMode === 'dark' || (previewMode === null && bodyDark) ? 'dark' : 'light']
+          const computed = dom.window.getComputedStyle(scene)
+          const context = `body=${bodyDark ? 'dark' : 'light'}, preview=${previewMode ?? 'none'}, selected=${selected}`
+          for (const [name, value] of expected) {
+            // CSSOM removes optional whitespace around the alpha separator.
+            const actual = computed.getPropertyValue(name).trim().replace(/\s*\/\s*/g, '/')
+            assert.equal(actual, value.replace(/\s*\/\s*/g, '/'), `${context}: ${name}`)
+          }
+          combinations += 1
+        }
+      }
+    }
+    assert.equal(combinations, 18)
   })
 
   test('keeps the card preview readable at thumbnail size', () => {

@@ -1,4 +1,4 @@
-html body {
+html[data-sk-palette="codex"] body {
   --cx-rail: color-mix(
     in srgb,
     var(--dsw-specific-sidebar-fill),
@@ -10,7 +10,7 @@ html body {
   --cx-line: var(--dsw-alias-border-l3);
 }
 
-html:root {
+html[data-sk-palette="codex"]:root {
   --dsw-radius-xs: 3px;
   --dsw-radius-sm: 6px;
   --dsw-radius-md: 8px;
@@ -19,7 +19,7 @@ html:root {
   --dsw-radius-panel: 20px;
 }
 
-html[data-sk-desktop] body {
+html[data-sk-palette="codex"][data-sk-desktop] body {
 
   --cx-rail-w: 52px;
   --cx-panel-w: 250px;
@@ -35,18 +35,18 @@ html[data-sk-desktop] body {
   --cx-title-clear-full: 84px;
 }
 
-html[data-platform="darwin"] body {
+html[data-sk-palette="codex"][data-platform="darwin"] body {
   --cx-band-h: 50px;
   --cx-toggle-x: 88px;
   --cx-title-clear: 160px;
   --cx-title-clear-full: 84px;
 }
 
-html[data-platform="darwin"][data-fullscreen] body {
+html[data-sk-palette="codex"][data-platform="darwin"][data-fullscreen] body {
   --cx-toggle-x: 12px;
 }
 
-html[data-windows-titlebar] body {
+html[data-sk-palette="codex"][data-windows-titlebar] body {
   --cx-band-h: 0px;
   --cx-toggle-x: 12px;
   --cx-title-clear: 0px;

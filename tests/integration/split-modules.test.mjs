@@ -184,7 +184,7 @@ for (const platform of ['darwin', 'windows']) test(`theme preserves resized work
   pointer('pointerdown', 492)
   pointer('pointerup', 1000)
   assert.equal(nativeDrags, 1, 'cleanup restores native event handling')
-  assert.match(frame.style.gridTemplateColumns, /^492px/)
+  assert.match(frame.style.gridTemplateColumns, /^280px/)
 })
 
 function archivedContext() {

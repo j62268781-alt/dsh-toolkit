@@ -1,9 +1,8 @@
-/** Ocean whale scene: a DOM-only "大海蓝鲸" backdrop for the ocean palette.
+/** Ocean whale scene: a DOM-only marine backdrop for the ocean palette.
  *
- *  The scene is a pure decoration layer. It never fetches, never mounts React and
- *  owns no state: the visual life of the layers lives in ocean.css, while this
- *  module only paints the layer tree (inline SVG whale included) and scatters the
- *  particles. `options.compact` paints a sparser copy for the theme card preview.
+ *  The scene is a pure decoration layer. It never fetches or mounts a UI
+ *  framework: ocean.css owns the motion and colors, while this module paints the
+ *  layers and inline SVG whale. `options.compact` paints the sparser card preview.
  */
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -63,7 +62,7 @@ function createGradient(doc, id, stops) {
   return gradient
 }
 
-/** The breaching whale: body, flukes, pectoral fin, dorsal fin, eye, mouth and spout. */
+/** A blue whale: tapered body and flukes, pale throat pleats and a small dorsal fin. */
 function createWhale(doc, uid) {
   const whale = element(doc, 'div', 'sk-ocean-whale')
   const svg = svgElement(doc, 'svg')
@@ -77,71 +76,112 @@ function createWhale(doc, uid) {
   const defs = svgElement(doc, 'defs')
   defs.append(
     createGradient(doc, bodyId, [
-      ['0%', 'sk-ocean-body-top', '#0b2e4c'],
-      ['48%', 'sk-ocean-body-mid', '#1a5885'],
-      ['100%', 'sk-ocean-body-low', '#569bc2'],
+      ['0%', 'sk-ocean-body-top', '#35718a'],
+      ['48%', 'sk-ocean-body-mid', '#5791a8'],
+      ['100%', 'sk-ocean-body-low', '#8bb7c4'],
     ]),
     createGradient(doc, finId, [
-      ['0%', 'sk-ocean-fin-top', '#0a2740'],
-      ['100%', 'sk-ocean-fin-low', '#1a5076'],
+      ['0%', 'sk-ocean-fin-top', '#2b6079'],
+      ['100%', 'sk-ocean-fin-low', '#4f859c'],
     ]),
   )
 
-  const body = svgPath(doc, 'sk-ocean-whale-body', '', { fill: `url(#${bodyId})` })
-  body.setAttribute(
-    'd',
-    'M 22 104 C 24 90 38 84 58 82 C 98 77 150 77 190 83 C 210 86 222 90 226 94 ' +
-      'C 240 90 256 80 272 72 C 286 64 300 70 296 82 C 290 94 280 104 268 112 ' +
-      'C 278 118 288 128 294 140 C 300 152 288 160 278 152 C 266 142 250 130 226 116 ' +
-      'C 212 130 192 140 168 146 C 132 156 86 158 54 154 C 40 158 26 160 22 150 Z',
+  const body = svgPath(
+    doc,
+    'sk-ocean-whale-body',
+    'M 28 102 C 27 91 44 83 71 80 C 117 73 167 77 206 91 ' +
+      'C 225 98 241 101 253 98 C 263 87 275 79 293 76 ' +
+      'C 289 89 281 102 267 111 C 281 117 290 127 294 141 ' +
+      'C 275 139 259 129 249 118 C 235 120 224 127 208 134 ' +
+      'C 168 151 117 157 75 150 C 48 146 31 134 28 119 C 27 113 27 107 28 102 Z',
+    { fill: `url(#${bodyId})` },
+  )
+
+  const belly = svgPath(
+    doc,
+    'sk-ocean-whale-belly',
+    'M 31 121 C 61 142 116 146 169 137 C 197 132 224 119 245 115 ' +
+      'C 224 128 212 133 198 138 C 158 155 109 158 75 150 C 52 146 36 135 31 121 Z',
+  )
+
+  const pleats = svgPath(
+    doc,
+    'sk-ocean-whale-pleats',
+    'M 42 127 C 69 142 104 145 142 140 M 44 132 C 70 146 106 149 139 144 ' +
+      'M 50 139 C 76 151 103 152 129 148',
+    { fill: 'none', 'stroke-width': '0.9', 'stroke-linecap': 'round' },
   )
 
   const fin = svgPath(
     doc,
     'sk-ocean-whale-fin',
-    'M 100 152 C 108 164 122 178 140 186 C 143 176 136 162 124 153 ' +
-      'C 114 146 106 146 100 152 Z',
+    'M 116 132 C 126 144 140 158 157 166 C 163 169 166 168 163 163 ' +
+      'C 151 148 141 138 129 130 Z',
     { fill: `url(#${finId})` },
   )
 
   const dorsal = svgPath(
     doc,
     'sk-ocean-whale-dorsal',
-    'M 192 83 C 198 79 206 78 211 79 C 208 82 206 85 205 87 Z',
+    'M 196 87 C 202 79 208 78 212 79 C 209 83 210 88 214 93 Z',
     { fill: `url(#${finId})` },
   )
 
+  const highlight = svgPath(
+    doc,
+    'sk-ocean-whale-highlight',
+    'M 47 91 C 91 81 151 84 194 97',
+    { fill: 'none', 'stroke-width': '1.2', 'stroke-linecap': 'round' },
+  )
 
-  const mouth = svgPath(doc, 'sk-ocean-whale-mouth', 'M 23 146 C 40 138 64 133 88 132', {
+  const mouth = svgPath(doc, 'sk-ocean-whale-mouth', 'M 30 116 C 48 122 71 124 95 120', {
     fill: 'none',
-    stroke: 'var(--sk-ocean-whale-ink)',
-    'stroke-width': '2.4',
+    'stroke-width': '1.3',
     'stroke-linecap': 'round',
-    opacity: '0.5',
+    opacity: '0.6',
   })
 
   const eye = svgElement(doc, 'circle')
   eye.setAttribute('class', 'sk-ocean-whale-eye')
-  eye.setAttribute('cx', '72')
-  eye.setAttribute('cy', '114')
-  eye.setAttribute('r', '3.2')
-  eye.setAttribute('fill', 'var(--sk-ocean-whale-ink)')
+  eye.setAttribute('cx', '67')
+  eye.setAttribute('cy', '112')
+  eye.setAttribute('r', '2')
+
+  const eyeGlint = svgElement(doc, 'circle')
+  eyeGlint.setAttribute('class', 'sk-ocean-whale-eye-glint')
+  eyeGlint.setAttribute('cx', '66.5')
+  eyeGlint.setAttribute('cy', '111.4')
+  eyeGlint.setAttribute('r', '0.6')
 
   const spout = svgPath(
     doc,
     'sk-ocean-whale-spout',
-    'M 62 80 C 59 68 63 58 61 46 M 68 80 C 71 69 75 60 72 49',
-    {
-      fill: 'none',
-      stroke: 'var(--sk-ocean-spout)',
-      'stroke-width': '2.4',
-      'stroke-linecap': 'round',
-      opacity: '0.7',
-    },
+    'M 64 80 C 65 64 62 53 56 43 M 65 68 C 69 57 75 51 83 49',
+    { fill: 'none', 'stroke-width': '1.5', 'stroke-linecap': 'round' },
   )
 
-
-  svg.append(defs, body, fin, dorsal, mouth, eye, spout)
+  // Fine anatomical folds and mottled skin read as volume even in a small card.
+  const detail = svgElement(doc, 'g')
+  detail.setAttribute('class', 'sk-ocean-whale-detail')
+  for (let index = 0; index < 9; index++) {
+    detail.append(svgPath(doc, 'sk-ocean-whale-fold',
+      `M ${37 + index * 3} ${121 + index * 2.2} Q ${82 + index * 3} ${149 + index} ${156 + index * 4} ${136 + index * 0.4}`,
+      { fill: 'none', 'stroke-width': '0.45' }))
+  }
+  const random = createRandom(0x43be72)
+  for (let index = 0; index < 38; index++) {
+    const spot = svgElement(doc, 'ellipse')
+    spot.setAttribute('class', 'sk-ocean-whale-mottle')
+    spot.setAttribute('cx', (48 + random() * 152).toFixed(1))
+    spot.setAttribute('cy', (98 + random() * 29).toFixed(1))
+    spot.setAttribute('rx', (0.5 + random() * 1.6).toFixed(1))
+    spot.setAttribute('ry', (0.3 + random() * 0.65).toFixed(1))
+    detail.append(spot)
+  }
+  const caustic = svgPath(doc, 'sk-ocean-whale-caustic',
+    'M 45 100 Q 70 88 93 98 T 143 95 T 192 105 M 61 108 Q 90 99 114 108 T 165 104 T 213 113',
+    { fill: 'none', 'stroke-width': '1.2' })
+  svg.append(defs, dorsal, body, belly, pleats, detail, highlight, caustic, fin, mouth, eye, eyeGlint, spout)
   whale.append(svg)
   return whale
 }
@@ -162,21 +202,27 @@ function createSplash(doc, { compact }) {
 function createWaves(doc) {
   const waves = element(doc, 'div', 'sk-ocean-waves')
   const shapes = [
-    'M 0 96 C 180 52 340 132 520 104 C 700 76 860 20 1040 42 C 1180 59 1300 96 1440 74 L 1440 220 L 0 220 Z',
-    'M 0 132 C 160 104 300 148 470 136 C 660 122 780 78 960 92 C 1140 106 1290 152 1440 128 L 1440 220 L 0 220 Z',
-    'M 0 158 C 140 138 300 176 470 166 C 660 154 820 128 1000 142 C 1180 156 1300 184 1440 174 L 1440 220 L 0 220 Z',
+    'M 0 100 C 240 64 480 64 720 100 S 1200 136 1440 100',
+    'M 0 128 C 220 160 500 160 720 128 S 1220 96 1440 128',
+    'M 0 162 C 240 140 480 140 720 162 S 1200 184 1440 162',
   ]
   shapes.forEach((shape, index) => {
     const layer = element(doc, 'div', `sk-ocean-wave sk-ocean-wave--${index + 1}`)
     const svg = svgElement(doc, 'svg')
     svg.setAttribute('class', 'sk-ocean-wave-svg')
-    svg.setAttribute('viewBox', '0 0 1440 220')
+    // Both repeats must fit inside the SVG viewport for the 50% drift to loop.
+    svg.setAttribute('viewBox', '0 0 2880 220')
     svg.setAttribute('preserveAspectRatio', 'none')
     svg.setAttribute('focusable', 'false')
-    const path = svgPath(doc, 'sk-ocean-wave-path', shape)
-    const echo = svgPath(doc, 'sk-ocean-wave-path', shape)
-    echo.setAttribute('transform', 'translate(1440 0)')
-    svg.append(path, echo)
+    for (const offset of [0, 1440]) {
+      const path = svgPath(doc, 'sk-ocean-wave-path', `${shape} L 1440 220 L 0 220 Z`)
+      const crest = svgPath(doc, 'sk-ocean-wave-crest', shape)
+      if (offset) {
+        path.setAttribute('transform', `translate(${offset} 0)`)
+        crest.setAttribute('transform', `translate(${offset} 0)`)
+      }
+      svg.append(path, crest)
+    }
     layer.append(svg)
     waves.append(layer)
   })
@@ -256,9 +302,12 @@ export function createOceanScene(options = {}) {
 
   root.append(
     glow,
+    element(doc, 'div', 'sk-ocean-surface'),
     createBeams(doc, compact ? 2 : 3),
     createStars(doc, random, compact ? 6 : 22),
+    element(doc, 'div', 'sk-ocean-distant-whale'),
     createWhale(doc, uid),
+    element(doc, 'div', 'sk-ocean-caustics'),
     createWaves(doc),
     createSplash(doc, { compact }),
     createBubbles(doc, bubbleRandom, compact ? 3 : 10),

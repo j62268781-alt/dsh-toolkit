@@ -5,13 +5,17 @@ const RAIL_ROW = '[data-slot="sidebar"] > [class*="_root"] [class*="_panelRow"]'
 
 export function installRailTitles() {
   let queued = 0;
+  const titles = new Map();
 
   const pass = () => {
     queued = 0;
     for (const row of document.querySelectorAll(RAIL_ROW)) {
       const label = row.querySelector('[class*="_panelTitle"]');
       const text = label?.textContent?.trim();
-      if (text && row.getAttribute("title") !== text) row.setAttribute("title", text);
+      if (text && row.getAttribute("title") !== text) {
+        if (!titles.has(row)) titles.set(row, row.getAttribute("title"));
+        row.setAttribute("title", text);
+      }
     }
   };
 
@@ -27,6 +31,11 @@ export function installRailTitles() {
   return () => {
     observer.disconnect();
     if (queued) cancelAnimationFrame(queued);
+    for (const [row, title] of titles) {
+      if (title === null) row.removeAttribute("title");
+      else row.setAttribute("title", title);
+    }
+    titles.clear();
   };
 }
 

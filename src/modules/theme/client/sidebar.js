@@ -32,12 +32,19 @@ function findFrame() {
   return frameEl;
 }
 
-export function installSidebarWidth(ctx) {
+export function installSidebarWidth(ctx, options = {}) {
+  const native = options.native === true;
+  // The native frame contract is 264–420px; Codex adds its separate 52px rail.
+  const minWidth = native ? 264 : WORKSPACE_MIN;
+  const maxWidth = native ? 420 : WORKSPACE_MAX;
   let queued = 0;
   let offPanel = null;
-  let workspaceWidth = WORKSPACE_MIN;
+  let workspaceWidth = minWidth;
   let drag = null;
+  let nativeResized = false;
   const handles = new Map();
+  const frames = new Map();
+  const roots = new Map();
 
   const finishDrag = () => {
     if (!drag) return;
@@ -56,11 +63,25 @@ export function installSidebarWidth(ctx) {
     if (!frame) return;
     const cols = frame.style.gridTemplateColumns;
     if (!cols) return;
+    const firstColumn = cols.match(/^[\d.]+px/)?.[0];
+    if (!frames.has(frame)) {
+      frames.set(frame, {
+        nativeWidth: firstColumn,
+        ownedWidth: null,
+        expanded: frame.getAttribute("data-sk-workspace-expanded"),
+      });
+    }
+    const saved = frames.get(frame);
+    if (firstColumn && firstColumn !== saved.ownedWidth) saved.nativeWidth = firstColumn;
 
     const collapsed = frame.hasAttribute("data-sidebar-collapsed");
+    if (native && nativeResized && firstColumn && firstColumn !== saved.ownedWidth && !collapsed) {
+      workspaceWidth = Math.min(maxWidth, Math.max(minWidth, parseFloat(firstColumn)));
+    }
     const home = isHomeView(ctx);
     const root = document.querySelector('[data-slot="sidebar"] > [class*="_root"]');
-    if (root) {
+    if (root && !native) {
+      if (!roots.has(root)) roots.set(root, root.getAttribute("data-sk-rail-only"));
 
       const railOnly = !collapsed && (!home || workspaceCollapsed);
       if (railOnly && !root.hasAttribute("data-sk-rail-only")) {
@@ -70,15 +91,18 @@ export function installSidebarWidth(ctx) {
       }
     }
 
-    const expanded = !collapsed && home && !workspaceCollapsed;
-    frame.toggleAttribute("data-sk-workspace-expanded", expanded);
+    const expanded = !collapsed && (native || (home && !workspaceCollapsed));
+    if (!native) frame.toggleAttribute("data-sk-workspace-expanded", expanded);
     if (!expanded) finishDrag();
     const target = collapsed
       ? "0px"
-      : expanded
-        ? `${RAIL_WIDTH + workspaceWidth}px`
-        : RAIL_W;
+      : native
+        ? `${workspaceWidth}px`
+        : expanded
+          ? `${RAIL_WIDTH + workspaceWidth}px`
+          : RAIL_W;
     const next = cols.replace(/^[\d.]+px/, target);
+    saved.ownedWidth = target;
     if (next !== cols) frame.style.gridTemplateColumns = next;
 
     const handle = frame.querySelector('[data-side="sidebar"]');
@@ -90,11 +114,14 @@ export function installSidebarWidth(ctx) {
         });
         handle.setAttribute("role", "separator");
         handle.setAttribute("tabindex", "0");
-        handle.setAttribute("aria-label", "调整工作区宽度");
+        handle.setAttribute("aria-label", native ? "调整侧边栏宽度" : "调整工作区宽度");
         handle.setAttribute("aria-orientation", "vertical");
-        handle.setAttribute("aria-valuemin", String(WORKSPACE_MIN));
-        handle.setAttribute("aria-valuemax", String(WORKSPACE_MAX));
+        handle.setAttribute("aria-valuemin", String(minWidth));
+        handle.setAttribute("aria-valuemax", String(maxWidth));
       }
+      const savedHandle = handles.get(handle);
+      if (handle.style.left !== savedHandle.ownedLeft) savedHandle.left = handle.style.left;
+      savedHandle.ownedLeft = target;
       if (handle.style.left !== target) handle.style.left = target;
       const value = String(workspaceWidth);
       if (handle.getAttribute("aria-valuenow") !== value) handle.setAttribute("aria-valuenow", value);
@@ -108,19 +135,26 @@ export function installSidebarWidth(ctx) {
   };
 
   const setWidth = (width) => {
-    workspaceWidth = Math.min(WORKSPACE_MAX, Math.max(WORKSPACE_MIN, Math.round(width)));
+    workspaceWidth = Math.min(maxWidth, Math.max(minWidth, Math.round(width)));
   };
   const sidebarHandle = (event) => {
     if (!isDesktopShell() || !(event.target instanceof Element)) return null;
     const handle = event.target.closest('[data-side="sidebar"]');
     const frame = findFrame();
-    return handle && handle.parentElement === frame && frame.hasAttribute("data-sk-workspace-expanded") ? handle : null;
+    const expanded = frame && (native
+      ? !frame.hasAttribute("data-sidebar-collapsed")
+      : frame.hasAttribute("data-sk-workspace-expanded"));
+    return handle && handle.parentElement === frame && expanded ? handle : null;
   };
-  // The host clamps total sidebar width to 264–420px. Own this handle's events
-  // so the workspace itself can span 250–450px, in addition to the 52px rail.
+  // Native palettes only change the untouched default. The host owns their
+  // pointer capture, drag state, width store and subsequent resize updates.
   const onPointerDown = (event) => {
     const handle = sidebarHandle(event);
     if (!handle || event.button !== 0 || drag) return;
+    if (native) {
+      nativeResized = true;
+      return;
+    }
     event.preventDefault();
     event.stopImmediatePropagation();
     const frame = findFrame();
@@ -147,8 +181,8 @@ export function installSidebarWidth(ctx) {
     const widths = {
       ArrowLeft: workspaceWidth - (event.shiftKey ? 50 : 10),
       ArrowRight: workspaceWidth + (event.shiftKey ? 50 : 10),
-      Home: WORKSPACE_MIN,
-      End: WORKSPACE_MAX,
+      Home: minWidth,
+      End: maxWidth,
     };
     if (!(event.key in widths)) return;
     event.preventDefault();
@@ -207,7 +241,21 @@ export function installSidebarWidth(ctx) {
     window.removeEventListener("resize", schedule);
     if (typeof offPanel === "function") offPanel();
     if (queued) cancelAnimationFrame(queued);
-    frameEl?.removeAttribute("data-sk-workspace-expanded");
+    for (const [frame, saved] of frames) {
+      const cols = frame.style.gridTemplateColumns;
+      if (saved.nativeWidth && cols.match(/^[\d.]+px/)?.[0] === saved.ownedWidth) {
+        frame.style.gridTemplateColumns = cols.replace(/^[\d.]+px/, saved.nativeWidth);
+      }
+      if (saved.expanded === null) frame.removeAttribute("data-sk-workspace-expanded");
+      else frame.setAttribute("data-sk-workspace-expanded", saved.expanded);
+    }
+    for (const [root, value] of roots) {
+      if (value === null) root.removeAttribute("data-sk-rail-only");
+      else root.setAttribute("data-sk-rail-only", value);
+    }
+    frames.clear();
+    roots.clear();
+    workspaceCollapsed = false;
     for (const [handle, { left, attrs }] of handles) {
       handle.style.left = left;
       for (const [name, value] of Object.entries(attrs)) {
