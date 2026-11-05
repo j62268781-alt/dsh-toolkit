@@ -1406,7 +1406,14 @@ window.__ModuleLoader__.load({
 
     .sk-theme-mode-art[data-mode="light"] { background: #f6f7f9; }
     .sk-theme-mode-art[data-mode="dark"] { background: #191b20; }
-    .sk-theme-mode-art[data-mode="system"] { background: linear-gradient(135deg, #f6f7f9 50%, #191b20 50%); }
+    .sk-theme-mode-art[data-mode="system"] { background: #f6f7f9; }
+    .sk-theme-mode-art[data-mode="system"]::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: #191b20;
+      clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    }
 
     .sk-theme-emblem {
       position: absolute;
@@ -2951,7 +2958,7 @@ window.__ModuleLoader__.load({
     var NAV_LIST = '[class*="_navList"]';
     var NAV_CELL = '[class*="_navCell"]';
     var GROUPS = [
-      { title: "基础设置", ids: ["theme", "boot", "account", "general", "notification"] },
+      { title: "基础设置", ids: ["account", "general", "theme", "boot", "notification"] },
       { title: "模型与 Agent", ids: ["models", "agent-presets", "judgment"] },
       { title: "工具与扩展", ids: ["skills-mcp", "browser", "plugins"] },
       { title: "会话与数据", ids: ["archived-chats"] },

@@ -6,7 +6,7 @@ const PANEL = '[data-shortcut-modal="settings"]';
 const NAV_LIST = '[class*="_navList"]';
 const NAV_CELL = '[class*="_navCell"]';
 const GROUPS = [
-  { title: "基础设置", ids: ["theme", "boot", "account", "general", "notification"] },
+  { title: "基础设置", ids: ["account", "general", "theme", "boot", "notification"] },
   { title: "模型与 Agent", ids: ["models", "agent-presets", "judgment"] },
   { title: "工具与扩展", ids: ["skills-mcp", "browser", "plugins"] },
   { title: "会话与数据", ids: ["archived-chats"] },

@@ -303,7 +303,14 @@
 
 .sk-theme-mode-art[data-mode="light"] { background: #f6f7f9; }
 .sk-theme-mode-art[data-mode="dark"] { background: #191b20; }
-.sk-theme-mode-art[data-mode="system"] { background: linear-gradient(135deg, #f6f7f9 50%, #191b20 50%); }
+.sk-theme-mode-art[data-mode="system"] { background: #f6f7f9; }
+.sk-theme-mode-art[data-mode="system"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #191b20;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
 
 .sk-theme-emblem {
   position: absolute;

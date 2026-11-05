@@ -164,6 +164,13 @@ test('grouped menu keeps React rows in place and orders by stable settings ident
   entries[2].options.label = '自定义提示'
   list.lastElementChild.textContent = '自定义提示'
   list.firstElementChild.setAttribute('aria-current', 'true')
+  for (const [id, label] of [['theme', '外观'], ['boot', '启动动画'], ['general', '通用']]) {
+    entries.push({ options: { id, label, order: entries.length } })
+    const cell = document.createElement('button')
+    cell.className = '_AnXs9G_navCell'
+    cell.textContent = label
+    list.append(cell)
+  }
   const originals = [...list.children]
   const clicks = []
   originals.forEach((cell) => cell.addEventListener('click', () => {
@@ -178,7 +185,7 @@ test('grouped menu keeps React rows in place and orders by stable settings ident
   assert.equal(nav.getAttribute('data-sk-settings-grouped'), '')
   assert.deepEqual([...list.children], originals, 'native React-owned rows stay in their original list')
   const labels = [...grouped.querySelectorAll('.sk-setnav__item span')].map((node) => node.textContent)
-  assert.deepEqual(labels, ['账号与余额', '自定义提示', 'Skills & MCP'], 'group ordering places notification in basic settings ahead of tools')
+  assert.deepEqual(labels, ['账号与余额', '通用', '外观', '启动动画', '自定义提示', 'Skills & MCP'], 'the default account page leads basic settings, followed by general, appearance, boot and notification')
   assert.equal(grouped.querySelector('[data-settings-id="notification"]').closest('section').getAttribute('aria-label'), '基础设置')
   assert.equal(grouped.querySelector('[data-settings-id="account"]').getAttribute('aria-current'), 'true')
 
