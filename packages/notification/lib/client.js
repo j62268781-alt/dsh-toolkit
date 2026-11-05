@@ -4,10 +4,12 @@ window.__ModuleLoader__.load({
   factory(require) {
     const module = { exports: {} };
     // src/modules/notification/client/styles.css
-    var styles_default = `/* Notification cards use the same title/description metrics as General settings. */
+    var styles_default = `/* Notification cards use the same title/description metrics as General settings.
+     * 页头（标题 + 副标题）直接复用 src/client/styles/settings.css 的 .ntf-pageTitle /
+     * .ntf-pageIntro（index.jsx 用 settingsStyles('ntf') 拼在前），这里不再重复声明。 */
     .ntf-page { box-sizing: border-box; width: 100%; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }
     .ntf-page > * { width: 100%; max-width: 960px; }
-    .ntf-pageTitle { margin: 0; font-size: 18px; font-weight: 600; line-height: 26px; }
+    .ntf-pageHead { box-sizing: border-box; display: flex; flex-direction: column; }
     .ntf-section { min-width: 0; }
     .ntf-sectionTitle { margin: 0 0 10px; color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 500; line-height: 20px; }
     .ntf-card { border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; padding: 0 16px; min-width: 0; }
@@ -54,6 +56,17 @@ window.__ModuleLoader__.load({
       tag.textContent = css;
       (document.head ?? document.documentElement).appendChild(tag);
       return () => tag.remove();
+    }
+
+    // src/client/styles/settings.css
+    var settings_default = "/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */\n.ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}\n/* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */\n.ab-pageTitle,.jdg-pageTitle,.smp-pageTitle,.ntf-pageTitle,.sk-arch__title{color:var(--dsw-alias-label-primary);margin:0;font-size:18px;font-weight:600}\n.ab-pageIntro,.jdg-pageIntro,.smp-pageIntro,.ntf-pageIntro,.sk-arch__subtitle{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:13px}\n.ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}\n.ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}\n.ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}\n.ab-button[data-variant=outline],.jdg-button[data-variant=outline],.smp-button[data-variant=outline]{border-color:var(--dsw-alias-border-l3)}\n.ab-button[data-variant=primary],.jdg-button[data-variant=primary],.smp-button[data-variant=primary]{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}\n.ab-button[data-variant=primary]:hover:not(:disabled),.jdg-button[data-variant=primary]:hover:not(:disabled),.smp-button[data-variant=primary]:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}\n.ab-button:disabled,.jdg-button:disabled,.smp-button:disabled{opacity:.4;cursor:not-allowed}\n.jdg-filterRow,.smp-filterRow,.sk-filterRow{display:flex;align-items:center;gap:8px}\n/* Search matches the built-in plugin inventory (36px, l4 stroke, icon at 12px, 34px right inset, focus ring). */\n.jdg-search,.smp-search,.sk-search{flex:1 1 auto;min-width:140px;color:var(--dsw-alias-label-tertiary);align-items:center;display:flex;position:relative}\n.jdg-searchIcon,.smp-searchIcon,.sk-searchIcon{position:absolute;left:12px;display:inline-flex;pointer-events:none}\n.jdg-searchInput,.smp-searchInput,.sk-searchInput{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);padding:0 34px 0 36px;outline:none}\n.jdg-searchInput::placeholder,.smp-searchInput::placeholder,.sk-searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}\n.jdg-searchInput:focus-visible,.smp-searchInput:focus-visible,.sk-searchInput:focus-visible{border-color:var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)) 18%,transparent)}\n.jdg-tabs,.smp-tabs{display:flex;gap:24px;border-bottom:.5px solid var(--dsw-alias-border-l2)}\n.jdg-tab,.smp-tab{appearance:none;background:none;border:0;padding:0 2px 10px;font:inherit;font-size:14px;line-height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}\n.jdg-tab[data-active=true],.smp-tab[data-active=true]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-label-primary)}\n.jdg-cards,.smp-cards{flex-direction:column;gap:14px;margin:0;padding:0;list-style:none;display:flex}\n.jdg-card,.smp-card{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:4px;padding:12px 14px;min-width:0;display:flex}\n.jdg-cardRow,.smp-cardRow{align-items:center;gap:10px;min-width:0;display:flex}\n.jdg-cardIdentity,.smp-cardIdentity{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;min-width:0;overflow-wrap:anywhere}\n.jdg-cardEnd,.smp-cardEnd{flex:none;align-items:center;gap:8px;display:inline-flex}\n.jdg-cardDetails,.smp-cardDetails{border-top:.5px solid var(--dsw-alias-border-l2);padding:12px 0 0}\n.jdg-card>.jdg-cardDetails:first-child,.smp-card>.smp-cardDetails:first-child{border-top:0;padding-top:0}\n.jdg-chevron,.smp-chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .14s ease-in-out}\n.jdg-chevron[data-open=false],.smp-chevron[data-open=false]{transform:rotate(-90deg)}\n.jdg-tag,.smp-tag{display:inline-flex;align-items:center;border-radius:999px;padding:1px 8px;font-size:11px;line-height:17px;font-weight:500;white-space:nowrap}\n.jdg-tag[data-tone=neutral],.smp-tag[data-tone=neutral]{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary)}\n.jdg-tag[data-tone=ok],.smp-tag[data-tone=ok]{background:var(--dsw-alias-state-success-tertiary,var(--dsw-alias-bg-module-platform));color:var(--dsw-alias-state-success-primary,#067647)}\n.jdg-formGrid,.smp-formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}\n";
+
+    // src/client/styles/settings.js
+    function settingsStyles(namespace) {
+      return settings_default.replace(/\/\*[\s\S]*?\*\//g, "").replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors, declarations) => {
+        const scoped = selectors.split(",").map((selector) => selector.trim()).filter((selector) => selector.startsWith(`.${namespace}-`));
+        return scoped.length > 0 ? `${scoped.join(",")}{${declarations}}` : "";
+      });
     }
 
     // src/client/config.js
@@ -168,15 +181,21 @@ window.__ModuleLoader__.load({
         soundNone: "静音",
         testTitle: "测试通知",
         testDesc: "验证系统通知通道是否可用；打开开关时也会申请权限。",
+        testHint: "发送一条系统通知，验证当前系统权限下提醒能否正常弹出。",
         testButton: "发送测试通知",
-        testSent: "已发送一条测试通知。",
         testFailed: "系统通知没有发出来：{reason}",
         testUnsupported: "当前环境不支持系统通知（需要浏览器或桌面外壳）。",
+        permissionTitle: "系统权限",
         permissionGranted: "通知权限：已授予",
         permissionDenied: "通知权限：已被拒绝，需在系统设置里重新允许。",
         permissionDefault: "通知权限：尚未授予",
         permissionUnsupported: "通知权限：当前环境不支持",
+        permissionHintGranted: "系统通知已开启，提醒会正常弹出。",
+        permissionHintDenied: "系统通知已关闭；请到系统设置里允许本应用发送通知。",
+        permissionHintDefault: "系统通知尚未开启；点击右侧按钮申请权限。",
+        permissionHintUnsupported: "当前环境不支持系统通知（需要浏览器或桌面外壳）。",
         grantButton: "授权",
+        recheckButton: "重新检查",
         grantedJustNow: "已获得通知权限。",
         deniedHint: "浏览器已拒绝通知权限；请到浏览器的站点设置里允许后再试。",
         recentTitle: "最近通知",
@@ -242,15 +261,21 @@ window.__ModuleLoader__.load({
         soundNone: "Silent",
         testTitle: "Test notification",
         testDesc: "Check the system notification channel; turning the switch on also asks for permission.",
+        testHint: "Send a system notification to check whether reminders appear with the current permission.",
         testButton: "Send test notification",
-        testSent: "A test notification was sent.",
         testFailed: "The system notification was not shown: {reason}",
         testUnsupported: "System notifications are not available in this environment.",
+        permissionTitle: "System permission",
         permissionGranted: "Permission: granted",
         permissionDenied: "Permission: denied — allow it again in the system settings.",
         permissionDefault: "Permission: not granted yet",
         permissionUnsupported: "Permission: unsupported here",
+        permissionHintGranted: "System notifications are on; reminders will appear.",
+        permissionHintDenied: "System notifications are off; allow this app in the system settings.",
+        permissionHintDefault: "System notifications are not enabled yet; request permission to start.",
+        permissionHintUnsupported: "System notifications are not available in this environment.",
         grantButton: "Grant",
+        recheckButton: "Check again",
         grantedJustNow: "Notification permission granted.",
         deniedHint: "The browser denied notifications; allow them in the site settings and try again.",
         recentTitle: "Recent notifications",
@@ -1174,6 +1199,7 @@ window.__ModuleLoader__.load({
     var KIND_COPY = { completed: "typeCompleted", failed: "typeFailed", question: "typeQuestion", permission: "typePermission" };
     var MODE_COPY = { never: "currentNever", unfocused: "currentUnfocused", always: "currentAlways" };
     var PERMISSION_COPY = { granted: "permissionGranted", denied: "permissionDenied", default: "permissionDefault", unsupported: "permissionUnsupported" };
+    var PERMISSION_HINT = { granted: "permissionHintGranted", denied: "permissionHintDenied", default: "permissionHintDefault", unsupported: "permissionHintUnsupported" };
     function createNotificationPanel(React, options = {}) {
       const t = typeof options.t === "function" ? options.t : (key) => key;
       const { settings, actions = {}, primitives } = options;
@@ -1314,9 +1340,13 @@ window.__ModuleLoader__.load({
           else if (next === "denied") setError(translate("deniedHint"));
         });
         const testNotification = () => change(async () => {
-          if (await actions.testNotification()) setNotice(translate("testSent"));
-          else setError(translate("testFailed", { reason: translate(PERMISSION_COPY[permission] ?? "permissionUnsupported") }));
+          if (!await actions.testNotification()) setError(translate("testFailed", { reason: translate(PERMISSION_COPY[permission] ?? "permissionUnsupported") }));
         });
+        const recheckPermission = () => {
+          setError("");
+          setNotice("");
+          setPermission(actions.permission?.() ?? "unsupported");
+        };
         const preview = () => change(async () => {
           if (await actions.previewSound(snapshot.sound) === false) setError(translate("soundUnavailable"));
         });
@@ -1324,10 +1354,10 @@ window.__ModuleLoader__.load({
         const soundChoices = [{ id: "system", label: translate("soundSystem") }, ...sounds.filter((entry) => entry.id !== "system")];
         if (!soundChoices.some((entry) => entry.id === selectedSound)) soundChoices.push({ id: selectedSound, label: translate("soundMissing") });
         const currentMode = CURRENT_MODES.includes(snapshot.currentMode) ? snapshot.currentMode : "unfocused";
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-page" }, /* @__PURE__ */ __dshReact.createElement("header", { className: "ntf-pageHead" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "ntf-pageTitle" }, translate("title"))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("preferencesHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("enabledTitle"), description: translate("enabledDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.enabled === true, disabled: readOnly || busy, label: translate("enabledTitle"), onChange: (next) => change(() => actions.setEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("currentTitle"), description: translate("currentDesc") }, /* @__PURE__ */ __dshReact.createElement(Timing, { value: currentMode, disabled: inactive, translate, onChange: (next) => change(() => actions.setCurrentMode(next)) }))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("typesHeading") }, KINDS.map((kind) => {
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-page" }, /* @__PURE__ */ __dshReact.createElement("header", { className: "ntf-pageHead" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "ntf-pageTitle" }, translate("title")), /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-pageIntro" }, translate("intro"))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("preferencesHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("enabledTitle"), description: translate("enabledDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.enabled === true, disabled: readOnly || busy, label: translate("enabledTitle"), onChange: (next) => change(() => actions.setEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("currentTitle"), description: translate("currentDesc") }, /* @__PURE__ */ __dshReact.createElement(Timing, { value: currentMode, disabled: inactive, translate, onChange: (next) => change(() => actions.setCurrentMode(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("testTitle"), description: translate("testHint") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: inactive || permission !== "granted", onClick: testNotification }, translate("testButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("permissionTitle"), description: translate(PERMISSION_HINT[permission] ?? "permissionHintUnsupported") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, permission === "default" ? /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: requestPermission }, translate("grantButton")) : permission === "unsupported" ? null : /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: recheckPermission }, translate("recheckButton"))))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("typesHeading") }, KINDS.map((kind) => {
           const title = translate(`${KIND_COPY[kind]}Title`);
           return /* @__PURE__ */ __dshReact.createElement(Row, { key: kind, title, description: translate(`${KIND_COPY[kind]}Desc`) }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.types?.[kind]?.enabled === true, disabled: inactive, label: title, onChange: (next) => change(() => actions.setKindEnabled(kind, next)) }));
-        })), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("soundsHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTitle"), description: translate("soundDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.soundEnabled === true, disabled: inactive, label: translate("soundTitle"), onChange: (next) => change(() => actions.setSoundEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTypeTitle"), description: translate(soundStatus === "unavailable" ? "soundCatalogUnavailable" : "soundTypeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement("select", { className: "ntf-select ntf-selectSound", "aria-label": translate("soundTypeTitle"), value: selectedSound, disabled: soundInactive || soundStatus === "loading", onChange: (event) => change(() => actions.setSound(event.target.value)) }, soundChoices.map(({ id, label }) => /* @__PURE__ */ __dshReact.createElement("option", { value: id, key: id }, label))), /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: soundInactive || soundStatus !== "ready", onClick: preview }, translate("previewButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("volumeTitle"), description: translate("volumeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-volume" }, /* @__PURE__ */ __dshReact.createElement("input", { className: "ntf-range", type: "range", min: "0", max: "100", step: "1", value: Math.round(volume * 100), "aria-label": translate("volumeTitle"), disabled: readOnly || snapshot.enabled !== true || snapshot.soundEnabled !== true, onChange: (event) => changeVolume(Number(event.target.value) / 100) }), /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-volumeValue" }, translate("volumeValue", { percent: Math.round(volume * 100) }))))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("testTitle") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("testTitle"), description: translate(PERMISSION_COPY[permission] ?? "permissionUnsupported") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, permission === "default" ? /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: requestPermission }, translate("grantButton")) : null, /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: inactive || permission !== "granted", onClick: testNotification }, translate("testButton"))))), error !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-error", role: "alert" }, error) : null, notice !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-notice", role: "status" }, notice) : null, readOnly ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-note" }, translate("readOnly")) : null);
+        })), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("soundsHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTitle"), description: translate("soundDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.soundEnabled === true, disabled: inactive, label: translate("soundTitle"), onChange: (next) => change(() => actions.setSoundEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTypeTitle"), description: translate(soundStatus === "unavailable" ? "soundCatalogUnavailable" : "soundTypeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement("select", { className: "ntf-select ntf-selectSound", "aria-label": translate("soundTypeTitle"), value: selectedSound, disabled: soundInactive || soundStatus === "loading", onChange: (event) => change(() => actions.setSound(event.target.value)) }, soundChoices.map(({ id, label }) => /* @__PURE__ */ __dshReact.createElement("option", { value: id, key: id }, label))), /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: soundInactive || soundStatus !== "ready", onClick: preview }, translate("previewButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("volumeTitle"), description: translate("volumeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-volume" }, /* @__PURE__ */ __dshReact.createElement("input", { className: "ntf-range", type: "range", min: "0", max: "100", step: "1", value: Math.round(volume * 100), "aria-label": translate("volumeTitle"), disabled: readOnly || snapshot.enabled !== true || snapshot.soundEnabled !== true, onChange: (event) => changeVolume(Number(event.target.value) / 100) }), /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-volumeValue" }, translate("volumeValue", { percent: Math.round(volume * 100) }))))), error !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-error", role: "alert" }, error) : null, notice !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-notice", role: "status" }, notice) : null, readOnly ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-note" }, translate("readOnly")) : null);
       };
     }
 
@@ -1603,7 +1633,8 @@ window.__ModuleLoader__.load({
           install(() => {
             if (typeof document === "undefined") return () => {
             };
-            return installStylesheet(styles_default, "toolkit-notification");
+            return installStylesheet(`${settingsStyles("ntf")}
+    ${styles_default}`, "toolkit-notification");
           }, "toolkit-notification:stylesheet");
           install(() => {
             if (typeof form?.subscribe !== "function") return void 0;

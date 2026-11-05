@@ -1,7 +1,9 @@
-/* Notification cards use the same title/description metrics as General settings. */
+/* Notification cards use the same title/description metrics as General settings.
+ * 页头（标题 + 副标题）直接复用 src/client/styles/settings.css 的 .ntf-pageTitle /
+ * .ntf-pageIntro（index.jsx 用 settingsStyles('ntf') 拼在前），这里不再重复声明。 */
 .ntf-page { box-sizing: border-box; width: 100%; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }
 .ntf-page > * { width: 100%; max-width: 960px; }
-.ntf-pageTitle { margin: 0; font-size: 18px; font-weight: 600; line-height: 26px; }
+.ntf-pageHead { box-sizing: border-box; display: flex; flex-direction: column; }
 .ntf-section { min-width: 0; }
 .ntf-sectionTitle { margin: 0 0 10px; color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 500; line-height: 20px; }
 .ntf-card { border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; padding: 0 16px; min-width: 0; }

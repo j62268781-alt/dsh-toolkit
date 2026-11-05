@@ -17,6 +17,7 @@
  */
 import css from './styles.css'
 import { installStylesheet } from '../../../client/ui/stylesheet.js'
+import { settingsStyles } from '../../../client/styles/settings.js'
 import { findScopedForm } from '../../../client/config.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
 import { NOTIFICATION_NS, NOTIFICATION_COPY, createTranslator } from './locale.js'
@@ -374,7 +375,7 @@ export default function createNotification(require) {
 
       install(() => {
         if (typeof document === 'undefined') return () => {}
-        return installStylesheet(css, 'toolkit-notification')
+        return installStylesheet(`${settingsStyles('ntf')}\n${css}`, 'toolkit-notification')
       }, 'toolkit-notification:stylesheet')
 
       install(() => {

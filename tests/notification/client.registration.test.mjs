@@ -120,8 +120,8 @@ test('页面：四张分组卡片、全局声音与四种类型开关，无最�
   const { page, fetch, runtime, app } = await bootPanel(t)
   const document = page.document
   assert.equal(document.querySelector('.ntf-pageTitle').textContent, '通知')
-  assert.deepEqual([...document.querySelectorAll('.ntf-section')].map((section) => section.getAttribute('aria-label')), ['通知', '提醒类型', '声音', '测试通知'])
-  assert.equal(document.querySelectorAll('.ntf-card').length, 4)
+  assert.deepEqual([...document.querySelectorAll('.ntf-section')].map((section) => section.getAttribute('aria-label')), ['通知', '提醒类型', '声音'])
+  assert.equal(document.querySelectorAll('.ntf-card').length, 3)
   for (const row of document.querySelectorAll('.ntf-row')) {
     assert.ok(row.querySelector('.ntf-title'))
     assert.ok(row.querySelector('.ntf-desc'))
@@ -284,7 +284,8 @@ test('测试通知仍可申请权限并发送；配置保存失败不会乐观�
   assert.match(page.document.body.textContent, /通知权限：已授予|已获得通知权限/)
   await app.click(button('发送测试通知'))
   assert.equal(stub.instances.length, 1)
-  assert.match(page.document.querySelector('[role="status"]').textContent, /已发送一条测试通知/)
+  assert.equal(page.document.querySelector('[role="status"]'), null, '发送成功后不再额外提示一条状态文案')
+  assert.doesNotMatch(page.document.body.textContent, /已发送一条测试通知/)
 
   runtime.rootForm.mutate = async () => false
   await app.click(switchFor(page.document, '启用通知'))

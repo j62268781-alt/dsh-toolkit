@@ -4,7 +4,7 @@ import { CURRENT_MODES, KINDS } from './model.js'
 const KIND_COPY = { completed: 'typeCompleted', failed: 'typeFailed', question: 'typeQuestion', permission: 'typePermission' }
 const MODE_COPY = { never: 'currentNever', unfocused: 'currentUnfocused', always: 'currentAlways' }
 const PERMISSION_COPY = { granted: 'permissionGranted', denied: 'permissionDenied', default: 'permissionDefault', unsupported: 'permissionUnsupported' }
-
+const PERMISSION_HINT = { granted: 'permissionHintGranted', denied: 'permissionHintDenied', default: 'permissionHintDefault', unsupported: 'permissionHintUnsupported' }
 export function createNotificationPanel(React, options = {}) {
   const t = typeof options.t === 'function' ? options.t : (key) => key
   const { settings, actions = {}, primitives } = options
@@ -111,9 +111,9 @@ export function createNotificationPanel(React, options = {}) {
       else if (next === 'denied') setError(translate('deniedHint'))
     })
     const testNotification = () => change(async () => {
-      if (await actions.testNotification()) setNotice(translate('testSent'))
-      else setError(translate('testFailed', { reason: translate(PERMISSION_COPY[permission] ?? 'permissionUnsupported') }))
+      if (!await actions.testNotification()) setError(translate('testFailed', { reason: translate(PERMISSION_COPY[permission] ?? 'permissionUnsupported') }))
     })
+    const recheckPermission = () => { setError(''); setNotice(''); setPermission(actions.permission?.() ?? 'unsupported') }
     const preview = () => change(async () => {
       if (await actions.previewSound(snapshot.sound) === false) setError(translate('soundUnavailable'))
     })
@@ -122,10 +122,12 @@ export function createNotificationPanel(React, options = {}) {
     if (!soundChoices.some((entry) => entry.id === selectedSound)) soundChoices.push({ id: selectedSound, label: translate('soundMissing') })
     const currentMode = CURRENT_MODES.includes(snapshot.currentMode) ? snapshot.currentMode : 'unfocused'
     return <div className="ntf-page">
-      <header className="ntf-pageHead"><h2 className="ntf-pageTitle">{translate('title')}</h2></header>
+      <header className="ntf-pageHead"><h2 className="ntf-pageTitle">{translate('title')}</h2><p className="ntf-pageIntro">{translate('intro')}</p></header>
       <Group title={translate('preferencesHeading')}>
         <Row title={translate('enabledTitle')} description={translate('enabledDesc')}><Toggle checked={snapshot.enabled === true} disabled={readOnly || busy} label={translate('enabledTitle')} onChange={(next) => change(() => actions.setEnabled(next))} /></Row>
         <Row title={translate('currentTitle')} description={translate('currentDesc')}><Timing value={currentMode} disabled={inactive} translate={translate} onChange={(next) => change(() => actions.setCurrentMode(next))} /></Row>
+        <Row title={translate('testTitle')} description={translate('testHint')}><div className="ntf-actions"><ActionButton disabled={inactive || permission !== 'granted'} onClick={testNotification}>{translate('testButton')}</ActionButton></div></Row>
+        <Row title={translate('permissionTitle')} description={translate(PERMISSION_HINT[permission] ?? 'permissionHintUnsupported')}><div className="ntf-actions">{permission === 'default' ? <ActionButton disabled={busy} onClick={requestPermission}>{translate('grantButton')}</ActionButton> : permission === 'unsupported' ? null : <ActionButton disabled={busy} onClick={recheckPermission}>{translate('recheckButton')}</ActionButton>}</div></Row>
       </Group>
       <Group title={translate('typesHeading')}>
         {KINDS.map((kind) => { const title = translate(`${KIND_COPY[kind]}Title`); return <Row key={kind} title={title} description={translate(`${KIND_COPY[kind]}Desc`)}><Toggle checked={snapshot.types?.[kind]?.enabled === true} disabled={inactive} label={title} onChange={(next) => change(() => actions.setKindEnabled(kind, next))} /></Row> })}
@@ -135,7 +137,6 @@ export function createNotificationPanel(React, options = {}) {
         <Row title={translate('soundTypeTitle')} description={translate(soundStatus === 'unavailable' ? 'soundCatalogUnavailable' : 'soundTypeDesc')}><div className="ntf-actions"><select className="ntf-select ntf-selectSound" aria-label={translate('soundTypeTitle')} value={selectedSound} disabled={soundInactive || soundStatus === 'loading'} onChange={(event) => change(() => actions.setSound(event.target.value))}>{soundChoices.map(({ id, label }) => <option value={id} key={id}>{label}</option>)}</select><ActionButton disabled={soundInactive || soundStatus !== 'ready'} onClick={preview}>{translate('previewButton')}</ActionButton></div></Row>
         <Row title={translate('volumeTitle')} description={translate('volumeDesc')}><div className="ntf-volume"><input className="ntf-range" type="range" min="0" max="100" step="1" value={Math.round(volume * 100)} aria-label={translate('volumeTitle')} disabled={readOnly || snapshot.enabled !== true || snapshot.soundEnabled !== true} onChange={(event) => changeVolume(Number(event.target.value) / 100)} /><span className="ntf-volumeValue">{translate('volumeValue', { percent: Math.round(volume * 100) })}</span></div></Row>
       </Group>
-      <Group title={translate('testTitle')}><Row title={translate('testTitle')} description={translate(PERMISSION_COPY[permission] ?? 'permissionUnsupported')}><div className="ntf-actions">{permission === 'default' ? <ActionButton disabled={busy} onClick={requestPermission}>{translate('grantButton')}</ActionButton> : null}<ActionButton disabled={inactive || permission !== 'granted'} onClick={testNotification}>{translate('testButton')}</ActionButton></div></Row></Group>
       {error !== '' ? <p className="ntf-error" role="alert">{error}</p> : null}
       {notice !== '' ? <p className="ntf-notice" role="status">{notice}</p> : null}
       {readOnly ? <p className="ntf-note">{translate('readOnly')}</p> : null}
