@@ -113,6 +113,144 @@ html[data-sk-boot-bailed] [data-dsh-boot] {
 @keyframes sk-fill-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sk-wm-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes sk-wm-track { from { letter-spacing: .42em; } to { letter-spacing: .26em; } }
+.sk-boot__depth { display: none; }
+
+/* 深海之门：三层透视光环与海平面，单次入场后保持安静。 */
+.sk-boot[data-sk-animation="abyss"] {
+  --dsh-boot-bg: radial-gradient(ellipse at 50% 40%, #164667 0%, #071e38 48%, #020b18 100%);
+  --sk-ink: #e6fbff;
+  --sk-ink-2: #8bc6dc;
+  --sk-depth-line: rgba(112, 225, 255, .44);
+  --sk-depth-glow: rgba(44, 176, 245, .2);
+  --sk-depth-particle: rgba(167, 241, 255, .7);
+  overflow: hidden;
+  isolation: isolate;
+}
+.sk-boot[data-sk-animation="abyss"][data-sk-theme="light"],
+body[data-ds-light-theme] .sk-boot[data-sk-animation="abyss"][data-sk-theme="auto"] {
+  --dsh-boot-bg: radial-gradient(ellipse at 50% 35%, #f4fcff 0%, #c6e9f5 48%, #77adc7 100%);
+  --sk-ink: #0b3553;
+  --sk-ink-2: #376783;
+  --sk-depth-line: rgba(15, 102, 150, .38);
+  --sk-depth-glow: rgba(13, 123, 183, .16);
+  --sk-depth-particle: rgba(21, 117, 163, .56);
+}
+@media (prefers-color-scheme: light) {
+  .sk-boot[data-sk-animation="abyss"][data-sk-theme="auto"] {
+    --dsh-boot-bg: radial-gradient(ellipse at 50% 35%, #f4fcff 0%, #c6e9f5 48%, #77adc7 100%);
+    --sk-ink: #0b3553;
+    --sk-ink-2: #376783;
+    --sk-depth-line: rgba(15, 102, 150, .38);
+    --sk-depth-glow: rgba(13, 123, 183, .16);
+    --sk-depth-particle: rgba(21, 117, 163, .56);
+  }
+}
+body[data-ds-dark-theme] .sk-boot[data-sk-animation="abyss"][data-sk-theme="auto"] {
+  --dsh-boot-bg: radial-gradient(ellipse at 50% 40%, #164667 0%, #071e38 48%, #020b18 100%);
+  --sk-ink: #e6fbff;
+  --sk-ink-2: #8bc6dc;
+  --sk-depth-line: rgba(112, 225, 255, .44);
+  --sk-depth-glow: rgba(44, 176, 245, .2);
+  --sk-depth-particle: rgba(167, 241, 255, .7);
+}
+.sk-boot[data-sk-animation="abyss"] .sk-boot__depth {
+  display: block;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  perspective: 800px;
+  pointer-events: none;
+}
+.sk-boot__beams {
+  position: absolute;
+  inset: -35% -20% 0;
+  background: conic-gradient(from 154deg at 50% 0%, transparent 0deg 8deg, var(--sk-depth-glow) 10deg, transparent 16deg 27deg, var(--sk-depth-glow) 30deg, transparent 35deg 45deg, var(--sk-depth-glow) 49deg, transparent 54deg);
+  filter: blur(9px);
+  opacity: .6;
+  transform-origin: 50% 0;
+  animation: sk-depth-beams 2.1s ease-out both;
+}
+.sk-boot__portal {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: min(46vw, 440px);
+  min-width: 240px;
+  aspect-ratio: 1;
+  transform-style: preserve-3d;
+  transform: translate(-50%, -50%) rotateX(8deg) rotateY(-18deg);
+}
+.sk-boot__ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--sk-depth-line);
+  border-radius: 50%;
+  box-shadow: 0 0 28px var(--sk-depth-glow), inset 0 0 20px var(--sk-depth-glow);
+  transform: translateZ(var(--sk-ring-z)) scale(var(--sk-ring-scale));
+  opacity: var(--sk-ring-opacity);
+  animation: sk-depth-ring 1.7s cubic-bezier(.16,.7,.2,1) var(--sk-ring-delay) both;
+}
+.sk-boot__ring::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px dashed var(--sk-depth-line);
+  border-radius: inherit;
+  opacity: .35;
+}
+.sk-boot__ring--far { --sk-ring-z: -180px; --sk-ring-scale: .66; --sk-ring-opacity: .28; --sk-ring-delay: 0ms; }
+.sk-boot__ring--middle { --sk-ring-z: -50px; --sk-ring-scale: .88; --sk-ring-opacity: .6; --sk-ring-delay: 90ms; }
+.sk-boot__ring--near { --sk-ring-z: 110px; --sk-ring-scale: 1.08; --sk-ring-opacity: .8; --sk-ring-delay: 180ms; }
+.sk-boot__plane {
+  position: absolute;
+  left: -35%;
+  top: 68%;
+  width: 170%;
+  height: 110%;
+  transform-origin: 50% 0;
+  transform: rotateX(68deg);
+  background-image: repeating-linear-gradient(90deg, transparent 0 59px, var(--sk-depth-line) 60px 61px), repeating-linear-gradient(0deg, transparent 0 41px, var(--sk-depth-line) 42px 43px);
+  mask-image: radial-gradient(ellipse at 50% 0%, #000, transparent 65%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000, transparent 65%);
+  opacity: .23;
+  animation: sk-depth-plane 1.8s cubic-bezier(.2,.7,.2,1) both;
+}
+.sk-boot__horizon {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  top: 68%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--sk-depth-line), transparent);
+  box-shadow: 0 0 32px 5px var(--sk-depth-glow);
+  animation: sk-depth-horizon 1.8s ease-out both;
+}
+.sk-boot__motes {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 24% 34%, var(--sk-depth-particle) 1px, transparent 2px), radial-gradient(circle at 76% 62%, var(--sk-depth-particle) 1px, transparent 2px), radial-gradient(circle at 67% 23%, var(--sk-depth-particle) 1px, transparent 2px), radial-gradient(circle at 35% 71%, var(--sk-depth-particle) .7px, transparent 1.5px), radial-gradient(circle at 83% 38%, var(--sk-depth-particle) .7px, transparent 1.5px), radial-gradient(circle at 14% 56%, var(--sk-depth-particle) .7px, transparent 1.5px);
+  opacity: .55;
+  animation: sk-depth-motes 2s ease-out both;
+}
+.sk-boot[data-sk-animation="abyss"] .sk-boot__grid { display: none; }
+.sk-boot[data-sk-animation="abyss"] .sk-boot__lockup { z-index: 1; perspective: 700px; animation: sk-depth-arrive 1.7s cubic-bezier(.16,.7,.2,1) both; }
+.sk-boot[data-sk-animation="abyss"] .sk-boot__mark { width: 104px; filter: drop-shadow(0 3px 0 var(--sk-depth-glow)) drop-shadow(0 0 24px var(--sk-depth-glow)); }
+.sk-boot[data-sk-animation="abyss"] .sk-boot__trace { stroke: var(--sk-ink); animation: sk-depth-trace 1.5s ease-out both; }
+.sk-boot[data-sk-animation="abyss"] .sk-boot__fill { animation: sk-depth-assemble 1.7s ease-out both; }
+.sk-boot[data-sk-animation="abyss"] .sk-boot__wordmark { animation: sk-depth-wordmark 1.7s ease-out both; }
+@keyframes sk-depth-ring {
+  from { opacity: 0; transform: translateZ(calc(var(--sk-ring-z) - 340px)) scale(.35); }
+  to { opacity: var(--sk-ring-opacity); transform: translateZ(var(--sk-ring-z)) scale(var(--sk-ring-scale)); }
+}
+@keyframes sk-depth-beams { from { opacity: 0; transform: scaleX(.6); } to { opacity: .6; transform: none; } }
+@keyframes sk-depth-plane { from { opacity: 0; transform: rotateX(78deg) translateY(90px); } to { opacity: .23; transform: rotateX(68deg); } }
+@keyframes sk-depth-horizon { from { opacity: 0; transform: scaleX(.1); } to { opacity: 1; transform: none; } }
+@keyframes sk-depth-motes { from { opacity: 0; transform: scale(.65); } to { opacity: .55; transform: none; } }
+@keyframes sk-depth-arrive { from { opacity: 0; transform: perspective(700px) translateZ(-280px) rotateX(12deg); } 68% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes sk-depth-trace { 0%,12% { stroke-dashoffset: 1; opacity: 0; } 30% { opacity: 1; } 78% { stroke-dashoffset: 0; opacity: .5; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes sk-depth-assemble { 0%,40% { opacity: 0; } 80%,100% { opacity: 1; } }
+@keyframes sk-depth-wordmark { 0%,62% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
+
 /* 系统里关掉动效时，只留淡入淡出 */
 @media (prefers-reduced-motion: reduce) {
   .sk-boot__grid,

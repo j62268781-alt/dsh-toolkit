@@ -64,9 +64,13 @@ test('scene presets are distinct, constrained and safe from config markup', () =
   assert.notEqual(water.html, abyss.html)
   assert.match(water.css, /sk-ripple/)
   assert.match(water.css, /sk-water-reflect/)
-  assert.match(abyss.css, /sk-sonar/)
-  assert.match(abyss.css, /sk-whale-dive/)
-  assert.match(abyss.css, /sk-abyss-assemble/)
+  assert.match(abyss.css, /perspective: 800px/)
+  assert.match(abyss.css, /sk-depth-arrive/)
+  assert.match(abyss.css, /sk-depth-assemble/)
+  assert.doesNotMatch(abyss.css, /infinite/)
+  assert.match(abyss.html, /sk-boot__ring--far/)
+  assert.match(abyss.html, /sk-boot__ring--middle/)
+  assert.match(abyss.html, /sk-boot__ring--near/)
   assert.match(abyss.css, /prefers-reduced-motion/)
   assert.match(draw.css, /sk-trace/)
   assert.match(draw.css, /prefers-reduced-motion/)
@@ -146,7 +150,7 @@ async function mountPanel(t, form) {
   return { dom, root, panel, text: () => dom.window.document.body.textContent }
 }
 
-test('settings panel installs styles, registers order, saves multiple fields without draft loss, and sandboxes preview', async (t) => {
+test('settings panel previews above choices, applies animation immediately, and saves grouped settings independently', async (t) => {
   const { form, writes, value } = makeForm({ animation: 'draw', durationMs: 2400, theme: 'auto', showWordmark: true, allowSkip: true })
   const app = await mountPanel(t, form)
   const { document } = app.dom.window
@@ -160,27 +164,142 @@ test('settings panel installs styles, registers order, saves multiple fields wit
   assert.equal(frame.getAttribute('sandbox'), '')
   assert.doesNotMatch(frame.getAttribute('srcdoc'), /<script\b/i)
   assert.match(frame.getAttribute('srcdoc'), /@media \(prefers-color-scheme:dark\)/)
+  assert.ok(document.querySelector('.boot-preview-section').compareDocumentPosition(document.querySelector('.boot-options')) & app.dom.window.Node.DOCUMENT_POSITION_FOLLOWING)
+  assert.equal(document.querySelectorAll('.boot-controls').length, 2)
+  assert.equal(document.querySelectorAll('.boot-mode').length, 3)
+  assert.equal(document.querySelectorAll('.boot-mode[aria-pressed="true"]').length, 1)
 
   const choose = async (label) => {
     const button = [...document.querySelectorAll('button')].find((node) => node.textContent.includes(label))
     assert.ok(button)
     await act(async () => button.click())
   }
+  // An unsaved display draft must survive the volatile animation write.
+  await act(async () => document.querySelector('[role="switch"][aria-label="显示文字标识"]').click())
+  assert.deepEqual(writes, [])
   await choose('水面浮现')
-  await act(async () => document.querySelector('input[type=checkbox]').click())
-  await choose('保存')
-  assert.deepEqual(writes, [['animation', 'water'], ['showWordmark', false]])
+  assert.deepEqual(writes, [['animation', 'water']])
   assert.equal(value().animation, 'water')
+  assert.equal(value().showWordmark, true)
+  assert.equal(document.querySelector('[aria-label="显示文字标识"]').getAttribute('aria-checked'), 'false')
+  assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="water"/)
+  assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-wordmark="false"/)
+  assert.match(app.text(), /已使用水面浮现/)
+  await choose('保存设置')
+  assert.deepEqual(writes, [['animation', 'water'], ['showWordmark', false]])
   assert.equal(value().showWordmark, false)
   assert.match(app.text(), /设置已保存/)
+  const previousFrame = document.querySelector('.boot-preview')
+  await choose('重新播放')
+  assert.notEqual(document.querySelector('.boot-preview'), previousFrame)
+  await choose('水面浮现')
+  assert.deepEqual(writes, [['animation', 'water'], ['showWordmark', false]])
 })
 
-test('read-only config disables every editor and shows an explanation', async (t) => {
-  const { form } = makeForm({ animation: 'draw', durationMs: 2400, theme: 'auto', showWordmark: true, allowSkip: true }, { writable: false })
+test('mode cards reuse the desktop whale and toggles match General Settings geometry and tokens', async (t) => {
+  const { form } = makeForm({ animation: 'draw', durationMs: 2400, theme: 'auto', showWordmark: true, allowSkip: true })
+  const app = await mountPanel(t, form)
+  const { document, getComputedStyle } = app.dom.window
+  const logos = [...document.querySelectorAll('.boot-mode-art img')]
+  assert.equal(logos.length, 3)
+  assert.match(logos[0].getAttribute('src'), /^data:image\/png;base64,/)
+  assert.ok(logos.every((logo) => logo.getAttribute('src') === logos[0].getAttribute('src')))
+  assert.equal(document.querySelectorAll('.boot-mode-art svg').length, 0)
+  const toggle = document.querySelector('[aria-label="显示文字标识"]')
+  const thumb = toggle.querySelector('.boot-switch-thumb')
+  assert.equal(getComputedStyle(toggle).width, '36px')
+  assert.equal(getComputedStyle(toggle).height, '20px')
+  assert.equal(getComputedStyle(toggle).padding, '2px')
+  assert.equal(getComputedStyle(thumb).width, '16px')
+  assert.equal(getComputedStyle(thumb).height, '16px')
+  assert.equal(getComputedStyle(thumb).transform, 'translate(16px)')
+  assert.equal(thumb.getAttribute('aria-hidden'), 'true')
+  const rules = [...document.querySelector('style[data-plugin="toolkit-boot-panel"]').sheet.cssRules]
+  const rule = (selector) => rules.find((item) => item.selectorText === selector).style
+  assert.equal(rule('.boot-switch[aria-checked=true]').getPropertyValue('background'), 'var(--dsw-alias-brand-primary)')
+  assert.equal(rule('.boot-switch[aria-checked=false] .boot-switch-thumb').getPropertyValue('background'), 'var(--dsw-alias-switch-thumb)')
+  assert.match(rule('.boot-mode[aria-pressed=true]').getPropertyValue('border-color'), /--dsw-alias-brand-primary-new-colorprimary-new-color/)
+  await act(async () => toggle.click())
+  assert.equal(toggle.getAttribute('aria-checked'), 'false')
+  assert.notEqual(getComputedStyle(thumb).transform, 'translate(16px)')
+})
+
+test('read-only config disables editors but keeps the local replay available', async (t) => {
+  const { form, writes } = makeForm({ animation: 'draw', durationMs: 2400, theme: 'auto', showWordmark: true, allowSkip: true }, { writable: false })
   const app = await mountPanel(t, form)
   const { document } = app.dom.window
   assert.match(app.text(), /当前配置不可写/)
-  for (const control of document.querySelectorAll('button,select,input')) assert.equal(control.disabled, true, control.outerHTML)
+  for (const control of document.querySelectorAll('.boot-mode,.boot-save,[role="switch"],select,input')) assert.equal(control.disabled, true, control.outerHTML)
+  const replayButton = document.querySelector('.boot-button')
+  assert.equal(replayButton.disabled, false)
+  await act(async () => replayButton.click())
+  assert.deepEqual(writes, [])
+})
+
+test('rejected animation writes restore the persisted selection and report the failure', async (t) => {
+  const { form } = makeForm({ animation: 'draw', durationMs: 2400, theme: 'auto', showWordmark: true, allowSkip: true })
+  form.set = async () => false
+  const app = await mountPanel(t, form)
+  const { document } = app.dom.window
+  await act(async () => document.querySelector('.boot-mode-art--abyss').closest('button').click())
+  assert.match(document.querySelector('[role="alert"]').textContent, /宿主拒绝/)
+  assert.match(document.querySelector('.boot-mode[aria-pressed="true"]').textContent, /经典描摹/)
+  assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="draw"/)
+  assert.doesNotMatch(app.text(), /已使用深海之门/)
+})
+
+test('animation writes disable competing edits until accepted and persist only animation', async (t) => {
+  const { form, writes } = makeForm({ animation: 'draw', durationMs: 2400, theme: 'auto', showWordmark: true, allowSkip: true })
+  const set = form.set
+  let release
+  form.set = async (field, next) => {
+    await new Promise((resolve) => { release = resolve })
+    return set(field, next)
+  }
+  const app = await mountPanel(t, form)
+  const { document } = app.dom.window
+  await act(async () => document.querySelector('.boot-mode-art--abyss').closest('button').click())
+  assert.match(app.text(), /正在应用/)
+  for (const control of document.querySelectorAll('.boot-mode,[role="switch"],select,input')) assert.equal(control.disabled, true)
+  assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="abyss"/)
+  await act(async () => release())
+  assert.deepEqual(writes, [['animation', 'abyss']])
+  assert.match(document.querySelector('.boot-mode[aria-pressed="true"]').textContent, /深海之门/)
+})
+
+test('depth scene owns its light and dark palette and hides decorations in the two original modes', () => {
+  for (const animation of ['draw', 'water', 'abyss']) {
+    for (const theme of ['light', 'dark']) {
+      const dom = new JSDOM(createPreviewDocument(sourceAssets, { animation, theme }))
+      const { document } = dom.window
+      const backdrop = dom.window.getComputedStyle(document.querySelector('.sk-boot')).getPropertyValue('--dsh-boot-bg')
+      const depth = dom.window.getComputedStyle(document.querySelector('.sk-boot__depth')).display
+      if (animation === 'abyss') {
+        assert.match(backdrop, /radial-gradient/)
+        assert.match(backdrop, theme === 'light' ? /#f4fcff/ : /#164667/)
+        assert.equal(depth, 'block')
+      } else {
+        assert.equal(depth, 'none')
+        assert.equal(backdrop, theme === 'light' ? '#f4fbfa' : '#101a1d')
+      }
+      dom.window.close()
+    }
+  }
+})
+
+test('depth artwork remains readable when reduced motion disables every animation', () => {
+  const dom = new JSDOM(createPreviewDocument(sourceAssets, { animation: 'abyss', theme: 'dark' }))
+  const styles = [...dom.window.document.styleSheets].flatMap((sheet) => [...sheet.cssRules])
+  const reduced = styles.filter((rule) => rule.conditionText === '(prefers-reduced-motion: reduce)').flatMap((rule) => [...rule.cssRules])
+  const stop = reduced.find((rule) => rule.selectorText?.includes('.sk-boot *'))
+  assert.equal(stop.style.getPropertyValue('animation'), 'none')
+  assert.equal(stop.style.getPropertyPriority('animation'), 'important')
+  const visible = reduced.find((rule) => rule.selectorText?.includes('.sk-boot .sk-boot__fill'))
+  assert.equal(visible.style.getPropertyValue('opacity'), '1')
+  assert.ok(visible.selectorText.includes('.sk-boot .sk-boot__wordmark'))
+  assert.equal(dom.window.document.querySelectorAll('.sk-boot__ring').length, 3)
+  assert.equal(dom.window.document.querySelectorAll('script,canvas,img,video').length, 0)
+  dom.window.close()
 })
 
 test('standalone package exposes its Host and Web client entries', async () => {
