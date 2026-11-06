@@ -134,15 +134,18 @@ window.__ModuleLoader__.load({
     }
 
     /* Plugins is a standalone card, including beside an expanded workspace.
-       Its native 100% height must leave room for our top band and bottom gap;
-       clip child backgrounds while the native page body keeps its own scrolling. */
+       Its native 100% height must leave room for our top band and bottom gap.
+       The page element is itself the scroll container (\`.page{overflow:auto}\`, the
+       main slot anchor is \`display:contents\` and has no box), and a scroll
+       container already clips its children to the rounded padding box — so keep
+       \`auto\`. \`clip\` here turned the card into a paint box that could not scroll. */
     html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > [data-plugin-panel] {
       height: calc(100% - var(--cx-band-h) - var(--cx-gap));
       min-height: 0;
       margin-right: var(--cx-gap);
       max-width: calc(100% - var(--cx-gap));
       border-radius: var(--cx-card-radius);
-      overflow: clip;
+      overflow: auto;
     }
 
     html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-slot]) [class*="pagehead" i] {
@@ -543,6 +546,15 @@ window.__ModuleLoader__.load({
       overflow: hidden;
     }
 
+    /* The workspace tree carries a native 24px bottom fade so rows dissolve into the
+       sidebar. It ramps to \`--dsw-specific-sidebar-fill\`, the native sidebar grey —
+       but here the tree sits on the white panel card, so that grey ramp reads as a
+       stray strip with a shadow at the bottom of the card. Fade into the card colour
+       instead: the scroll hint stays, the seam goes. */
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] [class*="_fade"] {
+      background: linear-gradient(to bottom, transparent, var(--dsw-alias-bg-base));
+    }
+
     /* Keep the section toolbar on the same 32px rhythm as its session rows.
        The new-session row owns the 4px gap above; do not add the native 2px again. */
     html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] [class*="_sectionHeader"] {
@@ -581,7 +593,11 @@ window.__ModuleLoader__.load({
     html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] {
       width: 100%;
       margin: 0;
-      flex-direction: column;
+
+      /* DSH 0.2.1-rc.5 appends the update pill to this row, after the account
+         button. In the rail the account button must own the bottom slot, so stack
+         the extra actions above it instead of below it. */
+      flex-direction: column-reverse;
       gap: 4px;
       justify-content: center;
     }
@@ -606,6 +622,182 @@ window.__ModuleLoader__.load({
       overflow: hidden;
       clip-path: inset(50%);
       white-space: nowrap;
+    }
+
+    /* The rule above hides the account button's caption in the rail. It used to
+       catch the tooltip label too: \`Tooltip\` renders its bubble as a sibling of the
+       trigger (inline, not portaled), so the \`_label\` span inside the bubble lived
+       in the same subtree and collapsed to 1×1 — the dark bubble showed up empty.
+       Restore every label that belongs to a tooltip. */
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [role="tooltip"] [class*="_label"] {
+      position: static;
+      width: auto;
+      height: auto;
+      overflow: visible;
+      clip-path: none;
+      white-space: inherit;
+    }
+
+    /* DSH 0.2.1-rc.5 hangs a 28×72 update pill in the footer row next to the account
+       button. A 52px rail cannot hold it — the pill spilled over the white panel card
+       and fought the avatar for the corner — so it becomes a 36×36 tile that lines up
+       with the account button. The native glyph and caption are hidden; update-tile.js
+       mirrors the desktop bridge phase onto \`data-cx-update\` / \`data-cx-progress\`, and
+       this block draws the phase (download glyph, progress ring, install glyph, retry).
+       Everything else — aria-label, aria-disabled, the tooltip and the click handler —
+       stays with the native component, so the built-in dialogs still own the flow. */
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled] {
+      box-sizing: border-box;
+      position: relative;
+      display: grid;
+      grid-template-columns: none;
+      grid-template-rows: none;
+      column-gap: 0;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: none;
+      border-radius: var(--dsw-radius-md);
+      background: none;
+      color: var(--dsw-alias-label-secondary);
+    }
+
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled] > span {
+      display: none;
+    }
+
+    /* DSH ships \`*,:before,:after{corner-shape:superellipse(1.5)}\` (ui-theme/corner-shape.css),
+       which turns every \`border-radius:50%\` into a squircle — the progress ring and the
+       spinner arc read as a rounded square. Only the drawn circles opt back out; the tile's
+       own 8px hover shape keeps the host squircle so it matches the rail rows above. */
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]::before,
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]::after {
+      corner-shape: round;
+    }
+
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]::before {
+      content: "";
+      width: 18px;
+      height: 18px;
+      background-color: currentColor;
+      -webkit-mask: var(--cx-update-glyph) center / 18px 18px no-repeat;
+      mask: var(--cx-update-glyph) center / 18px 18px no-repeat;
+    }
+
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled][aria-disabled="true"] {
+      cursor: default;
+    }
+
+    /* A new version waits in the tray: the rail icons above the avatar are 18px glyphs
+       on a transparent 36×36 button, so the tile stays frame-less — only the colour
+       marks it as actionable. */
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="available"] {
+      --cx-update-glyph: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2.6v6.1'/%3E%3Cpath d='m5.2 6.1 2.8 2.8 2.8-2.8'/%3E%3Cpath d='M3.4 12.6h9.2'/%3E%3C/svg%3E");
+      color: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+    }
+
+    /* Downloaded and waiting for the restart: the arrow is inside the tray. */
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="ready"] {
+      --cx-update-glyph: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2.4v5.3'/%3E%3Cpath d='m5.4 5.2 2.6 2.6 2.6-2.6'/%3E%3Cpath d='M3.4 9.9v2.4a1.3 1.3 0 0 0 1.3 1.3h6.6a1.3 1.3 0 0 0 1.3-1.3V9.9'/%3E%3C/svg%3E");
+      color: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+    }
+
+    /* A retry is the only action left after a failure. */
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="error"] {
+      --cx-update-glyph: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.7 8a4.7 4.7 0 1 1-1.5-3.4'/%3E%3Cpath d='M13.1 2.7v2.6H10.5'/%3E%3C/svg%3E");
+      color: var(--dsw-alias-state-error-primary, #c4453f);
+    }
+
+    /* No bridge data (unexpected shell): fall back to the plain download glyph. */
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="unknown"] {
+      --cx-update-glyph: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2.6v6.1'/%3E%3Cpath d='m5.2 6.1 2.8 2.8 2.8-2.8'/%3E%3Cpath d='M3.4 12.6h9.2'/%3E%3C/svg%3E");
+    }
+
+    /* Same hover the rail rows above use, in every phase — including the busy ones, so
+       the whole rail reacts the same way to the pointer. */
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]:hover {
+      background: var(--cx-rail-item-hover);
+    }
+
+    /* Downloading: a conic ring scaled by \`--cx-update-pct\` (set inline by
+       update-tile.js) with the rounded percentage in the middle. */
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="downloading"] {
+      color: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+    }
+
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="downloading"]::before {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background-color: transparent;
+      background-image: conic-gradient(currentColor var(--cx-update-pct, 0%), color-mix(in srgb, currentColor 16%, transparent) 0);
+      -webkit-mask: radial-gradient(farthest-side, #0000 calc(100% - 2px), #000 calc(100% - 2px));
+      mask: radial-gradient(farthest-side, #0000 calc(100% - 2px), #000 calc(100% - 2px));
+    }
+
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="downloading"]::after {
+      content: attr(data-cx-progress) "%";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 8px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+      color: currentColor;
+    }
+
+    /* Verifying and installing report no percentage: a full 22px ring (so it still reads
+       as a circle) with a rounded blue arc spinning inside it. */
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="verifying"],
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="installing"] {
+      color: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+    }
+
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="verifying"]::before,
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="installing"]::before {
+      box-sizing: border-box;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid color-mix(in srgb, currentColor 18%, transparent);
+      background: none;
+      -webkit-mask: none;
+      mask: none;
+    }
+
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="verifying"]::after,
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="installing"]::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 22px;
+      height: 22px;
+      background-color: currentColor;
+      -webkit-mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='9' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-dasharray='17 40'/%3E%3C/svg%3E") center / 22px 22px no-repeat;
+      mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='9' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-dasharray='17 40'/%3E%3C/svg%3E") center / 22px 22px no-repeat;
+      will-change: transform;
+      animation: cx-update-spin 0.75s linear infinite;
+    }
+
+    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="error"]::after {
+      content: "";
+      position: absolute;
+      top: 6px;
+      inset-inline-end: 6px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    @keyframes cx-update-spin {
+      to {
+        transform: rotate(1turn);
+      }
     }
 
     /* The session list reserves room for a scrollbar it no longer draws: its own
@@ -2815,6 +3007,97 @@ window.__ModuleLoader__.load({
       };
     }
 
+    // src/modules/theme/client/update-tile.js
+    var TILE = '[data-slot="sidebar"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]';
+    var PERCENT = /(\d{1,3})\s*%/;
+    var PROGRESS_PHASES = /* @__PURE__ */ new Set(["downloading"]);
+    var clampPercent = (value) => {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return null;
+      return Math.max(0, Math.min(100, Math.round(number)));
+    };
+    var fromPresentation = (presentation) => {
+      if (!presentation || typeof presentation !== "object") return null;
+      const phase = typeof presentation.phase === "string" ? presentation.phase : "";
+      if (!phase || phase === "idle") return null;
+      return {
+        phase,
+        percent: PROGRESS_PHASES.has(phase) ? clampPercent(presentation.percent) : null
+      };
+    };
+    var fromCaption = (tile) => {
+      const match = PERCENT.exec(tile.getAttribute("aria-label") ?? "");
+      if (match) return { phase: "downloading", percent: clampPercent(match[1]) };
+      return { phase: "unknown", percent: null };
+    };
+    function installUpdateTile() {
+      let presentation = null;
+      let bridged = false;
+      let unsubscribe = null;
+      let queued = 0;
+      let active = true;
+      const paint = (tile) => {
+        const state = bridged ? presentation : fromCaption(tile);
+        if (!state) {
+          tile.removeAttribute("data-cx-update");
+          tile.removeAttribute("data-cx-progress");
+          tile.style.removeProperty("--cx-update-pct");
+          return;
+        }
+        tile.setAttribute("data-cx-update", state.phase);
+        if (state.percent === null) {
+          tile.removeAttribute("data-cx-progress");
+          tile.style.removeProperty("--cx-update-pct");
+        } else {
+          tile.setAttribute("data-cx-progress", String(state.percent));
+          tile.style.setProperty("--cx-update-pct", `${state.percent}%`);
+        }
+      };
+      const pass = () => {
+        queued = 0;
+        if (!active) return;
+        for (const tile of document.querySelectorAll(TILE)) paint(tile);
+      };
+      const schedule = () => {
+        if (!queued && active) queued = requestAnimationFrame(pass);
+      };
+      const carrier = globalThis.dshDesktop;
+      const bridge = carrier?.protocolVersion === 1 ? carrier.updates : void 0;
+      if (bridge && typeof bridge.subscribe === "function") {
+        bridged = true;
+        try {
+          unsubscribe = bridge.subscribe((next) => {
+            presentation = fromPresentation(next);
+            schedule();
+          });
+          if (typeof bridge.status === "function") {
+            bridge.status().then((next) => {
+              if (!active || presentation !== null) return;
+              presentation = fromPresentation(next);
+              schedule();
+            }).catch(() => {
+            });
+          }
+        } catch {
+          bridged = false;
+        }
+      }
+      const observer = new MutationObserver(schedule);
+      observer.observe(document.body, { childList: true, subtree: true });
+      pass();
+      return () => {
+        active = false;
+        observer.disconnect();
+        if (queued) cancelAnimationFrame(queued);
+        if (typeof unsubscribe === "function") unsubscribe();
+        for (const tile of document.querySelectorAll(TILE)) {
+          tile.removeAttribute("data-cx-update");
+          tile.removeAttribute("data-cx-progress");
+          tile.style.removeProperty("--cx-update-pct");
+        }
+      };
+    }
+
     // src/modules/theme/client/shell.js
     function installCodexShell(ctx, installers, options = {}) {
       const root = options.root ?? document.documentElement;
@@ -4163,7 +4446,8 @@ window.__ModuleLoader__.load({
         installHomeRail,
         installBandHeight,
         installSidebarWidth,
-        installWorkspaceCollapse
+        installWorkspaceCollapse,
+        installUpdateTile
       ], { nativeInstallers: [(ctx2) => installSidebarWidth(ctx2, { native: true })] }), "toolkit-theme:codex-shell");
       ctx.effect(() => installSettingsNav(ctx), "toolkit-theme:settings-nav");
       ctx.effect(() => registerSettingsIcon(ctx, "theme", "palette"), "toolkit-theme:settings-icon");

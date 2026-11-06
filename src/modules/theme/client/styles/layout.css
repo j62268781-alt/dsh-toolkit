@@ -35,15 +35,18 @@ html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-s
 }
 
 /* Plugins is a standalone card, including beside an expanded workspace.
-   Its native 100% height must leave room for our top band and bottom gap;
-   clip child backgrounds while the native page body keeps its own scrolling. */
+   Its native 100% height must leave room for our top band and bottom gap.
+   The page element is itself the scroll container (`.page{overflow:auto}`, the
+   main slot anchor is `display:contents` and has no box), and a scroll
+   container already clips its children to the rounded padding box — so keep
+   `auto`. `clip` here turned the card into a paint box that could not scroll. */
 html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > [data-plugin-panel] {
   height: calc(100% - var(--cx-band-h) - var(--cx-gap));
   min-height: 0;
   margin-right: var(--cx-gap);
   max-width: calc(100% - var(--cx-gap));
   border-radius: var(--cx-card-radius);
-  overflow: clip;
+  overflow: auto;
 }
 
 html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-slot]) [class*="pagehead" i] {

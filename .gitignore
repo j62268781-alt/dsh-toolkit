@@ -3,4 +3,6 @@ node_modules/
 .DS_Store
 lib/modules/*/client.js
 lib/.build-manifest.json
+# 本地代理协作约定，暂不入库（用户后续再决定是否开放上传）
+AGENTS.md
 

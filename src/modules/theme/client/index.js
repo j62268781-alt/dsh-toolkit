@@ -6,6 +6,7 @@ import { installDesktopMarker } from "./platform.js";
 import { installRailTitles, installHomeRail } from "./rail.js";
 import { installBandHeight } from "./band.js";
 import { installSidebarWidth, installWorkspaceCollapse } from "./sidebar.js";
+import { installUpdateTile } from "./update-tile.js";
 import { installCodexShell } from "./shell.js";
 import { installSettingsNav } from "./settings-nav.js";
 import { installPalette, installSceneClock, registerPaletteScene } from "./palette.js";
@@ -61,6 +62,7 @@ export function apply(ctx) {
     installBandHeight,
     installSidebarWidth,
     installWorkspaceCollapse,
+    installUpdateTile,
   ], { nativeInstallers: [(ctx) => installSidebarWidth(ctx, { native: true })] }), "toolkit-theme:codex-shell");
   ctx.effect(() => installSettingsNav(ctx), "toolkit-theme:settings-nav");
   ctx.effect(() => registerSettingsIcon(ctx, "theme", "palette"), "toolkit-theme:settings-icon");

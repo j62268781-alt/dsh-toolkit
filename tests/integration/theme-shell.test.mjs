@@ -307,6 +307,12 @@ test('every shell, sidebar, rightbar and radius selector requires the Codex pale
     dom.window.document.head.append(style)
     assert.ok(style.sheet.cssRules.length > 0, file)
     for (const rule of style.sheet.cssRules) {
+      // 全局 @keyframes 没有选择器：codex 皮肤自己的动画统一用 cx- 前缀，
+      // 既不外泄到宿主，也不会和宿主的动画名撞车。
+      if (rule.constructor.name === 'CSSKeyframesRule') {
+        assert.match(rule.name, /^cx-/, `${file}: keyframes ${rule.name}`)
+        continue
+      }
       assert.ok(rule.selectorText, 'shell styles should remain plain scoped rules')
       for (const selector of selectorList(rule.selectorText)) {
         assert.ok(selector.startsWith('html[data-sk-palette="codex"]'), `${file}: ${selector}`)
