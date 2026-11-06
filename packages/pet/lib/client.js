@@ -3,6 +3,29 @@ window.__ModuleLoader__.load({
   id: "dsh-toolkit-pet",
   factory(require) {
     const module = { exports: {} };
+    var __create = Object.create;
+    var __defProp = Object.defineProperty;
+    var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+    var __getOwnPropNames = Object.getOwnPropertyNames;
+    var __getProtoOf = Object.getPrototypeOf;
+    var __hasOwnProp = Object.prototype.hasOwnProperty;
+    var __copyProps = (to, from, except, desc) => {
+      if (from && typeof from === "object" || typeof from === "function") {
+        for (let key of __getOwnPropNames(from))
+          if (!__hasOwnProp.call(to, key) && key !== except)
+            __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+      }
+      return to;
+    };
+    var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+      // If the importer is in node compatibility mode or this is not an ESM
+      // file that has been converted to a CommonJS file using a Babel-
+      // compatible transform (i.e. "__esModule" has not been set), then set
+      // "default" to the CommonJS "module.exports" for node compatibility.
+      isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+      mod
+    ));
+
     // src/client/config.js
     var ROOT_ENTRIES = ["shell-kit", "dsh-toolkit", "dsh-shell-kit"];
     function moduleEntryId(namespace) {
@@ -338,8 +361,8 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/pet/client/panel.jsx
-    function createPetPanel(React, { t, settings, connection, actions, primitives }) {
-      const { useEffect, useRef, useState, useSyncExternalStore } = React;
+    function createPetPanel(React2, { t, settings, connection, actions, primitives }) {
+      const { useEffect, useRef, useState, useSyncExternalStore } = React2;
       const Switch = primitives?.Switch;
       function Toggle({ field, value, disabled, change }) {
         if (Switch !== void 0) return /* @__PURE__ */ __dshReact.createElement(Switch, { checked: value, disabled, label: t(field), onChange: (next) => change(field, next === true) });
@@ -411,13 +434,72 @@ window.__ModuleLoader__.load({
       };
     }
 
+    // src/client/settings-icon.jsx
+    var import_react = __toESM(require("react"), 1);
+    globalThis.__dshReact ??= import_react.default;
+    var SHAPES = {
+      rocket: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "6", r: "1.15" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 10.6 4.7 12.4M9.7 10.6l1.6 1.8M8 12.1v2.2" })),
+      globe: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2 8h12" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "8", rx: "2.7", ry: "6" })),
+      scale: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.6v10.8M5.7 13.4h4.6M2.9 5.1h10.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.9 5.1 1.6 8.3h2.6L2.9 5.1ZM13.1 5.1l-1.3 3.2h2.6L13.1 5.1Z" })),
+      bell: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1c-2.2 0-3.7 1.6-3.7 3.8 0 2.4-.7 3.4-1.3 4.1-.2.3 0 .7.3.7h9.4c.3 0 .5-.4.3-.7-.6-.7-1.3-1.7-1.3-4.1 0-2.2-1.5-3.8-3.7-3.8Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.6 11a1.4 1.4 0 0 0 2.8 0" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1V1.2" })),
+      paw: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "4.7", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "4.5", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "11.3", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 7.9c2 0 3.4 1.4 3.4 3 0 1.3-1 2.2-2.2 2.2-.5 0-.8-.2-1.2-.2s-.7.2-1.2.2c-1.2 0-2.2-.9-2.2-2.2 0-1.6 1.4-3 3.4-3Z" })),
+      palette: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.3c-3.2 0-5.7 2.5-5.7 5.7s2.5 5.7 5.7 5.7c.9 0 1.5-.6 1.5-1.4 0-.4-.2-.7-.4-1-.2-.3-.4-.5-.4-.9 0-.7.6-1.3 1.3-1.3h1.2c1.6 0 2.9-1.3 2.9-2.9 0-2.2-2.5-3.9-6.1-3.9Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "5.6", cy: "6.3", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8.6", cy: "4.9", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "11.1", cy: "6.6", r: ".75" })),
+      archive: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: "1.9", y: "2.6", width: "12.2", height: "2.5", rx: ".7" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.6 5.1h10.8v7.4c0 .7-.6 1.3-1.3 1.3H3.9c-.7 0-1.3-.6-1.3-1.3V5.1Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 8.5h3.4" })),
+      plug: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M6 2.3v3.2M10 2.3v3.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.4 5.5h7.2v1.6a3.6 3.6 0 0 1-7.2 0V5.5Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 10.7v2.6" })),
+      gear: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "4.6" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" }))
+    };
+    function createGlyph(key) {
+      function ToolkitSettingsGlyph({ size = 16, active = false }) {
+        const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
+        return /* @__PURE__ */ __dshReact.createElement(
+          "svg",
+          {
+            viewBox: "0 0 16 16",
+            width: edge,
+            height: edge,
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: "1.4",
+            strokeLinecap: "round",
+            strokeLinejoin: "round",
+            "aria-hidden": "true",
+            focusable: "false",
+            "data-sk-settings-icon": key,
+            "data-active": active ? "true" : "false"
+          },
+          SHAPES[key]
+        );
+      }
+      ToolkitSettingsGlyph.displayName = `ToolkitSettingsGlyph(${key})`;
+      return ToolkitSettingsGlyph;
+    }
+    var GLYPH_COMPONENTS = Object.freeze(
+      Object.fromEntries(Object.keys(SHAPES).map((key) => [key, createGlyph(key)]))
+    );
+    function registerSettingsIcon(ctx, sectionId, iconKey) {
+      const slots = ctx?.slots;
+      if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return void 0;
+      if (typeof sectionId !== "string" || sectionId === "") return void 0;
+      const Glyph = GLYPH_COMPONENTS[iconKey];
+      if (!Glyph) return void 0;
+      try {
+        const dispose = slots.inject("settings.section.icon", () => slots.register({
+          name: "settings.section.icon",
+          id: sectionId
+        }, Glyph));
+        return typeof dispose === "function" ? dispose : void 0;
+      } catch {
+        return void 0;
+      }
+    }
+
     // src/modules/pet/client/style.css
     var style_default = ".pet-page { box-sizing: border-box; color: var(--dsw-alias-label-primary); font-size: 13px; padding-bottom: 24px; max-width: 960px; }\n.pet-pageTitle { font-size: 18px; font-weight: 600; margin: 0; }\n.pet-pageIntro { font-size: 13px; color: var(--dsw-alias-label-secondary); margin: 12px 0 24px; line-height: 1.5; }\n.pet-section { margin-top: 24px; }\n.pet-section h3 { font-size: 14px; font-weight: 500; margin: 0 0 10px; }\n.pet-sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }\n.pet-sectionHeader h3 { margin: 0; }\n.pet-card { border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; padding: 0 16px; }\n.pet-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 0; border-bottom: 0.5px solid var(--dsw-alias-border-l2); }\n.pet-row:last-child { border-bottom: 0; }\n.pet-rowCopy { min-width: 0; flex: 1; }\n.pet-title { font-size: 14px; font-weight: 400; line-height: 20px; overflow-wrap: anywhere; }\n.pet-desc { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; margin: 4px 0 0; overflow-wrap: anywhere; }\n.pet-control { flex: none; max-width: 45%; }\n.pet-page button, .pet-page select, .pet-page input { font: inherit; }\n.pet-button, .pet-page select { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); padding: 6px 10px; cursor: pointer; max-width: 100%; }\n.pet-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }\n.pet-quietButton { font-size: 12px; white-space: nowrap; }\n.pet-button:disabled, .pet-switch:disabled, .pet-page input:disabled, .pet-page select:disabled { opacity: .45; cursor: default; }\n.pet-button:focus-visible, .pet-switch:focus-visible, .pet-page select:focus-visible, .pet-page input:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 3px; }\n.pet-switch { box-sizing: border-box; position: relative; flex: 0 0 auto; width: 36px; height: 20px; border: 0; border-radius: 999px; padding: 2px; background: var(--dsw-alias-border-l3); cursor: pointer; }\n.pet-switch span { display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--dsw-alias-label-primary-foreground); transition: transform .12s ease; }\n.pet-switch[aria-checked=false] span { background: var(--dsw-alias-switch-thumb); }\n.pet-switch[aria-checked=true] { background: var(--dsw-alias-brand-primary); }\n.pet-switch[aria-checked=true] span { transform: translateX(16px); }\n.pet-page .pet-switch:disabled { opacity: .5; }\n.pet-page .pet-switch:focus-visible { outline-offset: 2px; }\n.pet-slider { display: flex; align-items: center; gap: 10px; width: 200px; max-width: 100%; }\n.pet-slider input { width: 140px; min-width: 0; accent-color: var(--dsw-alias-state-business-primary, var(--dsw-alias-button-primary-fill)); }\n.pet-slider output { font-size: 12px; min-width: 42px; color: var(--dsw-alias-label-secondary); text-align: right; font-variant-numeric: tabular-nums; }\n.pet-size { padding-top: 16px; }\n.pet-size > .pet-sectionHeader { align-items: flex-start; }\n.pet-size .pet-desc { max-width: 440px; }\n.pet-previews { display: flex; justify-content: center; gap: 32px; padding: 16px 8px 8px; }\n.pet-preview { width: 180px; max-width: 45%; }\n.pet-screen { height: 100px; border: 1.5px solid var(--dsw-alias-border-l2); border-radius: 7px; position: relative; overflow: hidden; background: var(--dsw-alias-interactive-bg-hover); }\n.pet-island { display: flex; align-items: center; justify-content: space-between; position: absolute; top: 5px; left: 50%; transform: translateX(-50%); border-radius: 999px; background: #000; max-width: 95%; min-height: 12px; }\n.pet-screenNotch .pet-island { top: 0; min-width: 47%; min-height: 12px; border-radius: 0 0 7px 7px; }\n.pet-screenNotch:after { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); height: 10px; width: 35%; background: #000; border-radius: 0 0 5px 5px; }\n.pet-previewEyes { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 6px; color: #7de2b7; font-size: 8px; line-height: 1; }\n.pet-previewEyes span:last-child { color: #fff; font-size: 6px; }\n.pet-previewLabel { text-align: center; color: var(--dsw-alias-label-secondary); font-size: 12px; margin-top: 8px; }\n.pet-runtimeActions { display: flex; gap: 8px; }\n.pet-notice, .pet-error { font-size: 12px; line-height: 1.5; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 10px 12px; }\n.pet-error { color: var(--dsw-alias-state-error-primary); }\n@media (max-width: 620px) {\n  .pet-row { gap: 12px; }\n  .pet-control { max-width: 46%; }\n  .pet-slider { width: 160px; }\n  .pet-slider input { width: 100px; }\n  .pet-previews { gap: 16px; }\n  .pet-size > .pet-sectionHeader { flex-wrap: wrap; }\n}\n@media (prefers-reduced-motion: reduce) { .pet-switch span { transition: none; } }\n";
 
     // src/modules/pet/client/index.jsx
     function createPet(require2) {
-      const React = require2("react");
-      globalThis.__dshReact = React;
+      const React2 = require2("react");
+      globalThis.__dshReact = React2;
       return {
         name: "toolkit-pet-client",
         inject: ["slots", "locale", "configForms", "uiWorkspace", "workspaces"],
@@ -458,7 +540,7 @@ window.__ModuleLoader__.load({
               return null;
             }
           })();
-          const Panel = createPetPanel(React, { t, settings, connection, actions, primitives });
+          const Panel = createPetPanel(React2, { t, settings, connection, actions, primitives });
           ctx.effect(() => ctx.locale?.register?.(PET_NS, PET_COPY), "toolkit-pet:dictionary");
           ctx.effect(() => typeof document === "undefined" ? void 0 : installStylesheet(style_default, "toolkit-pet"), "toolkit-pet:stylesheet");
           ctx.effect(() => {
@@ -473,6 +555,7 @@ window.__ModuleLoader__.load({
             return () => connection.dispose();
           }, "toolkit-pet:connection");
           ctx.effect(() => ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "desktop-pet", order: 25, label: () => t("nav"), locale: PET_NS }, Panel)), "toolkit-pet:section");
+          ctx.effect(() => registerSettingsIcon(ctx, "desktop-pet", "paw"), "toolkit-pet:settings-icon");
         }
       };
     }

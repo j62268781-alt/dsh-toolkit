@@ -83,7 +83,8 @@ test('点击通知：聚焦窗口并跳转到对应会话', async (t) => {
   assert.equal(app.runtime.openedSessions.length, 0)
 
   app.stub.instances[0].onclick()
-  assert.equal(focused, 1, 'clicking a notification focuses the page/window first')
+  // 系统横幅点击本身会先 focus 一次；openSession 再聚焦一次（旧实现只聚焦一次）。
+  assert.equal(focused, 2, 'clicking a notification focuses the page/window before navigating')
   assert.deepEqual(app.runtime.openedSessions, ['s1'])
 })
 

@@ -47,13 +47,20 @@ test('apply 注册 settings.section，并把配置表单交给页面', async () 
   const form = { getSnapshot: () => ({ value: {}, status: 'ready' }) }
   const registered = []
   const ctx = {
+    effect: (run) => run(),
     configForms: { get: (entryId) => (entryId === 'judgment/provider' ? form : undefined) },
     slots: {
       inject: (name, run) => {
-        assert.equal(name, 'settings.section')
+        assert.ok(name === 'settings.section' || name === 'settings.section.icon', name)
         run()
       },
-      register: (registration, Component) => { registered.push({ registration, Component }) },
+      register: (registration, Component) => {
+        if (registration.name === 'settings.section.icon') {
+          assert.equal(registration.id, 'judgment')
+          return
+        }
+        registered.push({ registration, Component })
+      },
     },
   }
 
@@ -79,10 +86,14 @@ test('entry 名对不上时退回包名，页面仍能渲染（只是不可写�
 
   const registered = []
   const ctx = {
+    effect: (run) => run(),
     configForms: { get: (entryId) => (entryId === 'dsh-judgment' ? { getSnapshot: () => ({ value: {} }) } : undefined) },
     slots: {
       inject: (_name, run) => run(),
-      register: (registration, Component) => { registered.push({ registration, Component }) },
+      register: (registration, Component) => {
+        if (registration.name === 'settings.section.icon') return
+        registered.push({ registration, Component })
+      },
     },
   }
 

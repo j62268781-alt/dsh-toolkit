@@ -76,7 +76,12 @@ async function boot(t) {
     },
     slots: {
       inject: (_name, run) => run(),
-      register(meta, Component) { registrations.set(meta.id ?? meta.name, Component); return () => registrations.delete(meta.id ?? meta.name) },
+      register(meta, Component) {
+        // Nav glyphs are a separate slot; keep this map to the section/overlay entries.
+        if (meta.name === 'settings.section.icon') return () => {}
+        registrations.set(meta.id ?? meta.name, Component)
+        return () => registrations.delete(meta.id ?? meta.name)
+      },
     },
   }
   client.apply(ctx)

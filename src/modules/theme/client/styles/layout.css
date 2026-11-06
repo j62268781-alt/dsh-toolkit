@@ -34,6 +34,18 @@ html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-s
   background-color: var(--dsw-alias-bg-base);
 }
 
+/* Plugins is a standalone card, including beside an expanded workspace.
+   Its native 100% height must leave room for our top band and bottom gap;
+   clip child backgrounds while the native page body keeps its own scrolling. */
+html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > [data-plugin-panel] {
+  height: calc(100% - var(--cx-band-h) - var(--cx-gap));
+  min-height: 0;
+  margin-right: var(--cx-gap);
+  max-width: calc(100% - var(--cx-gap));
+  border-radius: var(--cx-card-radius);
+  overflow: clip;
+}
+
 html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-slot]) [class*="pagehead" i] {
   padding-top: var(--cx-page-head-pad, 28px);
 }

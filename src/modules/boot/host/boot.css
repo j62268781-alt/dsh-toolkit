@@ -66,7 +66,9 @@ html[data-sk-boot-bailed] [data-dsh-boot] {
 
 .sk-boot__mark {
   width: 92px;
-  height: auto;
+  height: 67.689119px; /* 92 × 17.04 / 23.16; independent of flex intrinsic sizing. */
+  flex: none;
+  display: block;
   overflow: visible;
   color: var(--sk-ink);
 }
@@ -93,13 +95,12 @@ html[data-sk-boot-bailed] [data-dsh-boot] {
 
 .sk-boot__wordmark {
   font: 600 13px/1.2 -apple-system, "SF Pro Text", "PingFang SC", system-ui, sans-serif;
-  letter-spacing: .3em;
-  text-indent: .3em;
+  letter-spacing: .26em;
+  text-indent: .26em;
   color: var(--sk-ink);
   white-space: nowrap;
   opacity: 0;
-  animation: sk-wm-in 520ms cubic-bezier(.22, .61, .36, 1) 950ms both,
-             sk-wm-track 760ms cubic-bezier(.22, .61, .36, 1) 950ms both;
+  animation: sk-wm-in 520ms cubic-bezier(.22, .61, .36, 1) 950ms both;
 }
 
 .sk-boot__wordmark b {
@@ -107,12 +108,12 @@ html[data-sk-boot-bailed] [data-dsh-boot] {
   color: var(--sk-ink-2);
 }
 
-@keyframes sk-grid-in { from { opacity: 0; transform: scale(1.02); } to { opacity: 1; transform: none; } }
+/* Draw mode changes paint only: no grid resampling or text-driven layout shifts. */
+@keyframes sk-grid-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sk-trace { to { stroke-dashoffset: 0; } }
 @keyframes sk-trace-out { to { opacity: 0; } }
 @keyframes sk-fill-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes sk-wm-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-@keyframes sk-wm-track { from { letter-spacing: .42em; } to { letter-spacing: .26em; } }
+@keyframes sk-wm-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* The artwork below is ported from docs/boot/demo-morph.html and demo.html.
    Namespaced classes/keyframes isolate it from the Harness and the stable draw mode. */

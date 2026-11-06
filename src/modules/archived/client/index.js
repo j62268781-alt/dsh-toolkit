@@ -3,6 +3,7 @@ import { installStylesheet } from "../../../client/ui/stylesheet.js";
 import { settingsStyles } from "../../../client/styles/settings.js";
 import { ARCH_NS, ARCH_COPY } from "./locale.js";
 import { installArchivedSection } from "./section.jsx";
+import { registerSettingsIcon } from "../../../client/settings-icon.jsx";
 import { createRemoval, installRemoval } from "./removal.jsx";
 import { createArchiveConfirm, installArchiveConfirm } from "./archive-confirm.jsx";
 
@@ -16,4 +17,5 @@ export function apply(ctx) {
   ctx.effect(() => installRemoval(ctx, removal), "toolkit-archived:removal");
   ctx.effect(() => installArchiveConfirm(ctx, archiveConfirm), "toolkit-archived:archive-confirm");
   ctx.effect(() => installArchivedSection(ctx, removal), "toolkit-archived:section");
+  ctx.effect(() => registerSettingsIcon(ctx, "archived-chats", "archive"), "toolkit-archived:settings-icon");
 }

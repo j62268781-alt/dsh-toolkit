@@ -3,6 +3,29 @@ window.__ModuleLoader__.load({
   id: "dsh-toolkit-skills-mcp",
   factory(require) {
     const module = { exports: {} };
+    var __create = Object.create;
+    var __defProp = Object.defineProperty;
+    var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+    var __getOwnPropNames = Object.getOwnPropertyNames;
+    var __getProtoOf = Object.getPrototypeOf;
+    var __hasOwnProp = Object.prototype.hasOwnProperty;
+    var __copyProps = (to, from, except, desc) => {
+      if (from && typeof from === "object" || typeof from === "function") {
+        for (let key of __getOwnPropNames(from))
+          if (!__hasOwnProp.call(to, key) && key !== except)
+            __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+      }
+      return to;
+    };
+    var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+      // If the importer is in node compatibility mode or this is not an ESM
+      // file that has been converted to a CommonJS file using a Babel-
+      // compatible transform (i.e. "__esModule" has not been set), then set
+      // "default" to the CommonJS "module.exports" for node compatibility.
+      isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+      mod
+    ));
+
     // src/modules/skills-mcp/host/identity.js
     var NAME = "dsh-skills-mcp-manager";
 
@@ -57,6 +80,65 @@ window.__ModuleLoader__.load({
         }
       }
       return { form: void 0, entryId: moduleEntryId(namespace) };
+    }
+
+    // src/client/settings-icon.jsx
+    var import_react = __toESM(require("react"), 1);
+    globalThis.__dshReact ??= import_react.default;
+    var SHAPES = {
+      rocket: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "6", r: "1.15" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 10.6 4.7 12.4M9.7 10.6l1.6 1.8M8 12.1v2.2" })),
+      globe: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2 8h12" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "8", rx: "2.7", ry: "6" })),
+      scale: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.6v10.8M5.7 13.4h4.6M2.9 5.1h10.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.9 5.1 1.6 8.3h2.6L2.9 5.1ZM13.1 5.1l-1.3 3.2h2.6L13.1 5.1Z" })),
+      bell: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1c-2.2 0-3.7 1.6-3.7 3.8 0 2.4-.7 3.4-1.3 4.1-.2.3 0 .7.3.7h9.4c.3 0 .5-.4.3-.7-.6-.7-1.3-1.7-1.3-4.1 0-2.2-1.5-3.8-3.7-3.8Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.6 11a1.4 1.4 0 0 0 2.8 0" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1V1.2" })),
+      paw: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "4.7", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "4.5", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "11.3", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 7.9c2 0 3.4 1.4 3.4 3 0 1.3-1 2.2-2.2 2.2-.5 0-.8-.2-1.2-.2s-.7.2-1.2.2c-1.2 0-2.2-.9-2.2-2.2 0-1.6 1.4-3 3.4-3Z" })),
+      palette: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.3c-3.2 0-5.7 2.5-5.7 5.7s2.5 5.7 5.7 5.7c.9 0 1.5-.6 1.5-1.4 0-.4-.2-.7-.4-1-.2-.3-.4-.5-.4-.9 0-.7.6-1.3 1.3-1.3h1.2c1.6 0 2.9-1.3 2.9-2.9 0-2.2-2.5-3.9-6.1-3.9Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "5.6", cy: "6.3", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8.6", cy: "4.9", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "11.1", cy: "6.6", r: ".75" })),
+      archive: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: "1.9", y: "2.6", width: "12.2", height: "2.5", rx: ".7" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.6 5.1h10.8v7.4c0 .7-.6 1.3-1.3 1.3H3.9c-.7 0-1.3-.6-1.3-1.3V5.1Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 8.5h3.4" })),
+      plug: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M6 2.3v3.2M10 2.3v3.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.4 5.5h7.2v1.6a3.6 3.6 0 0 1-7.2 0V5.5Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 10.7v2.6" })),
+      gear: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "4.6" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" }))
+    };
+    function createGlyph(key) {
+      function ToolkitSettingsGlyph({ size = 16, active = false }) {
+        const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
+        return /* @__PURE__ */ __dshReact.createElement(
+          "svg",
+          {
+            viewBox: "0 0 16 16",
+            width: edge,
+            height: edge,
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: "1.4",
+            strokeLinecap: "round",
+            strokeLinejoin: "round",
+            "aria-hidden": "true",
+            focusable: "false",
+            "data-sk-settings-icon": key,
+            "data-active": active ? "true" : "false"
+          },
+          SHAPES[key]
+        );
+      }
+      ToolkitSettingsGlyph.displayName = `ToolkitSettingsGlyph(${key})`;
+      return ToolkitSettingsGlyph;
+    }
+    var GLYPH_COMPONENTS = Object.freeze(
+      Object.fromEntries(Object.keys(SHAPES).map((key) => [key, createGlyph(key)]))
+    );
+    function registerSettingsIcon(ctx, sectionId, iconKey) {
+      const slots = ctx?.slots;
+      if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return void 0;
+      if (typeof sectionId !== "string" || sectionId === "") return void 0;
+      const Glyph = GLYPH_COMPONENTS[iconKey];
+      if (!Glyph) return void 0;
+      try {
+        const dispose = slots.inject("settings.section.icon", () => slots.register({
+          name: "settings.section.icon",
+          id: sectionId
+        }, Glyph));
+        return typeof dispose === "function" ? dispose : void 0;
+      } catch {
+        return void 0;
+      }
     }
 
     // src/modules/skills-mcp/client/config.js
@@ -303,8 +385,8 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/skills-mcp/client/hooks/useFormRefresh.js
-    function useFormSnapshot(React, form) {
-      const { useState, useEffect } = React;
+    function useFormSnapshot(React2, form) {
+      const { useState, useEffect } = React2;
       const [tick, setTick] = useState(0);
       useEffect(() => {
         const store = form?.store ?? form;
@@ -316,8 +398,8 @@ window.__ModuleLoader__.load({
       const refresh = () => setTick((n) => n + 1);
       return { tick, refresh };
     }
-    function useFormRefresh(React, form, refresh) {
-      const { useEffect } = React;
+    function useFormRefresh(React2, form, refresh) {
+      const { useEffect } = React2;
       useEffect(() => {
         const poll = startPolling(() => refresh(), { intervalMs: 700 });
         return () => poll.stop();
@@ -325,8 +407,8 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/skills-mcp/client/hooks/useInventory.js
-    function useInventory(React, inventory) {
-      const { useState, useEffect } = React;
+    function useInventory(React2, inventory) {
+      const { useState, useEffect } = React2;
       const [inventoryRows, setInventoryRows] = useState([]);
       useEffect(() => {
         const list = inventory?.list;
@@ -388,8 +470,8 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/skills-mcp/client/hooks/useRuntime.js
-    function useRuntime(React, tab, expanded) {
-      const { useState, useEffect } = React;
+    function useRuntime(React2, tab, expanded) {
+      const { useState, useEffect } = React2;
       const [runtime, setRuntime] = useState({
         serverTools: [],
         serverStatus: [],
@@ -593,8 +675,8 @@ window.__ModuleLoader__.load({
     };
 
     // src/modules/skills-mcp/client/hooks/useOAuth.js
-    function useOAuth(React, projection) {
-      const { useState } = React;
+    function useOAuth(React2, projection) {
+      const { useState } = React2;
       const oauthState = projection ?? {};
       const oauthServers = projection?.servers ?? {};
       const [oauthResult, setOauthResult] = useState({});
@@ -1658,7 +1740,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/skills-mcp/client/panel.jsx
-    function createPanel(React, primitives) {
+    function createPanel(React2, primitives) {
       const switchControl = (checked, onChange, label, disabled = false) => primitives?.Switch !== void 0 ? /* @__PURE__ */ __dshReact.createElement(primitives.Switch, { key: "switch", checked, disabled, label, onChange }) : /* @__PURE__ */ __dshReact.createElement(
         "button",
         {
@@ -1674,12 +1756,12 @@ window.__ModuleLoader__.load({
         },
         /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchKnob", key: "k" })
       );
-      const { useState, useEffect, useMemo, useRef } = React;
+      const { useState, useEffect, useMemo, useRef } = React2;
       const CSS = `${settingsStyles("smp")}
     ${panel_default}`;
       function Panel(props) {
         const form = props.form;
-        const { tick, refresh } = useFormSnapshot(React, form);
+        const { tick, refresh } = useFormSnapshot(React2, form);
         const [tab, setTab] = useState("mcp");
         const [query, setQuery] = useState("");
         const [expanded, setExpanded] = useState("");
@@ -1866,9 +1948,9 @@ window.__ModuleLoader__.load({
           }, 15e3);
           return () => clearTimeout(timer);
         }, [scanPending, scanNonce]);
-        useFormRefresh(React, form, refresh);
-        const inventoryRows = useInventory(React, props.inventory);
-        const { runtime, setRuntime, bumpRefresh } = useRuntime(React, tab, expanded);
+        useFormRefresh(React2, form, refresh);
+        const inventoryRows = useInventory(React2, props.inventory);
+        const { runtime, setRuntime, bumpRefresh } = useRuntime(React2, tab, expanded);
         useEffect(() => {
           if (removedKeys.length === 0) return;
           const now = new Set((runtime.skills ?? []).map((entry) => `${entry.name}::${entry.scope ?? "global"}`));
@@ -1893,7 +1975,7 @@ window.__ModuleLoader__.load({
           startOAuth,
           revokeOAuth,
           copyAuthorizeUrl
-        } = useOAuth(React, runtime.oauth);
+        } = useOAuth(React2, runtime.oauth);
         const profileRows = useMemo(() => {
           const runtimeRows = Array.isArray(runtime.servers) ? runtime.servers : [];
           if (runtimeRows.length > 0) return runtimeRows;
@@ -2793,8 +2875,8 @@ window.__ModuleLoader__.load({
 
     // src/modules/skills-mcp/client/client.js
     function createClient(require2) {
-      const React = require2("react");
-      globalThis.__dshReact = React;
+      const React2 = require2("react");
+      globalThis.__dshReact = React2;
       const primitives = (() => {
         try {
           return require2("@deepseek-ai/dsh-client-ui-primitives");
@@ -2802,7 +2884,7 @@ window.__ModuleLoader__.load({
           return null;
         }
       })();
-      const Panel = createPanel(React, primitives);
+      const Panel = createPanel(React2, primitives);
       return {
         inject: ["slots", "configForms", "remote", "remote.pluginInventory"],
         apply(ctx) {
@@ -2820,6 +2902,7 @@ window.__ModuleLoader__.load({
             label: () => "Skills & MCP",
             inject: () => ({ form, entryId, inventory })
           }, Panel));
+          ctx.effect(() => registerSettingsIcon(ctx, "skills-mcp", "plug"), "toolkit-skills-mcp:settings-icon");
         }
       };
     }

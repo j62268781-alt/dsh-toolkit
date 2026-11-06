@@ -30,7 +30,10 @@ import {
   browserPermission, requestBrowserPermission, showBrowserNotification, showTestNotification,
 } from './browser-notify.js'
 import { createRecentStore } from './recent.js'
+import { createToastStore } from './toasts.js'
+import { createNotificationToasts } from './toasts.jsx'
 import { createNotificationPanel } from './panel.jsx'
+import { registerSettingsIcon } from '../../../client/settings-icon.jsx'
 
 /** 宿主 locale 的语言提示（拿不到就用运行时默认 locale）。 */
 function localeHint(ctx) {
@@ -175,6 +178,9 @@ export default function createNotification(require) {
       }
 
       const recent = createRecentStore()
+      // 窗口在前台时的提醒走应用内卡片；overlay 槽位不可用时退回系统通知（见 dispatcher）。
+      const toasts = createToastStore()
+      let cardsReady = false
       const player = new SystemSoundPlayer(() => settingsSource.getSnapshot().volume)
 
       /* ── 会话事实读取：只在需要分类时碰快照，全程 try/catch ───────────── */
@@ -204,28 +210,105 @@ export default function createNotification(require) {
         }
       }
 
-      /** 打开事件对应的会话：归档会话先取消归档，否则列表刷新会把选择清掉。 */
-      const openSession = (sessionId) => {
-        if (typeof sessionId !== 'string' || sessionId === '') return
+      /* ── 打开会话：聚焦窗口 → 导航 → 确认宿主真的切过去了 ───────────────── */
+      /** 一个宏任务：宿主的选择是同步状态机，验证要等这一轮提交结束。 */
+      const nextTask = () => new Promise((resolve) => { setTimeout(resolve, 0) })
+
+      /** 先把应用窗口提到前台：macOS 上横幅点击常伴随「窗口已聚焦」的判定。 */
+      const focusWindow = () => {
         try {
-          const archived = ctx.workspaces?.list?.getSnapshot?.()?.archivedSessionIds
-          const isArchived = Array.isArray(archived) && archived.includes(sessionId)
-          if (isArchived && typeof ctx.uiWorkspace?.unarchiveSession === 'function') {
-            void Promise.resolve(ctx.uiWorkspace.unarchiveSession(sessionId))
-              .then(() => ctx.uiWorkspace?.openSession?.(sessionId))
-              .catch((error) => warn(`could not open archived session ${sessionId}`, error))
-            return
-          }
-          ctx.uiWorkspace?.openSession?.(sessionId)
-        } catch (error) {
-          warn(`could not open session ${sessionId}`, error)
+          if (typeof window !== 'undefined' && typeof window.focus === 'function') window.focus()
+        } catch {
+          // 浏览器可能拒绝聚焦；导航本身仍然值得一试。
         }
+      }
+
+      /**
+       * 主视图是否真的持有该会话（引用数 > 0）。
+       * 读不到 retainInfo（老宿主/降级宿主）时返回 undefined —— 无法验证就不该谎报失败。
+       * @returns {boolean|undefined}
+       */
+      const mainViewRetains = (sessionId) => {
+        try {
+          const snapshot = ctx.sessions?.retainInfo?.(sessionId)?.getSnapshot?.()
+          if (snapshot === undefined || snapshot === null) return undefined
+          // 快照存在就说明宿主支持引用追踪：没有 mainView 计数即视为没有持有。
+          const count = Number(snapshot?.retainedBy?.mainView ?? 0)
+          return Number.isFinite(count) ? count > 0 : undefined
+        } catch {
+          return undefined
+        }
+      }
+
+      /** 导航本身：归档会话先取消归档（否则列表刷新会把选择清掉），再打开会话。 */
+      const navigate = async (sessionId) => {
+        const archived = ctx.workspaces?.list?.getSnapshot?.()?.archivedSessionIds
+        const isArchived = Array.isArray(archived) && archived.includes(sessionId)
+        if (isArchived && typeof ctx.uiWorkspace?.unarchiveSession === 'function') {
+          await ctx.uiWorkspace.unarchiveSession(sessionId)
+        }
+        await ctx.uiWorkspace?.openSession?.(sessionId)
+      }
+
+      /** 把失败原因写回对应的卡片；最近通知列表里不重复这份细节。 */
+      const reportCardFailure = (sessionId, message) => {
+        try {
+          const card = toasts.getSnapshot().find((item) => item.sessionId === sessionId)
+          if (card !== undefined) toasts.setError(card.id, message ?? t('navigateFailed'))
+        } catch {
+          // 卡片已消失：只留日志。
+        }
+      }
+
+      /**
+       * 打开事件对应的会话。
+       *
+       * 点击通知不生效的常见原因是「导航被同帧内的其他选择覆盖」或「窗口没被真正提到前台」，
+       * 所以这里：先聚焦窗口 → 导航 → 等一个宏任务 → 用主视图引用数确认；
+       * 没生效就再试一次，仍失败才把一行原因写到卡片上。整个过程不会再向调用方抛错。
+       * @param {string} sessionId 目标会话。
+       * @returns {Promise<{ok: boolean, error?: string}>} 是否切过去了。
+       */
+      const openSession = async (sessionId) => {
+        if (typeof sessionId !== 'string' || sessionId === '') return { ok: false }
+        focusWindow()
+        const attempt = async () => {
+          try {
+            await navigate(sessionId)
+            return true
+          } catch (error) {
+            warn(`could not open session ${sessionId}`, error)
+            return false
+          }
+        }
+        await attempt()
+        await nextTask()
+        let retained = mainViewRetains(sessionId)
+        if (retained === false) {
+          // 第一次导航被别的东西盖掉了：再试一次（仍不生效才算失败）。
+          await attempt()
+          await nextTask()
+          retained = mainViewRetains(sessionId)
+        }
+        if (retained === false) {
+          const message = t('navigateFailed')
+          reportCardFailure(sessionId, message)
+          warn(`session ${sessionId} did not become the main view after retry`)
+          return { ok: false, error: message }
+        }
+        return { ok: true }
       }
 
       const dispatcher = new NotificationDispatcher({
         settings: () => settingsSource.getSnapshot(),
         t,
         playSound: (sound, volume) => player.play(sound, volume),
+        showCard: ({ kind, sessionId, title, body }) => {
+          // overlay 还没注册成功（宿主没有 slots 服务）时返回 false，让分发器回退到系统通知。
+          if (!cardsReady) return false
+          toasts.push({ kind, sessionId, title, body })
+          return true
+        },
         showNotification: ({ title, body, tag, sessionId }) => showBrowserNotification({
           title,
           body,
@@ -288,7 +371,7 @@ export default function createNotification(require) {
         hasUnfinishedWork: (id) => hasUnfinishedWork(ctx.sessions?.list?.getSnapshot?.(), id),
         emit: (event) => {
           const result = dispatcher.dispatch(event)
-          if (result.notified === true) {
+          if (result.notified === true || result.card === true) {
             recent.add({ kind: event.kind, sessionId: event.sessionId, title: result.title, body: result.body })
           }
         },
@@ -434,6 +517,20 @@ export default function createNotification(require) {
       install(() => () => player.dispose(), 'toolkit-notification:sounds')
 
       install(() => {
+        // 卡片走公共 overlay 槽位；没有 slots 服务时 cardsReady 保持 false，
+        // 分发器会自动退回系统通知，提醒不会因为缺能力而丢掉。
+        if (typeof ctx.slots?.inject !== 'function' || typeof ctx.slots?.register !== 'function') return undefined
+        const Toasts = createNotificationToasts(React, { t, store: toasts, openSession })
+        return ctx.slots.inject('shell.overlay', () => {
+          cardsReady = true
+          return ctx.slots.register({
+            name: 'shell.overlay',
+            id: 'dsh-toolkit.notification.toasts',
+          }, Toasts)
+        })
+      }, 'toolkit-notification:toasts')
+
+      install(() => {
         if (typeof ctx.slots?.inject !== 'function' || typeof ctx.slots?.register !== 'function') return undefined
         return ctx.slots.inject('settings.section', () => ctx.slots.register({
           name: 'settings.section',
@@ -443,6 +540,11 @@ export default function createNotification(require) {
           locale: NOTIFICATION_NS,
         }, Panel))
       }, 'toolkit-notification:section')
+
+      install(
+        () => registerSettingsIcon(ctx, 'notification', 'bell'),
+        'toolkit-notification:settings-icon',
+      )
     },
   }
 }

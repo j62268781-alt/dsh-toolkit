@@ -7,6 +7,7 @@ import { findScopedForm } from '../../../client/config.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
 import { installStylesheet } from '../../../client/ui/stylesheet.js'
 import { DSH_DESKTOP_LOGO } from '../../../client/ui/dsh-logo.js'
+import { registerSettingsIcon } from '../../../client/settings-icon.jsx'
 import panelCss from './styles.css'
 
 export const inject = ['slots', 'configForms']
@@ -150,4 +151,5 @@ export function apply(ctx) {
     name: 'settings.section', id: 'boot', order: 15,
     label: () => '启动动画', inject: () => ({ form }),
   }, BootPanel))
+  ctx.effect(() => registerSettingsIcon(ctx, 'boot', 'rocket'), 'toolkit-boot:settings-icon')
 }

@@ -5,6 +5,7 @@ import { createPetConnection } from './connection.js'
 import { CONFIG_NS, formSnapshot, readSettings } from './model.js'
 import { createTranslator, PET_COPY, PET_NS } from './locale.js'
 import { createPetPanel } from './panel.jsx'
+import { registerSettingsIcon } from '../../../client/settings-icon.jsx'
 import css from './style.css'
 
 export default function createPet(require) {
@@ -49,6 +50,7 @@ export default function createPet(require) {
       }, 'toolkit-pet:settings')
       ctx.effect(() => { connection.start(); return () => connection.dispose() }, 'toolkit-pet:connection')
       ctx.effect(() => ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'desktop-pet', order: 25, label: () => t('nav'), locale: PET_NS }, Panel)), 'toolkit-pet:section')
+      ctx.effect(() => registerSettingsIcon(ctx, 'desktop-pet', 'paw'), 'toolkit-pet:settings-icon')
     },
   }
 }

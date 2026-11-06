@@ -9,6 +9,7 @@ import './react.js'
 import { findScopedForm } from '../../../client/config.js'
 import { judgmentContribution } from './judgment-remote.js'
 import { primitives } from './primitives.js'
+import { registerSettingsIcon } from '../../../client/settings-icon.jsx'
 import { Panel } from './panel.jsx'
 
 /** 浏览器侧需要的服务：槽位 + 配置表单 + 凭据读写面（remote.credentials）。 */
@@ -53,4 +54,5 @@ export async function apply(ctx) {
     // primitives 见 client/primitives.js：走宿主模块表的同步 require。
     inject: () => ({ form, entryId, credentials, primitives, judgment }),
   }, Panel))
+  ctx.effect(() => registerSettingsIcon(ctx, 'judgment', 'scale'), 'toolkit-judgment:settings-icon')
 }

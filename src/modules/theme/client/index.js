@@ -12,6 +12,7 @@ import { installPalette, installSceneClock, registerPaletteScene } from "./palet
 import { createOceanScene } from "./scenes/ocean.js";
 import { createHopeScene, updateHopeSceneTime } from "./scenes/hope.js";
 import { ThemeCenterPanel } from "./settings-theme.jsx";
+import { registerSettingsIcon } from "../../../client/settings-icon.jsx";
 
 export const inject = ["layout", "slots", "locale", "configForms", "theme"];
 
@@ -62,5 +63,6 @@ export function apply(ctx) {
     installWorkspaceCollapse,
   ], { nativeInstallers: [(ctx) => installSidebarWidth(ctx, { native: true })] }), "toolkit-theme:codex-shell");
   ctx.effect(() => installSettingsNav(ctx), "toolkit-theme:settings-nav");
+  ctx.effect(() => registerSettingsIcon(ctx, "theme", "palette"), "toolkit-theme:settings-icon");
   ctx.effect(() => installThemeCenter(ctx), "toolkit-theme:settings-section");
 }

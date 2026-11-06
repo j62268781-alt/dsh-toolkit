@@ -16,9 +16,9 @@ import { DEFAULT_SETTINGS } from '../../src/modules/notification/client/model.js
 import { NOTIFICATION_COPY } from '../../src/modules/notification/client/locale.js'
 
 /** 与 scripts/build-client.mjs 一致：JSX 走全局 __dshReact。 */
-export async function loadNotificationModule(name = 'notification-client') {
+export async function loadClientEntry(entry, name) {
   const result = await build({
-    entryPoints: ['src/modules/notification/client/index.jsx'],
+    entryPoints: [entry],
     bundle: true,
     platform: 'node',
     format: 'esm',
@@ -34,6 +34,11 @@ export async function loadNotificationModule(name = 'notification-client') {
   const out = `node_modules/.cache/${name}.mjs`
   await writeFile(out, result.outputFiles[0].text)
   return import(`../../${out}?v=${Date.now()}`)
+}
+
+/** 客户端半（index.jsx）的打包入口。 */
+export function loadNotificationModule(name = 'notification-client') {
+  return loadClientEntry('src/modules/notification/client/index.jsx', name)
 }
 
 /** 安装 jsdom 全局；返回 restore()。 */
@@ -166,10 +171,13 @@ export function defaultFormValues(overrides = {}) {
  * @param {object} [options]
  * @param {boolean} [options.withConfigForms] 是否提供 configForms（false = 只读降级）。
  * @param {boolean} [options.withServices] 是否提供服务（false = 只有 slots/locale/configForms）。
+ * @param {boolean} [options.withSlots] 是否提供 slots 服务（false = 只有 locale/configForms）。
  * @param {object} [options.notification] 初始表单值覆盖。
  * @param {object} [options.sessions] 初始会话列表 `{ [id]: summary }`。
  * @param {object} [options.chats] 会话 id → chat 快照。
  * @param {object} [options.retainedBy] 会话 id → retainedBy（判断「正在读的会话」）。
+ * @param {boolean|'always'|'never'|'second'|Function} [options.retainOnOpen] 打开会话时是否让主视图持有它
+ *   （默认每次；'never' 用来测「导航没生效」，'second' 用来测「重试一次后成功」）。
  * @param {object} [options.agentErrors] 会话 id → lastAgentError。
  * @param {string[]} [options.archived] 已归档会话 id。
  * @param {object} [options.projections] projectionsBySession。
@@ -179,6 +187,7 @@ export function createFakeContext(options = {}) {
   const cleanups = []
   const localeRegistrations = []
   const sections = []
+  const overlays = []
   const writes = []
   const openedSessions = []
   const unarchived = []
@@ -227,9 +236,22 @@ export function createFakeContext(options = {}) {
   const summaryById = new Map(Object.entries(options.sessions ?? {}))
   const statusById = new Map(Object.entries(options.statuses ?? {}))
   const chatById = options.chats ?? {}
-  const retainedBy = options.retainedBy ?? {}
   const agentErrors = options.agentErrors ?? {}
   const projections = options.projections ?? {}
+
+  /** 主视图的引用数：模拟宿主在 openSession 时把会话挂到主视图。 */
+  const retainCounts = new Map(
+    Object.entries(options.retainedBy ?? {}).map(([id, entries]) => [id, { ...entries }]),
+  )
+  const openCounts = new Map()
+  const retainOnOpen = options.retainOnOpen ?? 'always'
+  /** 第 count 次打开时，主视图是否应该持有该会话。 */
+  const retainsOnOpen = (count) => {
+    if (retainOnOpen === 'never' || retainOnOpen === false) return false
+    if (retainOnOpen === 'second') return count >= 2
+    if (typeof retainOnOpen === 'function') return retainOnOpen(count) === true
+    return true
+  }
 
   const listSnapshot = () => ({
     ids: [...summaryById.keys()],
@@ -262,7 +284,7 @@ export function createFakeContext(options = {}) {
     },
     binding: (id) => (options.withServices === false ? undefined : bindingFor(id)),
     retainInfo: (id) => ({
-      getSnapshot: () => ({ referenceCount: 0, retainedBy: retainedBy[id] ?? {} }),
+      getSnapshot: () => ({ referenceCount: 0, retainedBy: { ...(retainCounts.get(id) ?? {}) } }),
       subscribe: () => () => {},
     }),
     using: async (id, _options, operation) => operation({ sessionId: id, binding: bindingFor(id), release() {} }),
@@ -296,6 +318,11 @@ export function createFakeContext(options = {}) {
   const uiWorkspace = {
     openSession(id) {
       openedSessions.push(id)
+      const count = (openCounts.get(id) ?? 0) + 1
+      openCounts.set(id, count)
+      if (!retainsOnOpen(count)) return
+      const current = retainCounts.get(id) ?? {}
+      retainCounts.set(id, { ...current, mainView: Math.max(1, Number(current.mainView ?? 0) + 1) })
     },
     async unarchiveSession(id) {
       unarchived.push(id)
@@ -326,11 +353,12 @@ export function createFakeContext(options = {}) {
     },
     slots: {
       inject(name, run) {
-        if (name !== 'settings.section') throw new Error(`unexpected slot: ${name}`)
+        if (name !== 'settings.section' && name !== 'shell.overlay') throw new Error(`unexpected slot: ${name}`)
         return run()
       },
       register(meta, Component) {
-        sections.push({ meta, Component })
+        if (meta?.name === 'shell.overlay') overlays.push({ meta, Component })
+        else sections.push({ meta, Component })
         return () => {}
       },
     },
@@ -356,6 +384,10 @@ export function createFakeContext(options = {}) {
     ctx.uiWorkspace = undefined
     ctx.workspaces = undefined
   }
+  // 降级宿主可能没有 slots 服务：此时卡片通道不可用，分发器应回退到系统通知。
+  if (options.withSlots === false) {
+    ctx.slots = undefined
+  }
 
   return {
     ctx,
@@ -363,6 +395,7 @@ export function createFakeContext(options = {}) {
     cleanups,
     localeRegistrations,
     sections,
+    overlays,
     writes,
     openedSessions,
     unarchived,

@@ -9,6 +9,7 @@ import './react.js'
 import { browserContribution } from './browser-remote.js'
 import { findScopedForm } from '../../../client/config.js'
 import { primitives } from './primitives.js'
+import { registerSettingsIcon } from '../../../client/settings-icon.jsx'
 import { Panel } from './panel.jsx'
 
 /** 浏览器侧需要的服务：槽位 + 配置表单 + remote（自检走它）。 */
@@ -41,4 +42,5 @@ export async function apply(ctx) {
     label: () => '浏览器',
     inject: () => ({ form, entryId, primitives, browser }),
   }, Panel))
+  ctx.effect(() => registerSettingsIcon(ctx, 'browser', 'globe'), 'toolkit-browser:settings-icon')
 }

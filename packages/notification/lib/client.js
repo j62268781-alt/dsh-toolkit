@@ -3,6 +3,29 @@ window.__ModuleLoader__.load({
   id: "dsh-toolkit-notification",
   factory(require) {
     const module = { exports: {} };
+    var __create = Object.create;
+    var __defProp = Object.defineProperty;
+    var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+    var __getOwnPropNames = Object.getOwnPropertyNames;
+    var __getProtoOf = Object.getPrototypeOf;
+    var __hasOwnProp = Object.prototype.hasOwnProperty;
+    var __copyProps = (to, from, except, desc) => {
+      if (from && typeof from === "object" || typeof from === "function") {
+        for (let key of __getOwnPropNames(from))
+          if (!__hasOwnProp.call(to, key) && key !== except)
+            __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+      }
+      return to;
+    };
+    var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+      // If the importer is in node compatibility mode or this is not an ESM
+      // file that has been converted to a CommonJS file using a Babel-
+      // compatible transform (i.e. "__esModule" has not been set), then set
+      // "default" to the CommonJS "module.exports" for node compatibility.
+      isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+      mod
+    ));
+
     // src/modules/notification/client/styles.css
     var styles_default = `/* Notification cards use the same title/description metrics as General settings.
      * 页头（标题 + 副标题）直接复用 src/client/styles/settings.css 的 .ntf-pageTitle /
@@ -40,6 +63,19 @@ window.__ModuleLoader__.load({
     .ntf-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .ntf-error, .ntf-notice, .ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
     .ntf-error { color: var(--dsw-alias-state-error-primary); }
+    /* 应用内提醒卡片（窗口在前台时替代系统横幅）：固定右上角。
+     * 外层不吃指针事件，只有卡片本身可点；top 偏移避开原生标题栏按钮。 */
+    .ntf-toasts { position: fixed; z-index: 9999; top: 56px; right: 16px; display: flex; flex-direction: column; gap: 8px; width: min(320px, calc(100vw - 32px)); pointer-events: none; }
+    .ntf-toast { box-sizing: border-box; display: flex; align-items: flex-start; gap: 8px; padding: 10px 8px 10px 12px; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; background: var(--dsw-alias-bg-layer-2); box-shadow: var(--dsw-elevation-prominent); color: var(--dsw-alias-label-primary); pointer-events: auto; }
+    .ntf-toastContent { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+    .ntf-toastBody { box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+    .ntf-toastBody:focus-visible, .ntf-toastClose:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; border-radius: var(--dsw-radius-md, 8px); }
+    .ntf-toastBody:disabled { opacity: 1; cursor: default; }
+    .ntf-toastTitle { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; line-height: 18px; }
+    .ntf-toastText { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; font-size: 12px; line-height: 17px; color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }
+    .ntf-toastError { margin: 2px 0 0; font-size: 12px; line-height: 17px; color: var(--dsw-alias-state-error-primary); }
+    .ntf-toastClose { box-sizing: border-box; flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 15px; line-height: 1; cursor: pointer; }
+    .ntf-toastClose:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
     @media (max-width: 720px) {
       .ntf-row { gap: 12px; }
       .ntf-rowControl { max-width: 60%; }
@@ -202,6 +238,9 @@ window.__ModuleLoader__.load({
         recentHint: "这里显示本次运行里已经发过的通知，点击可以直接打开对应会话。",
         recentEmpty: "还没有发过通知。",
         openSession: "打开会话",
+        toastsLabel: "提醒",
+        dismiss: "关闭提醒",
+        navigateFailed: "未能切换到该会话，请从侧边栏手动打开。",
         justNow: "刚刚",
         minutesAgo: "{minutes} 分钟前",
         hoursAgo: "{hours} 小时前",
@@ -282,6 +321,9 @@ window.__ModuleLoader__.load({
         recentHint: "Notifications sent in this run. Click one to open its session.",
         recentEmpty: "No notifications yet.",
         openSession: "Open session",
+        toastsLabel: "Notifications",
+        dismiss: "Dismiss notification",
+        navigateFailed: "Could not switch to that session; open it from the sidebar.",
         justNow: "just now",
         minutesAgo: "{minutes} min ago",
         hoursAgo: "{hours} h ago",
@@ -307,16 +349,16 @@ window.__ModuleLoader__.load({
         bind = void 0;
       }
       return function translate(key, params) {
-        let text;
+        let text2;
         if (typeof bind === "function") {
           try {
-            text = bind(key);
+            text2 = bind(key);
           } catch {
-            text = void 0;
+            text2 = void 0;
           }
         }
-        if (typeof text !== "string" || text === "" || text === key) text = dict[key] ?? NOTIFICATION_COPY.zh[key] ?? key;
-        return interpolate(text, params);
+        if (typeof text2 !== "string" || text2 === "" || text2 === key) text2 = dict[key] ?? NOTIFICATION_COPY.zh[key] ?? key;
+        return interpolate(text2, params);
       };
     }
 
@@ -399,8 +441,8 @@ window.__ModuleLoader__.load({
         return void 0;
       }
     }
-    function truncate(text, max = 160) {
-      const collapsed = String(text ?? "").replace(/\s+/g, " ").trim();
+    function truncate(text2, max = 160) {
+      const collapsed = String(text2 ?? "").replace(/\s+/g, " ").trim();
       if (collapsed.length <= max) return collapsed;
       return `${collapsed.slice(0, Math.max(1, max - 1))}…`;
     }
@@ -467,13 +509,13 @@ window.__ModuleLoader__.load({
             failureMessage = typeof data.message === "string" ? data.message : failureMessage;
           }
         } else if (node.kind === "assistant-step") {
-          const text = textOfData(node.data);
-          if (text.trim() !== "") finalText = text;
+          const text2 = textOfData(node.data);
+          if (text2.trim() !== "") finalText = text2;
         } else if (node.kind === "user") {
           const data = node.data ?? {};
           if (data.source?.kind !== "user") continue;
-          const text = textOfUserNode(data);
-          if (text.trim() !== "") lastUserText = text;
+          const text2 = textOfUserNode(data);
+          if (text2.trim() !== "") lastUserText = text2;
         }
       }
       return {
@@ -714,12 +756,11 @@ window.__ModuleLoader__.load({
         const mode = settings.currentMode;
         if (mode === "never") return { notified: false, sounded: false, reason: "never" };
         const away = this.deps.isHidden() === true || this.deps.hasFocus?.() === false;
-        if (!away && mode !== "always") {
-          return { notified: false, sounded: false, reason: "focused" };
-        }
+        let system = away || mode === "always";
+        const card = !away || mode === "always";
         let sounded = false;
         const sound = settings.sound ?? type.sound;
-        if (settings.soundEnabled === true && sound !== "none" && settings.volume !== 0) {
+        if (system && settings.soundEnabled === true && sound !== "none" && settings.volume !== 0) {
           try {
             sounded = this.deps.playSound(sound, settings.volume) !== false;
           } catch {
@@ -727,19 +768,46 @@ window.__ModuleLoader__.load({
         }
         const title = typeof event.title === "string" && event.title.trim() !== "" ? event.title.trim() : this.deps.t("untitled");
         const body = notificationBody(event, this.deps.t);
-        let notified = false;
-        try {
-          notified = this.deps.showNotification({
-            title,
-            body,
-            // 一条通知一张卡片：按会话 + 类型折叠，同一会话的类型不会互相覆盖。
-            tag: `dsh-toolkit:notification:${event.sessionId}:${event.kind}`,
-            sessionId: event.sessionId
-          }) === true;
-        } catch {
-          notified = false;
+        let pushed = false;
+        let viewingForeground = false;
+        if (!away) {
+          try {
+            viewingForeground = this.deps.isCurrent?.(event.sessionId) === true;
+          } catch {
+            viewingForeground = false;
+          }
         }
-        return { notified, sounded, title, body };
+        if (card && !viewingForeground) {
+          try {
+            pushed = this.deps.showCard?.({
+              kind: event.kind,
+              sessionId: event.sessionId,
+              title,
+              body
+            }) === true;
+          } catch {
+            pushed = false;
+          }
+          if (!pushed) system = true;
+        }
+        let notified = false;
+        if (system) {
+          try {
+            notified = this.deps.showNotification({
+              title,
+              body,
+              // 一条通知一张卡片：按会话 + 类型折叠，同一会话的类型不会互相覆盖。
+              tag: `dsh-toolkit:notification:${event.sessionId}:${event.kind}`,
+              sessionId: event.sessionId
+            }) === true;
+          } catch {
+            notified = false;
+          }
+        }
+        if (viewingForeground && !pushed && !notified) {
+          return { notified, sounded, title, body, reason: "current" };
+        }
+        return pushed ? { notified, sounded, card: true, title, body } : { notified, sounded, title, body };
       }
     };
 
@@ -762,14 +830,14 @@ window.__ModuleLoader__.load({
         json() {
           parsed ??= (async () => {
             if (typeof response.text !== "function") return response.json();
-            const text = await response.text();
-            if (text === "") return {};
+            const text2 = await response.text();
+            if (text2 === "") return {};
             try {
-              return JSON.parse(text);
+              return JSON.parse(text2);
             } catch {
-              const error = new Error(`HTTP ${response.status} 返回了非 JSON：${text.slice(0, 200)}`);
+              const error = new Error(`HTTP ${response.status} 返回了非 JSON：${text2.slice(0, 200)}`);
               error.status = response.status;
-              error.bodyPreview = text.slice(0, 200);
+              error.bodyPreview = text2.slice(0, 200);
               throw error;
             }
           })();
@@ -1195,12 +1263,198 @@ window.__ModuleLoader__.load({
       };
     }
 
+    // src/modules/notification/client/toasts.js
+    var TOAST_LIMIT = 3;
+    var TOAST_ERROR_LIMIT = 160;
+    var TEXT_LIMIT = 200;
+    function text(value, max = TEXT_LIMIT) {
+      const collapsed = String(value ?? "").replace(/\s+/g, " ").trim();
+      if (collapsed.length <= max) return collapsed;
+      return `${collapsed.slice(0, Math.max(1, max - 1))}…`;
+    }
+    function createToastStore(limit = TOAST_LIMIT) {
+      let items = [];
+      let sequence = 0;
+      const listeners = /* @__PURE__ */ new Set();
+      const notify = () => {
+        for (const listener of [...listeners]) {
+          try {
+            listener();
+          } catch {
+          }
+        }
+      };
+      return {
+        /** 当前快照（引用稳定，供 useSyncExternalStore 使用）。 */
+        getSnapshot() {
+          return items;
+        },
+        /** 订阅变更。 */
+        subscribe(listener) {
+          if (typeof listener !== "function") return () => {
+          };
+          listeners.add(listener);
+          return () => {
+            listeners.delete(listener);
+          };
+        },
+        /**
+         * 推一张卡片（新的在最前面）。
+         * @param {{kind?: string, sessionId?: string, title?: string, body?: string, at?: number, error?: string}} entry 卡片内容。
+         * @returns {AttentionCard} 已经落库的记录（带自增 id）。
+         */
+        push(entry) {
+          const record = {
+            id: sequence += 1,
+            sessionId: text(entry?.sessionId),
+            kind: text(entry?.kind),
+            title: text(entry?.title),
+            body: text(entry?.body),
+            at: Number.isFinite(entry?.at) ? Number(entry.at) : Date.now()
+          };
+          if (typeof entry?.error === "string" && entry.error !== "") {
+            record.error = text(entry.error, TOAST_ERROR_LIMIT);
+          }
+          items = [record, ...items].slice(0, Math.max(1, limit));
+          notify();
+          return record;
+        },
+        /**
+         * 关掉一张卡片。
+         * @param {number} id 卡片 id。
+         * @returns {boolean} 是否真的移除了一张。
+         */
+        dismiss(id) {
+          const index = items.findIndex((item) => item.id === id);
+          if (index < 0) return false;
+          items = [...items.slice(0, index), ...items.slice(index + 1)];
+          notify();
+          return true;
+        },
+        /** 清空所有卡片。 */
+        clear() {
+          if (items.length === 0) return;
+          items = [];
+          notify();
+        },
+        /**
+         * 把「导航失败」的原因记到某张卡片上；再次导航成功时可用空字符串清掉。
+         * 文案有上限：卡片只展示一行，原始错误仍然留在控制台日志里。
+         * @param {number} id 卡片 id。
+         * @param {string} message 已本地化的一行文案。
+         * @returns {AttentionCard|undefined} 更新后的记录；卡片已消失时返回 undefined。
+         */
+        setError(id, message) {
+          const index = items.findIndex((item) => item.id === id);
+          if (index < 0) return void 0;
+          const bounded = text(message, TOAST_ERROR_LIMIT);
+          const current = items[index];
+          if ((current.error ?? "") === bounded) return current;
+          const next = { ...current };
+          if (bounded === "") delete next.error;
+          else next.error = bounded;
+          items = [...items.slice(0, index), next, ...items.slice(index + 1)];
+          notify();
+          return next;
+        }
+      };
+    }
+
+    // src/modules/notification/client/toasts.jsx
+    var TOAST_AUTO_DISMISS_MS = 8e3;
+    function createNotificationToasts(React2, deps) {
+      const { t, store, openSession } = deps ?? {};
+      const translate = typeof t === "function" ? t : (key) => key;
+      const autoDismissMs = Number.isFinite(deps?.autoDismissMs) && deps.autoDismissMs > 0 ? Number(deps.autoDismissMs) : TOAST_AUTO_DISMISS_MS;
+      function ToastCard({ item, dismiss }) {
+        const [paused, setPaused] = React2.useState(false);
+        const [busy, setBusy] = React2.useState(false);
+        const remaining = React2.useRef(autoDismissMs);
+        const startedAt = React2.useRef(0);
+        React2.useEffect(() => {
+          if (paused || busy) return void 0;
+          startedAt.current = Date.now();
+          const timer = setTimeout(() => {
+            dismiss(item.id);
+          }, Math.max(0, remaining.current));
+          return () => {
+            clearTimeout(timer);
+            remaining.current = Math.max(0, remaining.current - (Date.now() - startedAt.current));
+          };
+        }, [paused, busy, item.id, dismiss]);
+        const activate = async () => {
+          if (busy) return;
+          setBusy(true);
+          try {
+            const result = await openSession(item.sessionId);
+            if (result === false || result?.ok === false) return;
+            dismiss(item.id);
+          } catch {
+            store.setError?.(item.id, translate("navigateFailed"));
+          } finally {
+            setBusy(false);
+          }
+        };
+        return /* @__PURE__ */ __dshReact.createElement(
+          "div",
+          {
+            className: "ntf-toast",
+            onMouseEnter: () => setPaused(true),
+            onMouseLeave: () => setPaused(false),
+            onFocus: () => setPaused(true),
+            onBlur: () => setPaused(false)
+          },
+          /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-toastContent" }, /* @__PURE__ */ __dshReact.createElement(
+            "button",
+            {
+              type: "button",
+              className: "ntf-toastBody",
+              disabled: busy,
+              title: translate("openSession"),
+              onClick: () => {
+                void activate();
+              }
+            },
+            /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-toastTitle" }, item.title || translate("untitled")),
+            /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-toastText" }, item.body)
+          ), item.error ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-toastError", role: "alert" }, item.error) : null),
+          /* @__PURE__ */ __dshReact.createElement(
+            "button",
+            {
+              type: "button",
+              className: "ntf-toastClose",
+              "aria-label": translate("dismiss"),
+              onClick: () => dismiss(item.id)
+            },
+            "×"
+          )
+        );
+      }
+      function NotificationToasts() {
+        const items = React2.useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+        const visible = items.length > 0;
+        React2.useEffect(() => {
+          if (!visible || typeof window === "undefined") return void 0;
+          const onKeyDown = (event) => {
+            if (event?.key !== "Escape") return;
+            const [newest] = store.getSnapshot();
+            if (newest !== void 0) store.dismiss(newest.id);
+          };
+          window.addEventListener("keydown", onKeyDown);
+          return () => window.removeEventListener("keydown", onKeyDown);
+        }, [visible]);
+        if (!visible) return null;
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-toasts", role: "region", "aria-label": translate("toastsLabel") }, items.map((item) => /* @__PURE__ */ __dshReact.createElement(ToastCard, { key: item.id, item, dismiss: store.dismiss })));
+      }
+      return NotificationToasts;
+    }
+
     // src/modules/notification/client/panel.jsx
     var KIND_COPY = { completed: "typeCompleted", failed: "typeFailed", question: "typeQuestion", permission: "typePermission" };
     var MODE_COPY = { never: "currentNever", unfocused: "currentUnfocused", always: "currentAlways" };
     var PERMISSION_COPY = { granted: "permissionGranted", denied: "permissionDenied", default: "permissionDefault", unsupported: "permissionUnsupported" };
     var PERMISSION_HINT = { granted: "permissionHintGranted", denied: "permissionHintDenied", default: "permissionHintDefault", unsupported: "permissionHintUnsupported" };
-    function createNotificationPanel(React, options = {}) {
+    function createNotificationPanel(React2, options = {}) {
       const t = typeof options.t === "function" ? options.t : (key) => key;
       const { settings, actions = {}, primitives } = options;
       const Switch = primitives?.Switch;
@@ -1220,15 +1474,15 @@ window.__ModuleLoader__.load({
         return /* @__PURE__ */ __dshReact.createElement("section", { className: "ntf-section", "aria-label": title }, /* @__PURE__ */ __dshReact.createElement("h3", { className: "ntf-sectionTitle" }, title), /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-card" }, children));
       }
       function Timing({ value, disabled, translate, onChange }) {
-        const [open, setOpen] = React.useState(false);
-        const root = React.useRef(null);
-        const trigger = React.useRef(null);
-        const items = React.useRef([]);
+        const [open, setOpen] = React2.useState(false);
+        const root = React2.useRef(null);
+        const trigger = React2.useRef(null);
+        const items = React2.useRef([]);
         const close = () => {
           setOpen(false);
           trigger.current?.focus();
         };
-        React.useEffect(() => {
+        React2.useEffect(() => {
           if (!open) return;
           items.current[Math.max(0, CURRENT_MODES.indexOf(value))]?.focus();
           const outside = (event) => {
@@ -1247,7 +1501,7 @@ window.__ModuleLoader__.load({
             window.removeEventListener("keydown", escape, true);
           };
         }, [open]);
-        React.useEffect(() => {
+        React2.useEffect(() => {
           if (disabled) setOpen(false);
         }, [disabled]);
         return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-timing", ref: root, onBlur: (event) => {
@@ -1278,16 +1532,16 @@ window.__ModuleLoader__.load({
       }
       return function NotificationSection(props) {
         const translate = typeof props?.t === "function" ? props.t : t;
-        const snapshot = React.useSyncExternalStore(settings.subscribe, settings.getSnapshot, settings.getSnapshot);
-        const [permission, setPermission] = React.useState(() => actions.permission?.() ?? "unsupported");
-        const [busy, setBusy] = React.useState(false);
-        const [error, setError] = React.useState("");
-        const [notice, setNotice] = React.useState("");
-        const [sounds, setSounds] = React.useState([]);
-        const [soundStatus, setSoundStatus] = React.useState("loading");
-        const [volume, setVolume] = React.useState(snapshot.volume);
-        const volumeWrites = React.useRef({ pending: 0, tail: Promise.resolve() });
-        React.useEffect(() => {
+        const snapshot = React2.useSyncExternalStore(settings.subscribe, settings.getSnapshot, settings.getSnapshot);
+        const [permission, setPermission] = React2.useState(() => actions.permission?.() ?? "unsupported");
+        const [busy, setBusy] = React2.useState(false);
+        const [error, setError] = React2.useState("");
+        const [notice, setNotice] = React2.useState("");
+        const [sounds, setSounds] = React2.useState([]);
+        const [soundStatus, setSoundStatus] = React2.useState("loading");
+        const [volume, setVolume] = React2.useState(snapshot.volume);
+        const volumeWrites = React2.useRef({ pending: 0, tail: Promise.resolve() });
+        React2.useEffect(() => {
           if (volumeWrites.current.pending === 0) setVolume(snapshot.volume);
         }, [snapshot.volume]);
         const changeVolume = (value) => {
@@ -1302,7 +1556,7 @@ window.__ModuleLoader__.load({
             if (writes.pending === 0) setVolume(settings.getSnapshot().volume);
           });
         };
-        React.useEffect(() => {
+        React2.useEffect(() => {
           let disposed = false;
           Promise.resolve().then(() => actions.loadSounds?.()).then((catalog) => {
             if (disposed) return;
@@ -1359,6 +1613,65 @@ window.__ModuleLoader__.load({
           return /* @__PURE__ */ __dshReact.createElement(Row, { key: kind, title, description: translate(`${KIND_COPY[kind]}Desc`) }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.types?.[kind]?.enabled === true, disabled: inactive, label: title, onChange: (next) => change(() => actions.setKindEnabled(kind, next)) }));
         })), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("soundsHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTitle"), description: translate("soundDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.soundEnabled === true, disabled: inactive, label: translate("soundTitle"), onChange: (next) => change(() => actions.setSoundEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTypeTitle"), description: translate(soundStatus === "unavailable" ? "soundCatalogUnavailable" : "soundTypeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement("select", { className: "ntf-select ntf-selectSound", "aria-label": translate("soundTypeTitle"), value: selectedSound, disabled: soundInactive || soundStatus === "loading", onChange: (event) => change(() => actions.setSound(event.target.value)) }, soundChoices.map(({ id, label }) => /* @__PURE__ */ __dshReact.createElement("option", { value: id, key: id }, label))), /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: soundInactive || soundStatus !== "ready", onClick: preview }, translate("previewButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("volumeTitle"), description: translate("volumeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-volume" }, /* @__PURE__ */ __dshReact.createElement("input", { className: "ntf-range", type: "range", min: "0", max: "100", step: "1", value: Math.round(volume * 100), "aria-label": translate("volumeTitle"), disabled: readOnly || snapshot.enabled !== true || snapshot.soundEnabled !== true, onChange: (event) => changeVolume(Number(event.target.value) / 100) }), /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-volumeValue" }, translate("volumeValue", { percent: Math.round(volume * 100) }))))), error !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-error", role: "alert" }, error) : null, notice !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-notice", role: "status" }, notice) : null, readOnly ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-note" }, translate("readOnly")) : null);
       };
+    }
+
+    // src/client/settings-icon.jsx
+    var import_react = __toESM(require("react"), 1);
+    globalThis.__dshReact ??= import_react.default;
+    var SHAPES = {
+      rocket: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "6", r: "1.15" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 10.6 4.7 12.4M9.7 10.6l1.6 1.8M8 12.1v2.2" })),
+      globe: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2 8h12" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "8", rx: "2.7", ry: "6" })),
+      scale: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.6v10.8M5.7 13.4h4.6M2.9 5.1h10.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.9 5.1 1.6 8.3h2.6L2.9 5.1ZM13.1 5.1l-1.3 3.2h2.6L13.1 5.1Z" })),
+      bell: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1c-2.2 0-3.7 1.6-3.7 3.8 0 2.4-.7 3.4-1.3 4.1-.2.3 0 .7.3.7h9.4c.3 0 .5-.4.3-.7-.6-.7-1.3-1.7-1.3-4.1 0-2.2-1.5-3.8-3.7-3.8Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.6 11a1.4 1.4 0 0 0 2.8 0" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1V1.2" })),
+      paw: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "4.7", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "4.5", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "11.3", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 7.9c2 0 3.4 1.4 3.4 3 0 1.3-1 2.2-2.2 2.2-.5 0-.8-.2-1.2-.2s-.7.2-1.2.2c-1.2 0-2.2-.9-2.2-2.2 0-1.6 1.4-3 3.4-3Z" })),
+      palette: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.3c-3.2 0-5.7 2.5-5.7 5.7s2.5 5.7 5.7 5.7c.9 0 1.5-.6 1.5-1.4 0-.4-.2-.7-.4-1-.2-.3-.4-.5-.4-.9 0-.7.6-1.3 1.3-1.3h1.2c1.6 0 2.9-1.3 2.9-2.9 0-2.2-2.5-3.9-6.1-3.9Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "5.6", cy: "6.3", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8.6", cy: "4.9", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "11.1", cy: "6.6", r: ".75" })),
+      archive: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: "1.9", y: "2.6", width: "12.2", height: "2.5", rx: ".7" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.6 5.1h10.8v7.4c0 .7-.6 1.3-1.3 1.3H3.9c-.7 0-1.3-.6-1.3-1.3V5.1Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 8.5h3.4" })),
+      plug: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M6 2.3v3.2M10 2.3v3.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.4 5.5h7.2v1.6a3.6 3.6 0 0 1-7.2 0V5.5Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 10.7v2.6" })),
+      gear: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "4.6" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" }))
+    };
+    function createGlyph(key) {
+      function ToolkitSettingsGlyph({ size = 16, active = false }) {
+        const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
+        return /* @__PURE__ */ __dshReact.createElement(
+          "svg",
+          {
+            viewBox: "0 0 16 16",
+            width: edge,
+            height: edge,
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: "1.4",
+            strokeLinecap: "round",
+            strokeLinejoin: "round",
+            "aria-hidden": "true",
+            focusable: "false",
+            "data-sk-settings-icon": key,
+            "data-active": active ? "true" : "false"
+          },
+          SHAPES[key]
+        );
+      }
+      ToolkitSettingsGlyph.displayName = `ToolkitSettingsGlyph(${key})`;
+      return ToolkitSettingsGlyph;
+    }
+    var GLYPH_COMPONENTS = Object.freeze(
+      Object.fromEntries(Object.keys(SHAPES).map((key) => [key, createGlyph(key)]))
+    );
+    function registerSettingsIcon(ctx, sectionId, iconKey) {
+      const slots = ctx?.slots;
+      if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return void 0;
+      if (typeof sectionId !== "string" || sectionId === "") return void 0;
+      const Glyph = GLYPH_COMPONENTS[iconKey];
+      if (!Glyph) return void 0;
+      try {
+        const dispose = slots.inject("settings.section.icon", () => slots.register({
+          name: "settings.section.icon",
+          id: sectionId
+        }, Glyph));
+        return typeof dispose === "function" ? dispose : void 0;
+      } catch {
+        return void 0;
+      }
     }
 
     // src/modules/notification/client/index.jsx
@@ -1427,8 +1740,8 @@ window.__ModuleLoader__.load({
       }
     }
     function createNotification(require2) {
-      const React = require2("react");
-      globalThis.__dshReact = React;
+      const React2 = require2("react");
+      globalThis.__dshReact = React2;
       return {
         name: "toolkit-notification-client",
         // `workspaces` 只用于点击通知时判断/取消归档；Cordis 的 ctx 是严格的，
@@ -1459,6 +1772,8 @@ window.__ModuleLoader__.load({
             }
           };
           const recent = createRecentStore();
+          const toasts = createToastStore();
+          let cardsReady = false;
           const player = new SystemSoundPlayer(() => settingsSource.getSnapshot().volume);
           const readDetail = (id) => {
             try {
@@ -1482,24 +1797,77 @@ window.__ModuleLoader__.load({
               return t("untitled");
             }
           };
-          const openSession = (sessionId) => {
-            if (typeof sessionId !== "string" || sessionId === "") return;
+          const nextTask = () => new Promise((resolve) => {
+            setTimeout(resolve, 0);
+          });
+          const focusWindow = () => {
             try {
-              const archived = ctx.workspaces?.list?.getSnapshot?.()?.archivedSessionIds;
-              const isArchived = Array.isArray(archived) && archived.includes(sessionId);
-              if (isArchived && typeof ctx.uiWorkspace?.unarchiveSession === "function") {
-                void Promise.resolve(ctx.uiWorkspace.unarchiveSession(sessionId)).then(() => ctx.uiWorkspace?.openSession?.(sessionId)).catch((error) => warn2(`could not open archived session ${sessionId}`, error));
-                return;
-              }
-              ctx.uiWorkspace?.openSession?.(sessionId);
-            } catch (error) {
-              warn2(`could not open session ${sessionId}`, error);
+              if (typeof window !== "undefined" && typeof window.focus === "function") window.focus();
+            } catch {
             }
+          };
+          const mainViewRetains = (sessionId) => {
+            try {
+              const snapshot = ctx.sessions?.retainInfo?.(sessionId)?.getSnapshot?.();
+              if (snapshot === void 0 || snapshot === null) return void 0;
+              const count = Number(snapshot?.retainedBy?.mainView ?? 0);
+              return Number.isFinite(count) ? count > 0 : void 0;
+            } catch {
+              return void 0;
+            }
+          };
+          const navigate = async (sessionId) => {
+            const archived = ctx.workspaces?.list?.getSnapshot?.()?.archivedSessionIds;
+            const isArchived = Array.isArray(archived) && archived.includes(sessionId);
+            if (isArchived && typeof ctx.uiWorkspace?.unarchiveSession === "function") {
+              await ctx.uiWorkspace.unarchiveSession(sessionId);
+            }
+            await ctx.uiWorkspace?.openSession?.(sessionId);
+          };
+          const reportCardFailure = (sessionId, message) => {
+            try {
+              const card = toasts.getSnapshot().find((item) => item.sessionId === sessionId);
+              if (card !== void 0) toasts.setError(card.id, message ?? t("navigateFailed"));
+            } catch {
+            }
+          };
+          const openSession = async (sessionId) => {
+            if (typeof sessionId !== "string" || sessionId === "") return { ok: false };
+            focusWindow();
+            const attempt = async () => {
+              try {
+                await navigate(sessionId);
+                return true;
+              } catch (error) {
+                warn2(`could not open session ${sessionId}`, error);
+                return false;
+              }
+            };
+            await attempt();
+            await nextTask();
+            let retained = mainViewRetains(sessionId);
+            if (retained === false) {
+              await attempt();
+              await nextTask();
+              retained = mainViewRetains(sessionId);
+            }
+            if (retained === false) {
+              const message = t("navigateFailed");
+              reportCardFailure(sessionId, message);
+              warn2(`session ${sessionId} did not become the main view after retry`);
+              return { ok: false, error: message };
+            }
+            return { ok: true };
           };
           const dispatcher = new NotificationDispatcher({
             settings: () => settingsSource.getSnapshot(),
             t,
             playSound: (sound, volume) => player.play(sound, volume),
+            showCard: ({ kind, sessionId, title, body }) => {
+              if (!cardsReady) return false;
+              toasts.push({ kind, sessionId, title, body });
+              return true;
+            },
             showNotification: ({ title, body, tag, sessionId }) => showBrowserNotification({
               title,
               body,
@@ -1559,7 +1927,7 @@ window.__ModuleLoader__.load({
             hasUnfinishedWork: (id) => hasUnfinishedWork(ctx.sessions?.list?.getSnapshot?.(), id),
             emit: (event) => {
               const result = dispatcher.dispatch(event);
-              if (result.notified === true) {
+              if (result.notified === true || result.card === true) {
                 recent.add({ kind: event.kind, sessionId: event.sessionId, title: result.title, body: result.body });
               }
             }
@@ -1598,7 +1966,7 @@ window.__ModuleLoader__.load({
             openSession,
             isWritable: writable
           };
-          const Panel = createNotificationPanel(React, {
+          const Panel = createNotificationPanel(React2, {
             form,
             entryId,
             t,
@@ -1685,6 +2053,17 @@ window.__ModuleLoader__.load({
           install(() => () => player.dispose(), "toolkit-notification:sounds");
           install(() => {
             if (typeof ctx.slots?.inject !== "function" || typeof ctx.slots?.register !== "function") return void 0;
+            const Toasts = createNotificationToasts(React2, { t, store: toasts, openSession });
+            return ctx.slots.inject("shell.overlay", () => {
+              cardsReady = true;
+              return ctx.slots.register({
+                name: "shell.overlay",
+                id: "dsh-toolkit.notification.toasts"
+              }, Toasts);
+            });
+          }, "toolkit-notification:toasts");
+          install(() => {
+            if (typeof ctx.slots?.inject !== "function" || typeof ctx.slots?.register !== "function") return void 0;
             return ctx.slots.inject("settings.section", () => ctx.slots.register({
               name: "settings.section",
               id: "notification",
@@ -1694,6 +2073,10 @@ window.__ModuleLoader__.load({
               locale: NOTIFICATION_NS
             }, Panel));
           }, "toolkit-notification:section");
+          install(
+            () => registerSettingsIcon(ctx, "notification", "bell"),
+            "toolkit-notification:settings-icon"
+          );
         }
       };
     }

@@ -426,9 +426,15 @@ export async function bootPanel(doc = emptyDoc(), options = {}) {
   }
 
   loaded.apply({
+    effect: (run) => run(),
     slots: {
       inject: (_name, fn) => fn(),
-      register: (entry, Component) => { runtime.props = entry.inject(); runtime.setComponent(Component) },
+      register: (entry, Component) => {
+        // The module also registers its settings-nav glyph on `settings.section.icon`;
+        // only the settings page itself belongs to this harness.
+        if (entry.name === 'settings.section') { runtime.props = entry.inject(); runtime.setComponent(Component) }
+        return () => {}
+      },
     },
     configForms: { get: (entryId) => entryId === 'dsh-skills-mcp-manager' ? form : undefined },
   })

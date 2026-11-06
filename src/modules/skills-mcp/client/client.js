@@ -1,5 +1,6 @@
 import { NAME as NS } from '../host/identity.js'
 import { findScopedForm } from '../../../client/config.js'
+import { registerSettingsIcon } from '../../../client/settings-icon.jsx'
 import { createPanel } from './panel.jsx'
 
 /** Host injection and settings registration for the Skills & MCP panel. */
@@ -33,6 +34,7 @@ export default function createClient(require) {
         label: () => 'Skills & MCP',
         inject: () => ({ form, entryId, inventory }),
       }, Panel))
+      ctx.effect(() => registerSettingsIcon(ctx, 'skills-mcp', 'plug'), 'toolkit-skills-mcp:settings-icon')
     },
   }
 }

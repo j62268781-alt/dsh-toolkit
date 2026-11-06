@@ -103,16 +103,30 @@ var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层�
 
 1. `enabled`（通知总开关）关闭 → 什么都不做；
 2. 该类型 `*Enabled` 关闭 → 什么都不做；
-3. 事件来自「你正在读的会话」（`retainedBy.mainView > 0`）且窗口在前台 → 默认静默；
-   `currentMode` 可放宽：`hidden`（默认，仅后台/最小化）、`unfocused`（切到其他应用也提醒）、
-   `always`（始终提醒）；
-4. `soundEnabled` 且该类型音效不为 `none` → 播放提示音；
-5. `enabled` → 弹系统通知：`tag = dsh-toolkit:notification:<sessionId>:<kind>`，
-   `renotify: true`；桌面外壳下额外 `silent: true`（避免系统音与本模块提示音叠加）；
-   图标取页面 favicon（`dsh-app:`/SVG data URL 不可用时省略）。
+3. 按「窗口状态 × `currentMode`」选通道（`never` 静默；`unfocused` 是默认；`always` 始终提醒）：
 
-点击回调：`window.focus()` → `openSession(sessionId)`（归档先 `unarchiveSession`）。
-rc.5 桌面外壳没有窗口聚焦 IPC，这里只能尽力而为（见下方已知限制）。
+   | 窗口状态 | `unfocused`（默认） | `always` |
+   | --- | --- | --- |
+   | 可见 + 有焦点 | 仅应用内提醒卡片（正在进行中的那个会话不弹） | 系统通知 + 卡片 + 提示音 |
+   | 可见 + 无焦点 | 系统通知 + 提示音 | 系统通知 + 卡片 + 提示音 |
+   | 隐藏 / 最小化 | 系统通知 + 提示音 | 系统通知 + 卡片 + 提示音 |
+
+   窗口在前台时**不再依赖系统横幅**：前台横幅通常不弹，弹了点击也容易回不到会话，
+   所以改走模块自己的应用内卡片。卡片通道不可用（宿主没有 `slots` 服务、overlay 注册失败、
+   `showCard` 抛错或返回 `false`）时自动回退系统通知，提醒不会因为缺能力而丢失。
+4. `soundEnabled` 且该类型音效不为 `none` → 播放提示音（只在走系统通知的通道上响，与旧契约一致）；
+5. 系统通知：`tag = dsh-toolkit:notification:<sessionId>:<kind>`，`renotify: true`；
+   桌面外壳下额外 `silent: true`（避免系统音与本模块提示音叠加）；
+   图标取页面 favicon（`dsh-app:`/SVG data URL 不可用时省略）；
+6. 应用内卡片：注册在公共槽位 `shell.overlay`（id `dsh-toolkit.notification.toasts`），
+   右上角最多 3 张，约 8 秒自动消失（hover/键盘焦点暂停计时），`Escape` 关最新一张，
+   只关卡片不抢焦点。
+
+点击回调（卡片点主体 / 系统通知点击）：`window.focus()` → （归档先 `unarchiveSession`）→
+`ctx.uiWorkspace.openSession(sessionId)` → 等一个宏任务 → 用
+`sessions.retainInfo(id).retainedBy.mainView > 0` 校验真的切过去了；没生效重试一次，
+仍失败就把一行本地化原因写回卡片（不再只是对控制台 `warn`），并且不会向调用方抛错。
+rc.5 桌面外壳没有窗口聚焦 IPC，`window.focus()` 只能尽力而为（见下方已知限制）。
 
 ### 提示音
 
@@ -130,7 +144,7 @@ rc.5 桌面外壳没有窗口聚焦 IPC，这里只能尽力而为（见下方�
 | `enabled` | `true` | 通知总开关 |
 | `soundEnabled` | `true` | 提示音开关 |
 | `volume` | `0.6` | 音量 0..1 |
-| `currentMode` | `hidden` | 当前会话提醒时机：`hidden` / `unfocused` / `always` |
+| `currentMode` | `unfocused` | 提醒时机：`never` / `unfocused` / `always`（旧值 `hidden` 在解码时迁移为 `unfocused`） |
 | `scope` | `main-wait` | 通知范围：`all` / `main` / `main-wait` |
 | `<kind>Enabled` | `true` | 四种类型的开关（`completed`/`failed`/`question`/`permission`） |
 | `<kind>Sound` | 见下 | 每种类型的提示音：`chime` / `fault` / `pop` / `alert` / `none` |
@@ -149,7 +163,9 @@ rc.5 桌面外壳没有窗口聚焦 IPC，这里只能尽力而为（见下方�
 ## 已知限制
 
 - **无法把窗口强制带到前台**：rc.5 的桌面外壳没有 focus/activate IPC，`globalThis.dshDesktop`
-  只有 browser/deviceInfo/keyboard/shortcuts/updates。点击通知时依赖平台的激活行为 + `window.focus()`。
+  只有 browser/deviceInfo/keyboard/shortcuts/updates。窗口在前台时本模块已经不再依赖系统横幅
+  （改走应用内卡片），点击跳转由我们自己的 DOM 处理；后台/隐藏时仍是「平台激活 + `window.focus()`」。
+- 系统通知在应用前台时的**投递与点击**由系统决定，无法从页面观测；应用内卡片是这条场景的可靠通道。
 - 系统通知需要权限，声音需要页面获得用户激活（浏览器自动播放策略），与普通 Web 应用一致。
 - 未打开过且从未物化的会话，失败判定依赖 `turn-error`/`lastAgentError`；对话文本读取是 best-effort。
 - 通知类型按会话 + 类型折叠（同一会话的完成与失败不会互相覆盖，同一类型会替换旧卡片）。

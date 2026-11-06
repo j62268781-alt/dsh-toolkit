@@ -183,12 +183,14 @@ async function mountPanel(t, form) {
     effect(run) { const off = run(); if (typeof off === 'function') cleanups.push(off); return off },
     slots: {
       inject(_name, callback) { callback() },
-      register(meta, component) { registrations.set(meta.id, { meta, component }); return () => registrations.delete(meta.id) },
+      // Slots are separate registries keyed by their own name: keep both the
+      // settings section and the section icon (same id) apart.
+      register(meta, component) { const key = `${meta.name}/${meta.id}`; registrations.set(key, { meta, component }); return () => registrations.delete(key) },
     },
   }
   applyClient(ctx)
   const root = createRoot(dom.window.document.getElementById('root'))
-  const panel = registrations.get('boot')
+  const panel = registrations.get('settings.section/boot')
   assert.ok(panel)
   await act(async () => root.render(React.createElement(panel.component, { form })))
   t.after(async () => {
@@ -342,6 +344,45 @@ test('ocean scenes own their light/dark palette and the draw lockup stays motion
     }
   }
   assert.doesNotMatch(sourceAssets.css, /sk-boot-impact|sk-depth|sk-water-reflect|sk-ocean-drop-shadow|sea-sk-ocean-shine/)
+})
+
+test('draw preview and boot keep geometry fixed throughout every animated child', () => {
+  for (const showWordmark of [true, false]) {
+    const config = { animation: 'draw', showWordmark }
+    const runtime = createBootScene(sourceAssets, config)
+    const preview = createBootScene(sourceAssets, config, { preview: true })
+    assert.deepEqual(preview, { html: runtime.html, css: runtime.css })
+    const dom = new JSDOM(createPreviewDocument(sourceAssets, config))
+    try {
+      const { document } = dom.window
+      const rules = [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules])
+      const keyframes = new Map(rules.filter((rule) => rule.name && rule.cssRules).map((rule) => [rule.name, rule]))
+      const allowed = new Set(['opacity', 'stroke-dashoffset'])
+      const names = new Set()
+      for (const selector of ['.sk-boot__grid', '.sk-boot__trace', '.sk-boot__fill', '.sk-boot__wordmark']) {
+        const style = rules.find((rule) => rule.selectorText === selector).style
+        for (const match of style.getPropertyValue('animation').matchAll(/\bsk-[\w-]+/g)) names.add(match[0])
+      }
+      assert.ok(names.size >= 5, 'inspect actual animations rather than just the lockup wrapper')
+      for (const name of names) {
+        assert.ok(keyframes.has(name), name)
+        for (const frame of keyframes.get(name).cssRules) {
+          for (let index = 0; index < frame.style.length; index++) {
+            assert.ok(allowed.has(frame.style[index]), `${name} animates geometry: ${frame.style[index]}`)
+          }
+        }
+      }
+      const mark = dom.window.getComputedStyle(document.querySelector('.sk-boot__mark'))
+      assert.equal(mark.width, '92px')
+      assert.ok(Math.abs(Number.parseFloat(mark.height) - 92 * 17.04 / 23.16) < .0001)
+      assert.equal(mark.flex, '0 0 auto')
+      const wordmark = dom.window.getComputedStyle(document.querySelector('.sk-boot__wordmark'))
+      assert.equal(wordmark.letterSpacing, '3.38px')
+      assert.equal(wordmark.textIndent, '3.38px')
+    } finally {
+      dom.window.close()
+    }
+  }
 })
 
 test('reduced motion hides flight, particles and flashes while keeping the final brand readable', () => {

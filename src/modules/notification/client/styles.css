@@ -34,6 +34,19 @@
 .ntf-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .ntf-error, .ntf-notice, .ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
 .ntf-error { color: var(--dsw-alias-state-error-primary); }
+/* 应用内提醒卡片（窗口在前台时替代系统横幅）：固定右上角。
+ * 外层不吃指针事件，只有卡片本身可点；top 偏移避开原生标题栏按钮。 */
+.ntf-toasts { position: fixed; z-index: 9999; top: 56px; right: 16px; display: flex; flex-direction: column; gap: 8px; width: min(320px, calc(100vw - 32px)); pointer-events: none; }
+.ntf-toast { box-sizing: border-box; display: flex; align-items: flex-start; gap: 8px; padding: 10px 8px 10px 12px; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; background: var(--dsw-alias-bg-layer-2); box-shadow: var(--dsw-elevation-prominent); color: var(--dsw-alias-label-primary); pointer-events: auto; }
+.ntf-toastContent { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.ntf-toastBody { box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ntf-toastBody:focus-visible, .ntf-toastClose:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; border-radius: var(--dsw-radius-md, 8px); }
+.ntf-toastBody:disabled { opacity: 1; cursor: default; }
+.ntf-toastTitle { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; line-height: 18px; }
+.ntf-toastText { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; font-size: 12px; line-height: 17px; color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }
+.ntf-toastError { margin: 2px 0 0; font-size: 12px; line-height: 17px; color: var(--dsw-alias-state-error-primary); }
+.ntf-toastClose { box-sizing: border-box; flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 15px; line-height: 1; cursor: pointer; }
+.ntf-toastClose:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
 @media (max-width: 720px) {
   .ntf-row { gap: 12px; }
   .ntf-rowControl { max-width: 60%; }
