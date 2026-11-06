@@ -139,25 +139,40 @@ test('a nested nav wrapper is not mistaken for the native navigation', async (t)
   dispose()
 })
 
-test('settings header action is discovered without matching a module hash', async (t) => {
+for (const directHeader of [false, true]) {
+test(`settings header action works with ${directHeader ? 'direct grid' : 'legacy content'} structure`, async (t) => {
+  const header = `<div class="_z_header"><div class="_w_actions">
+    <div class="anything"><button>打开配置文件</button></div>
+  </div><button class="_z_close">关闭</button></div>`
   const { document, ctx, flush } = page(t, `<html><body>
     <div role="presentation">
-      <div data-shortcut-modal="settings" role="dialog">
+      <div data-shortcut-modal="settings" role="dialog" aria-labelledby="settings-title">
+        ${directHeader ? '<div class="_new_navTitle" id="settings-title">设置</div>' : ''}
         <nav><div class="_x_navList"></div></nav>
-        <div class="_y_content"><div class="_z_header"><div class="_w_actions">
-          <div class="anything"><button>打开配置文件</button></div>
-        </div></div></div>
+        ${directHeader ? header + '<div class="_new_options"></div>' : `<div class="_y_content">${header}</div>`}
       </div>
     </div>
   </body></html>`)
+  let opened = 0
+  const original = document.querySelector('.anything button')
+  original.addEventListener('click', () => opened++)
   const dispose = installSettingsNav(ctx)
   await flush()
   assert.equal(document.querySelector('.sk-setnav__more').hidden, false, 'the action button is projected into the titlebar')
   assert.ok(document.querySelector('.anything').hasAttribute('data-sk-config-original'))
+  document.querySelector('.sk-setnav__more').click()
+  document.querySelector('.sk-setnav__actions button').click()
+  assert.equal(opened, 1, 'the proxy invokes the native action')
+  if (directHeader) {
+    const panel = document.querySelector('[data-shortcut-modal="settings"]')
+    assert.equal(panel.querySelector('#settings-title').parentElement, panel, 'the native accessible title stays mounted')
+    assert.equal(panel.querySelector('._new_options').parentElement, panel, 'the native content stays in its React-owned position')
+  }
   dispose()
   assert.equal(document.querySelector('.anything').hasAttribute('data-sk-config-original'), false,
     'the native action is restored on teardown')
 })
+}
 
 test('settings exit copy keeps the shell marker after native markers are stripped', async (t) => {
   const { window, document } = page(t, WINDOWS_HTML)
@@ -191,6 +206,112 @@ test('settings exit copy keeps the shell marker after native markers are strippe
   assert.equal(copy.getAttribute('role'), null)
   motion.dispose()
   assert.equal(document.querySelector('[data-sk-settings-exit]'), null, 'dispose removes a pending copy')
+})
+
+test('persistent updates action calls the desktop bridge once and follows native progress', async (t) => {
+  const { window, document, ctx, flush } = page(t, WINDOWS_HTML)
+  let opens = 0
+  let listener
+  let unsubscribed = 0
+  let finish
+  let initialStatus
+  window.dshDesktop = { updates: {
+    status() { return new Promise((resolve) => { initialStatus = resolve }) },
+    subscribe(callback) { listener = callback; return () => { unsubscribed++ } },
+    open() { opens++; return new Promise((resolve) => { finish = resolve }) },
+  } }
+  const dispose = installSettingsNav(ctx)
+  await flush()
+  const more = document.querySelector('.sk-setnav__more')
+  const update = document.querySelector('[data-sk-settings-update]')
+  assert.equal(more.hidden, false, 'the update entry exists even without a header contribution')
+  assert.equal(update.textContent, '检查更新')
+  assert.equal(update.disabled, false)
+  more.click()
+  update.click()
+  update.click()
+  assert.equal(opens, 1, 'a pending native flow cannot be opened twice')
+  assert.equal(update.disabled, true)
+  listener({ phase: 'downloading', percent: 23 })
+  initialStatus({ phase: 'idle' })
+  await flush()
+  assert.equal(update.textContent, '正在下载更新…', 'a late initial status cannot overwrite live progress')
+  finish()
+  await flush()
+  assert.equal(update.disabled, true, 'native downloading state keeps the action disabled')
+  listener({ phase: 'ready', version: '0.2.3' })
+  await flush()
+  assert.equal(update.textContent, '安装更新…', 'the entry explains the next native action')
+  assert.equal(update.disabled, false)
+  dispose()
+  assert.equal(unsubscribed, 1)
+  assert.equal(document.querySelector('[data-sk-settings-update]'), null)
+  listener({ phase: 'idle' })
+  assert.equal(update.textContent, '安装更新…', 'late native events cannot mutate a disposed view')
+})
+
+test('updates bridge failures surface in the menu and allow retry', async (t) => {
+  const { window, document, ctx, flush } = page(t, WINDOWS_HTML)
+  let opens = 0
+  window.dshDesktop = { updates: {
+    status: async () => ({ phase: 'idle' }),
+    subscribe: () => () => {},
+    async open() { opens++; throw new Error('desktop unavailable') },
+  } }
+  const dispose = installSettingsNav(ctx)
+  await flush()
+  document.querySelector('.sk-setnav__more').click()
+  const update = document.querySelector('[data-sk-settings-update]')
+  update.click()
+  await flush()
+  assert.equal(opens, 1)
+  assert.equal(update.disabled, false)
+  const alert = [...document.querySelectorAll('.sk-setnav__actions [role="alert"]')].find((node) => !node.hidden)
+  assert.match(alert.textContent, /desktop unavailable/)
+  update.click()
+  await flush()
+  assert.equal(opens, 2, 'retry invokes the same public native flow')
+  dispose()
+})
+
+test('updates errors name the actual native retry instead of promising a check', async (t) => {
+  const { window, document, ctx, flush } = page(t, WINDOWS_HTML)
+  let listener
+  let opens = 0
+  window.dshDesktop = { updates: {
+    status: async () => ({ phase: 'error', failure: 'install', version: '0.2.3' }),
+    subscribe(callback) { listener = callback; return () => {} },
+    async open() { opens++ },
+  } }
+  const dispose = installSettingsNav(ctx)
+  await flush()
+  const update = document.querySelector('[data-sk-settings-update]')
+  assert.equal(update.textContent, '重试安装更新…', 'failed installation must not be labeled as an update check')
+  for (const [failure, label] of [
+    ['install-network', '重试安装更新…'], ['stop-failed', '重试安装更新…'],
+    ['tasks-changed', '重试安装更新…'], ['tasks-unavailable', '重试安装更新…'],
+    ['download', '重试下载更新…'], ['download-network', '重试下载更新…'],
+    ['check', '重新检查更新'], ['check-network', '重新检查更新'],
+  ]) {
+    listener({ phase: 'error', failure })
+    await flush()
+    assert.equal(update.textContent, label)
+    assert.equal(update.disabled, false)
+  }
+  assert.equal(opens, 0, 'rendering a failure never retries installation or downloading automatically')
+  dispose()
+})
+
+test('browser update entry explains desktop availability without pretending to check', async (t) => {
+  const { document, ctx, flush } = page(t, WINDOWS_HTML)
+  const dispose = installSettingsNav(ctx)
+  await flush()
+  const update = document.querySelector('[data-sk-settings-update]')
+  assert.equal(update.textContent, '检查更新')
+  assert.equal(update.disabled, true)
+  assert.match(update.title, /桌面应用/)
+  assert.equal([...document.querySelectorAll('.sk-setnav__actions [role="alert"]')].some((node) => !node.hidden), false)
+  dispose()
 })
 
 test('theme shell CSS uses structural selectors and reserves the Windows caption band', async () => {

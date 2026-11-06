@@ -8,7 +8,9 @@
   "exports": {
     ".": "./index.js",
     "./contract": "./contract.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
   },
   "engines": {
     "node": ">=20"
@@ -35,6 +37,8 @@
     "index.js",
     "contract.js",
     "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
     "README.md",
     "LICENSE"
   ],

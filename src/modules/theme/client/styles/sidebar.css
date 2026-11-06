@@ -302,10 +302,13 @@ html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([clas
 html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] {
   width: 100%;
   margin: 0;
+  flex-direction: column;
+  gap: 4px;
   justify-content: center;
 }
 
 html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_trigger"]:not([class*="_triggerRow"]) {
+  flex: none;
   width: 36px;
   height: 36px;
   justify-content: center;

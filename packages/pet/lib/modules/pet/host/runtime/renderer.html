@@ -1,2 +1,27 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src pet-asset:; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>DSH Pet</title><link rel="stylesheet" href="renderer.css"></head><body><main id="surface"><button id="cap" type="button"><canvas id="sprite" width="128" height="139"></canvas><span id="summary"></span><span id="indicator"></span></button><section id="activity" aria-live="polite"><div id="sessions"></div><div class="toolbar"><button id="workbench" type="button"></button><button id="collapse" type="button"></button></div><p id="error" role="alert"></p></section></main><script src="renderer.js"></script></body></html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src pet-asset:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>DSH Pet</title>
+  <link rel="stylesheet" href="renderer.css">
+</head>
+<body>
+  <main id="surface">
+    <button id="cap" type="button">
+      <canvas id="sprite" width="128" height="139"></canvas>
+      <span id="summary"></span>
+      <span id="camera-space" aria-hidden="true"></span>
+      <span id="indicator" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+    </button>
+    <section id="activity" aria-live="polite">
+      <header id="activity-heading"><span id="activity-label"></span><span id="session-count"></span></header>
+      <div id="sessions"></div>
+      <div class="toolbar"><button id="workbench" type="button"></button><button id="collapse" type="button"></button></div>
+      <p id="error" role="alert"></p>
+    </section>
+  </main>
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -22,21 +22,17 @@ function publicState(state, kind, display) {
     pets: (state.pets || []).filter(p => /^[a-z0-9_-]+$/i.test(p.id)).map(p => ({ id: p.id, name: p.name, spriteVersionNumber: p.manifest?.spriteVersionNumber === 2 ? 2 : 1, spritesheet: `pet-asset://pet/${encodeURIComponent(p.id)}/spritesheet.png` })),
     sessions: orderedSessions(state.sessions).map(s => ({ id: s.id, title: String(s.title || ''), detail: String(s.detail || ''), status: s.status, running: Boolean(s.running), pendingKind: s.pendingKind })),
     revision: state.revision, kind,
-    // Electron has no reliable public notch/safe-area API; do not infer a notch from the menu bar.
-    display: { width: display.bounds.width, height: display.bounds.height, notch: false },
+    display: { id: display.id, width: display.bounds.width, height: display.bounds.height, notch: display.notch || null, island: islandGeometry(settings, display.notch) },
   }
 }
 
-function islandGeometry(settings = {}, notch = false) {
-  const pct = Math.max(75, Math.min(150, Number(settings.islandWidth) || 100))
-  const widthFor = expanded => {
-    const r = expanded ? (notch ? 412 : 280) : (notch ? 268 : 212)
-    const c = notch ? 192 : 0
-    const b = expanded ? (notch ? 360 : 212) : (notch ? 256 : 74)
-    const i = !expanded && !notch && pct < 100 ? b + (r - b) * (pct - 20) / 80 : Math.max(b, c + (r - c) * pct / 100)
-    return Math.round((expanded ? Math.min(r, i) : i) / 2) * 2
-  }
-  return { compact: widthFor(false), expanded: widthFor(true), height: Math.round(32 * Math.max(75, Math.min(150, Number(settings.islandHeight) || 100)) / 100) }
+function islandGeometry(settings = {}, notch = null) {
+  const scale = Math.max(75, Math.min(150, Number(settings.islandWidth) || 100)) / 100
+  const notched = notch && typeof notch === 'object' && notch.width > 0
+  const compact = notched ? Math.round(notch.width + 112 * scale) : Math.round(220 * scale)
+  const expanded = Math.round(Math.max(compact, 390))
+  const height = Math.max(notched ? notch.height + 4 : 0, Math.round(38 * Math.max(75, Math.min(150, Number(settings.islandHeight) || 100)) / 100))
+  return { compact, expanded, height }
 }
 
 function assetPath(state, rawUrl) {

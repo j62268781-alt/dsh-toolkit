@@ -1,0 +1,18 @@
+ObjC.import('AppKit')
+function run() {
+  const screens = $.NSScreen.screens
+  const output = []
+  for (let i = 0; i < screens.count; i++) {
+    const screen = screens.objectAtIndex(i), frame = screen.frame
+    const id = ObjC.unwrap(screen.deviceDescription.objectForKey('NSScreenNumber'))
+    let safeTop = 0, left = null, right = null
+    if (screen.respondsToSelector('safeAreaInsets')) {
+      safeTop = Number(screen.safeAreaInsets.top)
+      const l = screen.auxiliaryTopLeftArea, r = screen.auxiliaryTopRightArea
+      left = { x: l.origin.x, y: l.origin.y, width: l.size.width, height: l.size.height }
+      right = { x: r.origin.x, y: r.origin.y, width: r.size.width, height: r.size.height }
+    }
+    output.push({ id: Number(id), frame: { x: frame.origin.x, y: frame.origin.y, width: frame.size.width, height: frame.size.height }, safeTop, left, right })
+  }
+  return JSON.stringify(output)
+}

@@ -44,12 +44,24 @@ try {
   const report = JSON.parse(await readFile(path.join(output, 'smoke-report.json'), 'utf8'))
   const allDisplays = process.env.PET_SMOKE_ALL_DISPLAYS === '1'
   assert.equal(report.islands.length, allDisplays ? report.displays : 1)
+  assert.equal(report.independentHover.length, report.islands.length)
+  for (const hover of report.independentHover) {
+    assert.equal(hover.onlySourceExpanded, true)
+    assert.equal(hover.allCollapsedOnLeave, true)
+  }
   for (const island of report.islands) {
     assert.equal(island.expanded, true)
     assert.equal(island.visible, true)
     assert.equal(island.buttonsVisible, true)
     assert.ok(island.sessionCount > 0)
     assert.ok(island.opacity >= .99)
+    assert.equal(island.cameraExcluded, true)
+    assert.ok((await stat(path.join(output, `${island.key}-compact.png`))).size > 1000)
+    if (island.notch) {
+      assert.equal(island.windowBounds.y, island.screenBounds.y)
+      const cameraCenter = island.screenBounds.x + island.notch.x + island.notch.width / 2
+      assert.ok(Math.abs(island.windowBounds.x + island.windowBounds.width / 2 - cameraCenter) <= 1)
+    } else assert.equal(island.windowBounds.y, island.screenBounds.y + 6)
   }
   console.log(JSON.stringify({ ok:true,pet,island:path.join(output,islandName), displays:report.displays, islandCount:report.islands.length, multiDisplayVerified:allDisplays && report.displays > 1 }))
 } finally { clearTimeout(timeout); server.closeAllConnections(); server.close() }

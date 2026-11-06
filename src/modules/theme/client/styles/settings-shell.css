@@ -35,6 +35,8 @@ html[data-platform="darwin"][data-fullscreen] :is([role="presentation"]:has(> [d
 }
 
 :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-toolbar]
+  > [class*="_header"] > [class*="_close"],
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-toolbar]
   > [class*="_content"] > [class*="_header"] > [class*="_close"] {
   display: none;
 }
@@ -188,12 +190,42 @@ html[data-platform="darwin"][data-fullscreen] :is([role="presentation"]:has(> [d
 .sk-setnav__item > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sk-setnav__groups[hidden], .sk-setnav__group[hidden], .sk-setnav__item[hidden], .sk-setnav__empty[hidden] { display: none; }
 
-/* Right column: existing header/body geometry and subpage rules stay unchanged. */
+/* Newer native shells place header/options directly in a grid. Own the areas
+   as well as the column width so native hashed areas cannot offset our menu. */
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]):has(> [class*="_options"]) {
+  grid-template: "nav header" auto "nav options" minmax(0, 1fr) / clamp(200px, 22vw, var(--cx-panel-w, 250px)) minmax(0, 1fr);
+}
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]):has(> [class*="_options"]) > nav {
+  grid-area: nav;
+  width: auto;
+  min-width: 0;
+}
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_navTitle"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_header"] {
+  grid-area: header;
+  min-width: 0;
+}
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_options"] {
+  grid-area: options;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Right column: support both native header/body structures. */
 :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] {
   min-height: 0;
   background: var(--dsw-alias-bg-base);
 }
 
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_header"],
 :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] > [class*="_header"] {
   height: 48px;
   padding: 8px 12px;
@@ -203,16 +235,24 @@ html[data-platform="darwin"][data-fullscreen] :is([role="presentation"]:has(> [d
 
 /* Collapse the former action row once its only action lives in the titlebar. */
 :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-toolbar]
+  > [class*="_header"]:not(:has(
+    > [class*="_actions"] :is(button, a, input, select, textarea, [role="button"]):not([data-sk-config-original] *)
+  )),
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-toolbar]
   > [class*="_content"] > [class*="_header"]:not(:has(
     > [class*="_actions"] :is(button, a, input, select, textarea, [role="button"]):not([data-sk-config-original] *)
   )) {
   display: none;
 }
 
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_options"] {
+  padding: 24px 32px 32px;
+}
 :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] > [class*="_options"] {
   padding: 24px 32px 32px;
 }
 
+:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_options"] > div > *,
 :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] > [class*="_options"] > div > * {
   max-width: 960px;
   /* Centre the reading column so the left/right gutters stay even on wide

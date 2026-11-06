@@ -11,9 +11,7 @@ contextBridge.exposeInMainWorld('pet', Object.freeze({
   action: value => ipcRenderer.invoke('pet:action', value),
   interactive: value => ipcRenderer.send('pet:interactive', Boolean(value)),
   focus: () => ipcRenderer.send('pet:focus'),
-  expand: value => ipcRenderer.send('pet:expand', Boolean(value)),
   drag: value => { if (['start', 'move', 'end'].includes(value)) ipcRenderer.send('pet:drag', value) },
   onState: listener => subscribe('pet:state', listener),
   onCollapse: listener => subscribe('pet:collapse', listener),
-  onExpanded: listener => subscribe('pet:expanded', listener),
 }))

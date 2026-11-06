@@ -14,7 +14,7 @@ html[data-sk-palette="ocean"] :is([data-shortcut-modal="settings"], [data-sk-set
   border-inline-end-color: var(--sk-ocean-line);
 }
 
-html[data-sk-palette="ocean"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] {
+html[data-sk-palette="ocean"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > :is([class*="_content"], [class*="_header"], [class*="_options"]) {
   background: var(--sk-ocean-content);
 }
 

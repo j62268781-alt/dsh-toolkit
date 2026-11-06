@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises'
 import { JSDOM } from 'jsdom'
 const require = createRequire(import.meta.url)
 const { readEnvironment, publicState, islandGeometry, assetPath, validatedAction, consumeEvents } = require('../../src/modules/pet/host/runtime/core.cjs')
+const { notchForDisplay } = require('../../src/modules/pet/host/runtime/native.cjs')
 const env = { DSH_TOOLKIT_PET_URL:'http://127.0.0.1:1234', DSH_TOOLKIT_PET_TOKEN:'secret', DSH_TOOLKIT_HOST_PID:'123' }
 
 test('helper only accepts authenticated loopback origin and valid host pid', () => {
@@ -32,11 +33,22 @@ test('actions exclude grants and reject malformed prompts and coordinates', () =
   assert.throws(() => validatedAction({ action:'position', x:NaN, y:0 }))
   assert.deepEqual(validatedAction({ action:'prompt', sessionId:'x', text:' hello ', token:'secret' }), { action:'prompt',sessionId:'x',text:'hello' })
 })
-test('island geometry follows documented compact and expanded limits', () => {
-  assert.deepEqual(islandGeometry(), { compact:212,expanded:280,height:32 })
-  assert.deepEqual(islandGeometry({ islandWidth:100 },true), { compact:268,expanded:412,height:32 })
-  assert.equal(islandGeometry({ islandWidth:150 }).expanded, 280)
-  assert.equal(islandGeometry({ islandWidth:75 }).compact, 168)
+test('island geometry reserves native camera space and a stable expanded width', () => {
+  assert.deepEqual(islandGeometry(), { compact:220,expanded:390,height:38 })
+  assert.deepEqual(islandGeometry({}, { width:185,height:32 }), { compact:297,expanded:390,height:38 })
+  assert.equal(islandGeometry({ islandWidth:150 }).expanded, 390)
+  assert.equal(islandGeometry({ islandWidth:75 }).compact, 165)
+  assert.ok(islandGeometry({ islandHeight:75 }, { width:185,height:32 }).height >= 36)
+})
+test('only native safe-area and auxiliary regions establish a notch by display ID', () => {
+  const display = { id:1,bounds:{ width:1512,height:982 },workArea:{ y:32 } }
+  const native = { id:1,frame:{x:1920,y:98,width:1512,height:982},safeTop:32,left:{x:1920,width:663.5,height:32},right:{x:2768.5,width:663.5,height:32} }
+  assert.deepEqual(notchForDisplay(display,[native]),{x:663.5,width:185,height:32})
+  assert.equal(notchForDisplay(display,[]),null)
+  assert.equal(notchForDisplay(display,[{...native,id:2}]),null)
+  assert.equal(notchForDisplay(display,[{...native,safeTop:0}]),null)
+  assert.equal(notchForDisplay(display,[{...native,frame:{...native.frame,x:NaN}}]),null)
+  assert.equal(notchForDisplay(display,[{...native,right:{...native.right,x:9999}}]),null)
 })
 test('SSE decoder handles fragmented UTF8, comments and CRLF', async () => {
   const bytes = new TextEncoder().encode(': heartbeat\r\ndata: {"title":"小鸭"}\r\n\ndata: {"revision":2}\n\n')
@@ -75,4 +87,37 @@ test('real renderer safely displays sessions, forwards actions, and directs pend
   dom.window.document.getElementById('workbench').click()
   assert.equal(actions.length,3)
   dom.window.close()
+})
+
+test('island hover and collapse stay local when session updates reach both displays', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const state = { settings: { language: 'en' }, pets: [], kind: 'island', sessions: [] }
+  const displays = Array.from({ length: 2 }, () => {
+    const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+    t.after(() => dom.window.close())
+    const timers = new Map()
+    dom.window.setTimeout = (fn, ms) => { timers.set(ms, fn); return ms }
+    dom.window.clearTimeout = id => timers.delete(id)
+    dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+    dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+    let update, collapse
+    dom.window.pet = { initial: async () => state, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState(fn) { update = fn }, onCollapse(fn) { collapse = fn } }
+    dom.window.eval(script)
+    return { dom, timers, update: next => update(next), collapse: () => collapse(), expanded: () => dom.window.document.body.classList.contains('expanded'), surface: dom.window.document.getElementById('surface') }
+  })
+  await new Promise(resolve => setImmediate(resolve))
+  for (const [i, display] of displays.entries()) {
+    display.surface.dispatchEvent(new display.dom.window.Event('pointerenter'))
+    display.timers.get(300)()
+    assert.deepEqual(displays.map(item => item.expanded()), displays.map((_, index) => index === i))
+    for (const item of displays) item.update({ ...state, sessions: [{ id: 'a', title: 'Updated session', status: 'running' }] })
+    assert.deepEqual(displays.map(item => item.expanded()), displays.map((_, index) => index === i))
+    display.surface.dispatchEvent(new display.dom.window.Event('pointerleave'))
+    display.timers.get(100)()
+    assert.deepEqual(displays.map(item => item.expanded()), [false, false])
+  }
+  for (const display of displays) display.dom.window.document.getElementById('cap').click()
+  displays[0].collapse()
+  assert.deepEqual(displays.map(item => item.expanded()), [false, true])
 })

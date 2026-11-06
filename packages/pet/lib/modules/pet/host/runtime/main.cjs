@@ -4,6 +4,7 @@ const path = require('node:path')
 const fs = require('node:fs/promises')
 const { pathToFileURL } = require('node:url')
 const { readEnvironment, publicState, islandGeometry, assetPath, validatedAction, consumeEvents } = require('./core.cjs')
+const { notchForDisplay, queryNativeScreens } = require('./native.cjs')
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'pet-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 let config
@@ -14,6 +15,9 @@ let state = { settings: {}, pets: [], sessions: [] }
 let quitting = false
 let petPosition = null
 let hostWatch
+let nativeScreens = []
+let displayTimer
+function withNative(display) { return { ...display, notch: notchForDisplay(display, nativeScreens) } }
 const pageUrl = pathToFileURL(path.join(__dirname, 'renderer.html')).href
 
 async function request(route, options = {}) {
@@ -24,7 +28,7 @@ async function request(route, options = {}) {
 function exit(code = 0) {
   if (quitting) return
   quitting = true
-  abort.abort(); clearInterval(hostWatch)
+  abort.abort(); clearInterval(hostWatch); clearTimeout(displayTimer)
   for (const { win } of windows.values()) if (!win.isDestroyed()) win.destroy()
   windows.clear()
   app.exit(code)
@@ -37,18 +41,19 @@ function entryFor(event) {
 function snapshot(entry) { return publicState(state, entry.kind, entry.display) }
 function dimensions(kind, display) {
   const settings = state.settings
-  const geometry = islandGeometry(settings)
+  const geometry = islandGeometry(settings, display.notch)
   const width = kind === 'pet' ? Math.min(display.workArea.width, Math.round(Number(settings.bubbleWidth) || 280) + 24) : Math.min(display.bounds.width, Math.max(360, geometry.expanded + 24, geometry.compact + 64))
   const height = Math.min(kind === 'pet' ? 440 : 500, display.workArea.height)
   const area = display.workArea
   if (kind === 'pet') return { width, height, x: Math.round(Math.max(area.x, Math.min(area.x + area.width - width, petPosition?.x ?? area.x + area.width - width - 24))), y: Math.round(Math.max(area.y, Math.min(area.y + area.height - height, petPosition?.y ?? area.y + area.height - height - 16))) }
-  return { width, height, x: Math.round(display.bounds.x + (display.bounds.width - width) / 2), y: display.bounds.y + 6 }
+  const center = display.notch ? display.bounds.x + display.notch.x + display.notch.width / 2 : display.bounds.x + display.bounds.width / 2
+  return { width, height, x: Math.round(center - width / 2), y: display.bounds.y + (display.notch ? 0 : 6) }
 }
 async function createWindow(key, kind, display) {
-  const win = new BrowserWindow({ ...dimensions(kind, display), show: false, frame: false, transparent: true, hasShadow: false, resizable: false, maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true, alwaysOnTop: true, title: 'DSH Pet', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true, backgroundThrottling: true } })
+  const win = new BrowserWindow({ ...dimensions(kind, display), enableLargerThanScreen: kind === 'island', type: process.platform === 'darwin' && kind === 'island' ? 'panel' : undefined, show: false, frame: false, transparent: true, hasShadow: false, resizable: false, maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true, alwaysOnTop: true, title: 'DSH Pet', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true, backgroundThrottling: true } })
   const entry = { win, kind, display, dragging: null }
   windows.set(key, entry)
-  win.setAlwaysOnTop(true, 'floating')
+  win.setAlwaysOnTop(true, kind === 'island' && display.notch ? 'screen-saver' : 'floating')
   if (process.platform === 'darwin') win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   win.setIgnoreMouseEvents(true, { forward: true })
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -58,14 +63,13 @@ async function createWindow(key, kind, display) {
   win.on('blur', () => {
     setTimeout(() => {
       if (win.isDestroyed()) return
-      const focused = BrowserWindow.getFocusedWindow()
-      if (kind === 'island' && [...windows.values()].some(item => item.kind === 'island' && item.win === focused)) return
+      if (BrowserWindow.getFocusedWindow() === win) return
       win.webContents.send('pet:collapse')
     }, 50)
   })
   win.on('closed', () => windows.delete(key))
   await win.loadFile(path.join(__dirname, 'renderer.html'))
-  if (!win.isDestroyed()) win.showInactive()
+  if (!win.isDestroyed()) { win.showInactive(); if (kind === 'island') win.setBounds(dimensions(kind, display)) }
   return entry
 }
 let reconcile = Promise.resolve()
@@ -73,8 +77,8 @@ function update(next) {
   if (!next || !next.settings || !Array.isArray(next.pets) || !Array.isArray(next.sessions)) throw new Error('Invalid pet state')
   state = next
   reconcile = reconcile.then(async () => {
-    const displays = screen.getAllDisplays()
-    const primary = screen.getPrimaryDisplay()
+    const displays = screen.getAllDisplays().map(withNative)
+    const primary = withNative(screen.getPrimaryDisplay())
     const desired = new Map()
     if (state.settings.petEnabled) desired.set('pet', { kind: 'pet', display: primary })
     if (state.settings.islandEnabled && (state.settings.islandIdle !== false || state.sessions.length)) {
@@ -87,6 +91,7 @@ function update(next) {
       else {
         entry.display = spec.display
         entry.win.setBounds(dimensions(entry.kind, entry.display))
+        entry.win.setAlwaysOnTop(true, entry.kind === 'island' && entry.display.notch ? 'screen-saver' : 'floating')
         entry.win.webContents.send('pet:state', snapshot(entry))
       }
     }
@@ -108,11 +113,6 @@ ipcMain.handle('pet:action', async (event, input) => {
 })
 ipcMain.on('pet:interactive', (event, value) => { const { win } = entryFor(event); win.setIgnoreMouseEvents(!value, { forward: true }) })
 ipcMain.on('pet:focus', event => { const { win } = entryFor(event); win.setIgnoreMouseEvents(false); win.focus() })
-ipcMain.on('pet:expand', (event, expanded) => {
-  const source = entryFor(event)
-  if (source.kind !== 'island') return
-  for (const entry of windows.values()) if (entry.kind === 'island' && entry !== source) entry.win.webContents.send('pet:expanded', Boolean(expanded))
-})
 ipcMain.on('pet:drag', (event, value) => {
   const entry = entryFor(event)
   if (entry.kind !== 'pet') return
@@ -144,19 +144,58 @@ app.whenReady().then(async () => {
       return await net.fetch(pathToFileURL(file).href)
     } catch { return new Response('', { status: 404 }) }
   })
+  nativeScreens = await queryNativeScreens()
   const response = await request('/state')
   await update(await response.json())
   await reconcile
   if (quitting) return
   process.stdout.write('{"type":"ready"}\n')
   hostWatch = setInterval(() => { try { process.kill(config.hostPid, 0) } catch { exit() } }, 2000)
-  screen.on('display-added', () => update(state))
-  screen.on('display-removed', () => update(state))
-  screen.on('display-metrics-changed', () => update(state))
+  const displayChanged = () => { clearTimeout(displayTimer); displayTimer = setTimeout(async () => { nativeScreens = await queryNativeScreens(); if (!quitting) update(state) }, 120) }
+  screen.on('display-added', displayChanged)
+  screen.on('display-removed', displayChanged)
+  screen.on('display-metrics-changed', displayChanged)
   if (process.env.DSH_TOOLKIT_PET_SMOKE_DIR) {
     await fs.mkdir(process.env.DSH_TOOLKIT_PET_SMOKE_DIR, { recursive: true })
     await new Promise(resolve => setTimeout(resolve, 1100))
-    const report = { displays: screen.getAllDisplays().length, islands: [] }
+    const report = { displays: screen.getAllDisplays().length, islands: [], independentHover: [] }
+    const islands = [...windows.entries()].filter(([, entry]) => entry.kind === 'island')
+    async function captureSurface(entry, filename) {
+      const rect = await entry.win.webContents.executeJavaScript("(() => { const r = document.getElementById('surface').getBoundingClientRect(); return { x: Math.floor(r.x), y: Math.floor(r.y), width: Math.ceil(r.width), height: Math.ceil(r.height) } })()")
+      const image = await entry.win.webContents.capturePage(rect)
+      await fs.writeFile(path.join(process.env.DSH_TOOLKIT_PET_SMOKE_DIR, filename), image.toPNG())
+    }
+    for (const [, entry] of islands) {
+      await entry.win.webContents.executeJavaScript('document.activeElement?.blur()')
+      entry.win.webContents.sendInputEvent({ type: 'mouseMove', x: 1, y: 450 })
+      entry.win.webContents.sendInputEvent({ type: 'mouseLeave', x: 1, y: 450 })
+      entry.win.webContents.send('pet:collapse')
+    }
+    await new Promise(resolve => setTimeout(resolve, 650))
+    for (const [key, entry] of islands) {
+      const compact = await entry.win.webContents.capturePage()
+      await fs.writeFile(path.join(process.env.DSH_TOOLKIT_PET_SMOKE_DIR, `${key}-compact.png`), compact.toPNG())
+      await captureSurface(entry, `${key}-compact-surface.png`)
+    }
+    for (const [key, entry] of islands) {
+      for (const [, other] of islands) {
+        other.win.webContents.sendInputEvent({ type: 'mouseMove', x: 1, y: 450 })
+        other.win.webContents.sendInputEvent({ type: 'mouseLeave', x: 1, y: 450 })
+        other.win.webContents.send('pet:collapse')
+      }
+      await new Promise(resolve => setTimeout(resolve, 200))
+      const point = await entry.win.webContents.executeJavaScript("(() => { const r = document.getElementById('sprite').getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) } })()")
+      entry.win.webContents.sendInputEvent({ type: 'mouseMove', ...point })
+      await new Promise(resolve => setTimeout(resolve, 450))
+      const expanded = await Promise.all(islands.map(async ([id, other]) => ({ key: id, expanded: await other.win.webContents.executeJavaScript("document.body.classList.contains('expanded')") })))
+      if (expanded.some(item => item.expanded !== (item.key === key))) throw new Error('Hover expanded the wrong display')
+      entry.win.webContents.sendInputEvent({ type: 'mouseMove', x: 1, y: 450 })
+      entry.win.webContents.sendInputEvent({ type: 'mouseLeave', x: 1, y: 450 })
+      await new Promise(resolve => setTimeout(resolve, 200))
+      const collapsed = await Promise.all(islands.map(([, other]) => other.win.webContents.executeJavaScript("!document.body.classList.contains('expanded')")))
+      if (collapsed.some(value => !value)) throw new Error('Hover leave did not collapse its display')
+      report.independentHover.push({ key, onlySourceExpanded: true, allCollapsedOnLeave: true })
+    }
     for (const [key, entry] of windows) {
       if (entry.kind === 'island') {
         entry.win.setIgnoreMouseEvents(false)
@@ -172,16 +211,21 @@ app.whenReady().then(async () => {
           const body = document.getElementById('activity'), surface = document.getElementById('surface')
           const style = getComputedStyle(body), rect = body.getBoundingClientRect(), bounds = surface.getBoundingClientRect()
           const buttons = [...document.querySelectorAll('.session .actions button')]
+          const spriteBounds = document.getElementById('sprite').getBoundingClientRect(), indicatorBounds = document.getElementById('indicator').getBoundingClientRect()
+          const camera = document.getElementById('camera-space').getBoundingClientRect()
           return {
             expanded: document.body.classList.contains('expanded'), opacity: Number(style.opacity), filter: style.filter,
+            cameraExcluded: !document.body.classList.contains('notched') || spriteBounds.right <= camera.left && indicatorBounds.left >= camera.right && rect.top >= camera.bottom,
+            surface: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
             visible: style.visibility === 'visible' && rect.height > 0 && bounds.height > cap.getBoundingClientRect().height + 40,
             sessionCount: document.querySelectorAll('.session').length,
             buttonsVisible: buttons.length > 0 && buttons.every(button => { const box = button.getBoundingClientRect(); return box.width > 0 && box.height > 0 && box.bottom <= bounds.bottom && box.top >= bounds.top }),
             height: bounds.height,
           }
         })()`)
-        if (!visible.expanded || !visible.visible || visible.opacity < .99 || visible.filter !== 'blur(0px)' && visible.filter !== 'none' || !visible.sessionCount || !visible.buttonsVisible) throw new Error('Island did not visibly expand')
-        report.islands.push({ key, ...visible })
+        if (!visible.expanded || !visible.visible || !visible.cameraExcluded || visible.opacity < .99 || visible.filter !== 'blur(0px)' && visible.filter !== 'none' || !visible.sessionCount || !visible.buttonsVisible) throw new Error(`Island ${key} did not visibly expand: ${JSON.stringify(visible)}`)
+        report.islands.push({ key, displayId: entry.display.id, screenBounds: entry.display.bounds, windowBounds: entry.win.getBounds(), notch: entry.display.notch, ...visible })
+        await captureSurface(entry, `${key}-surface.png`)
       }
       const image = await entry.win.webContents.capturePage()
       await fs.writeFile(path.join(process.env.DSH_TOOLKIT_PET_SMOKE_DIR, `${key}.png`), image.toPNG())

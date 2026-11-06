@@ -569,10 +569,13 @@ window.__ModuleLoader__.load({
     html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] {
       width: 100%;
       margin: 0;
+      flex-direction: column;
+      gap: 4px;
       justify-content: center;
     }
 
     html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_trigger"]:not([class*="_triggerRow"]) {
+      flex: none;
       width: 36px;
       height: 36px;
       justify-content: center;
@@ -753,6 +756,8 @@ window.__ModuleLoader__.load({
     }
 
     :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-toolbar]
+      > [class*="_header"] > [class*="_close"],
+    :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-toolbar]
       > [class*="_content"] > [class*="_header"] > [class*="_close"] {
       display: none;
     }
@@ -906,12 +911,42 @@ window.__ModuleLoader__.load({
     .sk-setnav__item > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sk-setnav__groups[hidden], .sk-setnav__group[hidden], .sk-setnav__item[hidden], .sk-setnav__empty[hidden] { display: none; }
 
-    /* Right column: existing header/body geometry and subpage rules stay unchanged. */
+    /* Newer native shells place header/options directly in a grid. Own the areas
+       as well as the column width so native hashed areas cannot offset our menu. */
+    :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]):has(> [class*="_options"]) {
+      grid-template: "nav header" auto "nav options" minmax(0, 1fr) / clamp(200px, 22vw, var(--cx-panel-w, 250px)) minmax(0, 1fr);
+    }
+    :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]):has(> [class*="_options"]) > nav {
+      grid-area: nav;
+      width: auto;
+      min-width: 0;
+    }
+    :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_navTitle"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_header"] {
+      grid-area: header;
+      min-width: 0;
+    }
+    :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_options"] {
+      grid-area: options;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    /* Right column: support both native header/body structures. */
     :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] {
       min-height: 0;
       background: var(--dsw-alias-bg-base);
     }
 
+    :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_header"],
     :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] > [class*="_header"] {
       height: 48px;
       padding: 8px 12px;
@@ -921,16 +956,24 @@ window.__ModuleLoader__.load({
 
     /* Collapse the former action row once its only action lives in the titlebar. */
     :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-toolbar]
+      > [class*="_header"]:not(:has(
+        > [class*="_actions"] :is(button, a, input, select, textarea, [role="button"]):not([data-sk-config-original] *)
+      )),
+    :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-toolbar]
       > [class*="_content"] > [class*="_header"]:not(:has(
         > [class*="_actions"] :is(button, a, input, select, textarea, [role="button"]):not([data-sk-config-original] *)
       )) {
       display: none;
     }
 
+    :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_options"] {
+      padding: 24px 32px 32px;
+    }
     :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] > [class*="_options"] {
       padding: 24px 32px 32px;
     }
 
+    :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_options"] > div > *,
     :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] > [class*="_options"] > div > * {
       max-width: 960px;
       /* Centre the reading column so the left/right gutters stay even on wide
@@ -1486,7 +1529,7 @@ window.__ModuleLoader__.load({
       border-inline-end-color: var(--sk-ocean-line);
     }
 
-    html[data-sk-palette="ocean"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] {
+    html[data-sk-palette="ocean"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > :is([class*="_content"], [class*="_header"], [class*="_options"]) {
       background: var(--sk-ocean-content);
     }
 
@@ -1902,7 +1945,7 @@ window.__ModuleLoader__.load({
       border-inline-end-color: var(--sk-hope-line);
     }
 
-    html[data-sk-palette="hope"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_content"] {
+    html[data-sk-palette="hope"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > :is([class*="_content"], [class*="_header"], [class*="_options"]) {
       background: var(--sk-hope-content);
     }
 
@@ -2881,20 +2924,65 @@ window.__ModuleLoader__.load({
       error.className = "sk-setnav__action-error";
       error.setAttribute("role", "alert");
       error.hidden = true;
-      menu.append(action, error);
+      const update = document.createElement("button");
+      update.type = "button";
+      update.setAttribute("role", "menuitem");
+      update.dataset.skSettingsUpdate = "";
+      const updateError = document.createElement("div");
+      updateError.className = "sk-setnav__action-error";
+      updateError.setAttribute("role", "alert");
+      updateError.hidden = true;
+      menu.append(action, error, update, updateError);
       panel.prepend(more, menu);
       let original = null;
       let owner = null;
+      let disposed = false;
+      let pending = false;
+      let presentation = null;
+      let revision = 0;
+      const updates = window.dshDesktop?.updates;
+      const available = typeof updates?.open === "function";
+      const showUpdateError = (message) => {
+        if (disposed) return;
+        updateError.textContent = message;
+        updateError.hidden = !message;
+      };
+      const syncUpdate = () => {
+        if (disposed) return;
+        const labels = {
+          checking: "正在检查更新…",
+          available: "下载更新…",
+          downloading: "正在下载更新…",
+          ready: "安装更新…",
+          installing: "正在安装更新…"
+        };
+        const retryLabels = {
+          check: "重新检查更新",
+          "check-network": "重新检查更新",
+          download: "重试下载更新…",
+          "download-network": "重试下载更新…",
+          install: "重试安装更新…",
+          "install-network": "重试安装更新…",
+          "stop-failed": "重试安装更新…",
+          "tasks-changed": "重试安装更新…",
+          "tasks-unavailable": "重试安装更新…"
+        };
+        const label = presentation?.phase === "error" ? retryLabels[presentation.failure] ?? "重试更新…" : labels[presentation?.phase] ?? (pending ? "正在处理更新…" : "检查更新");
+        if (update.textContent !== label) update.textContent = label;
+        const disabled = !available || pending || ["checking", "downloading", "installing"].includes(presentation?.phase);
+        if (update.disabled !== disabled) update.disabled = disabled;
+        update.title = available ? "" : "请在 DeepSeek Harness 桌面应用中检查更新";
+      };
       const close = (focus = false) => {
         menu.hidden = true;
         more.setAttribute("aria-expanded", "false");
         if (focus) more.focus();
       };
+      const enabledActions = () => [...menu.querySelectorAll("button")].filter((button) => !button.hidden && !button.disabled);
       const open = () => {
-        if (more.hidden) return;
         menu.hidden = false;
         more.setAttribute("aria-expanded", "true");
-        action.focus();
+        (enabledActions()[0] ?? more).focus();
       };
       more.addEventListener("click", () => menu.hidden ? open() : close(true));
       more.addEventListener("keydown", (event) => {
@@ -2905,6 +2993,20 @@ window.__ModuleLoader__.load({
       });
       action.addEventListener("click", () => {
         if (original && !original.disabled) original.click();
+      });
+      update.addEventListener("click", async () => {
+        if (update.disabled || disposed) return;
+        pending = true;
+        showUpdateError("");
+        syncUpdate();
+        try {
+          await updates.open();
+        } catch (reason) {
+          showUpdateError(`无法打开更新：${reason instanceof Error ? reason.message : String(reason)}`);
+        } finally {
+          pending = false;
+          syncUpdate();
+        }
       });
       const onPointer = (event) => {
         if (!menu.contains(event.target) && !more.contains(event.target)) close();
@@ -2918,32 +3020,54 @@ window.__ModuleLoader__.load({
         } else if (event.key === "Tab") close();
         else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
           event.preventDefault();
-          action.focus();
+          const buttons = enabledActions();
+          const index = buttons.indexOf(document.activeElement);
+          const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : (index + (event.key === "ArrowUp" ? -1 : 1) + buttons.length) % buttons.length;
+          buttons[next]?.focus();
         }
       };
       document.addEventListener("pointerdown", onPointer, true);
       window.addEventListener("keydown", onKey, true);
+      let offUpdates;
+      syncUpdate();
+      if (available) {
+        const initialRevision = revision;
+        try {
+          offUpdates = updates.subscribe?.((state) => {
+            revision++;
+            presentation = state;
+            syncUpdate();
+          });
+          Promise.resolve(updates.status?.()).then((state) => {
+            if (disposed || revision !== initialRevision) return;
+            presentation = state;
+            syncUpdate();
+          }).catch((reason) => showUpdateError(`无法读取更新状态：${reason instanceof Error ? reason.message : String(reason)}`));
+        } catch (reason) {
+          showUpdateError(`无法读取更新状态：${reason instanceof Error ? reason.message : String(reason)}`);
+        }
+      }
       return {
         sync() {
-          const actions = panel.querySelector(':scope > [class*="_content"] > [class*="_header"] > [class*="_actions"]');
+          const actions = panel.querySelector(':scope > [class*="_header"] > [class*="_actions"], :scope > [class*="_content"] > [class*="_header"] > [class*="_actions"]');
           const nextOwner = [...actions?.children ?? []].find((child) => child.querySelector("button")) ?? actions?.firstElementChild ?? null;
           if (owner !== nextOwner) owner?.removeAttribute("data-sk-config-original");
           owner = nextOwner;
           original = owner?.querySelector("button") ?? null;
-          more.hidden = !original;
-          if (!original) {
-            close();
-            return;
+          action.hidden = !original;
+          if (original) {
+            owner.setAttribute("data-sk-config-original", "");
+            const label = original.textContent.trim();
+            if (action.textContent !== label) action.textContent = label;
+            if (action.disabled !== original.disabled) action.disabled = original.disabled;
           }
-          owner.setAttribute("data-sk-config-original", "");
-          const label = original.textContent.trim();
-          if (action.textContent !== label) action.textContent = label;
-          if (action.disabled !== original.disabled) action.disabled = original.disabled;
-          const message = owner.querySelector('[role="alert"]')?.textContent ?? "";
+          const message = owner?.querySelector('[role="alert"]')?.textContent ?? "";
           if (error.textContent !== message) error.textContent = message;
           error.hidden = !message;
         },
         dispose() {
+          disposed = true;
+          offUpdates?.();
           owner?.removeAttribute("data-sk-config-original");
           document.removeEventListener("pointerdown", onPointer, true);
           window.removeEventListener("keydown", onKey, true);
