@@ -87,6 +87,7 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
     'toolkit-notification:dictionary', 'toolkit-notification:stylesheet',
     'toolkit-notification:settings', 'toolkit-notification:sessions',
     'toolkit-notification:pending', 'toolkit-notification:sounds',
+    'toolkit-notification:dismiss-visible',
     'toolkit-notification:section',
     'toolkit-notification:settings-icon',
   ])
@@ -284,12 +285,15 @@ test('测试通知仍可申请权限并发送；配置保存失败不会乐观�
   const { page, stub, runtime, app } = await bootPanel(t, { permission: { permission: 'default', requestResult: 'granted' } })
   page.window.focus = () => {}
   const button = (text) => [...page.document.querySelectorAll('button')].find((node) => node.textContent === text)
-  assert.equal(button('发送测试通知').disabled, true)
+  // default 不是拒绝：桌面外壳的权限由系统侧决定，这里允许直接试发（失败有 error 级诊断）。
+  assert.equal(button('发送测试通知').disabled, false)
+  await app.click(button('发送测试通知'))
+  assert.equal(stub.instances.length, 1, 'default 权限下也应当真的尝试发送')
   await app.click(button('授权'))
   assert.equal(button('授权'), undefined)
   assert.match(page.document.body.textContent, /通知权限：已授予|已获得通知权限/)
   await app.click(button('发送测试通知'))
-  assert.equal(stub.instances.length, 1)
+  assert.equal(stub.instances.length, 2)
   assert.equal(page.document.querySelector('[role="status"]'), null, '发送成功后不再额外提示一条状态文案')
   assert.doesNotMatch(page.document.body.textContent, /已发送一条测试通知/)
 

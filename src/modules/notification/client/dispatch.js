@@ -23,7 +23,7 @@ import { notificationTag } from './browser-notify.js'
  * @property {() => object} settings 读取当前偏好。
  * @property {(key: string, params?: object) => string} t 文案函数。
  * @property {(sound: string, volume: number) => boolean | void} playSound 播放提示音，false 表示未接受播放。
- * @property {(payload: {title: string, body: string, tag: string, sessionId: string}) => boolean} showNotification 弹系统通知。
+ * @property {(payload: {title: string, body: string, tag: string, kind: string, sessionId: string}) => boolean} showNotification 弹系统通知。
  * @property {(sessionId: string) => boolean} [isCurrent] 会话是否是用户正在看的那个（只用于诊断原因）。
  * @property {() => boolean} isHidden 文档是否在后台/最小化。
  * @property {() => boolean} [hasFocus] 文档是否获得焦点（缺省按「有焦点」处理）。
@@ -101,6 +101,7 @@ export class NotificationDispatcher {
         // 一条通知一张卡片：按会话 + 类型折叠，同一会话的类型不会互相覆盖。
         // 必须走 notificationTag：原生长度上限会让超长 tag 的通知整条消失（见该函数注释）。
         tag: notificationTag(event.sessionId, event.kind),
+        kind: event.kind,
         sessionId: event.sessionId,
       }) === true
     } catch {

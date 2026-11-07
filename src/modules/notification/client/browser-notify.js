@@ -84,8 +84,11 @@ function clampTag(requested) {
 /**
  * 活着的通知对象必须一直被引用：点击回调挂在 JS 包装对象上，
  * 被 GC 掉就可能吞掉这次激活（平台侧只持有通知 id）。
+ *
+ * 值是归属信息（`sessionId`），供 `dismissLiveNotifications()` 按会话回收：
+ * 用户回到前台、正在看那个会话时，卡片再挂着就是噪音。
  */
-const live = new Set()
+const live = new Map()
 
 /** 当前环境的 Notification 构造器（不存在时 undefined）。 */
 function notificationCtor() {
@@ -173,11 +176,24 @@ export function activateWindow() {
 }
 
 /**
+ * 交互类通知（等回答 / 等授权）必须常驻，直到用户处理掉。
+ *
+ * Web 侧的等价开关是 `requireInteraction`：Chromium 在 Windows 通道上把它翻成
+ * `options.timeout_type = u"never"`，Electron 再据此生成 `scenario="reminder"` 的 toast，
+ * 并自动补一个 `activationType="system"` / `arguments="Dismiss"` 的关闭按钮
+ * （`windows_toast_notification.cc` 的 `GetToastXml()`）。完成/失败类走默认超时，
+ * 免得用户不在时堆一屏关不掉的卡片。
+ */
+const STICKY_KINDS = ['question', 'permission']
+
+/**
  * 发一条系统通知。
  * @param {object} options 通知内容与点击动作。
  * @param {string} options.title 标题（会话标题）。
  * @param {string} options.body 正文（本轮最终回复 / 错误 / 问题）。
  * @param {string} [options.tag] 折叠键，同一会话同一类型共用一张卡片。
+ * @param {string} [options.kind] 事件类型，决定是否常驻（question/permission）。
+ * @param {string} [options.sessionId] 归属会话，供回前台时按会话回收。
  * @param {() => void} [options.onClick] 点击动作（跳转到会话）。
  * @returns {boolean} 是否真的弹出了通知。
  */
@@ -187,14 +203,20 @@ export function showBrowserNotification(options = {}) {
     warn('browser Notification API is unavailable (insecure context or unsupported browser)')
     return false
   }
-  if (browserPermission() !== 'granted') {
-    warn(`browser notification suppressed: permission is "${browserPermission()}"`)
+  // 只拦「明确拒绝」：default 表示宿主还没记过决定，桌面外壳里这类站点其实可以弹
+  // （权限由 Electron/系统决定，Chromium 的 permission 状态并不总反映系统侧设置）。
+  // 真的被拒时构造器会抛错或者平台回 error 事件，两条线都有 error 级诊断。
+  const permission = browserPermission()
+  if (permission === 'denied') {
+    warn('browser notification suppressed: permission is "denied"')
     return false
   }
   // 原生层的 tag 上限是硬性的（见 TAG_LIMIT）：超了不是被截断，是整条通知消失。
   const tag = clampTag(options.tag)
   const title = typeof options.title === 'string' ? options.title : ''
   const body = typeof options.body === 'string' ? options.body : ''
+  const sessionId = typeof options.sessionId === 'string' ? options.sessionId : ''
+  const kind = typeof options.kind === 'string' ? options.kind : ''
   const base = {
     body,
     tag,
@@ -202,12 +224,13 @@ export function showBrowserNotification(options = {}) {
     renotify: true,
     // Sound is controlled by the selected file and volume, including on the web.
     silent: true,
+    requireInteraction: STICKY_KINDS.includes(kind),
   }
   const icon = pageIconUrl()
 
   /** 接上点击回调并保持引用，直到通知关闭。 */
   const activate = (notification) => {
-    live.add(notification)
+    live.set(notification, { sessionId, kind })
     const forget = () => live.delete(notification)
     try {
       if (typeof notification.addEventListener === 'function') notification.addEventListener('close', forget, { once: true })
@@ -261,6 +284,43 @@ export function showBrowserNotification(options = {}) {
     fail('Notification constructor failed; check the browser/OS notification settings', error)
     return false
   }
+}
+
+/**
+ * 关掉仍然挂着的通知。
+ *
+ * 用在「用户回到前台」这种时机：提醒的目的已经达到，卡片继续留着只会挡住别的内容。
+ * 注意语义有上限——toast 还在屏上时 `close()` 只让 Windows 收起横幅（`ToastNotifier.Hide`），
+ * 已进到「操作中心」的记录要系统自己 dismissed 之后才会被真正移除。
+ * @param {(entry: {sessionId: string, kind: string}) => boolean} [predicate] 选中要关掉的通知；缺省关全部。
+ * @returns {number} 关掉了几条。
+ */
+export function dismissLiveNotifications(predicate) {
+  let closed = 0
+  for (const [notification, entry] of [...live]) {
+    if (typeof predicate === 'function') {
+      let selected = false
+      try {
+        selected = predicate(entry) === true
+      } catch {
+        selected = false
+      }
+      if (!selected) continue
+    }
+    live.delete(notification)
+    try {
+      notification.close()
+      closed += 1
+    } catch {
+      // 已经关掉 / 环境不支持：忽略。
+    }
+  }
+  return closed
+}
+
+/** 当前还挂着的通知数量（诊断与测试用）。 */
+export function liveNotificationCount() {
+  return live.size
 }
 
 /** 发一条测试通知，用来验证通道（权限已授予时才有意义）。 */

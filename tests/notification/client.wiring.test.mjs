@@ -338,3 +338,71 @@ test('总开关关闭时不发通知；提示音开关关闭时只发通知不�
   await flush()
   assert.equal(muted.stub.instances.length, 1)
 })
+
+test('回到前台：看得见的会话的提醒被收回，别的会话不受影响', async (t) => {
+  const app = await boot({
+    sessions: {
+      s1: { id: 's1', displayTitle: '正在读的会话', running: true },
+      s2: { id: 's2', displayTitle: '后台会话', running: true },
+    },
+    chats: { s1: chatSnapshot({ reply: '完成一' }), s2: chatSnapshot({ reply: '完成二' }) },
+  })
+  t.after(() => app.dispose())
+  let focused = false
+  app.page.document.hasFocus = () => focused
+  Object.defineProperty(app.page.document, 'visibilityState', { configurable: true, get: () => (focused ? 'visible' : 'hidden') })
+
+  app.runtime.setRunning('s1', false)
+  app.runtime.setRunning('s2', false)
+  await flush()
+  assert.equal(app.stub.instances.length, 2)
+
+  // 用户回到 s1：s1 的卡片收起，s2 的留着（还没看）。
+  focused = true
+  app.runtime.ctx.uiWorkspace.openSession('s1')
+  await act(async () => { await sleep(10) })
+  app.page.window.dispatchEvent(new app.page.window.Event('focus'))
+  assert.deepEqual(app.stub.instances.map((instance) => instance.closed), [true, false])
+})
+
+test('回到前台时没有可见会话：把所有挂着的提醒一起收掉', async (t) => {
+  const app = await boot({
+    sessions: { s1: { id: 's1', displayTitle: '会话', running: true } },
+    chats: { s1: chatSnapshot({ reply: '完成' }) },
+  })
+  t.after(() => app.dispose())
+  let focused = false
+  app.page.document.hasFocus = () => focused
+  Object.defineProperty(app.page.document, 'visibilityState', { configurable: true, get: () => (focused ? 'visible' : 'hidden') })
+
+  app.runtime.setRunning('s1', false)
+  await flush()
+  assert.equal(app.stub.instances.length, 1)
+  assert.equal(app.stub.instances[0].closed, false)
+
+  focused = true
+  app.page.document.dispatchEvent(new app.page.window.Event('visibilitychange'))
+  assert.equal(app.stub.instances[0].closed, true, '用户回来了就不要再把卡片挂在外面')
+})
+
+test('没回到前台时不会误收提醒；卸载时摘掉事件监听', async (t) => {
+  const app = await boot({
+    sessions: { s1: { id: 's1', displayTitle: '会话', running: true } },
+    chats: { s1: chatSnapshot({ reply: '完成' }) },
+  })
+  let focused = false
+  app.page.document.hasFocus = () => focused
+  Object.defineProperty(app.page.document, 'visibilityState', { configurable: true, get: () => 'hidden' })
+
+  app.runtime.setRunning('s1', false)
+  await flush()
+  assert.equal(app.stub.instances.length, 1)
+
+  app.page.window.dispatchEvent(new app.page.window.Event('focus'))
+  assert.equal(app.stub.instances[0].closed, false, '窗口还没真正回到前台时不该收卡片')
+
+  await app.dispose()
+  focused = true
+  app.page.document.dispatchEvent(new app.page.window.Event('visibilitychange'))
+  assert.equal(app.stub.instances[0].closed, false, '卸载后监听必须被摘掉')
+})

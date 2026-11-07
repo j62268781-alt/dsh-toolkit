@@ -27,7 +27,8 @@ import { NotificationEngine } from './engine.js'
 import { NotificationDispatcher } from './dispatch.js'
 import { SystemSoundPlayer, loadSystemSounds } from './system-sounds.js'
 import {
-  browserPermission, requestBrowserPermission, showBrowserNotification, showTestNotification,
+  browserPermission, dismissLiveNotifications, requestBrowserPermission, showBrowserNotification,
+  showTestNotification,
 } from './browser-notify.js'
 import { createRecentStore } from './recent.js'
 import { createNotificationPanel } from './panel.jsx'
@@ -305,10 +306,12 @@ export default function createNotification(require) {
         settings: () => settingsSource.getSnapshot(),
         t,
         playSound: (sound, volume) => player.play(sound, volume),
-        showNotification: ({ title, body, tag, sessionId }) => showBrowserNotification({
+        showNotification: ({ title, body, tag, kind, sessionId }) => showBrowserNotification({
           title,
           body,
           tag,
+          kind,
+          sessionId,
           onClick: () => openSession(sessionId),
         }),
         isCurrent: (sessionId) => {
@@ -513,6 +516,48 @@ export default function createNotification(require) {
       }, 'toolkit-notification:pending')
 
       install(() => () => player.dispose(), 'toolkit-notification:sounds')
+
+      // 回到前台就收回提醒：系统横幅原本是用来「叫人回来」的，人已经在看了还挂着只会挡视线。
+      // 只关「用户此刻确实看得到」的那条——主视图持有的会话，或者窗口整体回到前台时的全部。
+      install(() => {
+        if (typeof window === 'undefined' || typeof document === 'undefined') return undefined
+        const currentSessionId = () => {
+          try {
+            const byId = ctx.sessions?.list?.getSnapshot?.()?.byId ?? {}
+            for (const id of Object.keys(byId)) {
+              if (mainViewRetains(id) === true) return id
+            }
+          } catch {
+            // 读不到就当作没有「当前会话」。
+          }
+          return undefined
+        }
+        const foregrounded = () => {
+          try {
+            return document.visibilityState !== 'hidden' && document.hasFocus() === true
+          } catch {
+            return false
+          }
+        }
+        const dismissVisible = () => {
+          if (!foregrounded()) return
+          const visible = currentSessionId()
+          try {
+            // 没有可见会话就说明用户回到的是一个空视图：把剩下的提醒一起收掉。
+            dismissLiveNotifications(
+              visible === undefined ? () => true : (entry) => entry.sessionId === visible,
+            )
+          } catch (error) {
+            warn('could not dismiss notifications', error)
+          }
+        }
+        document.addEventListener('visibilitychange', dismissVisible)
+        window.addEventListener('focus', dismissVisible)
+        return () => {
+          document.removeEventListener('visibilitychange', dismissVisible)
+          window.removeEventListener('focus', dismissVisible)
+        }
+      }, 'toolkit-notification:dismiss-visible')
 
       install(() => {
         if (typeof ctx.slots?.inject !== 'function' || typeof ctx.slots?.register !== 'function') return undefined

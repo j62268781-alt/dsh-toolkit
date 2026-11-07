@@ -739,7 +739,7 @@ window.__ModuleLoader__.load({
       if (tag.length <= TAG_LIMIT) return tag;
       return `${TAG_PREFIX}:${digest(tag)}`;
     }
-    var live = /* @__PURE__ */ new Set();
+    var live = /* @__PURE__ */ new Map();
     function notificationCtor() {
       try {
         return typeof globalThis.Notification === "function" ? globalThis.Notification : void 0;
@@ -792,30 +792,35 @@ window.__ModuleLoader__.load({
       } catch {
       }
     }
+    var STICKY_KINDS = ["question", "permission"];
     function showBrowserNotification(options = {}) {
       const Ctor = notificationCtor();
       if (Ctor === void 0) {
         warn("browser Notification API is unavailable (insecure context or unsupported browser)");
         return false;
       }
-      if (browserPermission() !== "granted") {
-        warn(`browser notification suppressed: permission is "${browserPermission()}"`);
+      const permission = browserPermission();
+      if (permission === "denied") {
+        warn('browser notification suppressed: permission is "denied"');
         return false;
       }
       const tag = clampTag(options.tag);
       const title = typeof options.title === "string" ? options.title : "";
       const body = typeof options.body === "string" ? options.body : "";
+      const sessionId = typeof options.sessionId === "string" ? options.sessionId : "";
+      const kind = typeof options.kind === "string" ? options.kind : "";
       const base = {
         body,
         tag,
         // 同 tag 通知被替换时重新提醒一次，而不是在 Windows/Chromium 的通知中心里静默换卡片。
         renotify: true,
         // Sound is controlled by the selected file and volume, including on the web.
-        silent: true
+        silent: true,
+        requireInteraction: STICKY_KINDS.includes(kind)
       };
       const icon = pageIconUrl();
       const activate = (notification) => {
-        live.add(notification);
+        live.set(notification, { sessionId, kind });
         const forget = () => live.delete(notification);
         try {
           if (typeof notification.addEventListener === "function") notification.addEventListener("close", forget, { once: true });
@@ -861,6 +866,27 @@ window.__ModuleLoader__.load({
         fail("Notification constructor failed; check the browser/OS notification settings", error);
         return false;
       }
+    }
+    function dismissLiveNotifications(predicate) {
+      let closed = 0;
+      for (const [notification, entry] of [...live]) {
+        if (typeof predicate === "function") {
+          let selected = false;
+          try {
+            selected = predicate(entry) === true;
+          } catch {
+            selected = false;
+          }
+          if (!selected) continue;
+        }
+        live.delete(notification);
+        try {
+          notification.close();
+          closed += 1;
+        } catch {
+        }
+      }
+      return closed;
     }
     function showTestNotification(t) {
       return showBrowserNotification({
@@ -933,6 +959,7 @@ window.__ModuleLoader__.load({
             // 一条通知一张卡片：按会话 + 类型折叠，同一会话的类型不会互相覆盖。
             // 必须走 notificationTag：原生长度上限会让超长 tag 的通知整条消失（见该函数注释）。
             tag: notificationTag(event.sessionId, event.kind),
+            kind: event.kind,
             sessionId: event.sessionId
           }) === true;
         } catch {
@@ -1422,7 +1449,7 @@ window.__ModuleLoader__.load({
         const soundChoices = [{ id: "system", label: translate("soundSystem") }, ...sounds.filter((entry) => entry.id !== "system")];
         if (!soundChoices.some((entry) => entry.id === selectedSound)) soundChoices.push({ id: selectedSound, label: translate("soundMissing") });
         const currentMode = CURRENT_MODES.includes(snapshot.currentMode) ? snapshot.currentMode : "unfocused";
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-page" }, /* @__PURE__ */ __dshReact.createElement("header", { className: "ntf-pageHead" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "ntf-pageTitle" }, translate("title")), /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-pageIntro" }, translate("intro"))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("preferencesHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("enabledTitle"), description: translate("enabledDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.enabled === true, disabled: readOnly || busy, label: translate("enabledTitle"), onChange: (next) => change(() => actions.setEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("currentTitle"), description: translate("currentDesc") }, /* @__PURE__ */ __dshReact.createElement(Timing, { value: currentMode, disabled: inactive, translate, onChange: (next) => change(() => actions.setCurrentMode(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("testTitle"), description: translate("testHint") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: inactive || permission !== "granted", onClick: testNotification }, translate("testButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("permissionTitle"), description: translate(PERMISSION_HINT[permission] ?? "permissionHintUnsupported") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, permission === "default" ? /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: requestPermission }, translate("grantButton")) : permission === "unsupported" ? null : /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: recheckPermission }, translate("recheckButton"))))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("typesHeading") }, KINDS.map((kind) => {
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-page" }, /* @__PURE__ */ __dshReact.createElement("header", { className: "ntf-pageHead" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "ntf-pageTitle" }, translate("title")), /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-pageIntro" }, translate("intro"))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("preferencesHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("enabledTitle"), description: translate("enabledDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.enabled === true, disabled: readOnly || busy, label: translate("enabledTitle"), onChange: (next) => change(() => actions.setEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("currentTitle"), description: translate("currentDesc") }, /* @__PURE__ */ __dshReact.createElement(Timing, { value: currentMode, disabled: inactive, translate, onChange: (next) => change(() => actions.setCurrentMode(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("testTitle"), description: translate("testHint") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: inactive || permission === "denied" || permission === "unsupported", onClick: testNotification }, translate("testButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("permissionTitle"), description: translate(PERMISSION_HINT[permission] ?? "permissionHintUnsupported") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, permission === "default" ? /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: requestPermission }, translate("grantButton")) : permission === "unsupported" ? null : /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: recheckPermission }, translate("recheckButton"))))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("typesHeading") }, KINDS.map((kind) => {
           const title = translate(`${KIND_COPY[kind]}Title`);
           return /* @__PURE__ */ __dshReact.createElement(Row, { key: kind, title, description: translate(`${KIND_COPY[kind]}Desc`) }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.types?.[kind]?.enabled === true, disabled: inactive, label: title, onChange: (next) => change(() => actions.setKindEnabled(kind, next)) }));
         })), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("soundsHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTitle"), description: translate("soundDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.soundEnabled === true, disabled: inactive, label: translate("soundTitle"), onChange: (next) => change(() => actions.setSoundEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTypeTitle"), description: translate(soundStatus === "unavailable" ? "soundCatalogUnavailable" : "soundTypeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement("select", { className: "ntf-select ntf-selectSound", "aria-label": translate("soundTypeTitle"), value: selectedSound, disabled: soundInactive || soundStatus === "loading", onChange: (event) => change(() => actions.setSound(event.target.value)) }, soundChoices.map(({ id, label }) => /* @__PURE__ */ __dshReact.createElement("option", { value: id, key: id }, label))), /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: soundInactive || soundStatus !== "ready", onClick: preview }, translate("previewButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("volumeTitle"), description: translate("volumeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-volume" }, /* @__PURE__ */ __dshReact.createElement("input", { className: "ntf-range", type: "range", min: "0", max: "100", step: "1", value: Math.round(volume * 100), "aria-label": translate("volumeTitle"), disabled: readOnly || snapshot.enabled !== true || snapshot.soundEnabled !== true, onChange: (event) => changeVolume(Number(event.target.value) / 100) }), /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-volumeValue" }, translate("volumeValue", { percent: Math.round(volume * 100) }))))), error !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-error", role: "alert" }, error) : null, notice !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-notice", role: "status" }, notice) : null, readOnly ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-note" }, translate("readOnly")) : null);
@@ -1676,10 +1703,12 @@ window.__ModuleLoader__.load({
             settings: () => settingsSource.getSnapshot(),
             t,
             playSound: (sound, volume) => player.play(sound, volume),
-            showNotification: ({ title, body, tag, sessionId }) => showBrowserNotification({
+            showNotification: ({ title, body, tag, kind, sessionId }) => showBrowserNotification({
               title,
               body,
               tag,
+              kind,
+              sessionId,
               onClick: () => openSession(sessionId)
             }),
             isCurrent: (sessionId) => {
@@ -1859,6 +1888,43 @@ window.__ModuleLoader__.load({
             return off;
           }, "toolkit-notification:pending");
           install(() => () => player.dispose(), "toolkit-notification:sounds");
+          install(() => {
+            if (typeof window === "undefined" || typeof document === "undefined") return void 0;
+            const currentSessionId = () => {
+              try {
+                const byId = ctx.sessions?.list?.getSnapshot?.()?.byId ?? {};
+                for (const id of Object.keys(byId)) {
+                  if (mainViewRetains(id) === true) return id;
+                }
+              } catch {
+              }
+              return void 0;
+            };
+            const foregrounded = () => {
+              try {
+                return document.visibilityState !== "hidden" && document.hasFocus() === true;
+              } catch {
+                return false;
+              }
+            };
+            const dismissVisible = () => {
+              if (!foregrounded()) return;
+              const visible = currentSessionId();
+              try {
+                dismissLiveNotifications(
+                  visible === void 0 ? () => true : (entry) => entry.sessionId === visible
+                );
+              } catch (error) {
+                warn2("could not dismiss notifications", error);
+              }
+            };
+            document.addEventListener("visibilitychange", dismissVisible);
+            window.addEventListener("focus", dismissVisible);
+            return () => {
+              document.removeEventListener("visibilitychange", dismissVisible);
+              window.removeEventListener("focus", dismissVisible);
+            };
+          }, "toolkit-notification:dismiss-visible");
           install(() => {
             if (typeof ctx.slots?.inject !== "function" || typeof ctx.slots?.register !== "function") return void 0;
             return ctx.slots.inject("settings.section", () => ctx.slots.register({

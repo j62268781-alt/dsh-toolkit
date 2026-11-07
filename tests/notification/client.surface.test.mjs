@@ -5,8 +5,9 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import {
-  TAG_LIMIT, TAG_PREFIX, activateWindow, browserPermission, notificationTag, pageIconUrl,
-  requestBrowserPermission, showBrowserNotification, showTestNotification,
+  TAG_LIMIT, TAG_PREFIX, activateWindow, browserPermission, dismissLiveNotifications,
+  liveNotificationCount, notificationTag, pageIconUrl, requestBrowserPermission,
+  showBrowserNotification, showTestNotification,
 } from '../../src/modules/notification/client/browser-notify.js'
 import { RECENT_LIMIT, createRecentStore } from '../../src/modules/notification/client/recent.js'
 import { SOUND_IDS, SOUND_RECIPES, SoundPlayer, audioSupported, clampVolume, recipeDuration } from '../../src/modules/notification/client/sounds.js'
@@ -34,22 +35,88 @@ test('没有 Notification API 时一切降级为 no-op', () => {
   assert.equal(showBrowserNotification({ title: 't', body: 'b' }), false)
 })
 
-test('权限不足时不弹通知；授予后按选项发一条', () => {
+test('只拦明确拒绝的权限；default 与 granted 都照发', () => {
   dom()
   const stub = createNotificationStub({ permission: 'default' })
   restores.push(() => stub.restore())
   assert.equal(browserPermission(), 'default')
-  assert.equal(showBrowserNotification({ title: 't', body: 'b' }), false)
-  assert.equal(stub.instances.length, 0)
+  // default 不是拒绝：桌面外壳里权限由 Electron/系统侧决定，Chromium 的 permission 状态
+  // 并不总能反映系统设置，所以这里尝试发，真被拒还有构造器异常与 error 事件两条诊断线。
+  assert.equal(showBrowserNotification({ title: 't', body: 'b' }), true)
+  assert.equal(stub.instances.length, 1)
 
   stub.FakeNotification.permission = 'granted'
   assert.equal(showBrowserNotification({ title: '会话标题', body: '最后回复', tag: 'custom-tag' }), true)
-  const [instance] = stub.instances
+  const instance = stub.instances[1]
   assert.equal(instance.title, '会话标题')
   assert.equal(instance.options.body, '最后回复')
   assert.equal(instance.options.tag, 'custom-tag')
   assert.equal(instance.options.renotify, true)
   assert.equal(instance.options.silent, true, 'the selected sound and mute preference control audio on web too')
+
+  stub.FakeNotification.permission = 'denied'
+  const before = stub.instances.length
+  assert.equal(showBrowserNotification({ title: 't', body: 'b' }), false)
+  assert.equal(stub.instances.length, before, 'denied 时不构造通知')
+})
+
+test('只有交互类通知要求常驻（requireInteraction）', () => {
+  dom()
+  const stub = createNotificationStub({ permission: 'granted' })
+  restores.push(() => stub.restore())
+  for (const kind of ['question', 'permission']) {
+    showBrowserNotification({ title: 't', body: 'b', kind, sessionId: 's1' })
+    assert.equal(stub.instances.at(-1).options.requireInteraction, true, `${kind} 必须常驻到用户处理`)
+  }
+  for (const kind of ['completed', 'failed']) {
+    showBrowserNotification({ title: 't', body: 'b', kind, sessionId: 's1' })
+    assert.equal(stub.instances.at(-1).options.requireInteraction, false, `${kind} 走系统默认超时`)
+  }
+  // 没给 kind（例如测试通知）也按默认超时处理。
+  showBrowserNotification({ title: 't', body: 'b' })
+  assert.equal(stub.instances.at(-1).options.requireInteraction, false)
+})
+
+test('dismissLiveNotifications 按归属会话回收，缺省全部回收', () => {
+  dom()
+  // live 是模块级的：先清干净，断言只针对本用例产生的通知。
+  dismissLiveNotifications()
+  const stub = createNotificationStub({ permission: 'granted' })
+  restores.push(() => stub.restore())
+  showBrowserNotification({ title: 'a', body: 'b', kind: 'completed', sessionId: 's1' })
+  showBrowserNotification({ title: 'a', body: 'b', kind: 'completed', sessionId: 's2' })
+  showBrowserNotification({ title: 'a', body: 'b', kind: 'question', sessionId: 's2' })
+  assert.equal(liveNotificationCount(), 3)
+
+  assert.equal(dismissLiveNotifications((entry) => entry.sessionId === 's2'), 2)
+  assert.equal(stub.instances.filter((instance) => instance.closed).length, 2)
+  assert.equal(liveNotificationCount(), 1, '没被回收的仍然占着引用')
+
+  assert.equal(dismissLiveNotifications(), 1)
+  assert.equal(liveNotificationCount(), 0)
+  assert.equal(stub.instances.filter((instance) => instance.closed).length, 3)
+})
+
+test('通知被关闭或平台拒绝后不再占引用', () => {
+  dom()
+  dismissLiveNotifications()
+  const stub = createNotificationStub({ permission: 'granted' })
+  restores.push(() => stub.restore())
+  showBrowserNotification({ title: 'a', body: 'b', kind: 'completed', sessionId: 's1' })
+  showBrowserNotification({ title: 'a', body: 'b', kind: 'completed', sessionId: 's2' })
+  assert.equal(liveNotificationCount(), 2)
+  stub.instances[0].emit('close')
+  assert.equal(liveNotificationCount(), 1)
+  const errors = []
+  const original = console.error
+  console.error = (...args) => errors.push(args.join(' '))
+  try {
+    stub.instances[1].emit('error')
+  } finally {
+    console.error = original
+  }
+  assert.equal(liveNotificationCount(), 0, '平台拒绝的通知不该继续留在引用表里')
+  assert.equal(errors.length, 1)
 })
 
 test('桌面外壳下透传 silent，避免系统提示音与本模块提示音叠加', () => {

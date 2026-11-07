@@ -78,7 +78,8 @@ var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层�
 
 页面包含三个分组卡片：「通知」（通知总开关、通知时机、测试通知、系统权限）、「提醒类型」
 （四种类型开关）、「声音」（提示音开关、声音类型与试听、音量）。测试通知与系统权限都是普通 item
-行：测试通知行只有在权限已授予时可点，系统权限行的副标题随权限实时变化（已授予 / 已拒绝 /
+行：测试通知行只要没被系统明确拒绝（`denied`）或不支持就可以点——权限还是 `default`（宿主没记过决定）
+时也允许试发，真被拦下来由 `error` 级诊断兜底；系统权限行的副标题随权限实时变化（已授予 / 已拒绝 /
 尚未授予 / 不支持），按钮在未授权时是「授权」、已授予或已拒绝时是「重新检查」。发送测试通知成功
 不再额外弹一条「已发送」状态文案——通知本身即反馈。
 
@@ -117,8 +118,16 @@ var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层�
 4. `soundEnabled` 且该类型音效不为 `none` → 播放提示音（只在真的发通知时响）；
 5. 系统通知：`tag = notificationTag(sessionId, kind)`（`dsh-toolkit:notification:<16 位十六进制摘要>`），
    `renotify: true`；
+   **交互类（`question`/`permission`）额外 `requireInteraction: true`** —— Chromium 把它翻成
+   `options.timeout_type = "never"`，Electron 的 Windows 通道再翻成 WinRT 的
+   `scenario="reminder"` 并自动补一个「关闭」按钮，于是等待回答/等待授权的横幅不会自己滑走
+   （注意：Windows 同时只保留一条 reminder 类 toast，两条阻塞提醒会互相顶掉）；
    桌面外壳下额外 `silent: true`（避免系统音与本模块提示音叠加）；
    图标取页面 favicon（`dsh-app:`/SVG data URL 不可用时省略）。
+6. **回前台就收卡片**：窗口重新获得焦点（`window` 的 `focus`）或重新可见
+   （`document` 的 `visibilitychange`）时，把「当前主视图那个会话」还挂着的系统通知关掉，
+   读不到当前会话就全部关掉。语义上限：Toast 还在屏上时 `close()` 只是让 Windows 收起横幅
+   （`ToastNotifier.Hide`），操作中心里的历史记录要等系统自己 dismissed 才会移除。
 
 > **tag 为什么不能直接拼 `<sessionId>:<kind>`**（已踩过的真 bug）：Chromium 给原生层的通知 id 是
 > `n#<origin>#<tag>`，而 **Electron 的 Windows 通道把这个 id 原样写进 WinRT `ToastNotification.Tag`，
@@ -179,7 +188,13 @@ rc.5 桌面外壳没有窗口聚焦 IPC，`window.focus()` 只能尽力而为（
 - **无法把窗口强制带到前台**：rc.5 的桌面外壳没有 focus/activate IPC，`globalThis.dshDesktop`
   只有 browser/deviceInfo/keyboard/shortcuts/updates，`window.focus()` 只能尽力而为。
 - 系统通知在应用前台时的**投递与点击**由系统决定，无法从页面观测；窗口在前台时本模块刻意不发通知。
+- **撤旧通知只能收横幅**：`Notification.close()` 在 Toast 仍显示时只让 Windows 收起横幅
+  （`ToastNotifier.Hide`），操作中心里的历史记录要系统自己 dismissed（或用户手动清）才会移除。
+- **Windows 同时只显示一条 reminder 类 toast**：交互类通知用 `requireInteraction` 常驻，
+  两条阻塞提醒（不同会话的提问/授权）会互相顶掉，只留最后一条。
 - 系统通知需要权限，声音需要页面获得用户激活（浏览器自动播放策略），与普通 Web 应用一致。
+  `Notification.permission === 'default'` 时也会尝试发送（宿主可能压根没记过决定，桌面壳的
+  真权限在 Electron/系统侧），失败由 `error` 级诊断兜底。
 - 未打开过且从未物化的会话，失败判定依赖 `turn-error`/`lastAgentError`；对话文本读取是 best-effort。
 - 通知按会话 + 类型折叠（同一会话的完成与失败不会互相覆盖，同一类型会替换旧通知）。
 
@@ -192,7 +207,8 @@ pnpm verify
 ```
 
 覆盖点：配置解码与根 schema 交叉校验、会话事实投影、完成/失败/暂停/等待/静默分类、
-待交互 key 变化、分发门控（单通道：系统通知）、系统通知选项与点击、提示音降级、
+待交互 key 变化、分发门控（单通道：系统通知）、系统通知选项与点击、交互类常驻
+（`requireInteraction`）、回前台按会话撤卡片、提示音降级、
 设置页注册契约与开关写回、端到端（真实 `apply` + 假 ctx）通知标题/正文与点击跳转。
 
 ## 真机验证记录（0.2.1-rc.5 桌面端 / Web GUI）
@@ -208,7 +224,10 @@ pnpm verify
    **标题 = 会话 `displayTitle`**，**正文 = 该轮最后一个 assistant 回复**，`tag` 为
    `dsh-toolkit:notification:<摘要>`（见上文 tag 长度限制）；
 4. 点击系统通知，主视图跳到该会话并显示它的回复；
-5. 无头 Chrome 默认拒绝通知权限时，「系统权限」行按设计显示「系统通知已关闭；请到系统设置里允许本应用发送通知。」，按钮可重新检查。
+5. 「等待回答」「等待授权」这类交互提醒用 `requireInteraction` 常驻（Windows 上是
+   `scenario="reminder"` + 自带关闭按钮），任务完成/失败的提醒照常自动消失；
+6. 回到前台（点任务栏/alt-tab）后，当前会话还挂着的横幅会被收起；
+7. 无头 Chrome 默认拒绝通知权限时，「系统权限」行按设计显示「系统通知已关闭；请到系统设置里允许本应用发送通知。」，按钮可重新检查。
 
 > 真机验证还抓到一个 Cordis 严格上下文的坑：`ctx.workspaces` 未列入 `inject` 时读取会抛
 > `cannot get property "workspaces" without inject`，点击通知只打 warn 不跳转；已在 `inject` 中补上并回归。

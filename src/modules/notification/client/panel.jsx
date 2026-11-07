@@ -126,7 +126,7 @@ export function createNotificationPanel(React, options = {}) {
       <Group title={translate('preferencesHeading')}>
         <Row title={translate('enabledTitle')} description={translate('enabledDesc')}><Toggle checked={snapshot.enabled === true} disabled={readOnly || busy} label={translate('enabledTitle')} onChange={(next) => change(() => actions.setEnabled(next))} /></Row>
         <Row title={translate('currentTitle')} description={translate('currentDesc')}><Timing value={currentMode} disabled={inactive} translate={translate} onChange={(next) => change(() => actions.setCurrentMode(next))} /></Row>
-        <Row title={translate('testTitle')} description={translate('testHint')}><div className="ntf-actions"><ActionButton disabled={inactive || permission !== 'granted'} onClick={testNotification}>{translate('testButton')}</ActionButton></div></Row>
+        <Row title={translate('testTitle')} description={translate('testHint')}><div className="ntf-actions"><ActionButton disabled={inactive || permission === 'denied' || permission === 'unsupported'} onClick={testNotification}>{translate('testButton')}</ActionButton></div></Row>
         <Row title={translate('permissionTitle')} description={translate(PERMISSION_HINT[permission] ?? 'permissionHintUnsupported')}><div className="ntf-actions">{permission === 'default' ? <ActionButton disabled={busy} onClick={requestPermission}>{translate('grantButton')}</ActionButton> : permission === 'unsupported' ? null : <ActionButton disabled={busy} onClick={recheckPermission}>{translate('recheckButton')}</ActionButton>}</div></Row>
       </Group>
       <Group title={translate('typesHeading')}>
