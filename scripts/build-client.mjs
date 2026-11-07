@@ -74,6 +74,7 @@ async function bundle(entry, id, plugin) {
   const result = await build({
     absWorkingDir: ROOT, ...entry, bundle: true, write: false, platform: 'browser',
     format: 'cjs', target: 'es2022', charset: 'utf8', legalComments: 'none',
+    // 只把宿主提供的模块留作 external：react 与 primitives 由宿主的模块表解析。
     minify: false, external: ['react', 'react/*', '@deepseek-ai/*'],
     jsxFactory: '__dshReact.createElement', jsxFragment: '__dshReact.Fragment',
     loader: { '.js': 'jsx', '.css': 'text', '.html': 'text' }, plugins: [plugin],

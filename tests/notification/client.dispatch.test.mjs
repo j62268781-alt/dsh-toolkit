@@ -1,6 +1,9 @@
 /**
  * 分发器测试：偏好门控（总开关 / 类型开关 / 全局时机 / 窗口焦点）、
  * 提示音与系统通知的调用顺序，以及标题/正文的取材。
+ *
+ * 提醒只有系统通知一条通道（宿主没有给插件应用内弹窗的能力），所以这里的期望值
+ * 就是「什么时候会调用 showNotification」。
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
@@ -26,18 +29,13 @@ function translate(key, params = {}) {
 
 /** 记录调用的端口，默认模拟窗口失焦。 */
 function createDeps(overrides = {}) {
-  const calls = { sounds: [], notifications: [], cards: [], order: [] }
+  const calls = { sounds: [], notifications: [], order: [] }
   const deps = {
     settings: () => settings(),
     t: translate,
     playSound: (sound, volume) => {
       calls.order.push('sound')
       calls.sounds.push({ sound, volume })
-      return true
-    },
-    showCard: (payload) => {
-      calls.order.push('card')
-      calls.cards.push(payload)
       return true
     },
     showNotification: (payload) => {
@@ -68,8 +66,8 @@ test('默认偏好：窗口失焦时播放系统提示音并弹通知，标题�
   assert.match(calls.notifications[0].tag, /s1:completed$/)
 })
 
-// 行为矩阵：窗口在前台（可见且有焦点）时用应用内卡片；后台时用系统通知；always 两者都发。
-// 提示音沿用旧契约：只有「后台提醒或 always」才响。
+// 行为矩阵：窗口失焦（隐藏或没焦点）时弹系统通知；窗口在前台时只有 always 才弹。
+// 提示音沿用旧契约：只有真的发通知时才响。
 for (const mode of ['never', 'unfocused', 'always']) {
   for (const hidden of [false, true]) {
     for (const focused of [false, true]) {
@@ -81,42 +79,29 @@ for (const mode of ['never', 'unfocused', 'always']) {
         })
         const result = new NotificationDispatcher(deps).dispatch(completed)
         const away = hidden || !focused
-        const wantCard = mode === 'always' || (mode === 'unfocused' && !away)
         const wantSystem = mode === 'always' || (mode === 'unfocused' && away)
-        assert.equal(result.card === true, wantCard)
         assert.equal(result.notified, wantSystem)
         assert.equal(result.sounded, wantSystem)
-        assert.equal(calls.cards.length, wantCard ? 1 : 0)
         assert.equal(calls.notifications.length, wantSystem ? 1 : 0)
         assert.equal(calls.sounds.length, wantSystem ? 1 : 0)
-        assert.equal(result.reason, wantCard || wantSystem ? undefined : 'never')
-        if (wantCard) {
-          assert.deepEqual(calls.cards[0], {
-            kind: 'completed', sessionId: 's1', title: '修复登录', body: '最后一条回复',
-          })
-        }
+        // never 一律静默；前台被抑制时给出可诊断的原因。
+        assert.equal(result.reason, mode === 'never' ? 'never' : wantSystem ? undefined : 'foreground')
       })
     }
   }
 }
 
-test('默认时机在窗口有焦点时推应用内卡片；当前会话判断出错也不会中断分发', () => {
-  const { deps, calls } = createDeps({
-    hasFocus: () => true,
-    isCurrent: () => { throw new Error('retainInfo exploded') },
+test('窗口在前台：默认时机什么都不弹，也不放提示音', () => {
+  const { deps, calls } = createDeps({ hasFocus: () => true })
+  const result = new NotificationDispatcher(deps).dispatch(completed)
+  assert.deepEqual(result, {
+    notified: false, sounded: false, title: '修复登录', body: '最后一条回复', reason: 'foreground',
   })
-  const dispatcher = new NotificationDispatcher(deps)
-  for (const sessionId of ['s1', 'other-session']) {
-    assert.deepEqual(dispatcher.dispatch({ ...completed, sessionId }), {
-      notified: false, sounded: false, card: true, title: '修复登录', body: '最后一条回复',
-    })
-  }
   assert.deepEqual(calls.sounds, [])
   assert.deepEqual(calls.notifications, [])
-  assert.deepEqual(calls.cards.map((card) => card.sessionId), ['s1', 'other-session'])
 })
 
-test('前台正在看这个会话时不推卡片（提醒内容就在眼前），其他会话照常推', () => {
+test('前台正在看这个会话：原因标记为 current（诊断用，行为与前台抑制一致）', () => {
   const { deps, calls } = createDeps({
     hasFocus: () => true,
     isCurrent: (sessionId) => sessionId === 's1',
@@ -126,14 +111,22 @@ test('前台正在看这个会话时不推卡片（提醒内容就在眼前）�
     notified: false, sounded: false, title: '修复登录', body: '最后一条回复', reason: 'current',
   })
   assert.deepEqual(dispatcher.dispatch({ ...completed, sessionId: 'other-session' }), {
-    notified: false, sounded: false, card: true, title: '修复登录', body: '最后一条回复',
+    notified: false, sounded: false, title: '修复登录', body: '最后一条回复', reason: 'foreground',
   })
-  assert.deepEqual(calls.cards.map((card) => card.sessionId), ['other-session'])
   assert.deepEqual(calls.notifications, [])
-  assert.deepEqual(calls.sounds, [])
 })
 
-test('always 下正在看当前会话：卡片仍然跳过，但按旧契约继续发系统通知', () => {
+test('当前会话判断出错也不会中断分发（前台仍然静默，不抛错）', () => {
+  const { deps } = createDeps({
+    hasFocus: () => true,
+    isCurrent: () => { throw new Error('retainInfo exploded') },
+  })
+  const result = new NotificationDispatcher(deps).dispatch(completed)
+  assert.equal(result.notified, false)
+  assert.equal(result.reason, 'foreground')
+})
+
+test('always 下窗口在前台也发系统通知，提示音只播一次', () => {
   const { deps, calls } = createDeps({
     settings: () => settings({ currentMode: 'always' }),
     hasFocus: () => true,
@@ -141,73 +134,36 @@ test('always 下正在看当前会话：卡片仍然跳过，但按旧契约继�
   })
   const result = new NotificationDispatcher(deps).dispatch(completed)
   assert.deepEqual(result, { notified: true, sounded: true, title: '修复登录', body: '最后一条回复' })
-  assert.deepEqual(calls.cards, [])
+  assert.deepEqual(calls.order, ['sound', 'notification'])
   assert.equal(calls.notifications.length, 1)
 })
 
-test('always：窗口在前台时卡片与系统通知都发，提示音只播一次', () => {
-  const { deps, calls } = createDeps({
-    settings: () => settings({ currentMode: 'always' }),
-    hasFocus: () => true,
-  })
-  const result = new NotificationDispatcher(deps).dispatch(completed)
-  assert.deepEqual(result, {
-    notified: true, sounded: true, card: true, title: '修复登录', body: '最后一条回复',
-  })
-  assert.deepEqual(calls.order, ['sound', 'card', 'notification'])
-  assert.equal(calls.cards.length, 1)
-  assert.equal(calls.notifications.length, 1)
-})
-
-test('窗口隐藏时只发系统通知，不推卡片', () => {
-  const { deps, calls } = createDeps({
-    isHidden: () => true,
-    hasFocus: () => true,
-  })
-  const result = new NotificationDispatcher(deps).dispatch(completed)
-  assert.equal(result.card, undefined)
-  assert.equal(result.notified, true)
-  assert.deepEqual(calls.cards, [])
-  assert.equal(calls.notifications.length, 1)
-})
-
-test('卡片通道不可用（宿主没有 overlay 槽位）时回退到系统通知，不丢提醒', () => {
-  const { deps, calls } = createDeps({
-    hasFocus: () => true,
-    showCard: undefined,
-  })
-  const result = new NotificationDispatcher(deps).dispatch(completed)
-  assert.equal(result.card, undefined)
-  assert.equal(result.notified, true)
-  assert.equal(calls.notifications.length, 1)
-})
-
-test('卡片通道返回 false 或抛错时回退到系统通知', () => {
-  for (const showCard of [() => false, () => { throw new Error('overlay exploded') }]) {
-    const { deps, calls } = createDeps({
-      hasFocus: () => true,
-      showCard,
-    })
+test('窗口隐藏或有焦点缺失时都按「离开」处理，发系统通知', () => {
+  for (const overrides of [{ isHidden: () => true }, { hasFocus: () => false }, { isHidden: () => true, hasFocus: () => true }]) {
+    const { deps, calls } = createDeps(overrides)
     const result = new NotificationDispatcher(deps).dispatch(completed)
-    assert.equal(result.card, undefined)
     assert.equal(result.notified, true)
     assert.equal(calls.notifications.length, 1)
   }
 })
 
-test('系统通知失败（权限被拒）不影响卡片：卡片仍然算已提醒', () => {
-  const { deps, calls } = createDeps({
-    settings: () => settings({ currentMode: 'always' }),
-    hasFocus: () => true,
-    showNotification: () => false,
+test('系统通知被拒（权限未授予）时返回未通知，提示音结果保留', () => {
+  const { deps } = createDeps({ showNotification: () => false })
+  const result = new NotificationDispatcher(deps).dispatch(completed)
+  assert.equal(result.notified, false)
+  assert.equal(result.sounded, true)
+})
+
+test('系统通知接口抛错时返回未通知，不中断提示音', () => {
+  const { deps } = createDeps({
+    showNotification: () => { throw new Error('notification exploded') },
   })
   const result = new NotificationDispatcher(deps).dispatch(completed)
   assert.equal(result.notified, false)
-  assert.equal(result.card, true)
-  assert.equal(calls.cards.length, 1)
+  assert.equal(result.sounded, true)
 })
 
-test('unfocused 时机缺失 hasFocus 时保守视为有焦点：可见时推卡片，窗口隐藏仍发系统通知', () => {
+test('unfocused 时机缺失 hasFocus 时保守视为有焦点：前台静默，窗口隐藏仍发通知', () => {
   for (const hidden of [false, true]) {
     const { deps, calls } = createDeps({
       settings: () => settings({ currentMode: 'unfocused' }),
@@ -215,25 +171,21 @@ test('unfocused 时机缺失 hasFocus 时保守视为有焦点：可见时推卡
       isHidden: () => hidden,
     })
     const result = new NotificationDispatcher(deps).dispatch(completed)
-    assert.equal(result.card === true, !hidden)
     assert.equal(result.notified, hidden)
     assert.equal(result.sounded, hidden)
-    assert.equal(calls.cards.length, hidden ? 0 : 1)
     assert.equal(calls.notifications.length, hidden ? 1 : 0)
   }
 })
 
-test('unfocused 时机仅把 hasFocus 明确返回 false 视为失焦（undefined 按有焦点走卡片）', () => {
+test('hasFocus 明确返回 undefined 时视为有焦点：前台静默', () => {
   const { deps, calls } = createDeps({
     settings: () => settings({ currentMode: 'unfocused' }),
     hasFocus: () => undefined,
   })
   const result = new NotificationDispatcher(deps).dispatch(completed)
-  assert.equal(result.card, true)
   assert.equal(result.notified, false)
   assert.deepEqual(calls.sounds, [])
   assert.deepEqual(calls.notifications, [])
-  assert.equal(calls.cards.length, 1)
 })
 
 test('总开关关闭：即使 always 时机也既不响也不弹', () => {
@@ -335,21 +287,10 @@ test('通知正文：失败/提问/授权各用自己的详情，空详情有兜
   ])
 })
 
-test('标题缺失时回落到「无标题会话」；通知接口抛错不影响提示音与返回', () => {
-  const { deps } = createDeps({
-    showNotification: () => {
-      throw new Error('notification exploded')
-    },
-  })
+test('标题缺失时回落到「无标题会话」', () => {
+  const { deps, calls } = createDeps()
   const result = new NotificationDispatcher(deps).dispatch({ kind: 'completed', sessionId: 's1', title: '   ', detail: 'x' })
   assert.equal(result.title, '无标题会话')
-  assert.equal(result.notified, false)
-  assert.equal(result.sounded, true)
-})
-
-test('通知接口拒绝显示时返回未通知，提示音结果保留', () => {
-  const { deps } = createDeps({ showNotification: () => false })
-  const result = new NotificationDispatcher(deps).dispatch(completed)
-  assert.equal(result.notified, false)
-  assert.equal(result.sounded, true)
+  assert.equal(result.notified, true)
+  assert.equal(calls.notifications[0].title, '无标题会话')
 })

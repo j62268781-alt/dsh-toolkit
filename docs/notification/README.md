@@ -103,29 +103,27 @@ var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层�
 
 1. `enabled`（通知总开关）关闭 → 什么都不做；
 2. 该类型 `*Enabled` 关闭 → 什么都不做；
-3. 按「窗口状态 × `currentMode`」选通道（`never` 静默；`unfocused` 是默认；`always` 始终提醒）：
+3. 按「窗口状态 × `currentMode`」决定要不要提醒（`never` 静默；`unfocused` 是默认；`always` 始终提醒）：
 
    | 窗口状态 | `unfocused`（默认） | `always` |
    | --- | --- | --- |
-   | 可见 + 有焦点 | 仅应用内提醒卡片（正在进行中的那个会话不弹） | 系统通知 + 卡片 + 提示音 |
-   | 可见 + 无焦点 | 系统通知 + 提示音 | 系统通知 + 卡片 + 提示音 |
-   | 隐藏 / 最小化 | 系统通知 + 提示音 | 系统通知 + 卡片 + 提示音 |
+   | 可见 + 有焦点 | 静默（正在进行的那个会话更不会提醒） | 系统通知 + 提示音 |
+   | 可见 + 无焦点 | 系统通知 + 提示音 | 系统通知 + 提示音 |
+   | 隐藏 / 最小化 | 系统通知 + 提示音 | 系统通知 + 提示音 |
 
-   窗口在前台时**不再依赖系统横幅**：前台横幅通常不弹，弹了点击也容易回不到会话，
-   所以改走模块自己的应用内卡片。卡片通道不可用（宿主没有 `slots` 服务、overlay 注册失败、
-   `showCard` 抛错或返回 `false`）时自动回退系统通知，提醒不会因为缺能力而丢失。
-4. `soundEnabled` 且该类型音效不为 `none` → 播放提示音（只在走系统通知的通道上响，与旧契约一致）；
+   **只有一条提醒通道：系统通知（`new Notification`）**。宿主没有给插件任何「应用内弹窗 / 通知卡片」
+   的官方能力，自己再画一套只会和系统横幅重复一遍，所以应用内卡片通道已经移除。窗口在前台时不发
+   通知（前台横幅多半不弹，弹了点击也回不到会话），这是刻意保持安静的取舍，不是缺陷。
+4. `soundEnabled` 且该类型音效不为 `none` → 播放提示音（只在真的发通知时响）；
 5. 系统通知：`tag = dsh-toolkit:notification:<sessionId>:<kind>`，`renotify: true`；
    桌面外壳下额外 `silent: true`（避免系统音与本模块提示音叠加）；
-   图标取页面 favicon（`dsh-app:`/SVG data URL 不可用时省略）；
-6. 应用内卡片：注册在公共槽位 `shell.overlay`（id `dsh-toolkit.notification.toasts`），
-   右上角最多 3 张，约 8 秒自动消失（hover/键盘焦点暂停计时），`Escape` 关最新一张，
-   只关卡片不抢焦点。
+   图标取页面 favicon（`dsh-app:`/SVG data URL 不可用时省略）。
 
-点击回调（卡片点主体 / 系统通知点击）：`window.focus()` → （归档先 `unarchiveSession`）→
+点击回调（系统通知点击）：`window.focus()` → （归档先 `unarchiveSession`）→
 `ctx.uiWorkspace.openSession(sessionId)` → 等一个宏任务 → 用
-`sessions.retainInfo(id).retainedBy.mainView > 0` 校验真的切过去了；没生效重试一次，
-仍失败就把一行本地化原因写回卡片（不再只是对控制台 `warn`），并且不会向调用方抛错。
+`sessions.retainInfo(id).retainedBy.mainView > 0` 校验真的切过去了；没生效重试一次。
+切过去之后如果发现宿主有模态弹层开着（`[role="dialog"][aria-modal="true"]`），补一个 document 级
+`Escape` 把它关掉 —— 否则会话是在弹层背后切的，用户看到的仍是弹层。
 rc.5 桌面外壳没有窗口聚焦 IPC，`window.focus()` 只能尽力而为（见下方已知限制）。
 
 ### 提示音
@@ -163,12 +161,11 @@ rc.5 桌面外壳没有窗口聚焦 IPC，`window.focus()` 只能尽力而为（
 ## 已知限制
 
 - **无法把窗口强制带到前台**：rc.5 的桌面外壳没有 focus/activate IPC，`globalThis.dshDesktop`
-  只有 browser/deviceInfo/keyboard/shortcuts/updates。窗口在前台时本模块已经不再依赖系统横幅
-  （改走应用内卡片），点击跳转由我们自己的 DOM 处理；后台/隐藏时仍是「平台激活 + `window.focus()`」。
-- 系统通知在应用前台时的**投递与点击**由系统决定，无法从页面观测；应用内卡片是这条场景的可靠通道。
+  只有 browser/deviceInfo/keyboard/shortcuts/updates，`window.focus()` 只能尽力而为。
+- 系统通知在应用前台时的**投递与点击**由系统决定，无法从页面观测；窗口在前台时本模块刻意不发通知。
 - 系统通知需要权限，声音需要页面获得用户激活（浏览器自动播放策略），与普通 Web 应用一致。
 - 未打开过且从未物化的会话，失败判定依赖 `turn-error`/`lastAgentError`；对话文本读取是 best-effort。
-- 通知类型按会话 + 类型折叠（同一会话的完成与失败不会互相覆盖，同一类型会替换旧卡片）。
+- 通知按会话 + 类型折叠（同一会话的完成与失败不会互相覆盖，同一类型会替换旧通知）。
 
 ## 验收
 
@@ -179,7 +176,7 @@ pnpm verify
 ```
 
 覆盖点：配置解码与根 schema 交叉校验、会话事实投影、完成/失败/暂停/等待/静默分类、
-待交互 key 变化、分发门控、系统通知选项与点击、最近通知 store、提示音降级、
+待交互 key 变化、分发门控（单通道：系统通知）、系统通知选项与点击、提示音降级、
 设置页注册契约与开关写回、端到端（真实 `apply` + 假 ctx）通知标题/正文与点击跳转。
 
 ## 真机验证记录（0.2.1-rc.5 桌面端 / Web GUI）
@@ -194,7 +191,7 @@ pnpm verify
 3. 把「通知范围」切到「全部会话」后，一个真实子会话跑完触发了系统通知：
    **标题 = 会话 `displayTitle`**，**正文 = 该轮最后一个 assistant 回复**，`tag` 为
    `dsh-toolkit:notification:<sessionId>:completed`；
-4. 点击「最近通知」里的条目，主视图跳到该会话并显示它的回复；
+4. 点击系统通知，主视图跳到该会话并显示它的回复；
 5. 无头 Chrome 默认拒绝通知权限时，「系统权限」行按设计显示「系统通知已关闭；请到系统设置里允许本应用发送通知。」，按钮可重新检查。
 
 > 真机验证还抓到一个 Cordis 严格上下文的坑：`ctx.workspaces` 未列入 `inject` 时读取会抛

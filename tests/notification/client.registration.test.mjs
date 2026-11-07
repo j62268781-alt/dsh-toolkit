@@ -80,12 +80,14 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
   t.after(() => { runtime.dispose(); fetch.restore(); page.restore() })
   client.apply(runtime.ctx)
   assert.deepEqual(fetch.requests, [], 'registration stays lazy until panel mount or an event')
+  // 只依赖宿主提供的 react 与 primitives：提醒走系统通知（`new Notification`），
+  // 插件不再自己渲染应用内卡片，所以不需要 react-dom。
   assert.deepEqual([...new Set(required)].sort(), ['@deepseek-ai/dsh-client-ui-primitives', 'react'])
   assert.deepEqual(runtime.effects, [
     'toolkit-notification:dictionary', 'toolkit-notification:stylesheet',
     'toolkit-notification:settings', 'toolkit-notification:sessions',
     'toolkit-notification:pending', 'toolkit-notification:sounds',
-    'toolkit-notification:toasts', 'toolkit-notification:section',
+    'toolkit-notification:section',
     'toolkit-notification:settings-icon',
   ])
   assert.equal(runtime.localeRegistrations.length, 1)
@@ -108,10 +110,8 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
   assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}/)
   const sections = runtime.sections.filter(({ meta }) => meta.name === 'settings.section')
   assert.equal(sections.length, 1)
-  const overlays = runtime.overlays.filter(({ meta }) => meta.name === 'shell.overlay')
-  assert.equal(overlays.length, 1)
-  assert.equal(overlays[0].meta.id, 'dsh-toolkit.notification.toasts')
-  assert.equal(typeof overlays[0].Component, 'function')
+  // 只有设置页一个注册点：应用内卡片通道已经移除。
+  assert.deepEqual(runtime.overlays, [])
   const [{ meta, Component }] = sections
   assert.equal(meta.id, 'notification')
   assert.equal(meta.order, 24)

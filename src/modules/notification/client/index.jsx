@@ -30,8 +30,6 @@ import {
   browserPermission, requestBrowserPermission, showBrowserNotification, showTestNotification,
 } from './browser-notify.js'
 import { createRecentStore } from './recent.js'
-import { createToastStore } from './toasts.js'
-import { createNotificationToasts } from './toasts.jsx'
 import { createNotificationPanel } from './panel.jsx'
 import { registerSettingsIcon } from '../../../client/settings-icon.jsx'
 
@@ -178,9 +176,7 @@ export default function createNotification(require) {
       }
 
       const recent = createRecentStore()
-      // 窗口在前台时的提醒走应用内卡片；overlay 槽位不可用时退回系统通知（见 dispatcher）。
-      const toasts = createToastStore()
-      let cardsReady = false
+      // 提醒只走系统通知（browser-notify.js）；应用内不再自己画一套卡片。
       const player = new SystemSoundPlayer(() => settingsSource.getSnapshot().volume)
 
       /* ── 会话事实读取：只在需要分类时碰快照，全程 try/catch ───────────── */
@@ -250,13 +246,19 @@ export default function createNotification(require) {
         await ctx.uiWorkspace?.openSession?.(sessionId)
       }
 
-      /** 把失败原因写回对应的卡片；最近通知列表里不重复这份细节。 */
-      const reportCardFailure = (sessionId, message) => {
+      /**
+       * 关掉挡住主视图的宿主模态弹层（设置 / 外观等）。
+       *
+       * 点通知时如果设置面板正开着，会话是在弹层背后切的 —— 用户看到的仍是弹层，表现依旧是
+       * 「点了没跳」。宿主的 modal 层只在打开期间监听 document 级 Escape，所以切完补一个 Escape。
+       */
+      const dismissBlockingModal = () => {
         try {
-          const card = toasts.getSnapshot().find((item) => item.sessionId === sessionId)
-          if (card !== undefined) toasts.setError(card.id, message ?? t('navigateFailed'))
+          const open = document.querySelector('[role="dialog"][aria-modal="true"]')
+          if (open === null) return
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
         } catch {
-          // 卡片已消失：只留日志。
+          // 老环境没有 KeyboardEvent 构造器：忽略，导航本身已经生效。
         }
       }
 
@@ -264,8 +266,8 @@ export default function createNotification(require) {
        * 打开事件对应的会话。
        *
        * 点击通知不生效的常见原因是「导航被同帧内的其他选择覆盖」或「窗口没被真正提到前台」，
-       * 所以这里：先聚焦窗口 → 导航 → 等一个宏任务 → 用主视图引用数确认；
-       * 没生效就再试一次，仍失败才把一行原因写到卡片上。整个过程不会再向调用方抛错。
+       * 所以这里：先聚焦窗口 → 导航 → 等一个宏任务 → 用主视图引用数确认；没生效就再试一次，
+       * 仍失败只留一行诊断日志。整个过程不会再向调用方抛错。
        * @param {string} sessionId 目标会话。
        * @returns {Promise<{ok: boolean, error?: string}>} 是否切过去了。
        */
@@ -290,9 +292,9 @@ export default function createNotification(require) {
           await nextTask()
           retained = mainViewRetains(sessionId)
         }
+        if (retained !== false) dismissBlockingModal()
         if (retained === false) {
           const message = t('navigateFailed')
-          reportCardFailure(sessionId, message)
           warn(`session ${sessionId} did not become the main view after retry`)
           return { ok: false, error: message }
         }
@@ -303,12 +305,6 @@ export default function createNotification(require) {
         settings: () => settingsSource.getSnapshot(),
         t,
         playSound: (sound, volume) => player.play(sound, volume),
-        showCard: ({ kind, sessionId, title, body }) => {
-          // overlay 还没注册成功（宿主没有 slots 服务）时返回 false，让分发器回退到系统通知。
-          if (!cardsReady) return false
-          toasts.push({ kind, sessionId, title, body })
-          return true
-        },
         showNotification: ({ title, body, tag, sessionId }) => showBrowserNotification({
           title,
           body,
@@ -371,7 +367,7 @@ export default function createNotification(require) {
         hasUnfinishedWork: (id) => hasUnfinishedWork(ctx.sessions?.list?.getSnapshot?.(), id),
         emit: (event) => {
           const result = dispatcher.dispatch(event)
-          if (result.notified === true || result.card === true) {
+          if (result.notified === true) {
             recent.add({ kind: event.kind, sessionId: event.sessionId, title: result.title, body: result.body })
           }
         },
@@ -456,9 +452,8 @@ export default function createNotification(require) {
         }
       }, 'toolkit-notification:dictionary')
 
-      // Global, not panel-local: the toast stack renders through `shell.overlay`, which the
-      // host portals outside the settings panel subtree, and `.ntf-toast*` lives in this very
-      // stylesheet — scoping it to the panel would leave the toasts unstyled.
+      // 样式挂在全局而不是设置页里：`.ntf-*` 同时服务于设置页与（此前的）浮层元素，
+      // 而设置页在降级宿主里可能根本不挂载。
       install(() => {
         if (typeof document === 'undefined') return () => {}
         return installStylesheet(`${settingsStyles('ntf')}\n${css}`, 'toolkit-notification')
@@ -518,20 +513,6 @@ export default function createNotification(require) {
       }, 'toolkit-notification:pending')
 
       install(() => () => player.dispose(), 'toolkit-notification:sounds')
-
-      install(() => {
-        // 卡片走公共 overlay 槽位；没有 slots 服务时 cardsReady 保持 false，
-        // 分发器会自动退回系统通知，提醒不会因为缺能力而丢掉。
-        if (typeof ctx.slots?.inject !== 'function' || typeof ctx.slots?.register !== 'function') return undefined
-        const Toasts = createNotificationToasts(React, { t, store: toasts, openSession })
-        return ctx.slots.inject('shell.overlay', () => {
-          cardsReady = true
-          return ctx.slots.register({
-            name: 'shell.overlay',
-            id: 'dsh-toolkit.notification.toasts',
-          }, Toasts)
-        })
-      }, 'toolkit-notification:toasts')
 
       install(() => {
         if (typeof ctx.slots?.inject !== 'function' || typeof ctx.slots?.register !== 'function') return undefined

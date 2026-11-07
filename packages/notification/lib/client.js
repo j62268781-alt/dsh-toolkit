@@ -63,19 +63,6 @@ window.__ModuleLoader__.load({
     .ntf-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .ntf-error, .ntf-notice, .ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
     .ntf-error { color: var(--dsw-alias-state-error-primary); }
-    /* 应用内提醒卡片（窗口在前台时替代系统横幅）：固定右上角。
-     * 外层不吃指针事件，只有卡片本身可点；top 偏移避开原生标题栏按钮。 */
-    .ntf-toasts { position: fixed; z-index: 9999; top: 56px; right: 16px; display: flex; flex-direction: column; gap: 8px; width: min(320px, calc(100vw - 32px)); pointer-events: none; }
-    .ntf-toast { box-sizing: border-box; display: flex; align-items: flex-start; gap: 8px; padding: 10px 8px 10px 12px; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; background: var(--dsw-alias-bg-layer-2); box-shadow: var(--dsw-elevation-prominent); color: var(--dsw-alias-label-primary); pointer-events: auto; }
-    .ntf-toastContent { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
-    .ntf-toastBody { box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-    .ntf-toastBody:focus-visible, .ntf-toastClose:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; border-radius: var(--dsw-radius-md, 8px); }
-    .ntf-toastBody:disabled { opacity: 1; cursor: default; }
-    .ntf-toastTitle { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; line-height: 18px; }
-    .ntf-toastText { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; font-size: 12px; line-height: 17px; color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }
-    .ntf-toastError { margin: 2px 0 0; font-size: 12px; line-height: 17px; color: var(--dsw-alias-state-error-primary); }
-    .ntf-toastClose { box-sizing: border-box; flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 15px; line-height: 1; cursor: pointer; }
-    .ntf-toastClose:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
     @media (max-width: 720px) {
       .ntf-row { gap: 12px; }
       .ntf-rowControl { max-width: 60%; }
@@ -237,9 +224,6 @@ window.__ModuleLoader__.load({
         recentTitle: "最近通知",
         recentHint: "这里显示本次运行里已经发过的通知，点击可以直接打开对应会话。",
         recentEmpty: "还没有发过通知。",
-        openSession: "打开会话",
-        toastsLabel: "提醒",
-        dismiss: "关闭提醒",
         navigateFailed: "未能切换到该会话，请从侧边栏手动打开。",
         justNow: "刚刚",
         minutesAgo: "{minutes} 分钟前",
@@ -320,9 +304,6 @@ window.__ModuleLoader__.load({
         recentTitle: "Recent notifications",
         recentHint: "Notifications sent in this run. Click one to open its session.",
         recentEmpty: "No notifications yet.",
-        openSession: "Open session",
-        toastsLabel: "Notifications",
-        dismiss: "Dismiss notification",
         navigateFailed: "Could not switch to that session; open it from the sidebar.",
         justNow: "just now",
         minutesAgo: "{minutes} min ago",
@@ -349,16 +330,16 @@ window.__ModuleLoader__.load({
         bind = void 0;
       }
       return function translate(key, params) {
-        let text2;
+        let text;
         if (typeof bind === "function") {
           try {
-            text2 = bind(key);
+            text = bind(key);
           } catch {
-            text2 = void 0;
+            text = void 0;
           }
         }
-        if (typeof text2 !== "string" || text2 === "" || text2 === key) text2 = dict[key] ?? NOTIFICATION_COPY.zh[key] ?? key;
-        return interpolate(text2, params);
+        if (typeof text !== "string" || text === "" || text === key) text = dict[key] ?? NOTIFICATION_COPY.zh[key] ?? key;
+        return interpolate(text, params);
       };
     }
 
@@ -441,8 +422,8 @@ window.__ModuleLoader__.load({
         return void 0;
       }
     }
-    function truncate(text2, max = 160) {
-      const collapsed = String(text2 ?? "").replace(/\s+/g, " ").trim();
+    function truncate(text, max = 160) {
+      const collapsed = String(text ?? "").replace(/\s+/g, " ").trim();
       if (collapsed.length <= max) return collapsed;
       return `${collapsed.slice(0, Math.max(1, max - 1))}…`;
     }
@@ -509,13 +490,13 @@ window.__ModuleLoader__.load({
             failureMessage = typeof data.message === "string" ? data.message : failureMessage;
           }
         } else if (node.kind === "assistant-step") {
-          const text2 = textOfData(node.data);
-          if (text2.trim() !== "") finalText = text2;
+          const text = textOfData(node.data);
+          if (text.trim() !== "") finalText = text;
         } else if (node.kind === "user") {
           const data = node.data ?? {};
           if (data.source?.kind !== "user") continue;
-          const text2 = textOfUserNode(data);
-          if (text2.trim() !== "") lastUserText = text2;
+          const text = textOfUserNode(data);
+          if (text.trim() !== "") lastUserText = text;
         }
       }
       return {
@@ -756,8 +737,7 @@ window.__ModuleLoader__.load({
         const mode = settings.currentMode;
         if (mode === "never") return { notified: false, sounded: false, reason: "never" };
         const away = this.deps.isHidden() === true || this.deps.hasFocus?.() === false;
-        let system = away || mode === "always";
-        const card = !away || mode === "always";
+        const system = away || mode === "always";
         let sounded = false;
         const sound = settings.sound ?? type.sound;
         if (system && settings.soundEnabled === true && sound !== "none" && settings.volume !== 0) {
@@ -768,46 +748,28 @@ window.__ModuleLoader__.load({
         }
         const title = typeof event.title === "string" && event.title.trim() !== "" ? event.title.trim() : this.deps.t("untitled");
         const body = notificationBody(event, this.deps.t);
-        let pushed = false;
-        let viewingForeground = false;
-        if (!away) {
+        if (!system) {
+          let viewing = false;
           try {
-            viewingForeground = this.deps.isCurrent?.(event.sessionId) === true;
+            viewing = this.deps.isCurrent?.(event.sessionId) === true;
           } catch {
-            viewingForeground = false;
+            viewing = false;
           }
-        }
-        if (card && !viewingForeground) {
-          try {
-            pushed = this.deps.showCard?.({
-              kind: event.kind,
-              sessionId: event.sessionId,
-              title,
-              body
-            }) === true;
-          } catch {
-            pushed = false;
-          }
-          if (!pushed) system = true;
+          return { notified: false, sounded, title, body, reason: viewing ? "current" : "foreground" };
         }
         let notified = false;
-        if (system) {
-          try {
-            notified = this.deps.showNotification({
-              title,
-              body,
-              // 一条通知一张卡片：按会话 + 类型折叠，同一会话的类型不会互相覆盖。
-              tag: `dsh-toolkit:notification:${event.sessionId}:${event.kind}`,
-              sessionId: event.sessionId
-            }) === true;
-          } catch {
-            notified = false;
-          }
+        try {
+          notified = this.deps.showNotification({
+            title,
+            body,
+            // 一条通知一张卡片：按会话 + 类型折叠，同一会话的类型不会互相覆盖。
+            tag: `dsh-toolkit:notification:${event.sessionId}:${event.kind}`,
+            sessionId: event.sessionId
+          }) === true;
+        } catch {
+          notified = false;
         }
-        if (viewingForeground && !pushed && !notified) {
-          return { notified, sounded, title, body, reason: "current" };
-        }
-        return pushed ? { notified, sounded, card: true, title, body } : { notified, sounded, title, body };
+        return { notified, sounded, title, body };
       }
     };
 
@@ -830,14 +792,14 @@ window.__ModuleLoader__.load({
         json() {
           parsed ??= (async () => {
             if (typeof response.text !== "function") return response.json();
-            const text2 = await response.text();
-            if (text2 === "") return {};
+            const text = await response.text();
+            if (text === "") return {};
             try {
-              return JSON.parse(text2);
+              return JSON.parse(text);
             } catch {
-              const error = new Error(`HTTP ${response.status} 返回了非 JSON：${text2.slice(0, 200)}`);
+              const error = new Error(`HTTP ${response.status} 返回了非 JSON：${text.slice(0, 200)}`);
               error.status = response.status;
-              error.bodyPreview = text2.slice(0, 200);
+              error.bodyPreview = text.slice(0, 200);
               throw error;
             }
           })();
@@ -1263,192 +1225,6 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/notification/client/toasts.js
-    var TOAST_LIMIT = 3;
-    var TOAST_ERROR_LIMIT = 160;
-    var TEXT_LIMIT = 200;
-    function text(value, max = TEXT_LIMIT) {
-      const collapsed = String(value ?? "").replace(/\s+/g, " ").trim();
-      if (collapsed.length <= max) return collapsed;
-      return `${collapsed.slice(0, Math.max(1, max - 1))}…`;
-    }
-    function createToastStore(limit = TOAST_LIMIT) {
-      let items = [];
-      let sequence = 0;
-      const listeners = /* @__PURE__ */ new Set();
-      const notify = () => {
-        for (const listener of [...listeners]) {
-          try {
-            listener();
-          } catch {
-          }
-        }
-      };
-      return {
-        /** 当前快照（引用稳定，供 useSyncExternalStore 使用）。 */
-        getSnapshot() {
-          return items;
-        },
-        /** 订阅变更。 */
-        subscribe(listener) {
-          if (typeof listener !== "function") return () => {
-          };
-          listeners.add(listener);
-          return () => {
-            listeners.delete(listener);
-          };
-        },
-        /**
-         * 推一张卡片（新的在最前面）。
-         * @param {{kind?: string, sessionId?: string, title?: string, body?: string, at?: number, error?: string}} entry 卡片内容。
-         * @returns {AttentionCard} 已经落库的记录（带自增 id）。
-         */
-        push(entry) {
-          const record = {
-            id: sequence += 1,
-            sessionId: text(entry?.sessionId),
-            kind: text(entry?.kind),
-            title: text(entry?.title),
-            body: text(entry?.body),
-            at: Number.isFinite(entry?.at) ? Number(entry.at) : Date.now()
-          };
-          if (typeof entry?.error === "string" && entry.error !== "") {
-            record.error = text(entry.error, TOAST_ERROR_LIMIT);
-          }
-          items = [record, ...items].slice(0, Math.max(1, limit));
-          notify();
-          return record;
-        },
-        /**
-         * 关掉一张卡片。
-         * @param {number} id 卡片 id。
-         * @returns {boolean} 是否真的移除了一张。
-         */
-        dismiss(id) {
-          const index = items.findIndex((item) => item.id === id);
-          if (index < 0) return false;
-          items = [...items.slice(0, index), ...items.slice(index + 1)];
-          notify();
-          return true;
-        },
-        /** 清空所有卡片。 */
-        clear() {
-          if (items.length === 0) return;
-          items = [];
-          notify();
-        },
-        /**
-         * 把「导航失败」的原因记到某张卡片上；再次导航成功时可用空字符串清掉。
-         * 文案有上限：卡片只展示一行，原始错误仍然留在控制台日志里。
-         * @param {number} id 卡片 id。
-         * @param {string} message 已本地化的一行文案。
-         * @returns {AttentionCard|undefined} 更新后的记录；卡片已消失时返回 undefined。
-         */
-        setError(id, message) {
-          const index = items.findIndex((item) => item.id === id);
-          if (index < 0) return void 0;
-          const bounded = text(message, TOAST_ERROR_LIMIT);
-          const current = items[index];
-          if ((current.error ?? "") === bounded) return current;
-          const next = { ...current };
-          if (bounded === "") delete next.error;
-          else next.error = bounded;
-          items = [...items.slice(0, index), next, ...items.slice(index + 1)];
-          notify();
-          return next;
-        }
-      };
-    }
-
-    // src/modules/notification/client/toasts.jsx
-    var TOAST_AUTO_DISMISS_MS = 8e3;
-    function createNotificationToasts(React2, deps) {
-      const { t, store, openSession } = deps ?? {};
-      const translate = typeof t === "function" ? t : (key) => key;
-      const autoDismissMs = Number.isFinite(deps?.autoDismissMs) && deps.autoDismissMs > 0 ? Number(deps.autoDismissMs) : TOAST_AUTO_DISMISS_MS;
-      function ToastCard({ item, dismiss }) {
-        const [paused, setPaused] = React2.useState(false);
-        const [busy, setBusy] = React2.useState(false);
-        const remaining = React2.useRef(autoDismissMs);
-        const startedAt = React2.useRef(0);
-        React2.useEffect(() => {
-          if (paused || busy) return void 0;
-          startedAt.current = Date.now();
-          const timer = setTimeout(() => {
-            dismiss(item.id);
-          }, Math.max(0, remaining.current));
-          return () => {
-            clearTimeout(timer);
-            remaining.current = Math.max(0, remaining.current - (Date.now() - startedAt.current));
-          };
-        }, [paused, busy, item.id, dismiss]);
-        const activate = async () => {
-          if (busy) return;
-          setBusy(true);
-          try {
-            const result = await openSession(item.sessionId);
-            if (result === false || result?.ok === false) return;
-            dismiss(item.id);
-          } catch {
-            store.setError?.(item.id, translate("navigateFailed"));
-          } finally {
-            setBusy(false);
-          }
-        };
-        return /* @__PURE__ */ __dshReact.createElement(
-          "div",
-          {
-            className: "ntf-toast",
-            onMouseEnter: () => setPaused(true),
-            onMouseLeave: () => setPaused(false),
-            onFocus: () => setPaused(true),
-            onBlur: () => setPaused(false)
-          },
-          /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-toastContent" }, /* @__PURE__ */ __dshReact.createElement(
-            "button",
-            {
-              type: "button",
-              className: "ntf-toastBody",
-              disabled: busy,
-              title: translate("openSession"),
-              onClick: () => {
-                void activate();
-              }
-            },
-            /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-toastTitle" }, item.title || translate("untitled")),
-            /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-toastText" }, item.body)
-          ), item.error ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-toastError", role: "alert" }, item.error) : null),
-          /* @__PURE__ */ __dshReact.createElement(
-            "button",
-            {
-              type: "button",
-              className: "ntf-toastClose",
-              "aria-label": translate("dismiss"),
-              onClick: () => dismiss(item.id)
-            },
-            "×"
-          )
-        );
-      }
-      function NotificationToasts() {
-        const items = React2.useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-        const visible = items.length > 0;
-        React2.useEffect(() => {
-          if (!visible || typeof window === "undefined") return void 0;
-          const onKeyDown = (event) => {
-            if (event?.key !== "Escape") return;
-            const [newest] = store.getSnapshot();
-            if (newest !== void 0) store.dismiss(newest.id);
-          };
-          window.addEventListener("keydown", onKeyDown);
-          return () => window.removeEventListener("keydown", onKeyDown);
-        }, [visible]);
-        if (!visible) return null;
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-toasts", role: "region", "aria-label": translate("toastsLabel") }, items.map((item) => /* @__PURE__ */ __dshReact.createElement(ToastCard, { key: item.id, item, dismiss: store.dismiss })));
-      }
-      return NotificationToasts;
-    }
-
     // src/modules/notification/client/panel.jsx
     var KIND_COPY = { completed: "typeCompleted", failed: "typeFailed", question: "typeQuestion", permission: "typePermission" };
     var MODE_COPY = { never: "currentNever", unfocused: "currentUnfocused", always: "currentAlways" };
@@ -1772,8 +1548,6 @@ window.__ModuleLoader__.load({
             }
           };
           const recent = createRecentStore();
-          const toasts = createToastStore();
-          let cardsReady = false;
           const player = new SystemSoundPlayer(() => settingsSource.getSnapshot().volume);
           const readDetail = (id) => {
             try {
@@ -1824,10 +1598,11 @@ window.__ModuleLoader__.load({
             }
             await ctx.uiWorkspace?.openSession?.(sessionId);
           };
-          const reportCardFailure = (sessionId, message) => {
+          const dismissBlockingModal = () => {
             try {
-              const card = toasts.getSnapshot().find((item) => item.sessionId === sessionId);
-              if (card !== void 0) toasts.setError(card.id, message ?? t("navigateFailed"));
+              const open = document.querySelector('[role="dialog"][aria-modal="true"]');
+              if (open === null) return;
+              document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
             } catch {
             }
           };
@@ -1851,9 +1626,9 @@ window.__ModuleLoader__.load({
               await nextTask();
               retained = mainViewRetains(sessionId);
             }
+            if (retained !== false) dismissBlockingModal();
             if (retained === false) {
               const message = t("navigateFailed");
-              reportCardFailure(sessionId, message);
               warn2(`session ${sessionId} did not become the main view after retry`);
               return { ok: false, error: message };
             }
@@ -1863,11 +1638,6 @@ window.__ModuleLoader__.load({
             settings: () => settingsSource.getSnapshot(),
             t,
             playSound: (sound, volume) => player.play(sound, volume),
-            showCard: ({ kind, sessionId, title, body }) => {
-              if (!cardsReady) return false;
-              toasts.push({ kind, sessionId, title, body });
-              return true;
-            },
             showNotification: ({ title, body, tag, sessionId }) => showBrowserNotification({
               title,
               body,
@@ -1927,7 +1697,7 @@ window.__ModuleLoader__.load({
             hasUnfinishedWork: (id) => hasUnfinishedWork(ctx.sessions?.list?.getSnapshot?.(), id),
             emit: (event) => {
               const result = dispatcher.dispatch(event);
-              if (result.notified === true || result.card === true) {
+              if (result.notified === true) {
                 recent.add({ kind: event.kind, sessionId: event.sessionId, title: result.title, body: result.body });
               }
             }
@@ -2051,17 +1821,6 @@ window.__ModuleLoader__.load({
             return off;
           }, "toolkit-notification:pending");
           install(() => () => player.dispose(), "toolkit-notification:sounds");
-          install(() => {
-            if (typeof ctx.slots?.inject !== "function" || typeof ctx.slots?.register !== "function") return void 0;
-            const Toasts = createNotificationToasts(React2, { t, store: toasts, openSession });
-            return ctx.slots.inject("shell.overlay", () => {
-              cardsReady = true;
-              return ctx.slots.register({
-                name: "shell.overlay",
-                id: "dsh-toolkit.notification.toasts"
-              }, Toasts);
-            });
-          }, "toolkit-notification:toasts");
           install(() => {
             if (typeof ctx.slots?.inject !== "function" || typeof ctx.slots?.register !== "function") return void 0;
             return ctx.slots.inject("settings.section", () => ctx.slots.register({
