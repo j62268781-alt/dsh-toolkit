@@ -63,7 +63,9 @@ html[data-sk-palette="ocean"] .sk-setnav__item[aria-current="true"] {
   box-shadow: 0 7px 20px var(--sk-ocean-preview-shadow);
 }
 
-.sk-theme-preview-window[data-preview-palette="ocean"] .sk-theme-preview-composer i { background: #438aa4; }
+.sk-theme-preview-window[data-preview-palette="ocean"] .sk-theme-preview-send {
+  background: #438aa4;
+}
 
 /* Light is the scene default, including Light previews inside a dark page. */
 .sk-scene--ocean {

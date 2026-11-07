@@ -146,67 +146,220 @@
   height: 100%;
 }
 
-.sk-theme-preview-copy {
+/* The preview imitates the real new-session page: same artwork, copy and metrics
+   as the host hero, rebuilt with local classes because the host's own classes are
+   CSS-module hashes the plugin must not reference. */
+.sk-theme-preview-stack {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
-  text-align: center;
+  width: 100%;
+  max-width: 744px;
 }
 
-.sk-theme-preview-copy b {
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+.sk-theme-preview-headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 10px;
+  padding: 0 24px;
   color: #10131a;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 32px;
 }
 
-.sk-theme-preview-copy span {
-  font-size: 14px;
-  color: #4d5563;
+.sk-theme-preview-fish {
+  display: block;
+  flex: none;
+  width: 34px;
+  height: 25px;
+  color: #10131a;
+  transform-origin: 50% 60%;
 }
 
-.sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-copy b { color: #f2f4f8; }
-.sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-copy span { color: #a8b0be; }
+.sk-theme-preview-fish svg { display: block; overflow: visible; }
+
+/* Same greeting the real hero gives: the mark swims when you hover it. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .sk-theme-preview-fish:hover { animation: 1.6s ease-in-out infinite sk-theme-fish-swim; }
+}
+
+@keyframes sk-theme-fish-swim {
+  0%, 100% { transform: none; }
+  35% { transform: rotate(-4deg) translate(-0.4px, -0.9px); }
+  70% { transform: rotate(1.6deg) translate(0.3px, 0.2px); }
+}
+
+.sk-theme-preview-titles {
+  display: flex;
+  align-items: center;
+  gap: 4px 7px;
+}
+
+.sk-theme-preview-badge {
+  padding: 1px 7px 0;
+  border: 0.5px solid rgb(15 17 21 / 0.14);
+  border-radius: 999px;
+  corner-shape: round;
+  background: #e4edfd;
+  color: #0e3074;
+  font-family: var(--ds-font-family-code);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.sk-theme-preview-chips {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px 0 20px;
+}
+
+.sk-theme-preview-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: var(--dsw-radius-sm);
+  color: #10131a;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.sk-theme-preview-chip--muted {
+  padding: 0 4px 0 8px;
+  color: #61666b;
+  font-weight: 500;
+}
+
+.sk-theme-preview-chipIcon,
+.sk-theme-preview-chevron { display: block; flex: none; }
+
+.sk-theme-preview-chipLabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 
 .sk-theme-preview-composer {
   position: relative;
   z-index: 1;
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: calc(100% - 32px);
+  margin: 0 16px;
+  padding: 8px 0 0;
+  border: 0;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.1),
+    0 4px 16px rgb(0 0 0 / 0.03),
+    0 0 24px rgb(0 0 0 / 0.03);
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.sk-theme-preview-input {
+  display: flex;
+  min-height: 52px;
+  padding: 4px 8px 0 14px;
+  color: #adb2b8;
+}
+
+.sk-theme-preview-placeholder {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 24px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.sk-theme-preview-row {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  width: min(440px, 100%);
-  height: 50px;
-  padding: 0 10px 0 16px;
-  border-radius: 16px;
-  border: 1px solid rgb(15 17 21 / 0.1);
-  background: rgb(255 255 255 / 0.86);
-  box-shadow: 0 10px 26px rgb(15 17 21 / 0.1);
+  gap: 12px;
+  min-width: 0;
+  padding: 2px 8px 6px;
 }
+
+.sk-theme-preview-tools,
+.sk-theme-preview-trailing {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sk-theme-preview-trailing { margin-left: auto; }
+
+.sk-theme-preview-add {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  corner-shape: round;
+  background: #f5f6f7;
+  color: #61666b;
+}
+
+.sk-theme-preview-effort {
+  color: #adb2b8;
+  font-weight: 400;
+}
+
+.sk-theme-preview-send {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  corner-shape: round;
+  background: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4176e6);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-headline,
+.sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-fish,
+.sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-chip { color: #f2f4f8; }
+
+.sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-badge {
+  border-color: rgb(255 255 255 / 0.16);
+  background: rgb(65 118 230 / 0.22);
+  color: #b9cdf8;
+}
+
+.sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-chip--muted { color: #a8b0be; }
+
+.sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-add {
+  background: rgb(255 255 255 / 0.08);
+  color: #a8b0be;
+}
+
+.sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-input,
+.sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-effort { color: #6f7787; }
 
 .sk-theme-preview-window[data-preview-mode="dark"] .sk-theme-preview-composer {
-  border-color: rgb(255 255 255 / 0.12);
-  background: rgb(24 27 33 / 0.9);
-  box-shadow: 0 10px 26px rgb(0 0 0 / 0.42);
-}
-
-.sk-theme-preview-composer span {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: 13px;
-  color: #7c8494;
-}
-
-.sk-theme-preview-composer i {
-  flex: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);
+  background: #1b1f26;
+  box-shadow:
+    0 0 0 0.5px rgb(255 255 255 / 0.12),
+    0 4px 16px rgb(0 0 0 / 0.28),
+    0 0 24px rgb(0 0 0 / 0.28);
 }
 
 /* Grid ------------------------------------------------------------------- */
@@ -334,7 +487,8 @@
   .sk-theme-stage { padding: 10px; }
   .sk-theme-preview-rail { width: 76px; padding: 16px 8px; }
   .sk-theme-preview-hero { padding: 24px 14px; }
-  .sk-theme-preview-copy b { font-size: 24px; }
+  .sk-theme-preview-headline { font-size: 21px; line-height: 27px; }
+  .sk-theme-preview-fish { width: 28px; height: 21px; }
 }
 
 /* Status ----------------------------------------------------------------- */

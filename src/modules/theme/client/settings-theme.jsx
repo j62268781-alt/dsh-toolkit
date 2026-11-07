@@ -2,6 +2,7 @@ import './react.js'
 import React from 'react'
 import { acceptConfigWrite } from '../../../client/config-write.js'
 import { DSH_DESKTOP_LOGO } from '../../../client/ui/dsh-logo.js'
+import { HERO_FISH_PATH, HERO_ICONS, SEND_PATH } from './hero-art.js'
 import { createPaletteScene, readPalette } from './palette.js'
 
 const MODE_CARDS = [
@@ -39,6 +40,32 @@ function SceneBox({ palette, compact = false }) {
   return <span ref={host} className="sk-theme-scene-mount" aria-hidden="true" />
 }
 
+/** Host icon geometry, drawn as a plain inline SVG. */
+function HeroIcon({ name, size, className }) {
+  const icon = HERO_ICONS[name]
+  return (
+    <svg
+      className={className}
+      viewBox={icon.viewBox}
+      width={size}
+      height={size}
+      fill="none"
+      strokeWidth={icon.strokeWidth}
+      aria-hidden="true"
+    >
+      {icon.paths.map((path, index) => <path key={index} {...path} />)}
+    </svg>
+  )
+}
+
+/**
+ * A look-alike of the real new-session page, so the preview shows what the app
+ * actually looks like today. The real hero is a host React component behind
+ * CSS-module hashes the plugin must not reference, so the markup mirrors it with
+ * local classes: the artwork (fish mark, chip icons, send arrow) is the host's own
+ * path data from hero-art.js, the copy is the live locale text, and the geometry
+ * follows the measured hero metrics.
+ */
 function PreviewWindow({ palette, colorScheme }) {
   return (
     <div className="sk-theme-preview-window" data-preview-mode={colorScheme} data-preview-palette={palette}>
@@ -51,13 +78,58 @@ function PreviewWindow({ palette, colorScheme }) {
       <div className="sk-theme-preview-main">
         <div className="sk-theme-preview-hero" data-sk-preview-hero="">
           <SceneBox palette={palette} />
-          <div className="sk-theme-preview-copy" aria-hidden="true">
-            <b>DeepSeek</b>
-            <span>今天想一起探索什么？</span>
-          </div>
-          <div className="sk-theme-preview-composer" aria-hidden="true">
-            <span>给 DeepSeek 发送消息</span>
-            <i />
+          <div className="sk-theme-preview-stack" aria-hidden="true">
+            <div className="sk-theme-preview-headline">
+              <span className="sk-theme-preview-fish">
+                <svg viewBox="0 0 23.16 17.04" width="34" height="25" fill="none">
+                  <path d={HERO_FISH_PATH} fill="currentColor" />
+                </svg>
+              </span>
+              <span className="sk-theme-preview-titles">
+                <span className="sk-theme-preview-title">探索未至之境</span>
+                <span className="sk-theme-preview-badge">预览版</span>
+              </span>
+            </div>
+            <div className="sk-theme-preview-chips">
+              <span className="sk-theme-preview-chip">
+                <HeroIcon name="folder" size={16} className="sk-theme-preview-chipIcon" />
+                <span className="sk-theme-preview-chipLabel">dsh-toolkit</span>
+                <HeroIcon name="chevron" size={12} className="sk-theme-preview-chevron" />
+              </span>
+              <span className="sk-theme-preview-chip">
+                <HeroIcon name="preset" size={16} className="sk-theme-preview-chipIcon" />
+                <span className="sk-theme-preview-chipLabel">标准模式</span>
+                <HeroIcon name="chevron" size={14} className="sk-theme-preview-chevron" />
+              </span>
+            </div>
+            <div className="sk-theme-preview-composer">
+              <div className="sk-theme-preview-input">
+                <span className="sk-theme-preview-placeholder">描述你想要构建的内容, / 调用指令, @ 文件或对话</span>
+              </div>
+              <div className="sk-theme-preview-row">
+                <span className="sk-theme-preview-tools">
+                  <span className="sk-theme-preview-add">
+                    <HeroIcon name="plus" size={14} className="sk-theme-preview-addIcon" />
+                  </span>
+                  <span className="sk-theme-preview-chip sk-theme-preview-chip--muted">
+                    <HeroIcon name="shield" size={16} className="sk-theme-preview-chipIcon" />
+                    <span className="sk-theme-preview-chipLabel">工作区内修改</span>
+                    <HeroIcon name="chevron" size={14} className="sk-theme-preview-chevron" />
+                  </span>
+                </span>
+                <span className="sk-theme-preview-trailing">
+                  <span className="sk-theme-preview-chip sk-theme-preview-chip--muted">
+                    <span className="sk-theme-preview-chipLabel">DeepSeek-Flash · x0.1</span>
+                    <span className="sk-theme-preview-effort">Max</span>
+                  </span>
+                  <span className="sk-theme-preview-send">
+                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                      <path d={SEND_PATH} fill="currentColor" />
+                    </svg>
+                  </span>
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

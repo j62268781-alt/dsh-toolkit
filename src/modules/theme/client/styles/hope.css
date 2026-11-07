@@ -62,7 +62,7 @@ html[data-sk-palette="hope"] .sk-setnav__item[aria-current="true"] {
   box-shadow: none;
 }
 
-.sk-theme-preview-window[data-preview-palette="hope"] .sk-theme-preview-composer i {
+.sk-theme-preview-window[data-preview-palette="hope"] .sk-theme-preview-send {
   border-radius: 5px;
   background: #c46d50;
 }
