@@ -119,8 +119,8 @@ function PreviewWindow({ palette, colorScheme }) {
                 </span>
                 <span className="sk-theme-preview-trailing">
                   <span className="sk-theme-preview-chip sk-theme-preview-chip--muted">
-                    <span className="sk-theme-preview-chipLabel">DeepSeek-Flash · x0.1</span>
-                    <span className="sk-theme-preview-effort">Max</span>
+                    <span className="sk-theme-preview-chipLabel">DeepSeek-V4.1-Flash</span>
+                    <span className="sk-theme-preview-effort">High</span>
                   </span>
                   <span className="sk-theme-preview-send">
                     <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">

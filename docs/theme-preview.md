@@ -48,7 +48,8 @@ hash 变体（`WOwLGG_*`、`GRgSLq_*`）。插件既拿不到这些组件实例�
 - 标题 `探索未至之境`，徽标 `预览版`
 - 占位 `描述你想要构建的内容, / 调用指令, @ 文件或对话`（单行，中间是 `, / ` 而不是换行）
 - 工作区 chip `dsh-toolkit`，预设 chip `标准模式`，权限 chip `工作区内修改`
-- 模型 chip `DeepSeek-Flash · x0.1` + 灰字 `Max`
+- 模型 chip `DeepSeek-V4.1-Flash` + 灰字 `High`（真机当前是 `DeepSeek-Flash · x0.1` + `Max`，
+  这里按产品口径展示新模型名；其余文案仍以真机为准）
 
 ## 保留的旧行为
 
