@@ -456,6 +456,9 @@ export default function createNotification(require) {
         }
       }, 'toolkit-notification:dictionary')
 
+      // Global, not panel-local: the toast stack renders through `shell.overlay`, which the
+      // host portals outside the settings panel subtree, and `.ntf-toast*` lives in this very
+      // stylesheet — scoping it to the panel would leave the toasts unstyled.
       install(() => {
         if (typeof document === 'undefined') return () => {}
         return installStylesheet(`${settingsStyles('ntf')}\n${css}`, 'toolkit-notification')

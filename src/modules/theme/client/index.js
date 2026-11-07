@@ -54,6 +54,8 @@ export function apply(ctx) {
   ctx.effect(registerScenes, "toolkit-theme:scene-builders");
   ctx.effect(() => installSceneClock(updateHopeSceneTime), "toolkit-theme:scene-clock");
   ctx.effect(installDesktopMarker, "toolkit-theme:desktop-marker");
+  // Global by definition: the palette rewrites the host shell itself (sidebar, right bar,
+  // settings chrome) through `[class*="_xxx"]` host-hash selectors, so no panel subtree owns it.
   ctx.effect(() => installStylesheet(css, "toolkit-theme"), "toolkit-theme:stylesheet");
   ctx.effect(() => installPalette(ctx), "toolkit-theme:palette");
   ctx.effect(() => installCodexShell(ctx, [

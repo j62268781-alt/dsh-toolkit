@@ -43,6 +43,9 @@ export default function createPet(require) {
       })()
       const Panel = createPetPanel(React, { t, settings, connection, actions, primitives })
       ctx.effect(() => ctx.locale?.register?.(PET_NS, PET_COPY), 'toolkit-pet:dictionary')
+      // Panel-local CSS injected globally: every selector is a `.pet-*` class under the settings
+      // panel, so an inline <style> would work too — kept as-is so the plugin keeps using the
+      // host's `data-plugin` reclaim contract (tests assert `style[data-plugin=toolkit-pet]`).
       ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet(css, 'toolkit-pet'), 'toolkit-pet:stylesheet')
       ctx.effect(() => {
         const off = form ? (form.subscribe?.(refresh) ?? form.store?.subscribe?.(refresh)) : connection.subscribe(refresh)

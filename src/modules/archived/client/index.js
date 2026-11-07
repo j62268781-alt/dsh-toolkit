@@ -12,6 +12,9 @@ export const inject = ["slots", "locale", "sessions", "workspaces"];
 export function apply(ctx) {
   const removal = createRemoval(ctx);
   const archiveConfirm = createArchiveConfirm();
+  // Global, not panel-local: the delete items and the confirm dialog render through
+  // `sidebar.workspaces.session.menu.item` and `shell.overlay`, which the host portals
+  // outside the settings panel subtree — a <style> inside the panel would not reach them.
   ctx.effect(() => installStylesheet(`${settingsStyles("sk")}\n${css}`, "toolkit-archived"), "toolkit-archived:stylesheet");
   ctx.effect(() => ctx.locale.register(ARCH_NS, ARCH_COPY), "toolkit-archived:dictionary");
   ctx.effect(() => installRemoval(ctx, removal), "toolkit-archived:removal");

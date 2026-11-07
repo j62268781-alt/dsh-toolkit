@@ -205,7 +205,7 @@ async function mountPanel(t, form) {
   return { dom, root, panel, text: () => dom.window.document.body.textContent }
 }
 
-test('settings panel previews above choices, applies animation immediately, and saves grouped settings independently', async (t) => {
+test('settings panel previews above choices and writes every control through the config form', async (t) => {
   const { form, writes, value } = makeForm({ animation: 'draw', durationMs: 2400, theme: 'auto', showWordmark: true, allowSkip: true })
   const app = await mountPanel(t, form)
   const { document } = app.dom.window
@@ -232,27 +232,33 @@ test('settings panel previews above choices, applies animation immediately, and 
     assert.ok(button)
     await act(async () => button.click())
   }
-  // An unsaved display draft must survive the volatile animation write.
+  // Every control writes straight through the form: no draft, no Save button.
+  assert.equal(document.querySelector('.boot-save'), null)
   await act(async () => document.querySelector('[role="switch"][aria-label="显示文字标识"]').click())
-  assert.deepEqual(writes, [])
-  await choose('跃浪成标')
-  assert.deepEqual(writes, [['animation', 'water']])
-  assert.equal(value().animation, 'water')
-  assert.equal(value().showWordmark, true)
+  assert.deepEqual(writes, [['showWordmark', false]])
+  assert.equal(value().showWordmark, false)
   assert.equal(document.querySelector('[aria-label="显示文字标识"]').getAttribute('aria-checked'), 'false')
+  assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-wordmark="false"/)
+  assert.match(app.text(), /显示文字标识已更新/)
+  const themeSelect = document.querySelector('.boot-row select')
+  await act(async () => {
+    themeSelect.value = 'dark'
+    themeSelect.dispatchEvent(new app.dom.window.Event('change', { bubbles: true }))
+  })
+  assert.deepEqual(writes, [['showWordmark', false], ['theme', 'dark']])
+  assert.equal(value().theme, 'dark')
+  await choose('跃浪成标')
+  assert.deepEqual(writes, [['showWordmark', false], ['theme', 'dark'], ['animation', 'water']])
+  assert.equal(value().animation, 'water')
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="water"/)
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-duration="2900"/)
-  assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-wordmark="false"/)
   assert.match(app.text(), /已使用跃浪成标/)
-  await choose('保存设置')
-  assert.deepEqual(writes, [['animation', 'water'], ['showWordmark', false]])
-  assert.equal(value().showWordmark, false)
-  assert.match(app.text(), /设置已保存/)
   const previousFrame = document.querySelector('.boot-preview')
   await choose('重新播放')
   assert.notEqual(document.querySelector('.boot-preview'), previousFrame)
+  // Re-picking the active animation only replays the preview, never rewrites.
   await choose('跃浪成标')
-  assert.deepEqual(writes, [['animation', 'water'], ['showWordmark', false]])
+  assert.equal(writes.length, 3)
 })
 
 test('mode cards reuse the desktop whale and toggles match General Settings geometry and tokens', async (t) => {
@@ -288,10 +294,12 @@ test('read-only config disables editors but keeps the local replay available', a
   const app = await mountPanel(t, form)
   const { document } = app.dom.window
   assert.match(app.text(), /当前配置不可写/)
-  for (const control of document.querySelectorAll('.boot-mode,.boot-save,[role="switch"],select,input')) assert.equal(control.disabled, true, control.outerHTML)
+  for (const control of document.querySelectorAll('.boot-mode,[role="switch"],select,input')) assert.equal(control.disabled, true, control.outerHTML)
   const replayButton = document.querySelector('.boot-button')
   assert.equal(replayButton.disabled, false)
   await act(async () => replayButton.click())
+  assert.deepEqual(writes, [])
+  await act(async () => document.querySelector('[role="switch"][aria-label="允许跳过"]').click())
   assert.deepEqual(writes, [])
 })
 
