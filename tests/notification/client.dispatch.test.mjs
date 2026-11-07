@@ -8,6 +8,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { NotificationDispatcher } from '../../src/modules/notification/client/dispatch.js'
+import { TAG_LIMIT, notificationTag } from '../../src/modules/notification/client/browser-notify.js'
 import { resolveSettings } from '../../src/modules/notification/client/model.js'
 
 /** 默认偏好上打补丁。 */
@@ -63,7 +64,32 @@ test('默认偏好：窗口失焦时播放系统提示音并弹通知，标题�
   assert.equal(calls.notifications[0].title, '修复登录')
   assert.equal(calls.notifications[0].body, '最后一条回复')
   assert.equal(calls.notifications[0].sessionId, 's1')
-  assert.match(calls.notifications[0].tag, /s1:completed$/)
+  assert.equal(calls.notifications[0].tag, notificationTag('s1', 'completed'))
+  assert.ok(calls.notifications[0].tag.length <= TAG_LIMIT, 'tag 必须在原生层长度上限内，否则整条通知会被丢弃')
+})
+
+test('tag 折叠语义：同会话同类型稳定，不同会话或类型互不覆盖', () => {
+  const { deps, calls } = createDeps()
+  const dispatcher = new NotificationDispatcher(deps)
+  dispatcher.dispatch(completed)
+  dispatcher.dispatch({ ...completed })
+  dispatcher.dispatch({ ...completed, kind: 'failed' })
+  dispatcher.dispatch({ ...completed, sessionId: 's2' })
+  const [first, second, third, fourth] = calls.notifications.map((payload) => payload.tag)
+  assert.equal(first, second, '同一会话同一类型必须折叠到同一张卡片')
+  assert.notEqual(first, third, '不同事件类型不能互相覆盖')
+  assert.notEqual(first, fourth, '不同会话不能互相覆盖')
+})
+
+test('真实会话 id（36 字符 UUID）也必须落在原生 tag 上限内', () => {
+  const { deps, calls } = createDeps()
+  const sessionId = 'f44a4570-aaaa-bbbb-cccc-dddddddddddd'
+  new NotificationDispatcher(deps).dispatch({ ...completed, sessionId })
+  const { tag } = calls.notifications[0]
+  assert.ok(tag.length <= TAG_LIMIT, `tag 长度 ${tag.length} 超过 ${TAG_LIMIT}：桌面端会静默丢弃整条通知`)
+  // 桌面壳的通知 id 是 n#<origin>#<tag>，origin 为 dsh-app://app 时前缀 16 字符。
+  assert.ok(tag.length + 16 <= 64, '加上桌面壳的 id 前缀仍不能超过 WinRT 的 64 字符上限')
+  assert.ok(tag.startsWith(`${notificationTag('f44a4570-aaaa-bbbb-cccc-dddddddddddd', 'completed').slice(0, 25)}`))
 })
 
 // 行为矩阵：窗口失焦（隐藏或没焦点）时弹系统通知；窗口在前台时只有 always 才弹。

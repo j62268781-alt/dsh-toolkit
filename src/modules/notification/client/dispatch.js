@@ -16,6 +16,7 @@
  */
 
 import { notificationBody, truncate } from './model.js'
+import { notificationTag } from './browser-notify.js'
 
 /**
  * @typedef {object} DispatchDeps
@@ -98,7 +99,8 @@ export class NotificationDispatcher {
         title,
         body,
         // 一条通知一张卡片：按会话 + 类型折叠，同一会话的类型不会互相覆盖。
-        tag: `dsh-toolkit:notification:${event.sessionId}:${event.kind}`,
+        // 必须走 notificationTag：原生长度上限会让超长 tag 的通知整条消失（见该函数注释）。
+        tag: notificationTag(event.sessionId, event.kind),
         sessionId: event.sessionId,
       }) === true
     } catch {

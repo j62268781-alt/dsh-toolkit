@@ -5,8 +5,8 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import {
-  TAG_PREFIX, activateWindow, browserPermission, pageIconUrl, requestBrowserPermission,
-  showBrowserNotification, showTestNotification,
+  TAG_LIMIT, TAG_PREFIX, activateWindow, browserPermission, notificationTag, pageIconUrl,
+  requestBrowserPermission, showBrowserNotification, showTestNotification,
 } from '../../src/modules/notification/client/browser-notify.js'
 import { RECENT_LIMIT, createRecentStore } from '../../src/modules/notification/client/recent.js'
 import { SOUND_IDS, SOUND_RECIPES, SoundPlayer, audioSupported, clampVolume, recipeDuration } from '../../src/modules/notification/client/sounds.js'
@@ -161,6 +161,89 @@ test('测试通知使用独立的 tag，便于和真实会话通知区分', () =
   assert.equal(stub.instances[0].title, '通知')
   assert.equal(stub.instances[0].options.body, '验证通知通道')
   assert.equal(stub.instances[0].options.tag, `${TAG_PREFIX}:test`)
+})
+
+// 桌面壳把通知 id `n#dsh-app://app#<tag>` 原样当 WinRT Toast 的 Tag，WinRT 上限 64 字符：
+// 超了 put_Tag() 失败，整条通知被丢弃且渲染进程收不到任何错误。所以 tag 必须自己压住长度。
+test('超长 tag 被压进原生上限：不再是整条通知静默消失', () => {
+  dom()
+  const stub = createNotificationStub({ permission: 'granted' })
+  restores.push(() => stub.restore())
+  const longTag = `${TAG_PREFIX}:f44a4570-aaaa-bbbb-cccc-dddddddddddd:permission`
+  assert.ok(longTag.length > TAG_LIMIT, '前提：这个 tag 确实超限')
+  assert.equal(showBrowserNotification({ title: 't', body: 'b', tag: longTag }), true)
+  const { tag } = stub.instances[0].options
+  assert.ok(tag.length <= TAG_LIMIT, `压到 ${tag.length} 字符仍超 ${TAG_LIMIT}`)
+  assert.ok(tag.startsWith(`${TAG_PREFIX}:`), '压短后仍要保留前缀，便于识别是本模块发的')
+})
+
+test('notificationTag：稳定、定长、会话/类型不同则不同、且给桌面壳前缀留足余量', () => {
+  const a = notificationTag('f44a4570-aaaa-bbbb-cccc-dddddddddddd', 'completed')
+  assert.equal(a, notificationTag('f44a4570-aaaa-bbbb-cccc-dddddddddddd', 'completed'), '同输入必须稳定，否则折叠失效')
+  assert.notEqual(a, notificationTag('f44a4570-aaaa-bbbb-cccc-dddddddddddd', 'failed'))
+  assert.notEqual(a, notificationTag('other-session', 'completed'))
+  assert.equal(notificationTag('s1'), notificationTag('s1', ''), '缺省类型归一为空串，仍要稳定')
+  assert.ok(a.length <= TAG_LIMIT)
+  assert.ok(a.length + 'n#dsh-app://app#'.length <= 64, '桌面壳 id 前缀 + tag 不能超过 WinRT 的 64')
+  assert.match(a, new RegExp(`^${TAG_PREFIX}:[0-9a-f]{16}$`))
+})
+
+test('短 tag 原样保留（折叠语义不被改写）', () => {
+  dom()
+  const stub = createNotificationStub({ permission: 'granted' })
+  restores.push(() => stub.restore())
+  showBrowserNotification({ title: 't', body: 'b', tag: 'short-tag' })
+  assert.equal(stub.instances[0].options.tag, 'short-tag')
+})
+
+// 构造成功 ≠ 上屏成功：平台层（例如 WinRT 拒绝 Tag）只会发 `error` 事件，构造器不抛错。
+// 不接这条线的话，「通知没弹」在外部完全查不出来——这正是 tag 超长隐藏了这么久的原因。
+test('平台拒绝上屏时打 error 级诊断（warn 在宿主里等于静默）', () => {
+  dom()
+  const stub = createNotificationStub({ permission: 'granted' })
+  restores.push(() => stub.restore())
+  const errors = []
+  const original = console.error
+  console.error = (...args) => errors.push(args.join(' '))
+  restores.push(() => {
+    console.error = original
+  })
+
+  assert.equal(showBrowserNotification({ title: 't', body: 'b', tag: 'short-tag' }), true)
+  assert.deepEqual(errors, [], '刚发出去还不该报错')
+  stub.instances[0].emit('error')
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /\[dsh-toolkit:notification\]/)
+  assert.match(errors[0], /short-tag/)
+})
+
+test('构造器抛错也走 error 级诊断，并返回 false', () => {
+  dom()
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'Notification')
+  Object.defineProperty(globalThis, 'Notification', {
+    configurable: true,
+    writable: true,
+    value: class {
+      static permission = 'granted'
+      constructor() {
+        throw new Error('constructor boom')
+      }
+    },
+  })
+  restores.push(() => {
+    if (previous) Object.defineProperty(globalThis, 'Notification', previous)
+    else delete globalThis.Notification
+  })
+  const errors = []
+  const original = console.error
+  console.error = (...args) => errors.push(args.join(' '))
+  restores.push(() => {
+    console.error = original
+  })
+
+  assert.equal(showBrowserNotification({ title: 't', body: 'b' }), false)
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /constructor boom/)
 })
 
 test('activateWindow 在没有 window 时也不抛错', () => {

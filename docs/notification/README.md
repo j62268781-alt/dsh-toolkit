@@ -115,9 +115,25 @@ var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层�
    的官方能力，自己再画一套只会和系统横幅重复一遍，所以应用内卡片通道已经移除。窗口在前台时不发
    通知（前台横幅多半不弹，弹了点击也回不到会话），这是刻意保持安静的取舍，不是缺陷。
 4. `soundEnabled` 且该类型音效不为 `none` → 播放提示音（只在真的发通知时响）；
-5. 系统通知：`tag = dsh-toolkit:notification:<sessionId>:<kind>`，`renotify: true`；
+5. 系统通知：`tag = notificationTag(sessionId, kind)`（`dsh-toolkit:notification:<16 位十六进制摘要>`），
+   `renotify: true`；
    桌面外壳下额外 `silent: true`（避免系统音与本模块提示音叠加）；
    图标取页面 favicon（`dsh-app:`/SVG data URL 不可用时省略）。
+
+> **tag 为什么不能直接拼 `<sessionId>:<kind>`**（已踩过的真 bug）：Chromium 给原生层的通知 id 是
+> `n#<origin>#<tag>`，而 **Electron 的 Windows 通道把这个 id 原样写进 WinRT `ToastNotification.Tag`，
+> 既不哈希也不截断**（`windows_toast_notification.cc` 的 `GetTag()`）；WinRT 的 Tag 上限是 **64 个
+> UTF-16 字符**，超了 `put_Tag()` 直接失败 ⇒ **整条 toast 被丢弃**，失败只写进
+> `--enable-logging`/`debug_notifications` 的 INFO 日志，渲染进程完全看不到（`new Notification(...)`
+> 依旧「成功」返回）。桌面壳 origin `dsh-app://app` 的前缀占 16 字符，所以 tag 只剩 48 可用。
+> 旧实现拼出来是 71~72 字符（会话 id 是 36 字符 UUID）⇒ 任务完成/失败的通知一条都弹不出来，
+> 而「发送测试通知」（tag 29 字符）一直正常——这正是长期误判为「权限/焦点问题」的原因。
+> 现在 `TAG_LIMIT = 44`，`showBrowserNotification` 对任何超长 tag 兜底压成前缀 + 摘要。
+
+**诊断通道**：`new Notification(...)` 构造成功不代表真的上屏——平台拒绝时只发 `error` 事件
+（Chromium 的 `Notification::NotificationFailed` 会转发到渲染进程）。所以通知对象上的 `error`
+现在会被监听并打 **`console.error`**（不是 warn：宿主只转发 error 级 console，warn 在真机上等于
+静默）。构造器抛错、平台拒绝上屏都走这条线，日志里带 tag，便于一眼看出是哪条通知被丢掉。
 
 点击回调（系统通知点击）：`window.focus()` → （归档先 `unarchiveSession`）→
 `ctx.uiWorkspace.openSession(sessionId)` → 等一个宏任务 → 用
@@ -190,7 +206,7 @@ pnpm verify
    `- id: shell-kit → config.notification.soundEnabled: false`；再点回去恢复 `true`（写回链路真实可用）；
 3. 把「通知范围」切到「全部会话」后，一个真实子会话跑完触发了系统通知：
    **标题 = 会话 `displayTitle`**，**正文 = 该轮最后一个 assistant 回复**，`tag` 为
-   `dsh-toolkit:notification:<sessionId>:completed`；
+   `dsh-toolkit:notification:<摘要>`（见上文 tag 长度限制）；
 4. 点击系统通知，主视图跳到该会话并显示它的回复；
 5. 无头 Chrome 默认拒绝通知权限时，「系统权限」行按设计显示「系统通知已关闭；请到系统设置里允许本应用发送通知。」，按钮可重新检查。
 

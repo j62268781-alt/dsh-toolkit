@@ -9,9 +9,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import React, { act } from 'react'
+import { notificationTag } from '../../src/modules/notification/client/browser-notify.js'
 import {
   chatSnapshot, createFakeContext, createNotificationStub, createSoundFetchStub, loadNotificationModule, makeDom, sleep,
 } from './helpers.mjs'
+
+/** 桌面壳通知 id 的固定前缀长度：`n#dsh-app://app#`（WinRT Tag 是整串 id，上限 64）。 */
+const DESKTOP_ID_PREFIX = 'n#dsh-app://app#'.length
 
 /** 组装一次完整接线：jsdom + 通知桩 + 假 ctx + 真实 apply。 */
 async function boot(options = {}) {
@@ -64,7 +68,11 @@ test('会话跑完：通知标题是会话标题，正文是最后一个 assista
   const [notification] = app.stub.instances
   assert.equal(notification.title, '修复登录问题')
   assert.equal(notification.options.body, '已修复登录跳转，并补了回归测试。')
-  assert.match(notification.options.tag, /s1:completed$/)
+  assert.equal(notification.options.tag, notificationTag('s1', 'completed'))
+  assert.ok(
+    notification.options.tag.length + DESKTOP_ID_PREFIX <= 64,
+    '桌面壳把 tag 拼进 n#<origin>#<tag> 后必须仍在 WinRT 的 64 字符上限内',
+  )
 })
 
 test('点击通知：聚焦窗口并跳转到对应会话', async (t) => {

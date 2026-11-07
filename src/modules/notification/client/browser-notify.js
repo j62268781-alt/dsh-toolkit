@@ -20,6 +20,68 @@ export const PERMISSIONS = ['granted', 'denied', 'default', 'unsupported']
 export const TAG_PREFIX = 'dsh-toolkit:notification'
 
 /**
+ * tag 的长度上限（不是随便定的）。
+ *
+ * Chromium 给原生层的是通知 id `n#<origin>#<tag>`（`NotificationIdGenerator::
+ * GenerateForNonPersistentNotification`），**Electron 的 Windows 通道把这个 id 原样写进
+ * WinRT `ToastNotification.Tag`，不哈希也不截断**（`windows_toast_notification.cc` 的
+ * `GetTag()`）。而 WinRT 的 Tag 硬上限是 64 个 UTF-16 字符，超了 `put_Tag()` 直接失败，
+ * 整条 toast 被丢弃 —— 失败只记在 `debug_notifications` 开关打开的 INFO 日志里，渲染进程
+ * 完全看不到。
+ *
+ * 桌面壳的 origin 是 `dsh-app://app`，前缀 `n#dsh-app://app#` 占 16 字符，所以 tag 只能
+ * 用 64-16=48；这里再留 4 字符余量取 44。踩过的坑：早期 tag 形如
+ * `dsh-toolkit:notification:<36 字符会话 id>:<类型>`（71~72 字符 ⇒ id 87~88），
+ * 任务完成/失败的通知一条都弹不出来，而测试通知（tag 29 字符）正常——正是这个上限。
+ */
+export const TAG_LIMIT = 44
+
+/**
+ * 稳定短摘要：FNV-1a 32 位跑两轮，拼成 16 位十六进制。
+ *
+ * 只用来把长键压进 tag 预算里，不做安全用途。同一个输入永远同一个输出，
+ * 所以「同一会话同一类型折叠成一张卡」的语义不变（`renotify` 依赖 tag 相等）。
+ * @param {string} text 原始文本。
+ * @returns {string} 16 位十六进制摘要。
+ */
+function digest(text) {
+  let head = 0x811c9dc5
+  let tail = 0x9e3779b9
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index)
+    head = Math.imul(head ^ code, 0x01000193) >>> 0
+    tail = Math.imul(tail ^ (code + index), 0x85ebca6b) >>> 0
+  }
+  return head.toString(16).padStart(8, '0') + tail.toString(16).padStart(8, '0')
+}
+
+/**
+ * 由会话与事件类型推出通知折叠键。
+ *
+ * 不用 `${sessionId}:${kind}` 直接拼：会话 id 是 36 字符 UUID，拼出来会超 `TAG_LIMIT`，
+ * 桌面端的结果就是通知被 WinRT 静默丢弃（见 TAG_LIMIT 注释）。
+ * @param {string} sessionId 会话 id。
+ * @param {string} kind 事件类型（completed/failed/question/permission）。
+ * @returns {string} 不超过 `TAG_LIMIT` 的 tag。
+ */
+export function notificationTag(sessionId, kind) {
+  const session = typeof sessionId === 'string' ? sessionId : ''
+  const category = typeof kind === 'string' ? kind : ''
+  return `${TAG_PREFIX}:${digest(`${session}:${category}`)}`
+}
+
+/**
+ * 把任意 tag 压进原生长度预算：够短就原样用，超了换成前缀 + 摘要。
+ * @param {unknown} requested 调用方给的 tag。
+ * @returns {string} 可安全交给原生层的 tag。
+ */
+function clampTag(requested) {
+  const tag = typeof requested === 'string' && requested !== '' ? requested : TAG_PREFIX
+  if (tag.length <= TAG_LIMIT) return tag
+  return `${TAG_PREFIX}:${digest(tag)}`
+}
+
+/**
  * 活着的通知对象必须一直被引用：点击回调挂在 JS 包装对象上，
  * 被 GC 掉就可能吞掉这次激活（平台侧只持有通知 id）。
  */
@@ -129,7 +191,8 @@ export function showBrowserNotification(options = {}) {
     warn(`browser notification suppressed: permission is "${browserPermission()}"`)
     return false
   }
-  const tag = typeof options.tag === 'string' && options.tag !== '' ? options.tag : TAG_PREFIX
+  // 原生层的 tag 上限是硬性的（见 TAG_LIMIT）：超了不是被截断，是整条通知消失。
+  const tag = clampTag(options.tag)
   const title = typeof options.title === 'string' ? options.title : ''
   const body = typeof options.body === 'string' ? options.body : ''
   const base = {
@@ -150,6 +213,19 @@ export function showBrowserNotification(options = {}) {
       if (typeof notification.addEventListener === 'function') notification.addEventListener('close', forget, { once: true })
     } catch {
       // 某些环境没有 addEventListener；forget 仍会在点击时执行。
+    }
+    // 原生层「构造成功但没上屏」只能从这里看：Chromium 把平台层的失败（例如 WinRT 的
+    // Toast 被拒）经 `error` 事件交回渲染进程，`new Notification(...)` 本身不抛错。
+    // 之前这条通道没接，所以 tag 超长导致的通知丢失在外面看起来完全无迹可寻。
+    try {
+      if (typeof notification.addEventListener === 'function') {
+        notification.addEventListener('error', () => {
+          forget()
+          fail(`platform refused to show the notification (tag: ${tag})`)
+        }, { once: true })
+      }
+    } catch {
+      // 同上：没有事件接口就只剩构造期异常这一条诊断线。
     }
     notification.onclick = () => {
       forget()
@@ -178,11 +254,11 @@ export function showBrowserNotification(options = {}) {
         warn('page icon was rejected; notification shown without it', error)
         return true
       } catch (second) {
-        warn('Notification constructor failed; check the browser/OS notification settings', second)
+        fail('Notification constructor failed; check the browser/OS notification settings', second)
         return false
       }
     }
-    warn('Notification constructor failed; check the browser/OS notification settings', error)
+    fail('Notification constructor failed; check the browser/OS notification settings', error)
     return false
   }
 }
@@ -201,6 +277,19 @@ function warn(message, error) {
   try {
     if (error === undefined) console.warn(`[dsh-toolkit:notification] ${message}`)
     else console.warn(`[dsh-toolkit:notification] ${message}`, error)
+  } catch {
+    // 忽略。
+  }
+}
+
+/**
+ * 真失败用 error 级：宿主只把 error 级 console 转发到可见日志，
+ * 而「通知没弹出来」恰恰是必须能查的那种问题（warn 级在这里等于静默）。
+ */
+function fail(message, error) {
+  try {
+    if (error === undefined) console.error(`[dsh-toolkit:notification] ${message}`)
+    else console.error(`[dsh-toolkit:notification] ${message}`, error)
   } catch {
     // 忽略。
   }

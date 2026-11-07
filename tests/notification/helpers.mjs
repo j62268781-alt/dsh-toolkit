@@ -70,7 +70,7 @@ export function makeDom() {
   }
 }
 
-/** 一个假 Notification：记录实例、权限可控、点击可模拟。 */
+/** 一个假 Notification：记录实例、权限可控、点击可模拟、平台失败可模拟（error 事件）。 */
 export function createNotificationStub({ permission = 'granted', requestResult } = {}) {
   const instances = []
   class FakeNotification {
@@ -78,12 +78,21 @@ export function createNotificationStub({ permission = 'granted', requestResult }
       this.title = title
       this.options = options ?? {}
       this.closed = false
+      this.listeners = new Map()
       instances.push(this)
     }
     close() {
       this.closed = true
     }
-    addEventListener() {}
+    addEventListener(type, listener) {
+      const bucket = this.listeners.get(type) ?? []
+      bucket.push(listener)
+      this.listeners.set(type, bucket)
+    }
+    /** 测试用：模拟原生层事件（close / error）。 */
+    emit(type) {
+      for (const listener of this.listeners.get(type) ?? []) listener({ type })
+    }
   }
   FakeNotification.permission = permission
   FakeNotification.requestPermission = async () => {
