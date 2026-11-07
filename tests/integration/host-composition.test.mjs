@@ -222,9 +222,11 @@ test('notification child waits for both webServer and connection, mounts authent
   assert.deepEqual(soundRoutes().map(({ kind, path }) => [kind, path]), [
     ['exact', '/api/plugins/dsh-toolkit/notification/sounds'],
     ['exact', '/api/plugins/dsh-toolkit/notification/sound'],
+    ['exact', '/api/plugins/dsh-toolkit/notification/raise'],
   ])
   for (const route of soundRoutes()) {
-    const request = { method: 'GET', url: route.path }
+    // 提窗路由只认 POST，GET 会被预取/缓存命中，等于用户没点也提窗。
+    const request = { method: route.path.endsWith('/raise') ? 'POST' : 'GET', url: route.path }
     const response = { statusCode: 0, ended: false, end() { this.ended = true } }
     await route.handler(request, response)
     assert.equal(response.statusCode, 401)

@@ -54,7 +54,7 @@ async function flush() {
   })
 }
 
-test('会话跑完：通知标题是会话标题，正文是最后一个 assistant 回复', async (t) => {
+test('会话跑完：通知标题是会话标题，正文是固定的完成短句', async (t) => {
   const app = await boot({
     sessions: { s1: { id: 's1', displayTitle: '修复登录问题', running: true } },
     chats: { s1: chatSnapshot({ reply: '已修复登录跳转，并补了回归测试。' }) },
@@ -67,7 +67,8 @@ test('会话跑完：通知标题是会话标题，正文是最后一个 assista
   assert.equal(app.stub.instances.length, 1)
   const [notification] = app.stub.instances
   assert.equal(notification.title, '修复登录问题')
-  assert.equal(notification.options.body, '已修复登录跳转，并补了回归测试。')
+  // 正文不再搬运最终回复：长回复会把通知卡片挤爆，信息也不如「发生了什么」有用。
+  assert.equal(notification.options.body, '已完成这一轮回复。')
   assert.equal(notification.options.tag, notificationTag('s1', 'completed'))
   assert.ok(
     notification.options.tag.length + DESKTOP_ID_PREFIX <= 64,
@@ -75,7 +76,7 @@ test('会话跑完：通知标题是会话标题，正文是最后一个 assista
   )
 })
 
-test('点击通知：聚焦窗口并跳转到对应会话', async (t) => {
+test('点击通知：聚焦窗口、请求提窗并跳转到对应会话', async (t) => {
   const app = await boot({
     sessions: { s1: { id: 's1', displayTitle: '会话标题', running: true } },
     chats: { s1: chatSnapshot({ reply: '完成' }) },
@@ -94,6 +95,11 @@ test('点击通知：聚焦窗口并跳转到对应会话', async (t) => {
   // 系统横幅点击本身会先 focus 一次；openSession 再聚焦一次（旧实现只聚焦一次）。
   assert.equal(focused, 2, 'clicking a notification focuses the page/window before navigating')
   assert.deepEqual(app.runtime.openedSessions, ['s1'])
+  // window.focus() 在 Windows 上会被前台锁忽略，必须再让 host 侧启动一次应用实例；
+  // 这条请求就是「真的把窗口提到前台」的那一步。
+  const raise = app.fetch.requests.filter(({ url }) => url.pathname === '/api/plugins/dsh-toolkit/notification/raise')
+  assert.equal(raise.length, 1, 'clicking a notification must ask the host to raise the desktop window')
+  assert.equal(raise[0].options.method, 'POST')
 })
 
 test('已归档的会话：点击时先取消归档再打开', async (t) => {
@@ -129,10 +135,10 @@ test('会话失败：用 failed 类型与错误信息，正文不冒充最终回
 
   assert.equal(app.stub.instances.length, 1)
   assert.equal(app.stub.instances[0].title, '失败的会话')
-  assert.equal(app.stub.instances[0].options.body, '工具调用超时')
+  assert.equal(app.stub.instances[0].options.body, '这一轮执行失败，请打开会话查看详情。')
 })
 
-test('等待回答：待交互出现时提醒一次，正文是问题文本', async (t) => {
+test('等待回答：待交互出现时提醒一次，正文是固定短句', async (t) => {
   const app = await boot({
     sessions: { s1: { id: 's1', displayTitle: '需要你回答', running: false } },
     chats: { s1: chatSnapshot({ reply: '' }) },
@@ -153,7 +159,7 @@ test('等待回答：待交互出现时提醒一次，正文是问题文本', as
 
   assert.equal(app.stub.instances.length, 1)
   assert.equal(app.stub.instances[0].title, '需要你回答')
-  assert.equal(app.stub.instances[0].options.body, '要删除这两个文件吗？')
+  assert.equal(app.stub.instances[0].options.body, '正在等待你的回答。')
 
   // 同一个互动重复快照不重复提醒。
   app.runtime.setStatuses({
@@ -187,7 +193,7 @@ test('需要授权：approval 互动归到 permission 类型', async (t) => {
 
   assert.equal(app.stub.instances.length, 1)
   assert.equal(app.stub.instances[0].title, '等待授权')
-  assert.equal(app.stub.instances[0].options.body, '需要执行命令')
+  assert.equal(app.stub.instances[0].options.body, '需要你的授权才能继续。')
 })
 
 test('默认失焦时机：窗口聚焦时安静，隐藏后提醒正在读的会话', async (t) => {

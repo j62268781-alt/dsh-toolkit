@@ -16,10 +16,10 @@ import { Config } from '../../lib/index.js'
 /** 简单的 t：只回填占位符，用来断言正文与时间文案。 */
 function translate(key, params = {}) {
   const dictionary = {
-    noReply: '（本轮没有文本回复）',
-    typeFailedTitle: '会话失败',
-    typeQuestionTitle: '等待回答',
-    typePermissionTitle: '需要授权',
+    bodyCompleted: '已完成这一轮回复。',
+    bodyFailed: '这一轮执行失败，请打开会话查看详情。',
+    bodyQuestion: '正在等待你的回答。',
+    bodyPermission: '需要你的授权才能继续。',
     untitled: '无标题会话',
     justNow: '刚刚',
     minutesAgo: '{minutes} 分钟前',
@@ -149,20 +149,18 @@ test('truncate：折叠空白、按字符截断并补省略号', () => {
   assert.equal(truncate('abcd', 10), 'abcd')
 })
 
-test('notificationBody：标题之外的正文按类型取材，完成时用最终回复', () => {
-  assert.equal(notificationBody({ kind: 'completed', detail: '最后一条回复' }, translate), '最后一条回复')
-  assert.equal(notificationBody({ kind: 'completed', detail: '' }, translate), '（本轮没有文本回复）')
-  assert.equal(notificationBody({ kind: 'failed', detail: 'ECONNRESET' }, translate), 'ECONNRESET')
-  assert.equal(notificationBody({ kind: 'failed', detail: '' }, translate), '会话失败')
-  assert.equal(notificationBody({ kind: 'question', detail: '继续吗？' }, translate), '继续吗？')
-  assert.equal(notificationBody({ kind: 'question', detail: '' }, translate), '等待回答')
-  assert.equal(notificationBody({ kind: 'permission', detail: 'bash' }, translate), 'bash')
-  assert.equal(notificationBody({ kind: 'permission', detail: '' }, translate), '需要授权')
-  // 正文统一压成一行并截断：系统通知卡片只显示两三行。
-  const long = 'x'.repeat(400)
-  const body = notificationBody({ kind: 'completed', detail: long }, translate)
-  assert.equal(body.length, 160)
-  assert.ok(body.endsWith('…'))
+test('notificationBody：每种类型一条固定短句，不再搬运事件详情', () => {
+  assert.equal(notificationBody({ kind: 'completed', detail: '最后一条回复' }, translate), '已完成这一轮回复。')
+  assert.equal(notificationBody({ kind: 'completed', detail: '' }, translate), '已完成这一轮回复。')
+  assert.equal(notificationBody({ kind: 'failed', detail: 'ECONNRESET' }, translate), '这一轮执行失败，请打开会话查看详情。')
+  assert.equal(notificationBody({ kind: 'failed', detail: '' }, translate), '这一轮执行失败，请打开会话查看详情。')
+  assert.equal(notificationBody({ kind: 'question', detail: '继续吗？' }, translate), '正在等待你的回答。')
+  assert.equal(notificationBody({ kind: 'question', detail: '' }, translate), '正在等待你的回答。')
+  assert.equal(notificationBody({ kind: 'permission', detail: 'bash' }, translate), '需要你的授权才能继续。')
+  assert.equal(notificationBody({ kind: 'permission', detail: '' }, translate), '需要你的授权才能继续。')
+  // 正文与详情长度无关：超长回复不会再挤爆通知卡片。
+  const body = notificationBody({ kind: 'completed', detail: 'x'.repeat(400) }, translate)
+  assert.equal(body, '已完成这一轮回复。')
 })
 
 test('relativeTime：刚刚 / 分钟 / 小时', () => {

@@ -9,10 +9,11 @@
 会话跑完、出错、等回答、需要授权时提醒用户，并把「点击通知 → 回到对应会话」做成闭环：
 
 - 四类提醒：`completed`（会话完成）、`failed`（会话失败）、`question`（等待回答，含计划审阅）、`permission`（需要授权）；
-- **系统通知标题 = 会话标题**（宿主的 `displayTitle`），**正文 = 本轮最后一个 assistant 回复**（失败时是错误信息，待交互时是问题文本/工具名）；
-- **点击通知 → `ctx.uiWorkspace.openSession(sessionId)`** 跳回对应会话；已归档会话先取消归档再打开；
+- **系统通知标题 = 会话标题**（宿主的 `displayTitle`），**正文 = 每种类型一条固定短句**（如「已完成这一轮回复。」）；
+- **点击通知 → `ctx.uiWorkspace.openSession(sessionId)`** 跳回对应会话，并请求 host 把桌面窗口提到前台；已归档会话先取消归档再打开；
+- **提示音在事件发生时立刻播放**，与「弹不弹通知」解耦；多个事件同一瞬间触发时只响一次；
 - 偏好保存在宿主配置里，跨窗口与重启后仍在；
-- 不进入模型请求、不写会话日志、不新增 HTTP 路由。
+- 不进入模型请求、不写会话日志；host 侧只有提示音目录/音频与提窗三条路由。
 
 ## Client 端
 
@@ -22,15 +23,24 @@
 src/modules/notification/client/
 ├── index.jsx           # 工厂入口 createNotification(require)：装配 + 注册
 ├── locale.js           # 命名空间 dsh-toolkit.notification + zh/en 文案 + createTranslator
-├── model.js            # 纯逻辑：配置常量/默认值/容错解码、正文截断、相对时间
+├── model.js            # 纯逻辑：配置常量/默认值/容错解码、通知正文、相对时间
 ├── detail.js           # 纯逻辑：会话快照 + 对话快照 → 本轮事实投影
 ├── engine.js           # 通知引擎（注入端口，DOM-free）：running 边沿 / 待交互边沿分类
-├── dispatch.js         # 分发器（注入端口）：偏好门控 + 提示音 + 系统通知
+├── dispatch.js         # 分发器（注入端口）：偏好门控 + 提示音（含 900ms 去抖）+ 系统通知
 ├── browser-notify.js   # Notification API 封装：权限、选项、点击激活、图标降级
 ├── sounds.js           # Web Audio 合成的四个提示音
 ├── recent.js           # 「最近通知」内存 store
 ├── panel.jsx           # 设置页组件
 └── styles.css          # ntf- 前缀，仅主题变量
+```
+
+Host 端（`src/modules/notification/host/`）：
+
+```
+├── index.js            # 三条路由：提示音目录 / 音频文件 / 提窗（POST raise）
+├── raise.js            # 再启动一次桌面端实例，让主实例 restore+show+focus
+├── sounds.js           # 枚举系统提示音文件（macOS 目录 / Windows 注册表）
+└── config.js           # 根配置 notification 的 volatile 叶子
 ```
 
 入口是**工厂**（需要宿主 `require`）：`createNotification(require)` 先 `globalThis.__dshReact = require('react')`，
@@ -108,14 +118,17 @@ var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层�
 
    | 窗口状态 | `unfocused`（默认） | `always` |
    | --- | --- | --- |
-   | 可见 + 有焦点 | 静默（正在进行的那个会话更不会提醒） | 系统通知 + 提示音 |
-   | 可见 + 无焦点 | 系统通知 + 提示音 | 系统通知 + 提示音 |
-   | 隐藏 / 最小化 | 系统通知 + 提示音 | 系统通知 + 提示音 |
+   | 可见 + 有焦点 | 只有提示音 | 提示音 + 系统通知 |
+   | 可见 + 无焦点 | 提示音 + 系统通知 | 提示音 + 系统通知 |
+   | 隐藏 / 最小化 | 提示音 + 系统通知 | 提示音 + 系统通知 |
 
    **只有一条提醒通道：系统通知（`new Notification`）**。宿主没有给插件任何「应用内弹窗 / 通知卡片」
    的官方能力，自己再画一套只会和系统横幅重复一遍，所以应用内卡片通道已经移除。窗口在前台时不发
-   通知（前台横幅多半不弹，弹了点击也回不到会话），这是刻意保持安静的取舍，不是缺陷。
-4. `soundEnabled` 且该类型音效不为 `none` → 播放提示音（只在真的发通知时响）；
+   通知（前台横幅多半不弹，弹了点击也回不到会话），这是刻意保持安静的取舍，不是缺陷——但**提示音
+   照响**：前台时系统常常不给横幅，声音是唯一能确认「这一轮结束了」的反馈。
+4. `soundEnabled` 且该类型音效不为 `none` → 播放提示音（**与第 3 步解耦，只要不是 `never` 时机就响**）。
+   多个事件在同一瞬间收尾（并行子会话、批量重跑）时只响一次：`SOUND_WINDOW = 900ms` 内的后续触发
+   不再出声，通知本身仍然各自入队。`never` 时机连提示音都不响。
 5. 系统通知：`tag = notificationTag(sessionId, kind)`（`dsh-toolkit:notification:<16 位十六进制摘要>`），
    `renotify: true`；
    **交互类（`question`/`permission`）额外 `requireInteraction: true`** —— Chromium 把它翻成
@@ -144,12 +157,22 @@ var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层�
 现在会被监听并打 **`console.error`**（不是 warn：宿主只转发 error 级 console，warn 在真机上等于
 静默）。构造器抛错、平台拒绝上屏都走这条线，日志里带 tag，便于一眼看出是哪条通知被丢掉。
 
-点击回调（系统通知点击）：`window.focus()` → （归档先 `unarchiveSession`）→
+点击回调（系统通知点击）：`window.focus()` → 请求 host 提窗 → （归档先 `unarchiveSession`）→
 `ctx.uiWorkspace.openSession(sessionId)` → 等一个宏任务 → 用
 `sessions.retainInfo(id).retainedBy.mainView > 0` 校验真的切过去了；没生效重试一次。
 切过去之后如果发现宿主有模态弹层开着（`[role="dialog"][aria-modal="true"]`），补一个 document 级
 `Escape` 把它关掉 —— 否则会话是在弹层背后切的，用户看到的仍是弹层。
-rc.5 桌面外壳没有窗口聚焦 IPC，`window.focus()` 只能尽力而为（见下方已知限制）。
+
+**提窗（为什么不是 `window.focus()`）**：Windows 的前台锁只允许「当前持有前台权的进程」把窗口
+抢到最前，后台进程调 `window.focus()` / `SetForegroundWindow` 会被系统直接忽略；Electron 全链路
+也没有任何「点击系统通知 → 提升窗口」的实现（`windows_toast_notification.cc` 只把点击转成渲染进程
+的 `NotificationClicked`）。桌面壳里唯一被系统允许的做法是**再启动一次本应用**：第二个实例拿不到
+单实例锁立刻退出，第一个实例收到 `second-instance` 后执行 `focusPrimaryWindow()`
+（`window.restore() + show() + focus()`，见 `app.asar/lib/main.js`）。所以 client 点击时 `POST`
+`/api/plugins/dsh-toolkit/notification/raise`，host 侧用
+`spawn(process.execPath, [], { detached: true, stdio: 'ignore', env: 去掉 ELECTRON_RUN_AS_NODE })`
+起一个新实例（`src/modules/notification/host/raise.js`）。实测从「最小化 + 被记事本遮挡」到拿到
+前台约 400ms；浏览器部署下这条路由如实返回 `unsupported`，提窗静默跳过。
 
 ### 提示音
 
@@ -178,16 +201,19 @@ rc.5 桌面外壳没有窗口聚焦 IPC，`window.focus()` 只能尽力而为（
 
 ## 生效方式
 
-1. `pnpm build`（重新生成 `lib/client.js`；`lib/` 是提交物，不要手改）；
-2. 重启 DSH 桌面应用（Host 配置 schema 与客户端 bundle 清单都在启动时登记）；
+1. `pnpm build`（重新生成 `lib/client.js` 与 `lib/index.js`；`lib/` 是提交物，不要手改）；
+2. 只改 client 时刷新页面（Ctrl+R）即可；**host 改动（如新增提窗路由）必须重启 DSH 桌面应用**
+   （profile bundles 只在进程启动时读取一次）；
 3. 打开 **设置 → 通知**：首次打开系统通知开关时向浏览器/系统申请权限；
 4. 点「发送测试通知」验证通道；权限行副标题会同步显示当前系统权限状态。
 
 ## 已知限制
 
-- **无法把窗口强制带到前台**：rc.5 的桌面外壳没有 focus/activate IPC，`globalThis.dshDesktop`
-  只有 browser/deviceInfo/keyboard/shortcuts/updates，`window.focus()` 只能尽力而为。
-- 系统通知在应用前台时的**投递与点击**由系统决定，无法从页面观测；窗口在前台时本模块刻意不发通知。
+- **提窗靠「再启动一次应用」**：Windows 前台锁不允许后台进程抢焦点，所以点击通知时 host 会
+  `spawn` 一个新实例，让主实例走 `second-instance → focusPrimaryWindow()`。代价是新进程启动约有
+  400ms 延迟，且浏览器部署下无效（路由返回 `unsupported`，只切会话不提窗）。
+- 系统通知在应用前台时的**投递与点击**由系统决定，无法从页面观测；窗口在前台时本模块刻意不发通知
+  （但提示音照响）。
 - **撤旧通知只能收横幅**：`Notification.close()` 在 Toast 仍显示时只让 Windows 收起横幅
   （`ToastNotifier.Hide`），操作中心里的历史记录要系统自己 dismissed（或用户手动清）才会移除。
 - **Windows 同时只显示一条 reminder 类 toast**：交互类通知用 `requireInteraction` 常驻，
@@ -197,6 +223,7 @@ rc.5 桌面外壳没有窗口聚焦 IPC，`window.focus()` 只能尽力而为（
   真权限在 Electron/系统侧），失败由 `error` 级诊断兜底。
 - 未打开过且从未物化的会话，失败判定依赖 `turn-error`/`lastAgentError`；对话文本读取是 best-effort。
 - 通知按会话 + 类型折叠（同一会话的完成与失败不会互相覆盖，同一类型会替换旧通知）。
+- **正文不携带会话内容**：每种类型只有一条固定短句（与参考实现一致），具体回复要打开会话看。
 
 ## 验收
 
@@ -207,9 +234,10 @@ pnpm verify
 ```
 
 覆盖点：配置解码与根 schema 交叉校验、会话事实投影、完成/失败/暂停/等待/静默分类、
-待交互 key 变化、分发门控（单通道：系统通知）、系统通知选项与点击、交互类常驻
-（`requireInteraction`）、回前台按会话撤卡片、提示音降级、
-设置页注册契约与开关写回、端到端（真实 `apply` + 假 ctx）通知标题/正文与点击跳转。
+待交互 key 变化、分发门控（单通道：系统通知；提示音与门控解耦 + 900ms 去抖）、
+系统通知选项与点击、交互类常驻（`requireInteraction`）、回前台按会话撤卡片、提示音降级、
+提窗路由（只接受 POST、摘掉 `ELECTRON_RUN_AS_NODE`、非桌面壳回 `unsupported`）、
+设置页注册契约与开关写回、端到端（真实 `apply` + 假 ctx）通知标题/正文与点击跳转 + 提窗请求。
 
 ## 真机验证记录（0.2.1-rc.5 桌面端 / Web GUI）
 
@@ -221,13 +249,14 @@ pnpm verify
 2. 点击「提示音」开关后，`$DSH_HOME/profiles/desktop/cordis.patch.yml` 出现
    `- id: shell-kit → config.notification.soundEnabled: false`；再点回去恢复 `true`（写回链路真实可用）；
 3. 把「通知范围」切到「全部会话」后，一个真实子会话跑完触发了系统通知：
-   **标题 = 会话 `displayTitle`**，**正文 = 该轮最后一个 assistant 回复**，`tag` 为
+   **标题 = 会话 `displayTitle`**，**正文 = 该类型固定短句**（「已完成这一轮回复。」），`tag` 为
    `dsh-toolkit:notification:<摘要>`（见上文 tag 长度限制）；
-4. 点击系统通知，主视图跳到该会话并显示它的回复；
+4. 点击系统通知，桌面窗口被提到前台，主视图跳到该会话；
 5. 「等待回答」「等待授权」这类交互提醒用 `requireInteraction` 常驻（Windows 上是
    `scenario="reminder"` + 自带关闭按钮），任务完成/失败的提醒照常自动消失；
 6. 回到前台（点任务栏/alt-tab）后，当前会话还挂着的横幅会被收起；
-7. 无头 Chrome 默认拒绝通知权限时，「系统权限」行按设计显示「系统通知已关闭；请到系统设置里允许本应用发送通知。」，按钮可重新检查。
+7. 应用在前台时窗口不弹横幅，但提示音照响；两个会话几乎同时收尾时只响一声；
+8. 无头 Chrome 默认拒绝通知权限时，「系统权限」行按设计显示「系统通知已关闭；请到系统设置里允许本应用发送通知。」，按钮可重新检查。
 
 > 真机验证还抓到一个 Cordis 严格上下文的坑：`ctx.workspaces` 未列入 `inject` 时读取会抛
 > `cannot get property "workspaces" without inject`，点击通知只打 warn 不跳转；已在 `inject` 中补上并回归。

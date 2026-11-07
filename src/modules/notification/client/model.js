@@ -151,26 +151,29 @@ export function truncate(text, max = 160) {
 }
 
 /**
- * 通知正文：会话完成时用本轮最终回复；其余类型用事件详情。
+ * 通知正文：每种类型一条固定的短句。
  *
- * Web Notification 没有独立的 subtitle 字段，标题固定是会话标题，所以「最后一个回复的内容」
- * 只能落在 body 上——这正是本模块与参考实现的核心差异（参考实现的标题是最后一条用户消息）。
+ * 早先的实现把「本轮最终回复」截断后放进 body。实测下来这样有两个问题：
+ * 1. 回复常常带 Markdown、表格、公式（`\[ a^2 + b^2 = c^2 \]`）与代码块，折叠成一行后
+ *    在 Windows 通知卡片里既不可读、也把真正的信息（哪一类事件）挤没了；
+ * 2. 长正文会让系统通知卡片的可用高度全被正文吃掉，标题行反而被压扁。
+ * 所以参考实现（Qoder）的做法是以「事件类型」为正文、以「会话标题」为标题，两者都极短。
+ * 详情仍然可以从历史面板与侧边栏进入会话查看，通知只负责告诉你「发生了什么」。
  * @param event - 引擎分类出来的事件。
  * @param t - 文案函数。
  */
 export function notificationBody(event, t) {
-  const detail = truncate(event?.detail, 160)
   switch (event?.kind) {
     case 'completed':
-      return detail === '' ? t('noReply') : detail
+      return t('bodyCompleted')
     case 'failed':
-      return detail === '' ? t('typeFailedTitle') : detail
+      return t('bodyFailed')
     case 'question':
-      return detail === '' ? t('typeQuestionTitle') : detail
+      return t('bodyQuestion')
     case 'permission':
-      return detail === '' ? t('typePermissionTitle') : detail
+      return t('bodyPermission')
     default:
-      return detail
+      return t('bodyCompleted')
   }
 }
 

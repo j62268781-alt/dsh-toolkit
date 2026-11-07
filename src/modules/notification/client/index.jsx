@@ -20,6 +20,7 @@ import { installStylesheet } from '../../../client/ui/stylesheet.js'
 import { settingsStyles } from '../../../client/styles/settings.js'
 import { findScopedForm } from '../../../client/config.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
+import { fetchJson } from '../../../client/http.js'
 import { NOTIFICATION_NS, NOTIFICATION_COPY, createTranslator } from './locale.js'
 import { CONFIG_NS, readSettings, safeSnapshot } from './model.js'
 import { displayTitleOf, sessionDetailOf } from './detail.js'
@@ -55,6 +56,9 @@ function warn(message, error) {
     // 忽略。
   }
 }
+
+/** host 侧的提窗路由（见 src/modules/notification/host/raise.js）。 */
+const RAISE_URL = '/api/plugins/dsh-toolkit/notification/raise'
 
 /**
  * 待交互快照 → 引擎需要的形状。
@@ -264,17 +268,35 @@ export default function createNotification(require) {
       }
 
       /**
+       * 把桌面端窗口提到前台。
+       *
+       * `window.focus()`（见 focusWindow）在 Windows 上会被前台锁忽略：只有当前持有前台权的
+       * 进程才能把窗口抢到最前。桌面壳里唯一被系统允许的做法是「再启动一次本应用」，让主实例
+       * 收到 second-instance 后自己 restore + show + focus。这条路由由 host 侧提供，
+       * 原理见 src/modules/notification/host/raise.js。
+       *
+       * 失败（浏览器部署、host 没注册路由、路由返回 unsupported）时静默忽略——提窗只是锦上添花，
+       * 会话本身已经切好了。
+       */
+      const raiseWindow = () => {
+        void fetchJson(RAISE_URL, { method: 'POST' }).catch(() => undefined)
+      }
+
+      /**
        * 打开事件对应的会话。
        *
        * 点击通知不生效的常见原因是「导航被同帧内的其他选择覆盖」或「窗口没被真正提到前台」，
-       * 所以这里：先聚焦窗口 → 导航 → 等一个宏任务 → 用主视图引用数确认；没生效就再试一次，
-       * 仍失败只留一行诊断日志。整个过程不会再向调用方抛错。
+       * 所以这里：先聚焦窗口并请求提窗 → 导航 → 等一个宏任务 → 用主视图引用数确认；没生效就
+       * 再试一次，仍失败只留一行诊断日志。整个过程不会再向调用方抛错。
        * @param {string} sessionId 目标会话。
        * @returns {Promise<{ok: boolean, error?: string}>} 是否切过去了。
        */
       const openSession = async (sessionId) => {
         if (typeof sessionId !== 'string' || sessionId === '') return { ok: false }
         focusWindow()
+        // 提窗是异步的（新进程启动约 400ms），先发出去，下面同步导航，等窗口真的到前台时
+        // 会话已经切好了。
+        raiseWindow()
         const attempt = async () => {
           try {
             await navigate(sessionId)

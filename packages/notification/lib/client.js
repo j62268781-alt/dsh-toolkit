@@ -152,6 +152,41 @@ window.__ModuleLoader__.load({
       return accepted;
     }
 
+    // src/client/http.js
+    async function fetchJson(url, { json, ...options } = {}) {
+      const headers = new Headers(options.headers);
+      if (json !== void 0) headers.set("content-type", "application/json");
+      const response = await fetch(url, {
+        credentials: "same-origin",
+        cache: "no-store",
+        ...options,
+        headers: Object.fromEntries(headers),
+        ...json === void 0 ? {} : { body: JSON.stringify(json) }
+      });
+      let parsed;
+      return {
+        ok: response.ok,
+        status: response.status,
+        headers: response.headers,
+        json() {
+          parsed ??= (async () => {
+            if (typeof response.text !== "function") return response.json();
+            const text = await response.text();
+            if (text === "") return {};
+            try {
+              return JSON.parse(text);
+            } catch {
+              const error = new Error(`HTTP ${response.status} 返回了非 JSON：${text.slice(0, 200)}`);
+              error.status = response.status;
+              error.bodyPreview = text.slice(0, 200);
+              throw error;
+            }
+          })();
+          return parsed;
+        }
+      };
+    }
+
     // src/modules/notification/client/locale.js
     var NOTIFICATION_NS = "dsh-toolkit.notification";
     var NOTIFICATION_COPY = {
@@ -196,6 +231,10 @@ window.__ModuleLoader__.load({
         typeQuestionDesc: "Agent 正在等你回答问题，或请求你审阅计划。",
         typePermissionTitle: "需要授权",
         typePermissionDesc: "Agent 请求执行需要你授权的操作。",
+        bodyCompleted: "已完成这一轮回复。",
+        bodyFailed: "这一轮执行失败，请打开会话查看详情。",
+        bodyQuestion: "正在等待你的回答。",
+        bodyPermission: "需要你的授权才能继续。",
         soundLabel: "提示音",
         soundChime: "叮咚",
         soundFault: "低鸣",
@@ -276,6 +315,10 @@ window.__ModuleLoader__.load({
         typeQuestionDesc: "The agent is waiting for your answer, or wants you to review a plan.",
         typePermissionTitle: "Approval needed",
         typePermissionDesc: "The agent requests an action that needs your approval.",
+        bodyCompleted: "Finished this turn.",
+        bodyFailed: "This turn failed; open the session for details.",
+        bodyQuestion: "Waiting for your answer.",
+        bodyPermission: "Needs your approval to continue.",
         soundLabel: "Sound",
         soundChime: "Chime",
         soundFault: "Fault",
@@ -422,24 +465,18 @@ window.__ModuleLoader__.load({
         return void 0;
       }
     }
-    function truncate(text, max = 160) {
-      const collapsed = String(text ?? "").replace(/\s+/g, " ").trim();
-      if (collapsed.length <= max) return collapsed;
-      return `${collapsed.slice(0, Math.max(1, max - 1))}…`;
-    }
     function notificationBody(event, t) {
-      const detail = truncate(event?.detail, 160);
       switch (event?.kind) {
         case "completed":
-          return detail === "" ? t("noReply") : detail;
+          return t("bodyCompleted");
         case "failed":
-          return detail === "" ? t("typeFailedTitle") : detail;
+          return t("bodyFailed");
         case "question":
-          return detail === "" ? t("typeQuestionTitle") : detail;
+          return t("bodyQuestion");
         case "permission":
-          return detail === "" ? t("typePermissionTitle") : detail;
+          return t("bodyPermission");
         default:
-          return detail;
+          return t("bodyCompleted");
       }
     }
 
@@ -911,12 +948,19 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/notification/client/dispatch.js
+    var SOUND_WINDOW = 900;
     var NotificationDispatcher = class {
       /**
        * @param {DispatchDeps} deps 注入端口。
        */
       constructor(deps) {
         this.deps = deps;
+        this.lastSoundAt = Number.NEGATIVE_INFINITY;
+      }
+      /** 时钟（测试可注入 `deps.now`）。 */
+      now() {
+        const value = this.deps.now?.();
+        return typeof value === "number" && Number.isFinite(value) ? value : Date.now();
       }
       /**
        * 分发一条事件。
@@ -930,16 +974,21 @@ window.__ModuleLoader__.load({
         if (type?.enabled !== true) return { notified: false, sounded: false, reason: "kind-disabled" };
         const mode = settings.currentMode;
         if (mode === "never") return { notified: false, sounded: false, reason: "never" };
-        const away = this.deps.isHidden() === true || this.deps.hasFocus?.() === false;
-        const system = away || mode === "always";
         let sounded = false;
         const sound = settings.sound ?? type.sound;
-        if (system && settings.soundEnabled === true && sound !== "none" && settings.volume !== 0) {
-          try {
-            sounded = this.deps.playSound(sound, settings.volume) !== false;
-          } catch {
+        if (settings.soundEnabled === true && sound !== "none" && settings.volume !== 0) {
+          const now = this.now();
+          if (now - this.lastSoundAt >= SOUND_WINDOW) {
+            try {
+              sounded = this.deps.playSound(sound, settings.volume) !== false;
+            } catch {
+              sounded = false;
+            }
+            if (sounded) this.lastSoundAt = now;
           }
         }
+        const away = this.deps.isHidden() === true || this.deps.hasFocus?.() === false;
+        const system = away || mode === "always";
         const title = typeof event.title === "string" && event.title.trim() !== "" ? event.title.trim() : this.deps.t("untitled");
         const body = notificationBody(event, this.deps.t);
         if (!system) {
@@ -968,41 +1017,6 @@ window.__ModuleLoader__.load({
         return { notified, sounded, title, body };
       }
     };
-
-    // src/client/http.js
-    async function fetchJson(url, { json, ...options } = {}) {
-      const headers = new Headers(options.headers);
-      if (json !== void 0) headers.set("content-type", "application/json");
-      const response = await fetch(url, {
-        credentials: "same-origin",
-        cache: "no-store",
-        ...options,
-        headers: Object.fromEntries(headers),
-        ...json === void 0 ? {} : { body: JSON.stringify(json) }
-      });
-      let parsed;
-      return {
-        ok: response.ok,
-        status: response.status,
-        headers: response.headers,
-        json() {
-          parsed ??= (async () => {
-            if (typeof response.text !== "function") return response.json();
-            const text = await response.text();
-            if (text === "") return {};
-            try {
-              return JSON.parse(text);
-            } catch {
-              const error = new Error(`HTTP ${response.status} 返回了非 JSON：${text.slice(0, 200)}`);
-              error.status = response.status;
-              error.bodyPreview = text.slice(0, 200);
-              throw error;
-            }
-          })();
-          return parsed;
-        }
-      };
-    }
 
     // src/modules/notification/client/sounds.js
     var SOUND_IDS = ["chime", "fault", "pop", "alert"];
@@ -1531,6 +1545,7 @@ window.__ModuleLoader__.load({
       } catch {
       }
     }
+    var RAISE_URL = "/api/plugins/dsh-toolkit/notification/raise";
     function pendingFactsOf(statuses) {
       const facts = /* @__PURE__ */ new Map();
       for (const [id, status] of statuses ?? []) {
@@ -1671,9 +1686,13 @@ window.__ModuleLoader__.load({
             } catch {
             }
           };
+          const raiseWindow = () => {
+            void fetchJson(RAISE_URL, { method: "POST" }).catch(() => void 0);
+          };
           const openSession = async (sessionId) => {
             if (typeof sessionId !== "string" || sessionId === "") return { ok: false };
             focusWindow();
+            raiseWindow();
             const attempt = async () => {
               try {
                 await navigate(sessionId);

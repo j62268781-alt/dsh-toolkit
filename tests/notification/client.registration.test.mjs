@@ -251,7 +251,7 @@ test('通知时机：三个互斥选项、保存后重新挂载保留、方向�
   document.removeEventListener('keydown', outerEscape, true)
 })
 
-test('移除最近通知列表后，系统通知仍使用会话标题和最后回复，点击打开会话', async (t) => {
+test('移除最近通知列表后，系统通知仍使用会话标题和固定正文，点击打开会话', async (t) => {
   const { page, stub, runtime } = await bootPanel(t, {
     notification: { soundEnabled: false },
     sessions: { s1: { id: 's1', displayTitle: '修复登录问题', running: true } },
@@ -261,7 +261,7 @@ test('移除最近通知列表后，系统通知仍使用会话标题和最后�
   await act(async () => { runtime.setRunning('s1', false); await sleep(450) })
   assert.equal(stub.instances.length, 1)
   assert.equal(stub.instances[0].title, '修复登录问题')
-  assert.equal(stub.instances[0].options.body, '这是修复后的最后回复')
+  assert.equal(stub.instances[0].options.body, '已完成这一轮回复。')
   assert.equal(page.document.querySelector('[class*="ntf-recent"]'), null)
   stub.instances[0].onclick()
   assert.deepEqual(runtime.openedSessions, ['s1'])
