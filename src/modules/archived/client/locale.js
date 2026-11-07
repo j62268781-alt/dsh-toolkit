@@ -21,7 +21,7 @@ export const ARCH_COPY = {
     deleteOneTitle: "永久删除“{t}”？",
     deleteOneDesc: "此操作会从本机移除该会话，之后不能从 dsh 恢复。",
     removeFailed: "删除失败：{reason}",
-    deleteRetained: "已删除 {t} 个会话的文件；重启 dsh 后它们会从列表里消失。",
+    deleteRetained: "已删除 {t} 个会话的文件；残留的归档记录会在重启 dsh 后清理。",
     chats: "个会话",
     empty: "还没有归档的会话",
     emptyHint: "在侧栏会话的「…」菜单里选「归档」，它就会出现在这里。",
