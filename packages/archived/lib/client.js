@@ -276,6 +276,7 @@ window.__ModuleLoader__.load({
         deleteOneTitle: "永久删除“{t}”？",
         deleteOneDesc: "此操作会从本机移除该会话，之后不能从 dsh 恢复。",
         removeFailed: "删除失败：{reason}",
+        deleteRetained: "已删除 {t} 个会话的文件；重启 dsh 后它们会从列表里消失。",
         chats: "个会话",
         empty: "还没有归档的会话",
         emptyHint: "在侧栏会话的「…」菜单里选「归档」，它就会出现在这里。",
@@ -309,6 +310,7 @@ window.__ModuleLoader__.load({
         deleteOneTitle: "Permanently delete “{t}”?",
         deleteOneDesc: "This removes the session from this machine. It cannot be recovered from dsh afterwards.",
         removeFailed: "Delete failed: {reason}",
+        deleteRetained: "Deleted {t} session file(s); restart dsh to clear them from this list.",
         chats: "sessions",
         empty: "No archived sessions yet",
         emptyHint: "Pick “Archive” from a session’s “…” menu in the sidebar and it shows up here.",
@@ -400,6 +402,7 @@ window.__ModuleLoader__.load({
 
     // src/modules/archived/host/paths.js
     var DELETE_SESSION_PATH = "/_dsh/dsh-toolkit/archived/delete-session";
+    var PENDING_DELETIONS_PATH = "/_dsh/dsh-toolkit/archived/pending-deletions";
 
     // src/client/http.js
     async function fetchJson(url, { json, ...options } = {}) {
@@ -447,6 +450,16 @@ window.__ModuleLoader__.load({
         return { ok: false, reason: String(error?.message ?? error) };
       }
     }
+    async function readPendingDeletions() {
+      try {
+        const response = await fetchJson(PENDING_DELETIONS_PATH, { method: "GET" });
+        if (!response.ok) return /* @__PURE__ */ new Set();
+        const result = await response.json();
+        return new Set(Array.isArray(result?.sessionIds) ? result.sessionIds : []);
+      } catch {
+        return /* @__PURE__ */ new Set();
+      }
+    }
 
     // src/modules/archived/client/removal.jsx
     var primitives = (() => {
@@ -474,7 +487,8 @@ window.__ModuleLoader__.load({
       );
     }
     function createRemoval(ctx) {
-      let state = { request: null, busy: false, error: "", removed: /* @__PURE__ */ new Set() };
+      const t = ctx.locale.bind(ARCH_NS);
+      let state = { request: null, busy: false, error: "", note: "", removed: /* @__PURE__ */ new Set() };
       const listeners = /* @__PURE__ */ new Set();
       const update = (patch) => {
         state = { ...state, ...patch };
@@ -505,7 +519,8 @@ window.__ModuleLoader__.load({
           const failed = [];
           const errors = [];
           let completed = 0;
-          update({ busy: true, error: "" });
+          let retained = 0;
+          update({ busy: true, error: "", note: "" });
           for (const row of request.rows) {
             const result = await removeSessionViaHost(row.id);
             const alreadyGone = result?.reason === "not-found";
@@ -517,6 +532,10 @@ window.__ModuleLoader__.load({
             }
             completed++;
             update({ removed: new Set(state.removed).add(row.id) });
+            if (result?.retained === true) {
+              retained++;
+              continue;
+            }
             await Promise.allSettled([
               Promise.resolve().then(() => ctx.workspaces.unarchiveSession(row.id)),
               Promise.resolve().then(() => ctx.workspaces.unpinSession(row.id))
@@ -530,6 +549,7 @@ window.__ModuleLoader__.load({
           }
           update({
             busy: false,
+            note: retained === 0 ? "" : t("deleteRetained").replace("{t}", String(retained)),
             request: failed.length === 0 ? null : { kind: request.kind, rows: failed },
             error: errors.join("；")
           });
@@ -666,7 +686,20 @@ window.__ModuleLoader__.load({
         const [project, setProject] = import_react2.default.useState("");
         const [busy, setBusy] = import_react2.default.useState(false);
         const [error, setError] = import_react2.default.useState("");
+        const [pending, setPending] = import_react2.default.useState(() => /* @__PURE__ */ new Set());
         const removalState = useRemoval(removal);
+        import_react2.default.useEffect(() => {
+          let live = true;
+          const load = () => {
+            void readPendingDeletions().then((ids) => {
+              if (live) setPending(ids);
+            });
+          };
+          load();
+          return () => {
+            live = false;
+          };
+        }, [removalState.removed]);
         import_react2.default.useEffect(() => {
           const rerender = () => bump((n) => n + 1);
           const offs = [];
@@ -693,10 +726,12 @@ window.__ModuleLoader__.load({
           ...group,
           rows: group.rows.filter((row) => {
             if (removalState.removed.has(row.id)) return false;
+            if (pending.has(row.id)) return false;
             if (needle === "") return true;
             return (row.title || "").toLowerCase().includes(needle) || group.title.toLowerCase().includes(needle);
           })
         })).filter((group) => group.rows.length > 0);
+        const shown = visible.reduce((sum, group) => sum + group.rows.length, 0);
         const restore = async (id) => {
           setBusy(true);
           setError("");
@@ -733,11 +768,11 @@ window.__ModuleLoader__.load({
           DeleteButton,
           {
             className: "sk-arch__removeAll",
-            disabled: busy || removalState.busy || total === 0,
-            onClick: () => removal.requestAll(groups)
+            disabled: busy || removalState.busy || shown === 0,
+            onClick: () => removal.requestAll(visible)
           },
           t("removeAll")
-        )), error !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("restoreFailed").replace("{reason}", error)) : null, visible.length === 0 ? /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__empty" }, /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyTitle" }, total === 0 ? t("empty") : t("noMatch")), total === 0 ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyHint" }, t("emptyHint")) : null) : visible.map((group) => /* @__PURE__ */ import_react2.default.createElement("section", { className: "sk-arch__group", key: group.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__groupHead" }, /* @__PURE__ */ import_react2.default.createElement(ArchivedFolderIcon, null), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupTitle" }, group.title || t("ungrouped")), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupCount" }, `${group.rows.length} ${t("chats")}`)), group.rows.map((row) => /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__row", key: row.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__rowMain" }, /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTitle", title: row.missing ? row.id : row.title || t("untitled") }, row.title || (row.missing ? t("missing") : t("untitled"))), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTime" }, row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : "")), /* @__PURE__ */ import_react2.default.createElement(RestoreButton, { busy: busy || removalState.busy, onClick: () => {
+        )), error !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("restoreFailed").replace("{reason}", error)) : null, removalState.note !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__note", role: "status" }, removalState.note) : null, visible.length === 0 ? /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__empty" }, /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyTitle" }, shown === 0 && total <= pending.size ? t("empty") : t("noMatch")), total <= pending.size ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyHint" }, t("emptyHint")) : null) : visible.map((group) => /* @__PURE__ */ import_react2.default.createElement("section", { className: "sk-arch__group", key: group.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__groupHead" }, /* @__PURE__ */ import_react2.default.createElement(ArchivedFolderIcon, null), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupTitle" }, group.title || t("ungrouped")), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupCount" }, `${group.rows.length} ${t("chats")}`)), group.rows.map((row) => /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__row", key: row.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__rowMain" }, /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTitle", title: row.missing ? row.id : row.title || t("untitled") }, row.title || (row.missing ? t("missing") : t("untitled"))), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTime" }, row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : "")), /* @__PURE__ */ import_react2.default.createElement(RestoreButton, { busy: busy || removalState.busy, onClick: () => {
           void restore(row.id);
         } }, t("restore")), /* @__PURE__ */ import_react2.default.createElement(DeleteButton, { size: "sm", disabled: busy || removalState.busy, onClick: () => removal.request(row) }, t("remove")))))));
       };

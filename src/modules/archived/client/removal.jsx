@@ -18,7 +18,8 @@ export function DeleteButton({ children, size = "md", className, ...props }) {
 
 /** Merge per-Session requests onto one queue so two dialogs never stack. */
 export function createRemoval(ctx) {
-  let state = { request: null, busy: false, error: "", removed: new Set() };
+  const t = ctx.locale.bind(ARCH_NS);
+  let state = { request: null, busy: false, error: "", note: "", removed: new Set() };
   const listeners = new Set();
   const update = (patch) => {
     state = { ...state, ...patch };
@@ -44,7 +45,11 @@ export function createRemoval(ctx) {
       const failed = [];
       const errors = [];
       let completed = 0;
-      update({ busy: true, error: "" });
+      // Files moved out from under a session the host still holds in memory. Its
+      // archive registration has to stay: it is the tombstone that keeps the
+      // record out of the sidebar, and the host exposes no way to unload it now.
+      let retained = 0;
+      update({ busy: true, error: "", note: "" });
       for (const row of request.rows) {
         const result = await removeSessionViaHost(row.id);
         // The files are already gone (workspace deleted, disk cleanup, an older
@@ -59,6 +64,10 @@ export function createRemoval(ctx) {
         }
         completed++;
         update({ removed: new Set(state.removed).add(row.id) });
+        if (result?.retained === true) {
+          retained++;
+          continue;
+        }
         // These metadata commands remain valid after the session files are gone.
         await Promise.allSettled([
           Promise.resolve().then(() => ctx.workspaces.unarchiveSession(row.id)),
@@ -72,6 +81,7 @@ export function createRemoval(ctx) {
       // registry, its directory, and any unarchived sessions stay as they are.
       update({
         busy: false,
+        note: retained === 0 ? "" : t("deleteRetained").replace("{t}", String(retained)),
         request: failed.length === 0 ? null : { kind: request.kind, rows: failed },
         error: errors.join("；"),
       });

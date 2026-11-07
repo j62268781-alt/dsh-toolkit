@@ -186,6 +186,8 @@ test('bulk delete confirms the session count, retries failures, and never touche
   assert.equal(app.calls.delete.length, 0)
 
   app.setFetch(async (_input, options) => {
+    // The page also asks which ids were already deleted; nothing is pending here.
+    if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: [] }) }
     const { sessionId } = JSON.parse(options.body)
     if (sessionId === 'a2') return { ok: false, status: 409, json: async () => ({ ok: false, reason: 'session-loaded' }) }
     // Files already gone: the archive entry must still be cleared, not reported as a failure.
@@ -199,7 +201,10 @@ test('bulk delete confirms the session count, retries failures, and never touche
   assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 1, 'only the failed session remains listed')
   assert.match(app.text(), /永久删除 1 个会话？/)
 
-  app.setFetch(async () => ({ ok: true, status: 200, json: async () => ({ ok: true }) }))
+  app.setFetch(async (_input, options) => {
+    if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: [] }) }
+    return { ok: true, status: 200, json: async () => ({ ok: true }) }
+  })
   await app.click('永久删除')
   assert.equal(app.dialog(), null)
   assert.deepEqual(app.calls.delete, [])
@@ -207,6 +212,57 @@ test('bulk delete confirms the session count, retries failures, and never touche
   assert.equal(app.calls.unpin, 4)
   assert.equal(app.calls.refresh, 2)
   assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 0)
+})
+
+test('a session the host still holds keeps its archive entry until the restart clears it', async (t) => {
+  const app = await boot(t)
+  seed(app.workspace, app.sessions)
+  await app.render(app.overlay(h(app.sections)))
+
+  let pending = []
+  app.setFetch(async (_input, options) => {
+    if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: pending }) }
+    const { sessionId } = JSON.parse(options.body)
+    // The host moved the files but still holds the record: clearing the archive
+    // registration now would put a session without files back in the sidebar.
+    if (sessionId === 'loose') {
+      pending = ['loose']
+      return { ok: true, status: 200, json: async () => ({ ok: true, retained: true }) }
+    }
+    return { ok: true, status: 200, json: async () => ({ ok: true }) }
+  })
+  await app.click('全部删除')
+  await app.click('永久删除')
+
+  assert.equal(app.calls.unarchive, 3, 'a retained deletion must not be unarchived')
+  assert.equal(app.calls.unpin, 3)
+  const status = app.dom.window.document.querySelector('[role="status"]')
+  assert.match(status.textContent, /已删除 1 个会话的文件/)
+  // The row is gone from view even though the registration is still there.
+  assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 0)
+})
+
+test('a reload hides the sessions whose files are already deleted but still registered', async (t) => {
+  const app = await boot(t)
+  seed(app.workspace, app.sessions)
+  // The host kept the archive registration as a tombstone for 'loose'; after a
+  // restart the page must not list it again as an unreadable row.
+  app.setFetch(async (_input, options) => {
+    if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: ['loose'] }) }
+    return { ok: true, status: 200, json: async () => ({ ok: true }) }
+  })
+  await app.render(app.overlay(h(app.sections)))
+
+  const titles = [...app.dom.window.document.querySelectorAll('.sk-arch__rowTitle')].map((node) => node.textContent)
+  assert.deepEqual(titles, ['第一条', '第二条', '无法读取的会话'])
+  assert.equal(app.dom.window.document.querySelector('.sk-arch__removeAll').disabled, false)
+
+  // Everything archived is pending: no rows left, so the bulk action has nothing to do.
+  app.workspace.archivedSessionIds = ['loose']
+  await app.render(app.overlay(h(app.sections)))
+  assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 0)
+  assert.equal(app.dom.window.document.querySelector('.sk-arch__removeAll').disabled, true)
+  assert.match(app.text(), /还没有归档的会话/)
 })
 
 test('sidebar delete entry still asks for the irreversible confirmation', async (t) => {

@@ -2,6 +2,7 @@ import React from "react";
 import { ARCH_NS } from "./locale.js";
 import { readArchived } from "./model.js";
 import { DeleteButton, useRemoval } from "./removal.jsx";
+import { readPendingDeletions } from "./deletion.js";
 
 const primitives = (() => {
   try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; }
@@ -58,8 +59,26 @@ function createArchivedSection(ctx, removal) {
     const [project, setProject] = React.useState("");
     const [busy, setBusy] = React.useState(false);
     const [error, setError] = React.useState("");
+    // Deleted while the host still held them: their files are gone, but the archive
+    // registration lives on until a restart, so the list has to keep hiding them.
+    const [pending, setPending] = React.useState(() => new Set());
 
     const removalState = useRemoval(removal);
+
+    React.useEffect(() => {
+      let live = true;
+      const load = () => {
+        void readPendingDeletions().then((ids) => {
+          if (live) setPending(ids);
+        });
+      };
+      load();
+      return () => {
+        live = false;
+      };
+      // Re-read after every confirmed deletion: a deletion of a still-loaded session
+      // leaves a marker that this list has to honour on the next render too.
+    }, [removalState.removed]);
 
     React.useEffect(() => {
       const rerender = () => bump((n) => n + 1);
@@ -87,6 +106,7 @@ function createArchivedSection(ctx, removal) {
         ...group,
         rows: group.rows.filter((row) => {
           if (removalState.removed.has(row.id)) return false;
+          if (pending.has(row.id)) return false;
           if (needle === "") return true;
           return (
             (row.title || "").toLowerCase().includes(needle) ||
@@ -95,6 +115,7 @@ function createArchivedSection(ctx, removal) {
         }),
       }))
       .filter((group) => group.rows.length > 0);
+    const shown = visible.reduce((sum, group) => sum + group.rows.length, 0);
 
     const restore = async (id) => {
       setBusy(true);
@@ -144,19 +165,20 @@ function createArchivedSection(ctx, removal) {
           </select>
           <DeleteButton
             className="sk-arch__removeAll"
-            disabled={busy || removalState.busy || total === 0}
-            onClick={() => removal.requestAll(groups)}
+            disabled={busy || removalState.busy || shown === 0}
+            onClick={() => removal.requestAll(visible)}
           >
             {t("removeAll")}
           </DeleteButton>
         </div>
 
         {error !== "" ? <p role="alert" className="sk-arch__note--error">{t("restoreFailed").replace("{reason}", error)}</p> : null}
+        {removalState.note !== "" ? <p className="sk-arch__note" role="status">{removalState.note}</p> : null}
 
         {visible.length === 0 ? (
           <div className="sk-arch__empty">
-            <p className="sk-arch__emptyTitle">{total === 0 ? t("empty") : t("noMatch")}</p>
-            {total === 0 ? <p className="sk-arch__emptyHint">{t("emptyHint")}</p> : null}
+            <p className="sk-arch__emptyTitle">{shown === 0 && total <= pending.size ? t("empty") : t("noMatch")}</p>
+            {total <= pending.size ? <p className="sk-arch__emptyHint">{t("emptyHint")}</p> : null}
           </div>
         ) : (
           visible.map((group) => (
