@@ -46,13 +46,13 @@ export function readPalette(form) {
   const snapshot = snapshotOf(form)
   const value = snapshot && typeof snapshot === 'object' && 'value' in snapshot ? snapshot.value : snapshot
   const palette = value?.palette
-  return PALETTES.includes(palette) ? palette : 'codex'
+  return PALETTES.includes(palette) ? palette : 'native'
 }
 
 /** Apply an explicit style marker; only `codex` enables the Codex shell. */
 export function applyPalette(palette, root = globalThis.document?.documentElement) {
   if (!root?.setAttribute) return
-  root.setAttribute(PALETTE_ATTR, PALETTES.includes(palette) ? palette : 'codex')
+  root.setAttribute(PALETTE_ATTR, PALETTES.includes(palette) ? palette : 'native')
 }
 
 function scenesIn(scope) {

@@ -124,12 +124,12 @@ test('theme host config keeps the palette a volatile, clamped enum', () => {
   const parsed = Config({})
   const field = parsed.palette
   assert.equal(typeof field?.get, 'function')
-  assert.equal(readThemeConfig(parsed).palette, 'codex')
+  assert.equal(readThemeConfig(parsed).palette, 'native')
   assert.equal(readThemeConfig(Config({ palette: 'hope' })).palette, 'hope')
   assert.throws(() => Config({ palette: 'nope' }), /palette/)
-  assert.equal(readThemeConfig({ palette: { get: () => 'bogus' } }).palette, 'codex')
+  assert.equal(readThemeConfig({ palette: { get: () => 'bogus' } }).palette, 'native')
   assert.equal(readThemeConfig({ palette: { get: () => 'ocean' } }).palette, 'ocean')
-  assert.equal(readThemeConfig(undefined).palette, 'codex')
+  assert.equal(readThemeConfig(undefined).palette, 'native')
   // A volatile leaf exposes a write hook symbol so the Host entry is reused.
   const symbols = Object.getOwnPropertySymbols(field)
   assert.ok(symbols.length > 0)
@@ -138,8 +138,8 @@ test('theme host config keeps the palette a volatile, clamped enum', () => {
 test('readPalette accepts snapshots and clamps unknown values', () => {
   assert.equal(readPalette(fakeForm('ocean')), 'ocean')
   assert.equal(readPalette({ getSnapshot: () => ({ value: { palette: 'hope' } }) }), 'hope')
-  assert.equal(readPalette({ getSnapshot: () => ({ palette: 'nope' }) }), 'codex')
-  assert.equal(readPalette(null), 'codex')
+  assert.equal(readPalette({ getSnapshot: () => ({ palette: 'nope' }) }), 'native')
+  assert.equal(readPalette(null), 'native')
 })
 
 test('applyPalette marks every style explicitly and clamps invalid values', () => {
@@ -154,7 +154,7 @@ test('applyPalette marks every style explicitly and clamps invalid values', () =
   applyPalette('native', root)
   assert.equal(root.getAttribute(PALETTE_ATTR), 'native')
   applyPalette('invalid', root)
-  assert.equal(root.getAttribute(PALETTE_ATTR), 'codex')
+  assert.equal(root.getAttribute(PALETTE_ATTR), 'native')
   dom.window.close()
 })
 

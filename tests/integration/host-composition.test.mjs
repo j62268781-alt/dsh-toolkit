@@ -114,7 +114,7 @@ test('root schema preserves module defaults and existing volatile boundaries', (
   assert.equal(config.boot.allowSkip.get(), true)
   assert.equal(isVolatile(config.theme), false)
   assert.equal(isVolatile(config.theme.palette), true)
-  assert.equal(config.theme.palette.get(), 'codex')
+  assert.equal(config.theme.palette.get(), 'native')
   // Every writable notification leaf stays volatile, including the global sound.
   // Its host child serves the authenticated system sound catalogue.
   assert.equal(isVolatile(config.notification), false)
