@@ -187,8 +187,8 @@ test('all palettes start at their own minimum while native palettes retain full 
     assert.equal(document.querySelector('._panelRow_test').title, 'Original')
     assert.equal(document.body.style.getPropertyValue('--cx-band-h'), '')
   }
-  assert.match(frame.style.gridTemplateColumns, /^264px/)
-  assert.equal(handle.style.left, '264px')
+  assert.match(frame.style.gridTemplateColumns, /^296px/, 'native palettes mirror the host column instead of forcing a minimum')
+  assert.equal(handle.style.left, '296px', 'the host keeps ownership of the handle position')
   assert.equal(handle.getAttribute('aria-valuemin'), '264')
   assert.equal(handle.getAttribute('aria-valuemax'), '420')
   assertNativeLayout()
@@ -254,7 +254,12 @@ test('all palettes start at their own minimum while native palettes retain full 
     assert.equal(handle.getAttribute('aria-valuemin'), '250')
     root.setAttribute('data-sk-palette', palette)
     await flush()
-    assert.match(frame.style.gridTemplateColumns, /^264px/, `${palette} starts at the native minimum after leaving Codex`)
+    // The host owns the column: its next layout pass writes the stored width back
+    // and native palettes must follow it instead of snapping to the 264px minimum.
+    frame.style.gridTemplateColumns = '280px minmax(0, 1fr) 200px'
+    handle.style.left = '280px'
+    await flush()
+    assert.match(frame.style.gridTemplateColumns, /^280px/, `${palette} follows the host column after leaving Codex`)
     assertNativeLayout()
   }
   dispose()
@@ -280,8 +285,8 @@ test('native minimum follows late Windows desktop markers and a late-mounted fra
   assert.match(frame.style.gridTemplateColumns, /^296px/, 'ordinary Web layout remains untouched')
   document.documentElement.setAttribute('data-windows-titlebar', '')
   await flush()
-  assert.match(frame.style.gridTemplateColumns, /^264px/)
-  assert.equal(document.querySelector('[data-side="sidebar"]').style.left, '264px')
+  assert.match(frame.style.gridTemplateColumns, /^296px/, 'a late desktop marker adopts the host column as-is')
+  assert.equal(document.querySelector('[data-side="sidebar"]').style.left, '296px')
   assert.equal(frame.hasAttribute('data-sk-workspace-expanded'), false)
 })
 
@@ -297,6 +302,19 @@ function selectorList(text) {
   result.push(text.slice(start).trim())
   return result
 }
+
+test('the Windows content radius is switched off for every palette, not just Codex', async () => {
+  // The host spends `--dsh-windows-content-radius` on the center column and on a
+  // fullscreen right panel. Codex zeroes it for its inset card; every other palette
+  // would otherwise inherit the host's 16px and show a lone rounded corner.
+  const css = await readFile(new URL('../../src/modules/theme/client/styles/corners.css', import.meta.url), 'utf8')
+  assert.match(css, /html\[data-windows-titlebar\]\s*\[class\*="_frame"\]\s*\{[^}]*--dsh-windows-content-radius:\s*0px/)
+  // It must reach the frame node itself: the host declares the variable there, so a
+  // declaration on `body` would never be inherited by the frame.
+  assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /body\s*\{[^}]*--dsh-windows-content-radius/)
+  const imports = await readFile(new URL('../../src/modules/theme/client/styles.css', import.meta.url), 'utf8')
+  assert.match(imports, /@import "\.\/styles\/corners\.css"/, 'corners.css must be bundled with the theme')
+})
 
 test('every shell, sidebar, rightbar and radius selector requires the Codex palette', async () => {
   for (const file of ['tokens.css', 'layout.css', 'sidebar.css', 'rightbar.css']) {

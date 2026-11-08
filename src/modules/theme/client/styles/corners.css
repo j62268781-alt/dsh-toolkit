@@ -1,0 +1,14 @@
+/* The Windows desktop host declares `--dsh-windows-content-radius: 16px` on the
+   frame element and spends it twice: the center column gets a rounded top-left
+   corner, and a fullscreen right panel gets one too. Those corners are the frame
+   colour showing through, which only reads as intentional when the content really
+   is an inset card. Codex draws such a card itself (`layout.css`), so it zeroes the
+   variable; the other three palettes inherit the host value and end up with a lone
+   rounded corner floating on a flat surface. `tokens.css` cannot hold this rule
+   because everything there is Codex-only, so the override lives here and targets
+   the frame node itself — the host declares the variable on the frame, and a value
+   set on `body` would never reach it.
+   Switch the radius off at the source: both host consumers read this one variable. */
+html[data-windows-titlebar] [class*="_frame"] {
+  --dsh-windows-content-radius: 0px;
+}

@@ -41,7 +41,7 @@ export function installSidebarWidth(ctx, options = {}) {
   let offPanel = null;
   let workspaceWidth = minWidth;
   let drag = null;
-  let nativeResized = false;
+  const clampWidth = (width) => Math.min(maxWidth, Math.max(minWidth, Math.round(width)));
   const handles = new Map();
   const frames = new Map();
   const roots = new Map();
@@ -75,8 +75,13 @@ export function installSidebarWidth(ctx, options = {}) {
     if (firstColumn && firstColumn !== saved.ownedWidth) saved.nativeWidth = firstColumn;
 
     const collapsed = frame.hasAttribute("data-sidebar-collapsed");
-    if (native && nativeResized && firstColumn && firstColumn !== saved.ownedWidth && !collapsed) {
-      workspaceWidth = Math.min(maxWidth, Math.max(minWidth, parseFloat(firstColumn)));
+    if (native && firstColumn && firstColumn !== saved.ownedWidth && !collapsed) {
+      // Native palettes mirror the column the host rendered instead of forcing the
+      // 264px minimum. The host owns the width store and rewrites this grid on every
+      // layout pass, so adopting its value keeps `target` equal to the real column
+      // (a no-op write) and still follows host drags; starting from the bare minimum
+      // left the column 16px narrower than the sidebar element the host sizes itself.
+      workspaceWidth = clampWidth(parseFloat(firstColumn));
     }
     const home = isHomeView(ctx);
     const root = document.querySelector('[data-slot="sidebar"] > [class*="_root"]');
@@ -109,7 +114,12 @@ export function installSidebarWidth(ctx, options = {}) {
     if (handle) {
       if (!handles.has(handle)) {
         handles.set(handle, {
-          left: handle.style.left,
+          // Only Codex moves the handle itself. The host derives its `left` from the
+          // same column it writes into the grid, so in native mode it is already on
+          // the boundary and our writes would just snapshot a stale position to
+          // restore on unload.
+          ownsLeft: !native,
+          left: native ? null : handle.style.left,
           attrs: Object.fromEntries(["role", "tabindex", "aria-label", "aria-orientation", "aria-valuemin", "aria-valuemax", "aria-valuenow"].map((name) => [name, handle.getAttribute(name)])),
         });
         handle.setAttribute("role", "separator");
@@ -120,9 +130,11 @@ export function installSidebarWidth(ctx, options = {}) {
         handle.setAttribute("aria-valuemax", String(maxWidth));
       }
       const savedHandle = handles.get(handle);
-      if (handle.style.left !== savedHandle.ownedLeft) savedHandle.left = handle.style.left;
-      savedHandle.ownedLeft = target;
-      if (handle.style.left !== target) handle.style.left = target;
+      if (savedHandle.ownsLeft) {
+        if (handle.style.left !== savedHandle.ownedLeft) savedHandle.left = handle.style.left;
+        savedHandle.ownedLeft = target;
+        if (handle.style.left !== target) handle.style.left = target;
+      }
       const value = String(workspaceWidth);
       if (handle.getAttribute("aria-valuenow") !== value) handle.setAttribute("aria-valuenow", value);
     }
@@ -146,15 +158,13 @@ export function installSidebarWidth(ctx, options = {}) {
       : frame.hasAttribute("data-sk-workspace-expanded"));
     return handle && handle.parentElement === frame && expanded ? handle : null;
   };
-  // Native palettes only change the untouched default. The host owns their
-  // pointer capture, drag state, width store and subsequent resize updates.
+  // Native palettes leave dragging entirely to the host: it owns pointer capture,
+  // the drag state and the 264–420px width store, and `pass()` adopts the column it
+  // writes. Codex needs its own drag because it offsets the column by its 52px rail.
   const onPointerDown = (event) => {
     const handle = sidebarHandle(event);
     if (!handle || event.button !== 0 || drag) return;
-    if (native) {
-      nativeResized = true;
-      return;
-    }
+    if (native) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     const frame = findFrame();
@@ -256,8 +266,8 @@ export function installSidebarWidth(ctx, options = {}) {
     frames.clear();
     roots.clear();
     workspaceCollapsed = false;
-    for (const [handle, { left, attrs }] of handles) {
-      handle.style.left = left;
+    for (const [handle, { ownsLeft, left, attrs }] of handles) {
+      if (ownsLeft) handle.style.left = left;
       for (const [name, value] of Object.entries(attrs)) {
         if (value === null) handle.removeAttribute(name);
         else handle.setAttribute(name, value);
