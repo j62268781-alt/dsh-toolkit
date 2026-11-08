@@ -207,7 +207,14 @@ window.__ModuleLoader__.load({
         close() {
           publish({ ...value, state: "closed" });
         },
-        startLogin: () => act("login/start"),
+        /**
+         * 申请二维码。
+         *
+         * @param options.force 丢弃手上还没过期的二维码、强制换新码。
+         *   不加这个参数时后端会复用未过期的码，所以「连接微信」与「刷新二维码」
+         *   都能安全重复点击，不需要在前端自己记缓存。
+         */
+        startLogin: (options) => act("login/start", options === void 0 ? void 0 : { force: options.force === true }),
         submitCode: (code) => act("login/code", { code }),
         cancelLogin: () => act("login/cancel"),
         logout: () => act("logout"),
@@ -261,7 +268,7 @@ window.__ModuleLoader__.load({
         codePlaceholder: "微信里显示的数字",
         codeSubmit: "提交",
         scanHint: "用手机微信扫描二维码，并在微信中确认连接",
-        qrExpired: "二维码已过期，正在自动刷新",
+        qrExpired: "二维码已过期，请重新连接",
         qrCountdown: "{s} 秒后过期",
         account: "账号",
         endpoint: "节点",
@@ -306,7 +313,7 @@ window.__ModuleLoader__.load({
         codePlaceholder: "Number shown in WeChat",
         codeSubmit: "Submit",
         scanHint: "Scan with WeChat on your phone, then confirm the connection",
-        qrExpired: "The QR code expired and is refreshing",
+        qrExpired: "The QR code expired — connect again to get a new one",
         qrCountdown: "Expires in {s}s",
         account: "Account",
         endpoint: "Endpoint",
@@ -734,15 +741,10 @@ window.__ModuleLoader__.load({
       const viewHeight = Math.max(0, viewport?.height ?? 0);
       const maxHeight = Math.max(0, viewHeight - margin * 2);
       if (anchor === void 0 || anchor === null) return { left: margin, top: margin, maxHeight };
-      const atRight = anchor.right + gap;
-      const atLeft = anchor.left - gap - width;
-      const flipped = atRight + width > viewWidth - margin && atLeft >= margin;
-      const left = clamp(
-        flipped ? atLeft : atRight,
-        margin,
-        Math.max(margin, viewWidth - margin - width)
-      );
-      const top = clamp(anchor.bottom - height, margin, Math.max(margin, viewHeight - margin - height));
+      const left = clamp(anchor.left, margin, Math.max(margin, viewWidth - margin - width));
+      const above = anchor.top - gap - height;
+      const placed = above >= margin ? above : anchor.bottom + gap;
+      const top = clamp(placed, margin, Math.max(margin, viewHeight - margin - height));
       return { left, top, maxHeight };
     }
 
@@ -949,7 +951,7 @@ window.__ModuleLoader__.load({
           )
         );
       }
-      function Popover({ anchor, pinned, onPin, onClose }) {
+      function Popover({ anchor, pinned, onPin, onClose, onEnter, onLeave }) {
         const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot);
         const [busy, setBusy] = useState(false);
         const [probeNote, setProbeNote] = useState(void 0);
@@ -1048,7 +1050,7 @@ window.__ModuleLoader__.load({
             return h(Waiting, {
               value,
               busy,
-              onRefresh: () => run(() => connection.startLogin()),
+              onRefresh: () => run(() => connection.startLogin({ force: true })),
               onCancel: () => run(() => connection.cancelLogin())
             });
           }
@@ -1066,8 +1068,10 @@ window.__ModuleLoader__.load({
             role: "dialog",
             "aria-label": t("title"),
             onMouseEnter: () => {
+              onEnter();
               if (!pinned) connection.refresh();
-            }
+            },
+            onMouseLeave: () => onLeave()
           },
           h(
             "div",
@@ -1135,6 +1139,11 @@ window.__ModuleLoader__.load({
           clearTimeout(closeTimer.current);
           closeTimer.current = setTimeout(() => setOpen(false), 160);
         }, []);
+        const keepOpen = useCallback(() => {
+          clearTimeout(closeTimer.current);
+          closeTimer.current = void 0;
+          setOpen(true);
+        }, []);
         const closeNow = useCallback(() => {
           clearTimeout(closeTimer.current);
           closeTimer.current = void 0;
@@ -1165,6 +1174,9 @@ window.__ModuleLoader__.load({
             title: t("entryTitle"),
             onMouseEnter: openNow,
             onFocus: openNow,
+            // 只在按钮自己身上挂 mouseleave：容器上的 mouseleave 会在指针移向卡片时误触发
+            // （卡片是 portal 到 body 的，不在容器子树里），那正是「一闪就关」的来源。
+            onMouseLeave: closeSoon,
             onClick: () => open ? closeNow() : openNow()
           },
           // 「显示器 + 手机」轮廓：扫码登录是在浏览器里操作，手机与屏幕的关系就是这个交互的形状。
@@ -1195,16 +1207,15 @@ window.__ModuleLoader__.load({
         const popover = open ? portal(h(Popover, {
           anchor,
           pinned,
+          onEnter: keepOpen,
+          onLeave: closeSoon,
           onPin: (next) => {
             setPinned(next);
             if (!next) closeSoon();
           },
           onClose: closeNow
         }), document.body) : null;
-        return h("div", {
-          className: "wc-entry",
-          onMouseLeave: closeSoon
-        }, trigger, popover);
+        return h("div", { className: "wc-entry" }, trigger, popover);
       }
       return WeixinEntry;
     }

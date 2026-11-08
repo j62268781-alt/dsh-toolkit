@@ -209,7 +209,14 @@ export function createConnection({ onError = () => {} } = {}) {
     close() {
       publish({ ...value, state: 'closed' })
     },
-    startLogin: () => act('login/start'),
+    /**
+     * 申请二维码。
+     *
+     * @param options.force 丢弃手上还没过期的二维码、强制换新码。
+     *   不加这个参数时后端会复用未过期的码，所以「连接微信」与「刷新二维码」
+     *   都能安全重复点击，不需要在前端自己记缓存。
+     */
+    startLogin: (options) => act('login/start', options === undefined ? undefined : { force: options.force === true }),
     submitCode: (code) => act('login/code', { code }),
     cancelLogin: () => act('login/cancel'),
     logout: () => act('logout'),
