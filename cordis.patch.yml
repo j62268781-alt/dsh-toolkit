@@ -1,4 +1,4 @@
-# One bundle, nine independently managed component package identities.
+# One bundle, ten independently managed component package identities.
 - insert:
     - id: dsh-toolkit-boot
       name: dsh-toolkit-boot
@@ -18,3 +18,5 @@
       name: dsh-toolkit-notification
     - id: dsh-toolkit-pet
       name: dsh-toolkit-pet
+    - id: dsh-toolkit-weixin-clawbot
+      name: dsh-toolkit-weixin-clawbot

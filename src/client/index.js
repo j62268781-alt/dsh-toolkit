@@ -7,6 +7,7 @@ import createMobile from '../modules/mobile/client/index.jsx'
 import createSkillsMcp from '../modules/skills-mcp/client/client.js'
 import createNotification from '../modules/notification/client/index.jsx'
 import createPet from '../modules/pet/client/index.jsx'
+import createWeixinClawbot from '../modules/weixin-clawbot/client/index.jsx'
 import * as boot from '../modules/boot/client/index.jsx'
 
 export const inject = []
@@ -22,4 +23,5 @@ export function apply(ctx) {
   ctx.plugin({ name: 'toolkit-notification-client', ...createNotification(require) })
   ctx.plugin({ name: 'toolkit-boot-client', ...boot })
   ctx.plugin({ name: 'toolkit-pet-client', ...createPet(require) })
+  ctx.plugin({ name: 'toolkit-weixin-clawbot-client', ...createWeixinClawbot(require) })
 }
