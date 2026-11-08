@@ -70,23 +70,33 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   height: 18px;
 }
 
-/* 状态圆点压在图标右上角，不占布局位置。 */
+/* 状态圆点压在图标右上角，不占布局位置。
+   写法对齐宿主 primitives 的 StateDot：外层只给 color，圆点由 :after 用 currentColor 画。
+   这样状态色只有一处来源（data-state），不用为每个状态写一条 background。 */
 .wc-dot {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  corner-shape: round;
-  background: var(--dsw-alias-state-idle-primary);
-  box-shadow: 0 0 0 2px var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));
+  top: 3px;
+  right: 3px;
+  width: 10px;
+  height: 10px;
   pointer-events: none;
 }
 
-.wc-dot--ok { background: var(--dsw-alias-state-success-primary); }
-.wc-dot--busy { background: var(--dsw-alias-state-warn-primary); }
-.wc-dot--bad { background: var(--dsw-alias-state-error-primary); }
+.wc-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  corner-shape: round;
+  background: currentColor;
+  /* 挖出一圈底色的描边，压在图标上时边缘才不会糊在一起。 */
+  box-shadow: 0 0 0 2px var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));
+  color: var(--dsw-alias-state-idle-primary);
+}
+
+.wc-dot[data-state="ok"]::after { color: var(--dsw-alias-state-success-primary); }
+.wc-dot[data-state="busy"]::after { color: var(--dsw-alias-state-warn-primary); }
+.wc-dot[data-state="bad"]::after { color: var(--dsw-alias-state-error-primary); }
 
 /* ── 弹出卡片 ───────────────────────────────────────────────── */
 
@@ -101,10 +111,12 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   flex-direction: column;
   padding: 14px;
   gap: 12px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 12px;
-  background: var(--dsw-alias-bg-overlay);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, .16);
+  /* 浮层配方对齐宿主：不画 border，0.5px 描边由 elevation-panel 自带的那一层来，
+     底色用 bg-layer-1（bg-overlay 在宿主里其实没人用在浮层上，浅色下偏灰）。 */
+  border: 0;
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-alias-bg-layer-1);
+  box-shadow: var(--dsw-elevation-panel);
   color: var(--dsw-alias-label-primary);
   font-size: 13px;
   line-height: 1.5;
@@ -141,25 +153,26 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   color: var(--dsw-alias-label-secondary);
 }
 
+/* 与宿主 Modal 的关闭按钮同款：28×28、radius-sm、hover 只加深底色、不改文字色。 */
 .wc-close {
   flex: none;
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--dsw-radius-sm);
   background: transparent;
   color: var(--dsw-alias-label-secondary);
-  font-size: 16px;
-  line-height: 1;
   cursor: pointer;
 }
 
-.wc-close:hover {
-  background: var(--dsw-alias-bg-layer-2);
-  color: var(--dsw-alias-label-primary);
+@media (hover: hover) {
+  .wc-close:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 .wc-body {
@@ -178,10 +191,74 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   color: var(--dsw-alias-label-secondary);
 }
 
+/* 二维码容器：蒙层要绝对定位压在码上，所以这里给一个定位祖先，并锁死二维码尺寸，
+   换态（等待扫码 → 已扫码 → 已过期）时卡片高度不跳动。 */
+.wc-qr-wrap {
+  position: relative;
+  width: 176px;
+  height: 176px;
+  flex: none;
+}
+
 .wc-qr {
   display: block;
   border-radius: 6px;
   background: #fff;
+}
+
+/* 蒙层：半透明底色 + 居中文字。已过期那一档本身是按钮，点了就换新码。 */
+.wc-qr-mask {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-mask-1);
+  color: #fff;
+  font: inherit;
+  text-align: center;
+}
+
+.wc-qr-mask--expired {
+  cursor: pointer;
+}
+
+.wc-qr-mask--expired:disabled {
+  cursor: default;
+}
+
+.wc-qr-mask--expired:hover:not(:disabled) {
+  background: var(--dsw-alias-bg-mask-2);
+}
+
+/* 文字坐在自己的色块上：二维码是黑白高对比花纹，白字直接压上去根本读不出来。
+   用宿主浮层色 + 主文字色，浅色/深色主题下都是一块干净的衬底。 */
+.wc-qr-mask__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: var(--dsw-elevation-panel);
+}
+
+.wc-qr-mask__title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.wc-qr-mask__action {
+  font-size: 12px;
+  line-height: 18px;
+  text-decoration: underline;
 }
 
 .wc-qr--failed {
@@ -364,41 +441,53 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   min-width: 0;
 }
 
+/* DSH General Settings Switch: 36×20 track, 16px thumb, native state tokens.
+   与 src/modules/boot/client/styles.css 的同名复刻保持一致；插件拿不到宿主 primitives，
+   只能按这套尺寸/令牌复刻，改一处就要同步另一处。 */
 .wc-switch {
+  box-sizing: border-box;
   position: relative;
-  flex: none;
-  width: 34px;
+  flex: 0 0 auto;
+  width: 36px;
   height: 20px;
-  padding: 0;
+  padding: 2px;
   border: 0;
-  border-radius: 10px;
-  background: var(--dsw-alias-state-idle-primary);
+  border-radius: 999px;
+  corner-shape: round;
+  background: var(--dsw-alias-border-l3);
   cursor: pointer;
-  transition: background-color .16s ease;
 }
 
-.wc-switch[aria-checked='true'] {
+.wc-switch[aria-checked="true"] {
   background: var(--dsw-alias-brand-primary);
 }
 
+.wc-switch:disabled {
+  cursor: default;
+  opacity: .5;
+}
+
 .wc-switch:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: 2px;
 }
 
 .wc-switch__knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
+  display: block;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
-  transition: transform .16s ease;
+  corner-shape: round;
+  background: var(--dsw-alias-label-primary-foreground);
+  transition: transform .12s ease;
 }
 
-.wc-switch[aria-checked='true'] .wc-switch__knob {
-  transform: translateX(14px);
+.wc-switch[aria-checked="false"] .wc-switch__knob {
+  background: var(--dsw-alias-switch-thumb);
+}
+
+.wc-switch[aria-checked="true"] .wc-switch__knob {
+  transform: translate(16px);
 }
 
 @media (prefers-reduced-motion: reduce) {

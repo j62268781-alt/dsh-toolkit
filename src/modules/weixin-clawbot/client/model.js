@@ -92,6 +92,8 @@ export function toneOf(state) {
     case 'confirmed':
       return 'ok'
     case 'failed':
+      // 二维码过期不是故障，但需要用户动手刷新，用告警色提示。
+    case 'expired':
       return 'bad'
     default:
       return 'idle'
@@ -205,10 +207,13 @@ export function createConnection({ onError = () => {} } = {}) {
       publish({ ...value, state: value.state === 'closed' ? 'idle' : value.state })
       return refresh()
     },
-    /** 面板关闭：停掉本地状态，不再轮询。 */
-    close() {
-      publish({ ...value, state: 'closed' })
-    },
+    /**
+     * 面板关闭：只停轮询（由面板卸载自然停止），**不改状态**。
+     *
+     * 以前这里会把 state 写成 'closed'，而入口小点读的就是这份快照，于是面板一关
+     * 小点就恒灰——用户要的是「小点跟随真实连接状态」，所以关闭时保留最后一次已知状态。
+     */
+    close() {},
     /**
      * 申请二维码。
      *

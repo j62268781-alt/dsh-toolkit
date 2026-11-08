@@ -33,6 +33,7 @@ export function createPanel(React, { t, connection, portal }) {
     connected: 'stateConnected',
     confirmed: 'stateConnected',
     failed: 'stateFailed',
+    expired: 'stateExpired',
   }
 
   /** 剩余秒数；没有 expiresAt 时返回 undefined。hook 本身无条件调用。 */
@@ -48,27 +49,44 @@ export function createPanel(React, { t, connection, portal }) {
     return Math.max(0, Math.ceil((expiresAt - now) / 1000))
   }
 
-  function Switch({ checked, onChange, label }) {
+  function Switch({ checked, onChange, label, disabled }) {
     return h('button', {
       type: 'button',
       className: 'wc-switch',
       role: 'switch',
       'aria-checked': checked,
       'aria-label': label,
+      title: label,
+      disabled,
       onClick: () => onChange(!checked),
-    }, h('span', { className: 'wc-switch__knob' }))
+    }, h('span', { className: 'wc-switch__knob', 'aria-hidden': true }))
   }
 
-  function StatusRow({ state, children }) {
-    return h('div', { className: 'wc-status' },
-      h('span', { className: `wc-dot wc-dot--${toneOf(state)}`, 'aria-hidden': true }),
-      h('span', null, children))
+  function StatusRow({ children }) {
+    // 这里刻意不放状态圆点：圆点只属于入口按钮（见 styles.css 里 .wc-dot 的绝对定位）。
+    // 之前复用同一个类名，而 .wc-status 不是定位祖先，圆点就跑到卡片右上角去了。
+    return h('div', { className: 'wc-status' }, h('span', null, children))
+  }
+
+  /** 宿主 primitives 的 IconCloseOutlineRegular：16×16、两笔 45° 交叉线。 */
+  function CloseIcon() {
+    return h('svg', {
+      width: 16,
+      height: 16,
+      viewBox: '0 0 16 16',
+      fill: 'none',
+      stroke: 'currentColor',
+      strokeWidth: 1,
+      'aria-hidden': true,
+    },
+    h('path', { d: 'M2.5 2.5L13.5 13.5' }),
+    h('path', { d: 'M13.5 2.5L2.5 13.5' }))
   }
 
   /** 未连接：一个主动作按钮。 */
   function Disconnected({ busy, onConnect }) {
     return h('div', { className: 'wc-body' },
-      h(StatusRow, { state: 'idle' }, t(STATE_LABEL.idle)),
+      h(StatusRow, null, t(STATE_LABEL.idle)),
       h('div', { className: 'wc-actions' },
         h('button', {
           type: 'button',
@@ -78,20 +96,46 @@ export function createPanel(React, { t, connection, portal }) {
         }, busy ? t('stateRequesting') : t('connect'))))
   }
 
-  /** 等待扫码：二维码 + 倒计时 + 刷新/取消。 */
+  /**
+   * 扫码阶段：二维码 + 四态蒙层。
+   *
+   * 四态来自产品设计图：等待扫码（纯二维码）/ 已扫码（蒙层「连接中」）/
+   * 已过期（蒙层「已过期 + 点击刷新」）/ 已连接（不归这个组件管）。
+   * 蒙层用绝对定位压在二维码上，所以二维码本身尺寸不变，卡片不会因为换态而跳动。
+   */
   function Waiting({ value, busy, onCancel, onRefresh }) {
     const seconds = useCountdown(value.qr?.expiresAt)
-    const expired = seconds === 0
-    const label = value.state === 'scanned' ? t('stateScanned') : t('stateWaiting')
+    // 过期有两个信号：服务端已经判死（state==='expired'），或本地倒计时归零。
+    const expired = value.state === 'expired' || seconds === 0
+    const scanned = value.state === 'scanned'
+    const label = expired
+      ? t(STATE_LABEL.expired)
+      : (scanned ? t('stateScanned') : t('stateWaiting'))
+    // 蒙层内容包一层衬底：二维码本身是黑白高对比，白字直接压上去几乎看不清。
+    const maskPanel = (title, action) => h('span', { className: 'wc-qr-mask__panel' },
+      h('span', { className: 'wc-qr-mask__title' }, title),
+      action === undefined ? null : h('span', { className: 'wc-qr-mask__action' }, action))
+    const mask = expired
+      ? h('button', {
+        type: 'button',
+        className: 'wc-qr-mask wc-qr-mask--expired',
+        disabled: busy,
+        onClick: onRefresh,
+      }, maskPanel(t('qrExpiredTitle'), t('qrExpiredAction')))
+      : (scanned
+        ? h('div', { className: 'wc-qr-mask' }, maskPanel(t('qrConnecting')))
+        : null)
     return h('div', { className: 'wc-body' },
-      h(StatusRow, { state: value.state }, label),
+      h(StatusRow, null, label),
       value.qr === undefined
         ? h('div', { className: 'wc-hint' }, t('stateRequesting'))
-        : h(QrCode, { url: value.qr.url, size: 176, label: t('title') }),
+        : h('div', { className: 'wc-qr-wrap' },
+          h(QrCode, { url: value.qr.url, size: 176, label: t('title') }),
+          mask),
       h('div', { className: 'wc-hint' }, t('scanHint')),
-      expired
-        ? h('div', { className: 'wc-countdown' }, t('qrExpired'))
-        : (seconds === undefined ? null : h('div', { className: 'wc-countdown' }, t('qrCountdown', { s: seconds }))),
+      expired || seconds === undefined
+        ? null
+        : h('div', { className: 'wc-countdown' }, t('qrCountdown', { s: seconds })),
       h('div', { className: 'wc-actions' },
         h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: onRefresh }, t('refresh')),
         h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: onCancel }, t('cancel'))))
@@ -109,7 +153,7 @@ export function createPanel(React, { t, connection, portal }) {
       if (value !== '') onSubmit(value)
     }
     return h('div', { className: 'wc-body' },
-      h(StatusRow, { state: 'need_code' }, t('stateNeedCode')),
+      h(StatusRow, null, t('stateNeedCode')),
       h('div', { className: 'wc-hint' }, t('stateNeedCode')),
       h('div', { className: 'wc-code' },
         h('input', {
@@ -143,7 +187,7 @@ export function createPanel(React, { t, connection, portal }) {
       ? `${t('monitorOn')} · ${t('received', { n: value.monitor.received })}`
       : t('monitorOff')
     return h('div', { className: 'wc-body' },
-      h(StatusRow, { state: 'connected' }, t('stateConnected')),
+      h(StatusRow, null, t('stateConnected')),
       h('div', { className: 'wc-info' },
         h('div', { className: 'wc-info__row' },
           h('span', { className: 'wc-info__key' }, t('account')),
@@ -307,7 +351,7 @@ export function createPanel(React, { t, connection, portal }) {
           onCancel: () => run(() => connection.cancelLogin()),
         })
       }
-      if (state === 'waiting_qr' || state === 'scanned' || state === 'requesting') {
+      if (state === 'waiting_qr' || state === 'scanned' || state === 'requesting' || state === 'expired') {
         return h(Waiting, {
           value,
           busy,
@@ -342,8 +386,9 @@ export function createPanel(React, { t, connection, portal }) {
         type: 'button',
         className: 'wc-close',
         'aria-label': t('close'),
+        title: t('close'),
         onClick: onClose,
-      }, '×')),
+      }, h(CloseIcon))),
     error === undefined ? null : h('div', { className: 'wc-error' }, t('failed', { reason: error })),
     body,
     h('div', { className: 'wc-footer' },
@@ -366,7 +411,8 @@ export function createPanel(React, { t, connection, portal }) {
 
     const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot)
     const state = value.connected ? 'connected' : value.state
-    const tone = toneOf(state === 'closed' ? 'idle' : state)
+    // 小圆点跟随真实连接状态；面板开不开都不影响它（见 model.js 里 close() 的注释）。
+    const tone = toneOf(state)
 
     // 首次挂载同步一次状态，让没打开过面板时小圆点也是准的。
     useEffect(() => {
@@ -470,7 +516,7 @@ export function createPanel(React, { t, connection, portal }) {
       h('path', { d: 'M6.5 13.2h3.4M7.6 10.8v2.4M9.4 10.8v2.4' }),
       // 手机：压在显示器右下角。
       h('rect', { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 }))),
-    h('span', { className: `wc-dot wc-dot--${tone}`, 'aria-hidden': true }))
+    h('span', { className: 'wc-dot', 'data-state': tone, 'aria-hidden': true }))
 
     // 关键：卡片自己负责「移出去就关」，而不是由外层容器的 mouseleave 决定——
     // 卡片是 portal 到 body 的，外层容器收不到它的 pointer 事件。

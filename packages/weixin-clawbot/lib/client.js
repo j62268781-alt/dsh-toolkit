@@ -110,6 +110,8 @@ window.__ModuleLoader__.load({
         case "confirmed":
           return "ok";
         case "failed":
+        // 二维码过期不是故障，但需要用户动手刷新，用告警色提示。
+        case "expired":
           return "bad";
         default:
           return "idle";
@@ -203,9 +205,13 @@ window.__ModuleLoader__.load({
           publish({ ...value, state: value.state === "closed" ? "idle" : value.state });
           return refresh();
         },
-        /** 面板关闭：停掉本地状态，不再轮询。 */
+        /**
+         * 面板关闭：只停轮询（由面板卸载自然停止），**不改状态**。
+         *
+         * 以前这里会把 state 写成 'closed'，而入口小点读的就是这份快照，于是面板一关
+         * 小点就恒灰——用户要的是「小点跟随真实连接状态」，所以关闭时保留最后一次已知状态。
+         */
         close() {
-          publish({ ...value, state: "closed" });
         },
         /**
          * 申请二维码。
@@ -248,8 +254,8 @@ window.__ModuleLoader__.load({
       zh: {
         entry: "微信连接",
         entryTitle: "微信连接",
-        title: "微信扫码登录",
-        subtitle: "在浏览器里完成登录，不需要敲命令",
+        title: "微信 ClawBot",
+        subtitle: "扫码授权，将你的微信与 ClawBot 绑定",
         stateIdle: "未连接",
         stateRequesting: "正在申请二维码…",
         stateWaiting: "等待扫码",
@@ -258,6 +264,7 @@ window.__ModuleLoader__.load({
         stateConnected: "已连接",
         stateFailed: "出现错误",
         stateClosed: "已关闭",
+        stateExpired: "二维码已过期",
         connect: "连接微信",
         reconnect: "重新登录",
         refresh: "刷新二维码",
@@ -268,7 +275,9 @@ window.__ModuleLoader__.load({
         codePlaceholder: "微信里显示的数字",
         codeSubmit: "提交",
         scanHint: "用手机微信扫描二维码，并在微信中确认连接",
-        qrExpired: "二维码已过期，请重新连接",
+        qrExpiredTitle: "二维码已过期",
+        qrExpiredAction: "点击刷新",
+        qrConnecting: "连接中…",
         qrCountdown: "{s} 秒后过期",
         account: "账号",
         endpoint: "节点",
@@ -293,8 +302,8 @@ window.__ModuleLoader__.load({
       en: {
         entry: "WeChat",
         entryTitle: "WeChat connection",
-        title: "WeChat sign-in",
-        subtitle: "Sign in from the browser — no commands needed",
+        title: "WeChat ClawBot",
+        subtitle: "Scan to authorize and bind your WeChat to ClawBot",
         stateIdle: "Not connected",
         stateRequesting: "Requesting a QR code…",
         stateWaiting: "Waiting for scan",
@@ -303,6 +312,7 @@ window.__ModuleLoader__.load({
         stateConnected: "Connected",
         stateFailed: "Something went wrong",
         stateClosed: "Closed",
+        stateExpired: "QR code expired",
         connect: "Connect WeChat",
         reconnect: "Sign in again",
         refresh: "Refresh QR code",
@@ -313,7 +323,9 @@ window.__ModuleLoader__.load({
         codePlaceholder: "Number shown in WeChat",
         codeSubmit: "Submit",
         scanHint: "Scan with WeChat on your phone, then confirm the connection",
-        qrExpired: "The QR code expired — connect again to get a new one",
+        qrExpiredTitle: "QR code expired",
+        qrExpiredAction: "Click to refresh",
+        qrConnecting: "Connecting…",
         qrCountdown: "Expires in {s}s",
         account: "Account",
         endpoint: "Endpoint",
@@ -765,7 +777,8 @@ window.__ModuleLoader__.load({
         need_code: "stateNeedCode",
         connected: "stateConnected",
         confirmed: "stateConnected",
-        failed: "stateFailed"
+        failed: "stateFailed",
+        expired: "stateExpired"
       };
       function useCountdown(expiresAt) {
         const [now, setNow] = useState(() => Date.now());
@@ -778,29 +791,42 @@ window.__ModuleLoader__.load({
         if (!active) return void 0;
         return Math.max(0, Math.ceil((expiresAt - now) / 1e3));
       }
-      function Switch({ checked, onChange, label }) {
+      function Switch({ checked, onChange, label, disabled }) {
         return h("button", {
           type: "button",
           className: "wc-switch",
           role: "switch",
           "aria-checked": checked,
           "aria-label": label,
+          title: label,
+          disabled,
           onClick: () => onChange(!checked)
-        }, h("span", { className: "wc-switch__knob" }));
+        }, h("span", { className: "wc-switch__knob", "aria-hidden": true }));
       }
-      function StatusRow({ state, children }) {
+      function StatusRow({ children }) {
+        return h("div", { className: "wc-status" }, h("span", null, children));
+      }
+      function CloseIcon() {
         return h(
-          "div",
-          { className: "wc-status" },
-          h("span", { className: `wc-dot wc-dot--${toneOf(state)}`, "aria-hidden": true }),
-          h("span", null, children)
+          "svg",
+          {
+            width: 16,
+            height: 16,
+            viewBox: "0 0 16 16",
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: 1,
+            "aria-hidden": true
+          },
+          h("path", { d: "M2.5 2.5L13.5 13.5" }),
+          h("path", { d: "M13.5 2.5L2.5 13.5" })
         );
       }
       function Disconnected({ busy, onConnect }) {
         return h(
           "div",
           { className: "wc-body" },
-          h(StatusRow, { state: "idle" }, t(STATE_LABEL.idle)),
+          h(StatusRow, null, t(STATE_LABEL.idle)),
           h(
             "div",
             { className: "wc-actions" },
@@ -815,15 +841,33 @@ window.__ModuleLoader__.load({
       }
       function Waiting({ value, busy, onCancel, onRefresh }) {
         const seconds = useCountdown(value.qr?.expiresAt);
-        const expired = seconds === 0;
-        const label = value.state === "scanned" ? t("stateScanned") : t("stateWaiting");
+        const expired = value.state === "expired" || seconds === 0;
+        const scanned = value.state === "scanned";
+        const label = expired ? t(STATE_LABEL.expired) : scanned ? t("stateScanned") : t("stateWaiting");
+        const maskPanel = (title, action) => h(
+          "span",
+          { className: "wc-qr-mask__panel" },
+          h("span", { className: "wc-qr-mask__title" }, title),
+          action === void 0 ? null : h("span", { className: "wc-qr-mask__action" }, action)
+        );
+        const mask = expired ? h("button", {
+          type: "button",
+          className: "wc-qr-mask wc-qr-mask--expired",
+          disabled: busy,
+          onClick: onRefresh
+        }, maskPanel(t("qrExpiredTitle"), t("qrExpiredAction"))) : scanned ? h("div", { className: "wc-qr-mask" }, maskPanel(t("qrConnecting"))) : null;
         return h(
           "div",
           { className: "wc-body" },
-          h(StatusRow, { state: value.state }, label),
-          value.qr === void 0 ? h("div", { className: "wc-hint" }, t("stateRequesting")) : h(QrCode, { url: value.qr.url, size: 176, label: t("title") }),
+          h(StatusRow, null, label),
+          value.qr === void 0 ? h("div", { className: "wc-hint" }, t("stateRequesting")) : h(
+            "div",
+            { className: "wc-qr-wrap" },
+            h(QrCode, { url: value.qr.url, size: 176, label: t("title") }),
+            mask
+          ),
           h("div", { className: "wc-hint" }, t("scanHint")),
-          expired ? h("div", { className: "wc-countdown" }, t("qrExpired")) : seconds === void 0 ? null : h("div", { className: "wc-countdown" }, t("qrCountdown", { s: seconds })),
+          expired || seconds === void 0 ? null : h("div", { className: "wc-countdown" }, t("qrCountdown", { s: seconds })),
           h(
             "div",
             { className: "wc-actions" },
@@ -845,7 +889,7 @@ window.__ModuleLoader__.load({
         return h(
           "div",
           { className: "wc-body" },
-          h(StatusRow, { state: "need_code" }, t("stateNeedCode")),
+          h(StatusRow, null, t("stateNeedCode")),
           h("div", { className: "wc-hint" }, t("stateNeedCode")),
           h(
             "div",
@@ -884,7 +928,7 @@ window.__ModuleLoader__.load({
         return h(
           "div",
           { className: "wc-body" },
-          h(StatusRow, { state: "connected" }, t("stateConnected")),
+          h(StatusRow, null, t("stateConnected")),
           h(
             "div",
             { className: "wc-info" },
@@ -1046,7 +1090,7 @@ window.__ModuleLoader__.load({
               onCancel: () => run(() => connection.cancelLogin())
             });
           }
-          if (state === "waiting_qr" || state === "scanned" || state === "requesting") {
+          if (state === "waiting_qr" || state === "scanned" || state === "requesting" || state === "expired") {
             return h(Waiting, {
               value,
               busy,
@@ -1086,8 +1130,9 @@ window.__ModuleLoader__.load({
               type: "button",
               className: "wc-close",
               "aria-label": t("close"),
+              title: t("close"),
               onClick: onClose
-            }, "×")
+            }, h(CloseIcon))
           ),
           error === void 0 ? null : h("div", { className: "wc-error" }, t("failed", { reason: error })),
           body,
@@ -1109,7 +1154,7 @@ window.__ModuleLoader__.load({
         pinnedRef.current = pinned;
         const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot);
         const state = value.connected ? "connected" : value.state;
-        const tone = toneOf(state === "closed" ? "idle" : state);
+        const tone = toneOf(state);
         useEffect(() => {
           void connection.refresh();
           return () => clearTimeout(closeTimer.current);
@@ -1202,7 +1247,7 @@ window.__ModuleLoader__.load({
               h("rect", { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 })
             )
           ),
-          h("span", { className: `wc-dot wc-dot--${tone}`, "aria-hidden": true })
+          h("span", { className: "wc-dot", "data-state": tone, "aria-hidden": true })
         );
         const popover = open ? portal(h(Popover, {
           anchor,
@@ -1272,418 +1317,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/weixin-clawbot/client/styles.css
-    var styles_default = `/* 微信扫码登录面板：全部使用宿主主题 token，浅色/深色自动跟随。 */
-
-    /* 挂载容器本身不参与布局，按钮直接落在账户行里。 */
-    .wc-mount {
-      display: flex;
-      flex: none;
-      align-items: center;
-    }
-
-    .wc-entry {
-      position: relative;
-      display: flex;
-      min-width: 0;
-    }
-
-    /* 账户行里的图标按钮。尺寸/圆角/hover 对齐宿主自己的账户按钮与连接指示器。 */
-    .wc-icon {
-      box-sizing: border-box;
-      display: flex;
-      flex: none;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      padding: 0;
-      border: 0;
-      border-radius: var(--dsw-radius-md);
-      background: transparent;
-      color: var(--dsw-alias-label-secondary);
-      cursor: pointer;
-      transition: background-color .16s ease, color .16s ease;
-    }
-
-    .wc-icon:hover {
-      background: var(--dsw-alias-interactive-bg-hover);
-      color: var(--dsw-alias-label-primary);
-    }
-
-    .wc-icon:focus-visible {
-      outline: 2px solid var(--dsw-alias-brand-primary);
-      outline-offset: 2px;
-    }
-
-    .wc-icon__glyph {
-      display: grid;
-      place-items: center;
-      width: 18px;
-      height: 18px;
-    }
-
-    .wc-icon__glyph svg {
-      display: block;
-    }
-
-    /* codex 皮肤的 rail：与最左侧的 .sk-home 同款尺寸与 hover 底色。 */
-    html[data-sk-palette="codex"] .wc-icon {
-      width: 36px;
-      height: 36px;
-      margin: 0 auto;
-      border-radius: var(--dsw-radius-md);
-      color: var(--dsw-alias-label-primary);
-    }
-
-    html[data-sk-palette="codex"] .wc-icon:hover {
-      background: var(--cx-rail-item-hover);
-    }
-
-    html[data-sk-palette="codex"] .wc-icon__glyph svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    /* 状态圆点压在图标右上角，不占布局位置。 */
-    .wc-dot {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      corner-shape: round;
-      background: var(--dsw-alias-state-idle-primary);
-      box-shadow: 0 0 0 2px var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));
-      pointer-events: none;
-    }
-
-    .wc-dot--ok { background: var(--dsw-alias-state-success-primary); }
-    .wc-dot--busy { background: var(--dsw-alias-state-warn-primary); }
-    .wc-dot--bad { background: var(--dsw-alias-state-error-primary); }
-
-    /* ── 弹出卡片 ───────────────────────────────────────────────── */
-
-    .wc-popover {
-      position: fixed;
-      z-index: 2147482000;
-      /* 定位按 border-box 计算：少了这条，声明的 320px 只是内容宽，
-         实际占位 350px（含 14px 内边距 ×2 与 1px 边框 ×2），右侧会多出 30px 的空档。 */
-      box-sizing: border-box;
-      width: 320px;
-      display: flex;
-      flex-direction: column;
-      padding: 14px;
-      gap: 12px;
-      border: 1px solid var(--dsw-alias-border-l1);
-      border-radius: 12px;
-      background: var(--dsw-alias-bg-overlay);
-      box-shadow: 0 12px 32px rgba(15, 23, 42, .16);
-      color: var(--dsw-alias-label-primary);
-      font-size: 13px;
-      line-height: 1.5;
-      /* 兜底：卡片比视口还高时内部滚动，而不是顶到屏幕外。
-         JS 侧会算出同样的上限（placePopover 的 maxHeight），这里保证无 JS 时也不错。 */
-      max-height: calc(100vh - 16px);
-      overflow-y: auto;
-    }
-
-    .wc-popover > * {
-      flex: none;
-    }
-
-    .wc-head {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-    }
-
-    .wc-head__text {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .wc-title {
-      font-size: 14px;
-      font-weight: 600;
-      line-height: 20px;
-    }
-
-    .wc-subtitle {
-      margin-top: 2px;
-      font-size: 12px;
-      color: var(--dsw-alias-label-secondary);
-    }
-
-    .wc-close {
-      flex: none;
-      width: 24px;
-      height: 24px;
-      display: grid;
-      place-items: center;
-      padding: 0;
-      border: 0;
-      border-radius: 6px;
-      background: transparent;
-      color: var(--dsw-alias-label-secondary);
-      font-size: 16px;
-      line-height: 1;
-      cursor: pointer;
-    }
-
-    .wc-close:hover {
-      background: var(--dsw-alias-bg-layer-2);
-      color: var(--dsw-alias-label-primary);
-    }
-
-    .wc-body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .wc-status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      align-self: flex-start;
-      font-size: 12px;
-      color: var(--dsw-alias-label-secondary);
-    }
-
-    .wc-qr {
-      display: block;
-      border-radius: 6px;
-      background: #fff;
-    }
-
-    .wc-qr--failed {
-      display: grid;
-      place-items: center;
-      width: 176px;
-      height: 176px;
-      color: var(--dsw-alias-state-error-primary);
-      font-size: 12px;
-    }
-
-    .wc-hint {
-      text-align: center;
-      color: var(--dsw-alias-label-secondary);
-      font-size: 12px;
-      max-width: 260px;
-    }
-
-    .wc-countdown {
-      font-variant-numeric: tabular-nums;
-      color: var(--dsw-alias-label-secondary);
-      font-size: 12px;
-    }
-
-    .wc-error {
-      align-self: stretch;
-      padding: 8px 10px;
-      border-radius: 8px;
-      background: var(--dsw-alias-bg-layer-2);
-      color: var(--dsw-alias-state-error-primary);
-      font-size: 12px;
-      overflow-wrap: anywhere;
-    }
-
-    /* ── 按钮 ──────────────────────────────────────────────────── */
-
-    .wc-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .wc-button {
-      flex: 1 1 auto;
-      min-width: 96px;
-      padding: 7px 12px;
-      border: 1px solid var(--dsw-alias-border-l1);
-      border-radius: 8px;
-      background: var(--dsw-alias-bg-layer-1);
-      color: var(--dsw-alias-label-primary);
-      font: inherit;
-      font-size: 13px;
-      line-height: 18px;
-      cursor: pointer;
-      transition: background-color .16s ease, border-color .16s ease;
-    }
-
-    .wc-button:hover:not(:disabled) {
-      background: var(--dsw-alias-bg-layer-2);
-    }
-
-    .wc-button:disabled {
-      opacity: .55;
-      cursor: default;
-    }
-
-    .wc-button--primary {
-      border-color: transparent;
-      background: var(--dsw-alias-brand-primary);
-      color: #fff;
-      font-weight: 600;
-    }
-
-    .wc-button--primary:hover:not(:disabled) {
-      filter: brightness(1.06);
-      background: var(--dsw-alias-brand-primary);
-    }
-
-    .wc-button--danger {
-      color: var(--dsw-alias-state-error-primary);
-    }
-
-    .wc-button:focus-visible {
-      outline: 2px solid var(--dsw-alias-brand-primary);
-      outline-offset: 2px;
-    }
-
-    /* ── 已连接信息 ────────────────────────────────────────────── */
-
-    .wc-info {
-      align-self: stretch;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      padding: 10px;
-      border: 1px solid var(--dsw-alias-border-l1);
-      border-radius: 8px;
-      background: var(--dsw-alias-bg-layer-1);
-    }
-
-    .wc-info__row {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .wc-info__key {
-      flex: none;
-      width: 68px;
-      color: var(--dsw-alias-label-secondary);
-      font-size: 12px;
-    }
-
-    .wc-info__value {
-      flex: 1;
-      min-width: 0;
-      overflow-wrap: anywhere;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .wc-message {
-      align-self: stretch;
-      padding: 8px 10px;
-      border-radius: 8px;
-      background: var(--dsw-alias-bg-layer-1);
-      border: 1px solid var(--dsw-alias-border-l1);
-      font-size: 12px;
-    }
-
-    .wc-message__meta {
-      color: var(--dsw-alias-label-secondary);
-      margin-bottom: 2px;
-    }
-
-    .wc-message__text {
-      overflow-wrap: anywhere;
-      white-space: pre-wrap;
-    }
-
-    /* ── 输入校验码 ────────────────────────────────────────────── */
-
-    .wc-code {
-      display: flex;
-      gap: 8px;
-      align-self: stretch;
-    }
-
-    .wc-code__input {
-      flex: 1;
-      min-width: 0;
-      padding: 7px 10px;
-      border: 1px solid var(--dsw-alias-border-l1);
-      border-radius: 8px;
-      background: var(--dsw-alias-bg-layer-1);
-      color: var(--dsw-alias-label-primary);
-      font: inherit;
-      font-size: 13px;
-    }
-
-    .wc-code__input:focus-visible {
-      outline: 2px solid var(--dsw-alias-brand-primary);
-      outline-offset: 1px;
-    }
-
-    /* ── 底部开关 ──────────────────────────────────────────────── */
-
-    .wc-footer {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding-top: 10px;
-      border-top: 1px solid var(--dsw-alias-border-l1);
-      font-size: 12px;
-      color: var(--dsw-alias-label-secondary);
-    }
-
-    .wc-footer__label {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .wc-switch {
-      position: relative;
-      flex: none;
-      width: 34px;
-      height: 20px;
-      padding: 0;
-      border: 0;
-      border-radius: 10px;
-      background: var(--dsw-alias-state-idle-primary);
-      cursor: pointer;
-      transition: background-color .16s ease;
-    }
-
-    .wc-switch[aria-checked='true'] {
-      background: var(--dsw-alias-brand-primary);
-    }
-
-    .wc-switch:focus-visible {
-      outline: 2px solid var(--dsw-alias-brand-primary);
-      outline-offset: 2px;
-    }
-
-    .wc-switch__knob {
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: #fff;
-      transition: transform .16s ease;
-    }
-
-    .wc-switch[aria-checked='true'] .wc-switch__knob {
-      transform: translateX(14px);
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .wc-icon,
-      .wc-button,
-      .wc-switch,
-      .wc-switch__knob {
-        transition: none;
-      }
-    }
-    `;
+    var styles_default = '/* 微信扫码登录面板：全部使用宿主主题 token，浅色/深色自动跟随。 */\n\n/* 挂载容器本身不参与布局，按钮直接落在账户行里。 */\n.wc-mount {\n  display: flex;\n  flex: none;\n  align-items: center;\n}\n\n.wc-entry {\n  position: relative;\n  display: flex;\n  min-width: 0;\n}\n\n/* 账户行里的图标按钮。尺寸/圆角/hover 对齐宿主自己的账户按钮与连接指示器。 */\n.wc-icon {\n  box-sizing: border-box;\n  display: flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 32px;\n  height: 32px;\n  padding: 0;\n  border: 0;\n  border-radius: var(--dsw-radius-md);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n  transition: background-color .16s ease, color .16s ease;\n}\n\n.wc-icon:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n}\n\n.wc-icon:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: 2px;\n}\n\n.wc-icon__glyph {\n  display: grid;\n  place-items: center;\n  width: 18px;\n  height: 18px;\n}\n\n.wc-icon__glyph svg {\n  display: block;\n}\n\n/* codex 皮肤的 rail：与最左侧的 .sk-home 同款尺寸与 hover 底色。 */\nhtml[data-sk-palette="codex"] .wc-icon {\n  width: 36px;\n  height: 36px;\n  margin: 0 auto;\n  border-radius: var(--dsw-radius-md);\n  color: var(--dsw-alias-label-primary);\n}\n\nhtml[data-sk-palette="codex"] .wc-icon:hover {\n  background: var(--cx-rail-item-hover);\n}\n\nhtml[data-sk-palette="codex"] .wc-icon__glyph svg {\n  width: 18px;\n  height: 18px;\n}\n\n/* 状态圆点压在图标右上角，不占布局位置。\n   写法对齐宿主 primitives 的 StateDot：外层只给 color，圆点由 :after 用 currentColor 画。\n   这样状态色只有一处来源（data-state），不用为每个状态写一条 background。 */\n.wc-dot {\n  position: absolute;\n  top: 3px;\n  right: 3px;\n  width: 10px;\n  height: 10px;\n  pointer-events: none;\n}\n\n.wc-dot::after {\n  content: "";\n  position: absolute;\n  inset: 0;\n  border-radius: 50%;\n  corner-shape: round;\n  background: currentColor;\n  /* 挖出一圈底色的描边，压在图标上时边缘才不会糊在一起。 */\n  box-shadow: 0 0 0 2px var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));\n  color: var(--dsw-alias-state-idle-primary);\n}\n\n.wc-dot[data-state="ok"]::after { color: var(--dsw-alias-state-success-primary); }\n.wc-dot[data-state="busy"]::after { color: var(--dsw-alias-state-warn-primary); }\n.wc-dot[data-state="bad"]::after { color: var(--dsw-alias-state-error-primary); }\n\n/* ── 弹出卡片 ───────────────────────────────────────────────── */\n\n.wc-popover {\n  position: fixed;\n  z-index: 2147482000;\n  /* 定位按 border-box 计算：少了这条，声明的 320px 只是内容宽，\n     实际占位 350px（含 14px 内边距 ×2 与 1px 边框 ×2），右侧会多出 30px 的空档。 */\n  box-sizing: border-box;\n  width: 320px;\n  display: flex;\n  flex-direction: column;\n  padding: 14px;\n  gap: 12px;\n  /* 浮层配方对齐宿主：不画 border，0.5px 描边由 elevation-panel 自带的那一层来，\n     底色用 bg-layer-1（bg-overlay 在宿主里其实没人用在浮层上，浅色下偏灰）。 */\n  border: 0;\n  border-radius: var(--dsw-radius-lg);\n  background: var(--dsw-alias-bg-layer-1);\n  box-shadow: var(--dsw-elevation-panel);\n  color: var(--dsw-alias-label-primary);\n  font-size: 13px;\n  line-height: 1.5;\n  /* 兜底：卡片比视口还高时内部滚动，而不是顶到屏幕外。\n     JS 侧会算出同样的上限（placePopover 的 maxHeight），这里保证无 JS 时也不错。 */\n  max-height: calc(100vh - 16px);\n  overflow-y: auto;\n}\n\n.wc-popover > * {\n  flex: none;\n}\n\n.wc-head {\n  display: flex;\n  align-items: flex-start;\n  gap: 8px;\n}\n\n.wc-head__text {\n  flex: 1;\n  min-width: 0;\n}\n\n.wc-title {\n  font-size: 14px;\n  font-weight: 600;\n  line-height: 20px;\n}\n\n.wc-subtitle {\n  margin-top: 2px;\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n/* 与宿主 Modal 的关闭按钮同款：28×28、radius-sm、hover 只加深底色、不改文字色。 */\n.wc-close {\n  flex: none;\n  width: 28px;\n  height: 28px;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n  border: 0;\n  border-radius: var(--dsw-radius-sm);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  .wc-close:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n.wc-body {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 10px;\n}\n\n.wc-status {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  align-self: flex-start;\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n/* 二维码容器：蒙层要绝对定位压在码上，所以这里给一个定位祖先，并锁死二维码尺寸，\n   换态（等待扫码 → 已扫码 → 已过期）时卡片高度不跳动。 */\n.wc-qr-wrap {\n  position: relative;\n  width: 176px;\n  height: 176px;\n  flex: none;\n}\n\n.wc-qr {\n  display: block;\n  border-radius: 6px;\n  background: #fff;\n}\n\n/* 蒙层：半透明底色 + 居中文字。已过期那一档本身是按钮，点了就换新码。 */\n.wc-qr-mask {\n  position: absolute;\n  inset: 0;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  gap: 6px;\n  padding: 0;\n  border: 0;\n  border-radius: 6px;\n  background: var(--dsw-alias-bg-mask-1);\n  color: #fff;\n  font: inherit;\n  text-align: center;\n}\n\n.wc-qr-mask--expired {\n  cursor: pointer;\n}\n\n.wc-qr-mask--expired:disabled {\n  cursor: default;\n}\n\n.wc-qr-mask--expired:hover:not(:disabled) {\n  background: var(--dsw-alias-bg-mask-2);\n}\n\n/* 文字坐在自己的色块上：二维码是黑白高对比花纹，白字直接压上去根本读不出来。\n   用宿主浮层色 + 主文字色，浅色/深色主题下都是一块干净的衬底。 */\n.wc-qr-mask__panel {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  padding: 8px 14px;\n  border-radius: var(--dsw-radius-md);\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  box-shadow: var(--dsw-elevation-panel);\n}\n\n.wc-qr-mask__title {\n  font-size: 13px;\n  font-weight: 600;\n  line-height: 18px;\n}\n\n.wc-qr-mask__action {\n  font-size: 12px;\n  line-height: 18px;\n  text-decoration: underline;\n}\n\n.wc-qr--failed {\n  display: grid;\n  place-items: center;\n  width: 176px;\n  height: 176px;\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 12px;\n}\n\n.wc-hint {\n  text-align: center;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n  max-width: 260px;\n}\n\n.wc-countdown {\n  font-variant-numeric: tabular-nums;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n}\n\n.wc-error {\n  align-self: stretch;\n  padding: 8px 10px;\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-2);\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 12px;\n  overflow-wrap: anywhere;\n}\n\n/* ── 按钮 ──────────────────────────────────────────────────── */\n\n.wc-actions {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n}\n\n.wc-button {\n  flex: 1 1 auto;\n  min-width: 96px;\n  padding: 7px 12px;\n  border: 1px solid var(--dsw-alias-border-l1);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n  line-height: 18px;\n  cursor: pointer;\n  transition: background-color .16s ease, border-color .16s ease;\n}\n\n.wc-button:hover:not(:disabled) {\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n.wc-button:disabled {\n  opacity: .55;\n  cursor: default;\n}\n\n.wc-button--primary {\n  border-color: transparent;\n  background: var(--dsw-alias-brand-primary);\n  color: #fff;\n  font-weight: 600;\n}\n\n.wc-button--primary:hover:not(:disabled) {\n  filter: brightness(1.06);\n  background: var(--dsw-alias-brand-primary);\n}\n\n.wc-button--danger {\n  color: var(--dsw-alias-state-error-primary);\n}\n\n.wc-button:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: 2px;\n}\n\n/* ── 已连接信息 ────────────────────────────────────────────── */\n\n.wc-info {\n  align-self: stretch;\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n  padding: 10px;\n  border: 1px solid var(--dsw-alias-border-l1);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.wc-info__row {\n  display: flex;\n  align-items: baseline;\n  gap: 8px;\n  min-width: 0;\n}\n\n.wc-info__key {\n  flex: none;\n  width: 68px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n}\n\n.wc-info__value {\n  flex: 1;\n  min-width: 0;\n  overflow-wrap: anywhere;\n  font-variant-numeric: tabular-nums;\n}\n\n.wc-message {\n  align-self: stretch;\n  padding: 8px 10px;\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n  border: 1px solid var(--dsw-alias-border-l1);\n  font-size: 12px;\n}\n\n.wc-message__meta {\n  color: var(--dsw-alias-label-secondary);\n  margin-bottom: 2px;\n}\n\n.wc-message__text {\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n/* ── 输入校验码 ────────────────────────────────────────────── */\n\n.wc-code {\n  display: flex;\n  gap: 8px;\n  align-self: stretch;\n}\n\n.wc-code__input {\n  flex: 1;\n  min-width: 0;\n  padding: 7px 10px;\n  border: 1px solid var(--dsw-alias-border-l1);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n}\n\n.wc-code__input:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: 1px;\n}\n\n/* ── 底部开关 ──────────────────────────────────────────────── */\n\n.wc-footer {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  padding-top: 10px;\n  border-top: 1px solid var(--dsw-alias-border-l1);\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.wc-footer__label {\n  flex: 1;\n  min-width: 0;\n}\n\n/* DSH General Settings Switch: 36×20 track, 16px thumb, native state tokens.\n   与 src/modules/boot/client/styles.css 的同名复刻保持一致；插件拿不到宿主 primitives，\n   只能按这套尺寸/令牌复刻，改一处就要同步另一处。 */\n.wc-switch {\n  box-sizing: border-box;\n  position: relative;\n  flex: 0 0 auto;\n  width: 36px;\n  height: 20px;\n  padding: 2px;\n  border: 0;\n  border-radius: 999px;\n  corner-shape: round;\n  background: var(--dsw-alias-border-l3);\n  cursor: pointer;\n}\n\n.wc-switch[aria-checked="true"] {\n  background: var(--dsw-alias-brand-primary);\n}\n\n.wc-switch:disabled {\n  cursor: default;\n  opacity: .5;\n}\n\n.wc-switch:focus-visible {\n  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 2px;\n}\n\n.wc-switch__knob {\n  display: block;\n  width: 16px;\n  height: 16px;\n  border-radius: 50%;\n  corner-shape: round;\n  background: var(--dsw-alias-label-primary-foreground);\n  transition: transform .12s ease;\n}\n\n.wc-switch[aria-checked="false"] .wc-switch__knob {\n  background: var(--dsw-alias-switch-thumb);\n}\n\n.wc-switch[aria-checked="true"] .wc-switch__knob {\n  transform: translate(16px);\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .wc-icon,\n  .wc-button,\n  .wc-switch,\n  .wc-switch__knob {\n    transition: none;\n  }\n}\n';
 
     // src/modules/weixin-clawbot/client/index.jsx
     globalThis.__dshReact = import_react.default;

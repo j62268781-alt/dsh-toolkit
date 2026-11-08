@@ -5,8 +5,8 @@ export const WC_COPY = {
   zh: {
     entry: '微信连接',
     entryTitle: '微信连接',
-    title: '微信扫码登录',
-    subtitle: '在浏览器里完成登录，不需要敲命令',
+    title: '微信 ClawBot',
+    subtitle: '扫码授权，将你的微信与 ClawBot 绑定',
 
     stateIdle: '未连接',
     stateRequesting: '正在申请二维码…',
@@ -16,6 +16,7 @@ export const WC_COPY = {
     stateConnected: '已连接',
     stateFailed: '出现错误',
     stateClosed: '已关闭',
+    stateExpired: '二维码已过期',
 
     connect: '连接微信',
     reconnect: '重新登录',
@@ -27,7 +28,9 @@ export const WC_COPY = {
     codePlaceholder: '微信里显示的数字',
     codeSubmit: '提交',
     scanHint: '用手机微信扫描二维码，并在微信中确认连接',
-    qrExpired: '二维码已过期，请重新连接',
+    qrExpiredTitle: '二维码已过期',
+    qrExpiredAction: '点击刷新',
+    qrConnecting: '连接中…',
     qrCountdown: '{s} 秒后过期',
     account: '账号',
     endpoint: '节点',
@@ -53,8 +56,8 @@ export const WC_COPY = {
   en: {
     entry: 'WeChat',
     entryTitle: 'WeChat connection',
-    title: 'WeChat sign-in',
-    subtitle: 'Sign in from the browser — no commands needed',
+    title: 'WeChat ClawBot',
+    subtitle: 'Scan to authorize and bind your WeChat to ClawBot',
 
     stateIdle: 'Not connected',
     stateRequesting: 'Requesting a QR code…',
@@ -64,6 +67,7 @@ export const WC_COPY = {
     stateConnected: 'Connected',
     stateFailed: 'Something went wrong',
     stateClosed: 'Closed',
+    stateExpired: 'QR code expired',
 
     connect: 'Connect WeChat',
     reconnect: 'Sign in again',
@@ -75,7 +79,9 @@ export const WC_COPY = {
     codePlaceholder: 'Number shown in WeChat',
     codeSubmit: 'Submit',
     scanHint: 'Scan with WeChat on your phone, then confirm the connection',
-    qrExpired: 'The QR code expired — connect again to get a new one',
+    qrExpiredTitle: 'QR code expired',
+    qrExpiredAction: 'Click to refresh',
+    qrConnecting: 'Connecting…',
     qrCountdown: 'Expires in {s}s',
     account: 'Account',
     endpoint: 'Endpoint',
