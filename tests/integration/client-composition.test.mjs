@@ -15,7 +15,7 @@ const EXPECTED_INJECT = {
   'toolkit-notification-client': ['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces'],
   'toolkit-boot-client': ['slots', 'configForms'],
   'toolkit-pet-client': ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces'],
-  'toolkit-weixin-clawbot-client': ['slots', 'locale'],
+  'toolkit-weixin-clawbot-client': ['locale'],
 }
 const ALL_SERVICES = new Set([
   ...Object.values(EXPECTED_INJECT).flat(), 'sidebarRight', 'shortcuts', 'uiSession', 'uiConversation', 'uiWorkspace',
@@ -60,6 +60,10 @@ async function loadClient() {
     required.push(id)
     if (id === 'react') return React
     if (id === '@deepseek-ai/dsh-client-ui-primitives') return primitives
+    // react-dom and react-dom/client are Host seed modules: portal for the popover,
+    // createRoot for the account-row icon mount.
+    if (id === 'react-dom') return { createPortal: (node) => node }
+    if (id === 'react-dom/client') return { createRoot: () => ({ render() {}, unmount() {} }) }
     assert.fail(`unexpected Host module dependency: ${id}`)
   })
   return { client, primitives, required, warnings }
@@ -191,8 +195,9 @@ test('the real classic factory uses only Host seed modules and mounts ten separa
     assert.deepEqual(Array.from(plugin.inject), EXPECTED_INJECT[plugin.name])
     assert.equal(typeof plugin.apply, 'function')
   }
-  // react-dom is a Host seed module; the popover portals into document.body.
-  assert.deepEqual([...new Set(required)].sort(), ['@deepseek-ai/dsh-client-ui-primitives', 'react', 'react-dom'])
+  // react-dom and react-dom/client are Host seed modules: portal for the popover and
+  // createRoot for the icon mounted into the sidebar account row.
+  assert.deepEqual([...new Set(required)].sort(), ['@deepseek-ai/dsh-client-ui-primitives', 'react', 'react-dom', 'react-dom/client'])
   assert.deepEqual(warnings, [])
 })
 

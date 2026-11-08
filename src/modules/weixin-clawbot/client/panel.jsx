@@ -174,7 +174,8 @@ export function createPanel(React, { t, connection, portal }) {
 
   /**
    * 弹出卡片。position 由触发按钮的 boundingRect 决定：
-   * 侧栏在左，卡片贴右侧展开；若下方空间不足则向上对齐。
+   * 侧栏在左，卡片贴右侧展开；纵向与按钮底边对齐（入口就在侧栏底部，
+   * 向下展开一定出屏，所以按「卡片底边贴按钮底边」算）。
    */
   function Popover({ anchor, pinned, onPin, onClose }) {
     const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot)
@@ -227,10 +228,9 @@ export function createPanel(React, { t, connection, portal }) {
       if (anchor === undefined) return { left: 16, top: 16 }
       const width = 320
       const estimated = 430
-      const left = Math.min(anchor.right + 12, Math.max(8, window.innerWidth - width - 8))
-      const top = anchor.bottom + estimated > window.innerHeight
-        ? Math.max(8, window.innerHeight - estimated - 8)
-        : Math.max(8, anchor.top - 8)
+      const left = Math.min(anchor.right + 10, Math.max(8, window.innerWidth - width - 8))
+      // 入口固定在侧栏底部，卡片只有向上才有空间：底边与按钮底边对齐。
+      const top = Math.max(8, Math.min(anchor.bottom - estimated, window.innerHeight - estimated - 8))
       return { left: Math.max(8, left), top }
     }, [anchor])
 
@@ -309,10 +309,10 @@ export function createPanel(React, { t, connection, portal }) {
   }
 
   /**
-   * 侧栏底部入口。hover 打开，mouseleave 关闭（除非被钉住）。
-   * @param props.wide 侧栏是否展开（false 时只显示图标）。
+   * 账户行里的入口：只有一个图标按钮，状态用右上角小圆点表示。
+   * hover / focus 打开，移出关闭（除非被钉住）。
    */
-  function WeixinEntry({ wide = true }) {
+  function WeixinEntry() {
     const [open, setOpen] = useState(false)
     const [pinned, setPinned] = useState(false)
     const [anchor, setAnchor] = useState(undefined)
@@ -372,29 +372,32 @@ export function createPanel(React, { t, connection, portal }) {
     const trigger = h('button', {
       ref: triggerRef,
       type: 'button',
-      className: 'wc-trigger',
+      className: 'wc-icon',
       'aria-haspopup': 'dialog',
       'aria-expanded': open,
-      title: wide ? undefined : t('entryTitle'),
+      'aria-label': t('entryTitle'),
+      title: t('entryTitle'),
       onMouseEnter: openNow,
       onFocus: openNow,
       onClick: () => (open ? closeNow() : openNow()),
     },
-    h('span', { className: 'wc-trigger__glyph', 'aria-hidden': true },
-      h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none' },
-        h('path', {
-          d: 'M8 1.8C6.2 1.8 5 3.2 5 5.1c0 2.1-.6 3-1.1 3.6-.2.2 0 .6.3.6h7.6c.3 0 .5-.4.3-.6-.5-.6-1.1-1.5-1.1-3.6 0-1.9-1.2-3.3-3-3.3Z',
-          stroke: 'currentColor',
-          strokeWidth: 1.4,
-          strokeLinejoin: 'round',
-        }),
-        h('path', {
-          d: 'M6.6 11.6a1.5 1.5 0 0 0 2.8 0',
-          stroke: 'currentColor',
-          strokeWidth: 1.4,
-          strokeLinecap: 'round',
-        }))),
-    h('span', { className: 'wc-trigger__label' }, t('entry')),
+    // 「显示器 + 手机」轮廓：扫码登录是在浏览器里操作，手机与屏幕的关系就是这个交互的形状。
+    h('span', { className: 'wc-icon__glyph', 'aria-hidden': true },
+      h('svg', {
+        width: 18,
+        height: 18,
+        viewBox: '0 0 18 18',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.3,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+      },
+      // 显示器：圆角矩形 + 底座。
+      h('rect', { x: 2.2, y: 3.2, width: 10.6, height: 7.6, rx: 1.6 }),
+      h('path', { d: 'M6.5 13.2h3.4M7.6 10.8v2.4M9.4 10.8v2.4' }),
+      // 手机：压在显示器右下角。
+      h('rect', { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 }))),
     h('span', { className: `wc-dot wc-dot--${tone}`, 'aria-hidden': true }))
 
     // 关键：卡片自己负责「移出去就关」，而不是由外层容器的 mouseleave 决定——
@@ -412,7 +415,7 @@ export function createPanel(React, { t, connection, portal }) {
       : null
 
     return h('div', {
-      className: `wc-entry${wide ? '' : ' wc-entry--rail'}`,
+      className: 'wc-entry',
       onMouseLeave: closeSoon,
     }, trigger, popover)
   }

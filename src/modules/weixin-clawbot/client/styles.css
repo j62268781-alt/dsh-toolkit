@@ -1,78 +1,92 @@
 /* 微信扫码登录面板：全部使用宿主主题 token，浅色/深色自动跟随。 */
 
+/* 挂载容器本身不参与布局，按钮直接落在账户行里。 */
+.wc-mount {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
 .wc-entry {
   position: relative;
   display: flex;
   min-width: 0;
 }
 
-.wc-trigger {
+/* 账户行里的图标按钮。尺寸/圆角/hover 对齐宿主自己的账户按钮与连接指示器。 */
+.wc-icon {
+  box-sizing: border-box;
   display: flex;
+  flex: none;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-  padding: 8px 10px;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--dsw-radius-md);
   background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font: inherit;
-  font-size: 14px;
-  line-height: 20px;
-  text-align: left;
+  color: var(--dsw-alias-label-secondary);
   cursor: pointer;
-  transition: background-color .16s ease;
+  transition: background-color .16s ease, color .16s ease;
 }
 
-.wc-trigger:hover {
-  background: var(--dsw-alias-bg-layer-2);
+.wc-icon:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
 }
 
-.wc-trigger:focus-visible {
+.wc-icon:focus-visible {
   outline: 2px solid var(--dsw-alias-brand-primary);
   outline-offset: 2px;
 }
 
-.wc-trigger__glyph {
-  flex: none;
+.wc-icon__glyph {
   display: grid;
   place-items: center;
   width: 18px;
   height: 18px;
-  color: var(--dsw-alias-brand-primary);
 }
 
-.wc-trigger__label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.wc-icon__glyph svg {
+  display: block;
 }
 
+/* codex 皮肤的 rail：与最左侧的 .sk-home 同款尺寸与 hover 底色。 */
+html[data-sk-palette="codex"] .wc-icon {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto;
+  border-radius: var(--dsw-radius-md);
+  color: var(--dsw-alias-label-primary);
+}
+
+html[data-sk-palette="codex"] .wc-icon:hover {
+  background: var(--cx-rail-item-hover);
+}
+
+html[data-sk-palette="codex"] .wc-icon__glyph svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 状态圆点压在图标右上角，不占布局位置。 */
 .wc-dot {
-  flex: none;
+  position: absolute;
+  top: 4px;
+  right: 4px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
+  corner-shape: round;
   background: var(--dsw-alias-state-idle-primary);
+  box-shadow: 0 0 0 2px var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));
+  pointer-events: none;
 }
 
 .wc-dot--ok { background: var(--dsw-alias-state-success-primary); }
 .wc-dot--busy { background: var(--dsw-alias-state-warn-primary); }
 .wc-dot--bad { background: var(--dsw-alias-state-error-primary); }
-
-/* 侧栏收起成 56px 轨道时只留图标。 */
-.wc-entry--rail .wc-trigger {
-  justify-content: center;
-  padding: 8px;
-}
-
-.wc-entry--rail .wc-trigger__label,
-.wc-entry--rail .wc-dot {
-  display: none;
-}
 
 /* ── 弹出卡片 ───────────────────────────────────────────────── */
 
@@ -377,7 +391,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wc-trigger,
+  .wc-icon,
   .wc-button,
   .wc-switch,
   .wc-switch__knob {

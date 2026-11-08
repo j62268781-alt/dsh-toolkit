@@ -6,12 +6,14 @@ import { installStylesheet } from '../../../client/ui/stylesheet.js'
 import { createConnection } from './model.js'
 import { createTranslator, WC_COPY, WC_NS } from './locale.js'
 import { createPanel } from './panel.jsx'
+import { installEntry } from './mount.jsx'
 import css from './styles.css'
 
 /**
- * Client 半边：侧栏底部的「微信连接」入口 + hover 弹出的扫码面板。
+ * Client 半边：侧栏账户行里的「微信连接」图标 + hover 弹出的扫码面板。
  *
- * 依赖只有 `slots` 与 `locale`：
+ * 依赖只有 `locale`：
+ *   - 入口不走插槽 —— 账户行没有可注册的 list 插槽，改用 DOM 安装器（见 mount.jsx）；
  *   - 不需要 configForms：本模块的状态全部在宿主服务里，不通过设置表单读写；
  *   - 不需要 remote：所有请求都走同源 HTTP 路由。
  */
@@ -28,9 +30,18 @@ export default function createWeixinClawbot(require) {
     portal = (node) => node
   }
 
+  // createRoot 只在 react-dom/client 上；同样拿不到就退化成「不安装入口」。
+  let createRoot
+  try {
+    const client = require('react-dom/client')
+    if (client !== undefined && typeof client.createRoot === 'function') createRoot = client.createRoot
+  } catch {
+    createRoot = undefined
+  }
+
   return {
     name: 'toolkit-weixin-clawbot-client',
-    inject: ['slots', 'locale'],
+    inject: ['locale'],
     apply(ctx) {
       const t = createTranslator(ctx)
       const connection = createConnection({
@@ -52,15 +63,8 @@ export default function createWeixinClawbot(require) {
         connection.dispose()
       }, 'toolkit-weixin-clawbot:connection')
       ctx.effect(
-        () => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
-          name: 'sidebar.footer.action',
-          id: 'weixin-clawbot',
-          key: 'weixin-clawbot',
-          order: 9,
-          label: () => t('entry'),
-          locale: WC_NS,
-        }, Entry)),
-        'toolkit-weixin-clawbot:footer-action',
+        () => installEntry(ctx, { React: ReactRuntime, createRoot, Entry }),
+        'toolkit-weixin-clawbot:entry-icon',
       )
     },
   }

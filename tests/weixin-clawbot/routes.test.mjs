@@ -255,7 +255,7 @@ test('登录路由在无网络时会返回结构化的 400 而不是挂住', asy
 
 // ── 客户端产物 ─────────────────────────────────────────────────
 
-test('客户端产物是自包含单文件，注册到 sidebar.footer.action 且 order=9', async (t) => {
+test('客户端产物是自包含单文件，入口挂在账户行而不是插槽里', async (t) => {
   const built = await readFile(new URL('../../packages/weixin-clawbot/lib/client.js', import.meta.url), 'utf8')
   const registrations = []
   const required = []
@@ -267,6 +267,7 @@ test('客户端产物是自包含单文件，注册到 sidebar.footer.action 且
     console: { warn: () => {}, error: () => {} },
     fetch() { throw new Error('registration must not fetch') },
     // The module body is evaluated inside the sandbox realm, so `document` must live here.
+    // Deliberately minimal: no querySelector, so a mount attempt must bail out quietly.
     document: {
       head,
       documentElement: head,
@@ -289,20 +290,21 @@ test('客户端产物是自包含单文件，注册到 sidebar.footer.action 且
   assert.equal(spec.id, 'dsh-toolkit-weixin-clawbot')
   assert.equal(typeof spec.factory, 'function')
 
-  // react 由宿主模块表提供；其余一律不能依赖。
+  // react 由宿主模块表提供；react-dom 提供 portal，react-dom/client 提供 createRoot。
   const client = spec.factory((id) => {
     required.push(id)
     if (id === 'react') return { createElement: () => null, useEffect: () => {}, useRef: () => ({}), useState: () => [undefined, () => {}], useCallback: (fn) => fn, useMemo: (fn) => fn(), useSyncExternalStore: () => ({}) }
     if (id === 'react-dom') return { createPortal: (node) => node }
+    if (id === 'react-dom/client') return { createRoot: () => ({ render() {}, unmount() {} }) }
     throw new Error(`unexpected dependency: ${id}`)
   })
   assert.equal(client.name, 'toolkit-weixin-clawbot-client')
-  assert.deepEqual(Array.from(client.inject), ['slots', 'locale'])
-  assert.deepEqual([...new Set(required)].sort(), ['react', 'react-dom'])
+  // 账户行没有可注册的 list 插槽，入口改成 DOM 安装器，因此不再声明 slots。
+  assert.deepEqual(Array.from(client.inject), ['locale'])
+  assert.deepEqual([...new Set(required)].sort(), ['react', 'react-dom', 'react-dom/client'])
+  assert.equal(built.includes('sidebar.footer.action'), false, '产物不应再依赖账户行里不存在的插槽')
 
-  // 注册行为：插槽 id/key/order 都按约定给全。
   const effects = []
-  const registered = []
   const ctx = {
     effect(run, label) {
       effects.push(label)
@@ -310,28 +312,10 @@ test('客户端产物是自包含单文件，注册到 sidebar.footer.action 且
       return typeof dispose === 'function' ? dispose : () => {}
     },
     locale: { register: () => () => {} },
-    slots: {
-      inject(name, run) {
-        assert.equal(name, 'sidebar.footer.action')
-        return run()
-      },
-      register(registration, Component) {
-        registered.push({ registration, Component })
-        return () => {}
-      },
-    },
   }
   client.apply(ctx)
-  assert.equal(registered.length, 1)
-  const [{ registration, Component }] = registered
-  assert.equal(registration.name, 'sidebar.footer.action')
-  assert.equal(registration.id, 'weixin-clawbot')
-  assert.equal(registration.key, 'weixin-clawbot')
-  assert.equal(registration.order, 9)
-  assert.equal(typeof Component, 'function')
-  assert.equal(registration.locale, 'dsh-toolkit.weixin-clawbot')
   assert.ok(effects.some((label) => label === 'toolkit-weixin-clawbot:stylesheet'))
-  assert.ok(effects.some((label) => label === 'toolkit-weixin-clawbot:footer-action'))
+  assert.ok(effects.some((label) => label === 'toolkit-weixin-clawbot:entry-icon'))
 })
 
 test('客户端产物不含服务端代码与凭据名称泄露', async () => {
