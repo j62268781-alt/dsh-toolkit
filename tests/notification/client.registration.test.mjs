@@ -161,8 +161,10 @@ test('页面：四张分组卡片、全局声音与四种类型开关，无最�
   const audio = switchFor(document, '播放声音')
   await app.click(audio)
   assertWrite(runtime, 'soundEnabled', false)
-  assert.equal(document.querySelector('.ntf-selectSound').disabled, true)
-  assert.equal(document.querySelector('.ntf-range').disabled, true)
+  // 播放声音只影响通知自动播放；选音、试听、音量是独立的本地动作，不该跟着变灰。
+  assert.equal(document.querySelector('.ntf-selectSound').disabled, false)
+  assert.equal(document.querySelector('.ntf-range').disabled, false)
+  assert.equal([...document.querySelectorAll('button')].find((node) => node.textContent === '试听').disabled, false)
   await app.click(audio)
   assertWrite(runtime, 'soundEnabled', true)
   const range = document.querySelector('.ntf-range')

@@ -124,7 +124,7 @@ export function createNotificationPanel(React, options = {}) {
     const enabled = valueOf('enabled') === true
     const soundEnabled = valueOf('soundEnabled') === true
     const inactive = readOnly || !enabled
-    const soundInactive = inactive || !soundEnabled
+    // 「播放声音」只关掉通知的自动播放；选音、试听、音量是显式的本地动作，不该跟着它变灰。
     const run = async (task) => {
       setBusy(true); setError(''); setNotice('')
       try { await task() } catch (cause) { setError(translate('saveFailed', { reason: String(cause?.message ?? cause) })) } finally { setBusy(false) }
@@ -176,8 +176,8 @@ export function createNotificationPanel(React, options = {}) {
       </Group>
       <Group title={translate('soundsHeading')}>
         <Row title={translate('soundTitle')} description={translate('soundDesc')}><Toggle checked={soundEnabled} disabled={inactive} label={translate('soundTitle')} onChange={(next) => changeField('soundEnabled', next, () => actions.setSoundEnabled(next))} /></Row>
-        <Row title={translate('soundTypeTitle')} description={translate(soundStatus === 'unavailable' ? 'soundCatalogUnavailable' : 'soundTypeDesc')}><div className="ntf-actions"><select className="ntf-select ntf-selectSound" aria-label={translate('soundTypeTitle')} value={selectedSound} disabled={soundInactive || soundStatus === 'loading'} onChange={(event) => changeField('sound', event.target.value, () => actions.setSound(event.target.value))}>{soundChoices.map(({ id, label }) => <option value={id} key={id}>{label}</option>)}</select><ActionButton disabled={soundInactive || soundStatus !== 'ready' || busy} onClick={preview}>{translate('previewButton')}</ActionButton></div></Row>
-        <Row title={translate('volumeTitle')} description={translate('volumeDesc')}><div className="ntf-volume"><input className="ntf-range" type="range" min="0" max="100" step="1" value={Math.round(volume * 100)} aria-label={translate('volumeTitle')} disabled={readOnly || !enabled || !soundEnabled} onChange={(event) => changeVolume(Number(event.target.value) / 100)} /><span className="ntf-volumeValue">{translate('volumeValue', { percent: Math.round(volume * 100) })}</span></div></Row>
+        <Row title={translate('soundTypeTitle')} description={translate(soundStatus === 'unavailable' ? 'soundCatalogUnavailable' : 'soundTypeDesc')}><div className="ntf-actions"><select className="ntf-select ntf-selectSound" aria-label={translate('soundTypeTitle')} value={selectedSound} disabled={inactive || soundStatus === 'loading'} onChange={(event) => changeField('sound', event.target.value, () => actions.setSound(event.target.value))}>{soundChoices.map(({ id, label }) => <option value={id} key={id}>{label}</option>)}</select><ActionButton disabled={inactive || soundStatus !== 'ready' || busy} onClick={preview}>{translate('previewButton')}</ActionButton></div></Row>
+        <Row title={translate('volumeTitle')} description={translate('volumeDesc')}><div className="ntf-volume"><input className="ntf-range" type="range" min="0" max="100" step="1" value={Math.round(volume * 100)} aria-label={translate('volumeTitle')} disabled={inactive} onChange={(event) => changeVolume(Number(event.target.value) / 100)} /><span className="ntf-volumeValue">{translate('volumeValue', { percent: Math.round(volume * 100) })}</span></div></Row>
       </Group>
       {error !== '' ? <p className="ntf-error" role="alert">{error}</p> : null}
       {notice !== '' ? <p className="ntf-notice" role="status">{notice}</p> : null}
