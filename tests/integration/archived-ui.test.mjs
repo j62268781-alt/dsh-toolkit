@@ -172,7 +172,7 @@ test('archived page mirrors the built-in search, lists every archived record, an
   assert.match(app.text(), /没有匹配的归档会话/)
 })
 
-test('bulk delete confirms the session count, retries failures, and never touches workspaces', async (t) => {
+test('bulk delete sends one batch request, retries failures, and never touches workspaces', async (t) => {
   const app = await boot(t)
   seed(app.workspace, app.sessions)
   await app.render(app.overlay(h(app.sections)))
@@ -185,17 +185,28 @@ test('bulk delete confirms the session count, retries failures, and never touche
   assert.equal(app.dialog(), null)
   assert.equal(app.calls.delete.length, 0)
 
-  app.setFetch(async (_input, options) => {
+  const batches = []
+  app.setFetch(async (input, options) => {
     // The page also asks which ids were already deleted; nothing is pending here.
     if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: [] }) }
-    const { sessionId } = JSON.parse(options.body)
-    if (sessionId === 'a2') return { ok: false, status: 409, json: async () => ({ ok: false, reason: 'session-loaded' }) }
-    // Files already gone: the archive entry must still be cleared, not reported as a failure.
-    if (sessionId === 'missing') return { ok: false, status: 404, json: async () => ({ ok: false, reason: 'not-found' }) }
-    return { ok: true, status: 200, json: async () => ({ ok: true }) }
+    const { sessionIds } = JSON.parse(options.body)
+    batches.push(input)
+    return {
+      ok: true, status: 200, json: async () => ({
+        ok: true,
+        results: sessionIds.map((sessionId) => {
+          if (sessionId === 'a2') return { sessionId, status: 409, ok: false, reason: 'session-loaded' }
+          // Files already gone: the archive entry must still be cleared, not reported as a failure.
+          if (sessionId === 'missing') return { sessionId, status: 404, ok: false, reason: 'not-found' }
+          return { sessionId, status: 200, ok: true }
+        }),
+      }),
+    }
   })
   await app.click('全部删除')
   await app.click('永久删除')
+  assert.equal(batches.length, 1, 'one round trip for the whole page')
+  assert.match(String(batches[0]), /archived\/delete-sessions$/)
   assert.match(app.dom.window.document.querySelector('[role="alert"]').textContent, /第二条: session-loaded/)
   assert.deepEqual(app.calls.delete, [], 'bulk delete never removes a workspace registration')
   assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 1, 'only the failed session remains listed')
@@ -203,7 +214,8 @@ test('bulk delete confirms the session count, retries failures, and never touche
 
   app.setFetch(async (_input, options) => {
     if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: [] }) }
-    return { ok: true, status: 200, json: async () => ({ ok: true }) }
+    const { sessionIds } = JSON.parse(options.body)
+    return { ok: true, status: 200, json: async () => ({ ok: true, results: sessionIds.map((sessionId) => ({ sessionId, status: 200, ok: true })) }) }
   })
   await app.click('永久删除')
   assert.equal(app.dialog(), null)
@@ -214,21 +226,27 @@ test('bulk delete confirms the session count, retries failures, and never touche
   assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 0)
 })
 
-test('confirming a bulk delete closes the dialog at once and counts progress on the page', async (t) => {
+test('confirming a bulk delete closes the dialog at once and loads the button instead', async (t) => {
   const app = await boot(t)
   seed(app.workspace, app.sessions)
 
-  // Every host round trip is held open, so the in-flight state is observable
-  // instead of being over by the time the click handler returns.
+  // The host round trip is held open, so the in-flight state is observable instead
+  // of being over by the time the click handler returns.
   const gates = []
   let lookups = 0
+  let posts = 0
   app.setFetch(async (_input, options) => {
     if (options.method === 'GET') {
       lookups++
       return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: [] }) }
     }
+    posts++
+    const { sessionIds } = JSON.parse(options.body)
     await new Promise((resolve) => gates.push(resolve))
-    return { ok: true, status: 200, json: async () => ({ ok: true }) }
+    return {
+      ok: true, status: 200,
+      json: async () => ({ ok: true, results: sessionIds.map((sessionId) => ({ sessionId, status: 200, ok: true })) }),
+    }
   })
   await app.render(app.overlay(h(app.sections)))
   assert.equal(lookups, 1, 'one pending lookup when the page mounts')
@@ -243,32 +261,22 @@ test('confirming a bulk delete closes the dialog at once and counts progress on 
     confirm.click()
   })
   assert.equal(app.dialog(), null, 'the dialog closes before the host answers')
-  const progress = () => app.dom.window.document.querySelector('.sk-arch__progress')?.textContent
-  assert.equal(progress(), '删除中 0/4')
-  assert.equal(app.dom.window.document.querySelector('.sk-arch__removeAll').disabled, true)
 
-  const release = async () => {
-    const gate = gates.shift()
-    assert.ok(gate, 'a delete is in flight')
-    await act(async () => gate())
-  }
-  await release()
-  assert.equal(progress(), '删除中 1/4')
-  assert.equal(app.dialog(), null)
-  await release()
-  assert.equal(progress(), '删除中 2/4')
-  await release()
-  assert.equal(progress(), '删除中 3/4')
-  // The last row's own progress frame is followed by the batch teardown in the
-  // same tick, so only the finished state is observable here.
-  await release()
+  // The wait is carried by the bulk button: a ring plus aria-busy, never a page row.
+  const document = app.dom.window.document
+  const removeAll = document.querySelector('.sk-arch__removeAll')
+  assert.equal(removeAll.getAttribute('aria-busy'), 'true')
+  assert.ok(removeAll.querySelector('.sk-arch__spinner'), 'the bulk button shows the ring')
+  assert.equal(document.querySelector('.sk-arch__progress'), null, 'no progress line on the page')
+  assert.equal(posts, 1, 'the whole page is one request')
+  assert.equal(removeAll.disabled, false, 'a working button is busy, not disabled')
 
-  // The batch ends: progress clears, the rows are gone, and the pending list was
-  // re-read once for the whole batch rather than once per deleted row.
+  await act(async () => gates.shift()())
   assert.equal(app.dialog(), null)
-  assert.equal(progress(), undefined)
+  assert.equal(document.querySelector('.sk-arch__spinner'), null, 'the ring clears with the batch')
+  assert.equal(document.querySelector('.sk-arch__removeAll').getAttribute('aria-busy'), null)
   assert.equal(lookups, 2, 'one lookup at mount, one after the batch')
-  assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 0)
+  assert.equal(document.querySelectorAll('.sk-arch__row').length, 0)
   assert.equal(app.calls.unarchive, 4)
   assert.equal(app.calls.unpin, 4)
 })
@@ -281,14 +289,19 @@ test('a session the host still holds keeps its archive entry until the restart c
   let pending = []
   app.setFetch(async (_input, options) => {
     if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: pending }) }
-    const { sessionId } = JSON.parse(options.body)
-    // The host moved the files but still holds the record: clearing the archive
-    // registration now would put a session without files back in the sidebar.
-    if (sessionId === 'loose') {
-      pending = ['loose']
-      return { ok: true, status: 200, json: async () => ({ ok: true, retained: true }) }
+    const { sessionIds } = JSON.parse(options.body)
+    return {
+      ok: true, status: 200, json: async () => ({
+        ok: true,
+        results: sessionIds.map((sessionId) => {
+          // The host moved the files but still holds the record: clearing the archive
+          // registration now would put a session without files back in the sidebar.
+          if (sessionId !== 'loose') return { sessionId, status: 200, ok: true }
+          pending = ['loose']
+          return { sessionId, status: 200, ok: true, retained: true }
+        }),
+      }),
     }
-    return { ok: true, status: 200, json: async () => ({ ok: true }) }
   })
   await app.click('全部删除')
   await app.click('永久删除')

@@ -57,7 +57,9 @@ function createArchivedSection(ctx, removal) {
     const [, bump] = React.useState(0);
     const [query, setQuery] = React.useState("");
     const [project, setProject] = React.useState("");
-    const [busy, setBusy] = React.useState(false);
+    // The id whose Restore is in flight, not a section-wide flag: graying every
+    // row's buttons for one row's round trip is what read as a flash.
+    const [busyId, setBusyId] = React.useState(null);
     const [error, setError] = React.useState("");
     // Deleted while the host still held them: their files are gone, but the archive
     // registration lives on until a restart, so the list has to keep hiding them.
@@ -118,14 +120,14 @@ function createArchivedSection(ctx, removal) {
     const shown = visible.reduce((sum, group) => sum + group.rows.length, 0);
 
     const restore = async (id) => {
-      setBusy(true);
+      setBusyId(id);
       setError("");
       try {
         await ctx.workspaces.unarchiveSession(id);
       } catch (reason) {
         setError(String(reason?.message ?? reason));
       } finally {
-        setBusy(false);
+        setBusyId(null);
       }
     };
     return (
@@ -165,22 +167,14 @@ function createArchivedSection(ctx, removal) {
           </select>
           <DeleteButton
             className="sk-arch__removeAll"
-            disabled={busy || removalState.busy || shown === 0}
+            loading={removalState.busyKind === "all"}
+            disabled={busyId !== null || shown === 0}
             onClick={() => removal.requestAll(visible)}
           >
             {t("removeAll")}
           </DeleteButton>
         </div>
 
-        {/* The dialog closes on confirm now, so this line is the only place the
-            batch reports itself while it runs against host I/O. */}
-        {removalState.progress !== null ? (
-          <p className="sk-arch__note sk-arch__progress" role="status">
-            {t("removingProgress")
-              .replace("{done}", String(removalState.progress.done))
-              .replace("{total}", String(removalState.progress.total))}
-          </p>
-        ) : null}
         {error !== "" ? <p role="alert" className="sk-arch__note--error">{t("restoreFailed").replace("{reason}", error)}</p> : null}
         {removalState.note !== "" ? <p className="sk-arch__note" role="status">{removalState.note}</p> : null}
 
@@ -207,10 +201,19 @@ function createArchivedSection(ctx, removal) {
                       {row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : ""}
                     </span>
                   </div>
-                  <RestoreButton busy={busy || removalState.busy} onClick={() => { void restore(row.id); }}>
+                  <RestoreButton
+                    busy={busyId === row.id}
+                    disabled={removalState.pending.has(row.id)}
+                    onClick={() => { void restore(row.id); }}
+                  >
                     {t("restore")}
                   </RestoreButton>
-                  <DeleteButton size="sm" disabled={busy || removalState.busy} onClick={() => removal.request(row)}>
+                  <DeleteButton
+                    size="sm"
+                    loading={removalState.busyKind === "one" && removalState.pending.has(row.id)}
+                    disabled={removalState.busy}
+                    onClick={() => removal.request(row)}
+                  >
                     {t("remove")}
                   </DeleteButton>
                 </div>

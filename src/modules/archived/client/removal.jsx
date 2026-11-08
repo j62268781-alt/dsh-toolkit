@@ -1,17 +1,32 @@
 import React from "react";
 import { ARCH_NS } from "./locale.js";
-import { removeSessionViaHost } from "./deletion.js";
+import { removeSessionViaHost, removeSessionsViaHost } from "./deletion.js";
 
 const primitives = (() => {
   try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; }
 })();
 
-export function DeleteButton({ children, size = "md", className, ...props }) {
-  const Button = primitives.Button ?? "button";
+/**
+ * The host Button has no loading state, so the ring is drawn here.
+ *
+ * `aria-busy` is what the sheet keys on to keep a working button at full opacity:
+ * a delete in flight is unavailable, not disabled, and graying it out was most of
+ * what read as "the page flashed".
+ */
+export function DeleteButton({ children, size = "md", className, loading = false, ...props }) {
+  const Button = primitives.Button;
   const Icon = primitives.IconTrashOutlineRegular;
   const classes = className === undefined ? "sk-arch__delete" : `sk-arch__delete ${className}`;
+  const spinner = loading ? <span className="sk-arch__spinner" aria-hidden="true" /> : null;
+  if (Button === undefined) {
+    return <button type="button" className={classes} aria-busy={loading || undefined} {...props}>
+      {spinner}
+      {children}
+    </button>;
+  }
   return <Button type="button" variant="outline" size={size} className={classes}
-    icon={Icon ? <Icon size={16} /> : undefined} {...props}>
+    aria-busy={loading || undefined}
+    icon={spinner ?? (Icon ? <Icon size={16} /> : undefined)} {...props}>
     {children}
   </Button>;
 }
@@ -19,9 +34,18 @@ export function DeleteButton({ children, size = "md", className, ...props }) {
 /** Merge per-Session requests onto one queue so two dialogs never stack. */
 export function createRemoval(ctx) {
   const t = ctx.locale.bind(ARCH_NS);
-  // `progress` is `{ done, total }` while a batch runs and `null` otherwise: the page
-  // needs something to show once the confirmation dialog is no longer on screen.
-  let state = { request: null, busy: false, error: "", note: "", removed: new Set(), progress: null };
+  // `pending` is the set of ids the host is working on right now; `busyKind` says
+  // whether the batch or a single row started it. Both feed the buttons that stay
+  // on screen after the dialog closes, so the list never has to render a status row.
+  let state = {
+    request: null,
+    busy: false,
+    busyKind: null,
+    error: "",
+    note: "",
+    removed: new Set(),
+    pending: new Set(),
+  };
   const listeners = new Set();
   const update = (patch) => {
     state = { ...state, ...patch };
@@ -44,64 +68,93 @@ export function createRemoval(ctx) {
     async confirm() {
       if (!state.request || state.busy) return;
       const request = state.request;
+      const ids = request.rows.map((row) => row.id);
+      const before = state.removed;
+      // Close the dialog before the first await and let the buttons carry the wait:
+      // the deletions run against host-side I/O (rename, flush) and a modal parked
+      // over that window is what made the action read as stuck.
+      update({ request: null, busy: true, busyKind: request.kind, error: "", note: "", pending: new Set(ids) });
+
+      const receipts = await collectReceipts(request, ids);
+      const doneIds = [];
+      const retainedIds = new Set();
       const failed = [];
       const errors = [];
-      const total = request.rows.length;
-      let processed = 0;
-      let completed = 0;
-      // Files moved out from under a session the host still holds in memory. Its
-      // archive registration has to stay: it is the tombstone that keeps the
-      // record out of the sidebar, and the host exposes no way to unload it now.
-      let retained = 0;
-      // Close the dialog before the first await. The deletions are serial and each
-      // one waits on host-side I/O (rename, flush), so a modal that stays up while
-      // that runs is what made the action read as stuck. The page reports progress.
-      update({ request: null, busy: true, error: "", note: "", progress: { done: 0, total } });
       for (const row of request.rows) {
-        const result = await removeSessionViaHost(row.id);
-        processed++;
+        const receipt = receipts.get(row.id) ?? { ok: false, reason: "no-receipt" };
         // The files are already gone (workspace deleted, disk cleanup, an older
         // delete): clearing the archive metadata is the only work left, and it is
         // what keeps such a record from staying archived forever.
-        const alreadyGone = result?.reason === "not-found";
-        if (result?.ok !== true && !alreadyGone) {
+        const alreadyGone = receipt.reason === "not-found";
+        if (receipt.ok !== true && !alreadyGone) {
           failed.push(row);
-          const reason = String(result?.reason ?? "unknown");
+          const reason = String(receipt.reason ?? "unknown");
           errors.push(request.kind === "all" ? `${row.title || row.id}: ${reason}` : reason);
-          update({ progress: { done: processed, total } });
           continue;
         }
-        completed++;
-        update({ removed: new Set(state.removed).add(row.id), progress: { done: processed, total } });
-        if (result?.retained === true) {
-          retained++;
-          continue;
-        }
-        // These metadata commands remain valid after the session files are gone.
-        await Promise.allSettled([
-          Promise.resolve().then(() => ctx.workspaces.unarchiveSession(row.id)),
-          Promise.resolve().then(() => ctx.workspaces.unpinSession(row.id)),
-        ]);
+        doneIds.push(row.id);
+        if (receipt.retained === true) retainedIds.add(row.id);
       }
-      if (completed) {
+
+      // These metadata commands remain valid after the session files are gone.
+      // Retained rows keep their registration on purpose: it is the tombstone that
+      // hides a session the host still holds (see host/route.js).
+      await Promise.allSettled(doneIds
+        .filter((id) => !retainedIds.has(id))
+        .flatMap((id) => [
+          Promise.resolve().then(() => ctx.workspaces.unarchiveSession(id)),
+          Promise.resolve().then(() => ctx.workspaces.unpinSession(id)),
+        ]));
+
+      if (doneIds.length > 0) {
         // A full session list refresh is another round trip; land it in the
         // background so it cannot extend the window the page spends deleting.
         void Promise.resolve()
           .then(() => ctx.sessions.refresh?.())
           .catch(() => {});
       }
+
+      // One commit at the end: the rows a batch deleted disappear together instead
+      // of the list collapsing row by row while the host answers.
+      const removed = new Set(before);
+      for (const id of doneIds) removed.add(id);
       // Deleting archived sessions never touches the Workspace: the workspace
       // registry, its directory, and any unarchived sessions stay as they are.
       update({
         busy: false,
-        progress: null,
-        note: retained === 0 ? "" : t("deleteRetained").replace("{t}", String(retained)),
+        busyKind: null,
+        pending: new Set(),
+        removed,
+        note: retainedIds.size === 0 ? "" : t("deleteRetained").replace("{t}", String(retainedIds.size)),
         request: failed.length === 0 ? null : { kind: request.kind, rows: failed },
         error: errors.join("；"),
       });
     },
   };
   return controller;
+}
+
+/**
+ * One round trip for a page of rows; the single route answers when only one row is
+ * involved. Either way the answer is a receipt per id, because the host decides
+ * each session alone (loaded, running, half-moved).
+ */
+async function collectReceipts(request, ids) {
+  const receipts = new Map();
+  if (request.kind === "all") {
+    const response = await removeSessionsViaHost(ids);
+    if (response.ok) {
+      for (const receipt of response.results) {
+        if (receipt !== null && typeof receipt?.sessionId === "string") receipts.set(receipt.sessionId, receipt);
+      }
+      return receipts;
+    }
+    for (const id of ids) receipts.set(id, { ok: false, reason: response.reason });
+    return receipts;
+  }
+  const [row] = request.rows;
+  receipts.set(row.id, await removeSessionViaHost(row.id));
+  return receipts;
 }
 
 export function useRemoval(controller) {
@@ -134,10 +187,8 @@ export function installRemoval(ctx, controller) {
         closeLabel={t("cancel")} onClose={() => controller.cancel()}
         description={t("deleteAllDesc")}
         footer={<>
-          <Button variant="outline" disabled={state.busy} onClick={() => controller.cancel()}>{t("cancel")}</Button>
-          <DeleteButton disabled={state.busy} onClick={() => { void controller.confirm(); }}>
-            {state.busy ? t("removing") : t("confirmDelete")}
-          </DeleteButton>
+          <Button variant="outline" onClick={() => controller.cancel()}>{t("cancel")}</Button>
+          <DeleteButton onClick={() => { void controller.confirm(); }}>{t("confirmDelete")}</DeleteButton>
         </>}>
         {state.error ? <p role="alert" className="sk-arch__note--error">{t("removeFailed").replace("{reason}", state.error)}</p> : null}
       </Modal>;
@@ -147,10 +198,8 @@ export function installRemoval(ctx, controller) {
       onClose={() => controller.cancel()}
       description={t("deleteOneDesc")}
       footer={<>
-        <Button variant="outline" disabled={state.busy} onClick={() => controller.cancel()}>{t("cancel")}</Button>
-        <DeleteButton disabled={state.busy} onClick={() => { void controller.confirm(); }}>
-          {state.busy ? t("removing") : t("confirmDelete")}
-        </DeleteButton>
+        <Button variant="outline" onClick={() => controller.cancel()}>{t("cancel")}</Button>
+        <DeleteButton onClick={() => { void controller.confirm(); }}>{t("confirmDelete")}</DeleteButton>
       </>}>
       {state.error ? <p role="alert" className="sk-arch__note--error">{t("removeFailed").replace("{reason}", state.error)}</p> : null}
     </Modal>;

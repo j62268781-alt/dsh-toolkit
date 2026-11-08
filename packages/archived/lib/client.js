@@ -218,15 +218,33 @@ window.__ModuleLoader__.load({
       color: var(--dsw-alias-label-caption);
     }
 
-    /* The batch outlives its confirmation dialog, so the page carries the count.
-       Tabular digits keep "2/10" from jittering as the numbers change. */
-    .sk-arch__progress {
-      color: var(--dsw-alias-label-secondary);
-      font-variant-numeric: tabular-nums;
-    }
-
     .sk-arch__delete:not(:disabled) {
       color: var(--dsw-alias-state-error-primary);
+    }
+
+    /* A working button is unavailable, not disabled: the host's \`:disabled\` rule drops
+       it to 40% opacity, which made the whole bar read as a flash on every click. */
+    .sk-arch__delete[aria-busy="true"] {
+      opacity: 1;
+      cursor: progress;
+    }
+
+    /* Drawn here because the host Button has no loading state. The ring keeps the
+       button's own size, so enabling it never reflows the footer or the row. */
+    .sk-arch__spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      corner-shape: round;
+      border: 1.5px solid currentColor;
+      border-top-color: transparent;
+      animation: sk-arch-spin 0.7s linear infinite;
+    }
+
+    @keyframes sk-arch-spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .sk-arch__delete:hover:not(:disabled) {
@@ -277,8 +295,6 @@ window.__ModuleLoader__.load({
         removeAll: "全部删除",
         cancel: "取消",
         confirmDelete: "永久删除",
-        removing: "删除中…",
-        removingProgress: "删除中 {done}/{total}",
         deleteAllTitle: "永久删除 {t} 个会话？",
         deleteAllDesc: "此操作会从本机移除全部已归档会话，之后不能从 dsh 恢复。",
         deleteOneTitle: "永久删除“{t}”？",
@@ -312,8 +328,6 @@ window.__ModuleLoader__.load({
         removeAll: "Delete all",
         cancel: "Cancel",
         confirmDelete: "Delete permanently",
-        removing: "Deleting…",
-        removingProgress: "Deleting {done}/{total}",
         deleteAllTitle: "Permanently delete {t} sessions?",
         deleteAllDesc: "This removes every archived session from this machine. They cannot be recovered from dsh afterwards.",
         deleteOneTitle: "Permanently delete “{t}”?",
@@ -411,6 +425,7 @@ window.__ModuleLoader__.load({
 
     // src/modules/archived/host/paths.js
     var DELETE_SESSION_PATH = "/_dsh/dsh-toolkit/archived/delete-session";
+    var DELETE_SESSIONS_PATH = "/_dsh/dsh-toolkit/archived/delete-sessions";
     var PENDING_DELETIONS_PATH = "/_dsh/dsh-toolkit/archived/pending-deletions";
 
     // src/client/http.js
@@ -459,6 +474,16 @@ window.__ModuleLoader__.load({
         return { ok: false, reason: String(error?.message ?? error) };
       }
     }
+    async function removeSessionsViaHost(sessionIds) {
+      try {
+        const response = await fetchJson(DELETE_SESSIONS_PATH, { method: "POST", json: { sessionIds } });
+        const result = await response.json();
+        if (!response.ok) return { ok: false, reason: String(result?.reason ?? `HTTP ${response.status}`) };
+        return { ok: true, results: Array.isArray(result?.results) ? result.results : [] };
+      } catch (error) {
+        return { ok: false, reason: String(error?.message ?? error) };
+      }
+    }
     async function readPendingDeletions() {
       try {
         const response = await fetchJson(PENDING_DELETIONS_PATH, { method: "GET" });
@@ -478,10 +503,14 @@ window.__ModuleLoader__.load({
         return {};
       }
     })();
-    function DeleteButton({ children, size = "md", className, ...props }) {
-      const Button = primitives.Button ?? "button";
+    function DeleteButton({ children, size = "md", className, loading = false, ...props }) {
+      const Button = primitives.Button;
       const Icon = primitives.IconTrashOutlineRegular;
       const classes = className === void 0 ? "sk-arch__delete" : `sk-arch__delete ${className}`;
+      const spinner = loading ? /* @__PURE__ */ import_react.default.createElement("span", { className: "sk-arch__spinner", "aria-hidden": "true" }) : null;
+      if (Button === void 0) {
+        return /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: classes, "aria-busy": loading || void 0, ...props }, spinner, children);
+      }
       return /* @__PURE__ */ import_react.default.createElement(
         Button,
         {
@@ -489,7 +518,8 @@ window.__ModuleLoader__.load({
           variant: "outline",
           size,
           className: classes,
-          icon: Icon ? /* @__PURE__ */ import_react.default.createElement(Icon, { size: 16 }) : void 0,
+          "aria-busy": loading || void 0,
+          icon: spinner ?? (Icon ? /* @__PURE__ */ import_react.default.createElement(Icon, { size: 16 }) : void 0),
           ...props
         },
         children
@@ -497,7 +527,15 @@ window.__ModuleLoader__.load({
     }
     function createRemoval(ctx) {
       const t = ctx.locale.bind(ARCH_NS);
-      let state = { request: null, busy: false, error: "", note: "", removed: /* @__PURE__ */ new Set(), progress: null };
+      let state = {
+        request: null,
+        busy: false,
+        busyKind: null,
+        error: "",
+        note: "",
+        removed: /* @__PURE__ */ new Set(),
+        pending: /* @__PURE__ */ new Set()
+      };
       const listeners = /* @__PURE__ */ new Set();
       const update = (patch) => {
         state = { ...state, ...patch };
@@ -525,49 +563,65 @@ window.__ModuleLoader__.load({
         async confirm() {
           if (!state.request || state.busy) return;
           const request = state.request;
+          const ids = request.rows.map((row) => row.id);
+          const before = state.removed;
+          update({ request: null, busy: true, busyKind: request.kind, error: "", note: "", pending: new Set(ids) });
+          const receipts = await collectReceipts(request, ids);
+          const doneIds = [];
+          const retainedIds = /* @__PURE__ */ new Set();
           const failed = [];
           const errors = [];
-          const total = request.rows.length;
-          let processed = 0;
-          let completed = 0;
-          let retained = 0;
-          update({ request: null, busy: true, error: "", note: "", progress: { done: 0, total } });
           for (const row of request.rows) {
-            const result = await removeSessionViaHost(row.id);
-            processed++;
-            const alreadyGone = result?.reason === "not-found";
-            if (result?.ok !== true && !alreadyGone) {
+            const receipt = receipts.get(row.id) ?? { ok: false, reason: "no-receipt" };
+            const alreadyGone = receipt.reason === "not-found";
+            if (receipt.ok !== true && !alreadyGone) {
               failed.push(row);
-              const reason = String(result?.reason ?? "unknown");
+              const reason = String(receipt.reason ?? "unknown");
               errors.push(request.kind === "all" ? `${row.title || row.id}: ${reason}` : reason);
-              update({ progress: { done: processed, total } });
               continue;
             }
-            completed++;
-            update({ removed: new Set(state.removed).add(row.id), progress: { done: processed, total } });
-            if (result?.retained === true) {
-              retained++;
-              continue;
-            }
-            await Promise.allSettled([
-              Promise.resolve().then(() => ctx.workspaces.unarchiveSession(row.id)),
-              Promise.resolve().then(() => ctx.workspaces.unpinSession(row.id))
-            ]);
+            doneIds.push(row.id);
+            if (receipt.retained === true) retainedIds.add(row.id);
           }
-          if (completed) {
+          await Promise.allSettled(doneIds.filter((id) => !retainedIds.has(id)).flatMap((id) => [
+            Promise.resolve().then(() => ctx.workspaces.unarchiveSession(id)),
+            Promise.resolve().then(() => ctx.workspaces.unpinSession(id))
+          ]));
+          if (doneIds.length > 0) {
             void Promise.resolve().then(() => ctx.sessions.refresh?.()).catch(() => {
             });
           }
+          const removed = new Set(before);
+          for (const id of doneIds) removed.add(id);
           update({
             busy: false,
-            progress: null,
-            note: retained === 0 ? "" : t("deleteRetained").replace("{t}", String(retained)),
+            busyKind: null,
+            pending: /* @__PURE__ */ new Set(),
+            removed,
+            note: retainedIds.size === 0 ? "" : t("deleteRetained").replace("{t}", String(retainedIds.size)),
             request: failed.length === 0 ? null : { kind: request.kind, rows: failed },
             error: errors.join("；")
           });
         }
       };
       return controller;
+    }
+    async function collectReceipts(request, ids) {
+      const receipts = /* @__PURE__ */ new Map();
+      if (request.kind === "all") {
+        const response = await removeSessionsViaHost(ids);
+        if (response.ok) {
+          for (const receipt of response.results) {
+            if (receipt !== null && typeof receipt?.sessionId === "string") receipts.set(receipt.sessionId, receipt);
+          }
+          return receipts;
+        }
+        for (const id of ids) receipts.set(id, { ok: false, reason: response.reason });
+        return receipts;
+      }
+      const [row] = request.rows;
+      receipts.set(row.id, await removeSessionViaHost(row.id));
+      return receipts;
     }
     function useRemoval(controller) {
       return import_react.default.useSyncExternalStore(controller.subscribe, controller.snapshot, controller.snapshot);
@@ -609,9 +663,9 @@ window.__ModuleLoader__.load({
               closeLabel: t("cancel"),
               onClose: () => controller.cancel(),
               description: t("deleteAllDesc"),
-              footer: /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement(Button, { variant: "outline", disabled: state.busy, onClick: () => controller.cancel() }, t("cancel")), /* @__PURE__ */ import_react.default.createElement(DeleteButton, { disabled: state.busy, onClick: () => {
+              footer: /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement(Button, { variant: "outline", onClick: () => controller.cancel() }, t("cancel")), /* @__PURE__ */ import_react.default.createElement(DeleteButton, { onClick: () => {
                 void controller.confirm();
-              } }, state.busy ? t("removing") : t("confirmDelete")))
+              } }, t("confirmDelete")))
             },
             state.error ? /* @__PURE__ */ import_react.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("removeFailed").replace("{reason}", state.error)) : null
           );
@@ -625,9 +679,9 @@ window.__ModuleLoader__.load({
             closeLabel: t("cancel"),
             onClose: () => controller.cancel(),
             description: t("deleteOneDesc"),
-            footer: /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement(Button, { variant: "outline", disabled: state.busy, onClick: () => controller.cancel() }, t("cancel")), /* @__PURE__ */ import_react.default.createElement(DeleteButton, { disabled: state.busy, onClick: () => {
+            footer: /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement(Button, { variant: "outline", onClick: () => controller.cancel() }, t("cancel")), /* @__PURE__ */ import_react.default.createElement(DeleteButton, { onClick: () => {
               void controller.confirm();
-            } }, state.busy ? t("removing") : t("confirmDelete")))
+            } }, t("confirmDelete")))
           },
           state.error ? /* @__PURE__ */ import_react.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("removeFailed").replace("{reason}", state.error)) : null
         );
@@ -696,7 +750,7 @@ window.__ModuleLoader__.load({
         const [, bump] = import_react2.default.useState(0);
         const [query, setQuery] = import_react2.default.useState("");
         const [project, setProject] = import_react2.default.useState("");
-        const [busy, setBusy] = import_react2.default.useState(false);
+        const [busyId, setBusyId] = import_react2.default.useState(null);
         const [error, setError] = import_react2.default.useState("");
         const [pending, setPending] = import_react2.default.useState(() => /* @__PURE__ */ new Set());
         const removalState = useRemoval(removal);
@@ -743,14 +797,14 @@ window.__ModuleLoader__.load({
         })).filter((group) => group.rows.length > 0);
         const shown = visible.reduce((sum, group) => sum + group.rows.length, 0);
         const restore = async (id) => {
-          setBusy(true);
+          setBusyId(id);
           setError("");
           try {
             await ctx.workspaces.unarchiveSession(id);
           } catch (reason) {
             setError(String(reason?.message ?? reason));
           } finally {
-            setBusy(false);
+            setBusyId(null);
           }
         };
         return /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__head" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__headText" }, /* @__PURE__ */ import_react2.default.createElement("h2", { className: "sk-arch__title" }, t("title")), /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__subtitle" }, t("removeHint")))), /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__bar" }, /* @__PURE__ */ import_react2.default.createElement("label", { className: "sk-search" }, /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-searchIcon" }, /* @__PURE__ */ import_react2.default.createElement(SearchIcon, { "aria-hidden": "true" })), /* @__PURE__ */ import_react2.default.createElement(
@@ -778,13 +832,31 @@ window.__ModuleLoader__.load({
           DeleteButton,
           {
             className: "sk-arch__removeAll",
-            disabled: busy || removalState.busy || shown === 0,
+            loading: removalState.busyKind === "all",
+            disabled: busyId !== null || shown === 0,
             onClick: () => removal.requestAll(visible)
           },
           t("removeAll")
-        )), removalState.progress !== null ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__note sk-arch__progress", role: "status" }, t("removingProgress").replace("{done}", String(removalState.progress.done)).replace("{total}", String(removalState.progress.total))) : null, error !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("restoreFailed").replace("{reason}", error)) : null, removalState.note !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__note", role: "status" }, removalState.note) : null, visible.length === 0 ? /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__empty" }, /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyTitle" }, shown === 0 && total <= pending.size ? t("empty") : t("noMatch")), total <= pending.size ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyHint" }, t("emptyHint")) : null) : visible.map((group) => /* @__PURE__ */ import_react2.default.createElement("section", { className: "sk-arch__group", key: group.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__groupHead" }, /* @__PURE__ */ import_react2.default.createElement(ArchivedFolderIcon, null), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupTitle" }, group.title || t("ungrouped")), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupCount" }, `${group.rows.length} ${t("chats")}`)), group.rows.map((row) => /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__row", key: row.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__rowMain" }, /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTitle", title: row.missing ? row.id : row.title || t("untitled") }, row.title || (row.missing ? t("missing") : t("untitled"))), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTime" }, row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : "")), /* @__PURE__ */ import_react2.default.createElement(RestoreButton, { busy: busy || removalState.busy, onClick: () => {
-          void restore(row.id);
-        } }, t("restore")), /* @__PURE__ */ import_react2.default.createElement(DeleteButton, { size: "sm", disabled: busy || removalState.busy, onClick: () => removal.request(row) }, t("remove")))))));
+        )), error !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("restoreFailed").replace("{reason}", error)) : null, removalState.note !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__note", role: "status" }, removalState.note) : null, visible.length === 0 ? /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__empty" }, /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyTitle" }, shown === 0 && total <= pending.size ? t("empty") : t("noMatch")), total <= pending.size ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyHint" }, t("emptyHint")) : null) : visible.map((group) => /* @__PURE__ */ import_react2.default.createElement("section", { className: "sk-arch__group", key: group.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__groupHead" }, /* @__PURE__ */ import_react2.default.createElement(ArchivedFolderIcon, null), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupTitle" }, group.title || t("ungrouped")), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupCount" }, `${group.rows.length} ${t("chats")}`)), group.rows.map((row) => /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__row", key: row.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__rowMain" }, /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTitle", title: row.missing ? row.id : row.title || t("untitled") }, row.title || (row.missing ? t("missing") : t("untitled"))), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTime" }, row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : "")), /* @__PURE__ */ import_react2.default.createElement(
+          RestoreButton,
+          {
+            busy: busyId === row.id,
+            disabled: removalState.pending.has(row.id),
+            onClick: () => {
+              void restore(row.id);
+            }
+          },
+          t("restore")
+        ), /* @__PURE__ */ import_react2.default.createElement(
+          DeleteButton,
+          {
+            size: "sm",
+            loading: removalState.busyKind === "one" && removalState.pending.has(row.id),
+            disabled: removalState.busy,
+            onClick: () => removal.request(row)
+          },
+          t("remove")
+        ))))));
       };
     }
     function installArchivedSection(ctx, removal) {
