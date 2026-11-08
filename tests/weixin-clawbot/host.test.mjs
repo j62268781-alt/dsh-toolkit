@@ -240,7 +240,7 @@ test('扫码后需要数字校验码：need_verifycode → submitCode → 继续
   }
 })
 
-test('二维码过期即回到未连接，不再自动换码', async () => {
+test('二维码过期即进入已过期态，不再自动换码', async () => {
   const credentials = fakeCredentials()
   let qrFetches = 0
   const stub = stubFetch((call) => {
@@ -256,10 +256,10 @@ test('二维码过期即回到未连接，不再自动换码', async () => {
     assert.equal(qrFetches, 1, 'start 只申请一张码')
     for (let i = 0; i < 400 && manager.status().state === 'waiting_qr'; i++) await sleep(10)
     const final = manager.status()
-    // 过期不是故障：回到 idle，而不是弹红色错误条。
-    assert.equal(final.state, 'idle')
+    // 过期不是故障：进入 expired 态（不弹红色错误条），并把这张码留给前端画蒙版。
+    assert.equal(final.state, 'expired')
     assert.equal(final.error, undefined)
-    assert.equal(final.qrUrl, undefined)
+    assert.ok(final.qrUrl !== undefined, '过期码要留着，前端才能画过期蒙版')
     assert.equal(qrFetches, 1, '过期后不得偷偷再申请新码')
     manager.dispose()
   } finally {
@@ -267,7 +267,7 @@ test('二维码过期即回到未连接，不再自动换码', async () => {
   }
 })
 
-test('二维码 TTL 按实测的 120s，过期后状态自动回 idle', async () => {
+test('二维码 TTL 按实测的 120s，过期后状态转 expired', async () => {
   const credentials = fakeCredentials()
   const stub = stubFetch((call) => {
     if (call.url.includes('get_bot_qrcode')) {
@@ -289,11 +289,14 @@ test('二维码 TTL 按实测的 120s，过期后状态自动回 idle', async ()
     clock += 60_000
     assert.equal(manager.status().state, 'waiting_qr')
 
-    // 过了 120s：到期 → idle（且不报错）。
+    // 过了 120s：转 expired（不报错，码还留着给前端画蒙版）。
     clock += 61_000
     const expired = manager.status()
-    assert.equal(expired.state, 'idle')
+    assert.equal(expired.state, 'expired')
     assert.equal(expired.error, undefined)
+    // 过期后仍能凭这张码的 expiresAt 认出「是刚过期」，refresh 之后才换新码。
+    const refreshed = await manager.start({ force: true })
+    assert.equal(refreshed.state, 'waiting_qr')
     manager.dispose()
   } finally {
     stub.restore()
