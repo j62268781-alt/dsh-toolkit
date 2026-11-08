@@ -19,7 +19,9 @@ export function DeleteButton({ children, size = "md", className, ...props }) {
 /** Merge per-Session requests onto one queue so two dialogs never stack. */
 export function createRemoval(ctx) {
   const t = ctx.locale.bind(ARCH_NS);
-  let state = { request: null, busy: false, error: "", note: "", removed: new Set() };
+  // `progress` is `{ done, total }` while a batch runs and `null` otherwise: the page
+  // needs something to show once the confirmation dialog is no longer on screen.
+  let state = { request: null, busy: false, error: "", note: "", removed: new Set(), progress: null };
   const listeners = new Set();
   const update = (patch) => {
     state = { ...state, ...patch };
@@ -44,14 +46,20 @@ export function createRemoval(ctx) {
       const request = state.request;
       const failed = [];
       const errors = [];
+      const total = request.rows.length;
+      let processed = 0;
       let completed = 0;
       // Files moved out from under a session the host still holds in memory. Its
       // archive registration has to stay: it is the tombstone that keeps the
       // record out of the sidebar, and the host exposes no way to unload it now.
       let retained = 0;
-      update({ busy: true, error: "", note: "" });
+      // Close the dialog before the first await. The deletions are serial and each
+      // one waits on host-side I/O (rename, flush), so a modal that stays up while
+      // that runs is what made the action read as stuck. The page reports progress.
+      update({ request: null, busy: true, error: "", note: "", progress: { done: 0, total } });
       for (const row of request.rows) {
         const result = await removeSessionViaHost(row.id);
+        processed++;
         // The files are already gone (workspace deleted, disk cleanup, an older
         // delete): clearing the archive metadata is the only work left, and it is
         // what keeps such a record from staying archived forever.
@@ -60,10 +68,11 @@ export function createRemoval(ctx) {
           failed.push(row);
           const reason = String(result?.reason ?? "unknown");
           errors.push(request.kind === "all" ? `${row.title || row.id}: ${reason}` : reason);
+          update({ progress: { done: processed, total } });
           continue;
         }
         completed++;
-        update({ removed: new Set(state.removed).add(row.id) });
+        update({ removed: new Set(state.removed).add(row.id), progress: { done: processed, total } });
         if (result?.retained === true) {
           retained++;
           continue;
@@ -75,12 +84,17 @@ export function createRemoval(ctx) {
         ]);
       }
       if (completed) {
-        try { await ctx.sessions.refresh?.(); } catch {}
+        // A full session list refresh is another round trip; land it in the
+        // background so it cannot extend the window the page spends deleting.
+        void Promise.resolve()
+          .then(() => ctx.sessions.refresh?.())
+          .catch(() => {});
       }
       // Deleting archived sessions never touches the Workspace: the workspace
       // registry, its directory, and any unarchived sessions stay as they are.
       update({
         busy: false,
+        progress: null,
         note: retained === 0 ? "" : t("deleteRetained").replace("{t}", String(retained)),
         request: failed.length === 0 ? null : { kind: request.kind, rows: failed },
         error: errors.join("；"),

@@ -214,6 +214,65 @@ test('bulk delete confirms the session count, retries failures, and never touche
   assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 0)
 })
 
+test('confirming a bulk delete closes the dialog at once and counts progress on the page', async (t) => {
+  const app = await boot(t)
+  seed(app.workspace, app.sessions)
+
+  // Every host round trip is held open, so the in-flight state is observable
+  // instead of being over by the time the click handler returns.
+  const gates = []
+  let lookups = 0
+  app.setFetch(async (_input, options) => {
+    if (options.method === 'GET') {
+      lookups++
+      return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: [] }) }
+    }
+    await new Promise((resolve) => gates.push(resolve))
+    return { ok: true, status: 200, json: async () => ({ ok: true }) }
+  })
+  await app.render(app.overlay(h(app.sections)))
+  assert.equal(lookups, 1, 'one pending lookup when the page mounts')
+
+  await app.click('全部删除')
+  assert.match(app.dialog().textContent, /永久删除 4 个会话？/)
+
+  await act(async () => {
+    const confirm = [...app.dom.window.document.querySelectorAll('[role="dialog"] button')]
+      .find((node) => node.textContent === '永久删除')
+    assert.ok(confirm, 'confirmation button rendered')
+    confirm.click()
+  })
+  assert.equal(app.dialog(), null, 'the dialog closes before the host answers')
+  const progress = () => app.dom.window.document.querySelector('.sk-arch__progress')?.textContent
+  assert.equal(progress(), '删除中 0/4')
+  assert.equal(app.dom.window.document.querySelector('.sk-arch__removeAll').disabled, true)
+
+  const release = async () => {
+    const gate = gates.shift()
+    assert.ok(gate, 'a delete is in flight')
+    await act(async () => gate())
+  }
+  await release()
+  assert.equal(progress(), '删除中 1/4')
+  assert.equal(app.dialog(), null)
+  await release()
+  assert.equal(progress(), '删除中 2/4')
+  await release()
+  assert.equal(progress(), '删除中 3/4')
+  // The last row's own progress frame is followed by the batch teardown in the
+  // same tick, so only the finished state is observable here.
+  await release()
+
+  // The batch ends: progress clears, the rows are gone, and the pending list was
+  // re-read once for the whole batch rather than once per deleted row.
+  assert.equal(app.dialog(), null)
+  assert.equal(progress(), undefined)
+  assert.equal(lookups, 2, 'one lookup at mount, one after the batch')
+  assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 0)
+  assert.equal(app.calls.unarchive, 4)
+  assert.equal(app.calls.unpin, 4)
+})
+
 test('a session the host still holds keeps its archive entry until the restart clears it', async (t) => {
   const app = await boot(t)
   seed(app.workspace, app.sessions)

@@ -66,19 +66,19 @@ function createArchivedSection(ctx, removal) {
     const removalState = useRemoval(removal);
 
     React.useEffect(() => {
+      // Read once per batch, not once per row: every successful deletion used to
+      // change `removed`, and each of those changes fired another GET (whose server
+      // side prunes tombstones over the whole marker set). Waiting for the batch to
+      // end keeps the same end state for one request instead of N.
+      if (removalState.busy) return undefined;
       let live = true;
-      const load = () => {
-        void readPendingDeletions().then((ids) => {
-          if (live) setPending(ids);
-        });
-      };
-      load();
+      void readPendingDeletions().then((ids) => {
+        if (live) setPending(ids);
+      });
       return () => {
         live = false;
       };
-      // Re-read after every confirmed deletion: a deletion of a still-loaded session
-      // leaves a marker that this list has to honour on the next render too.
-    }, [removalState.removed]);
+    }, [removalState.busy]);
 
     React.useEffect(() => {
       const rerender = () => bump((n) => n + 1);
@@ -172,6 +172,15 @@ function createArchivedSection(ctx, removal) {
           </DeleteButton>
         </div>
 
+        {/* The dialog closes on confirm now, so this line is the only place the
+            batch reports itself while it runs against host I/O. */}
+        {removalState.progress !== null ? (
+          <p className="sk-arch__note sk-arch__progress" role="status">
+            {t("removingProgress")
+              .replace("{done}", String(removalState.progress.done))
+              .replace("{total}", String(removalState.progress.total))}
+          </p>
+        ) : null}
         {error !== "" ? <p role="alert" className="sk-arch__note--error">{t("restoreFailed").replace("{reason}", error)}</p> : null}
         {removalState.note !== "" ? <p className="sk-arch__note" role="status">{removalState.note}</p> : null}
 

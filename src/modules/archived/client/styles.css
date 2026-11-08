@@ -176,6 +176,13 @@
   color: var(--dsw-alias-label-caption);
 }
 
+/* The batch outlives its confirmation dialog, so the page carries the count.
+   Tabular digits keep "2/10" from jittering as the numbers change. */
+.sk-arch__progress {
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 .sk-arch__delete:not(:disabled) {
   color: var(--dsw-alias-state-error-primary);
 }
