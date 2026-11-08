@@ -1309,6 +1309,19 @@ window.__ModuleLoader__.load({
     var MODE_COPY = { never: "currentNever", unfocused: "currentUnfocused", always: "currentAlways" };
     var PERMISSION_COPY = { granted: "permissionGranted", denied: "permissionDenied", default: "permissionDefault", unsupported: "permissionUnsupported" };
     var PERMISSION_HINT = { granted: "permissionHintGranted", denied: "permissionHintDenied", default: "permissionHintDefault", unsupported: "permissionHintUnsupported" };
+    function savedFieldValue(snapshot, field) {
+      for (const kind of KINDS) {
+        if (field === `${kind}Enabled`) return snapshot.types?.[kind]?.enabled === true;
+        if (field === `${kind}Sound`) return snapshot.types?.[kind]?.sound;
+      }
+      return snapshot[field];
+    }
+    function withoutField(values, field) {
+      if (!(field in values)) return values;
+      const next = { ...values };
+      delete next[field];
+      return next;
+    }
     function createNotificationPanel(React2, options = {}) {
       const t = typeof options.t === "function" ? options.t : (key) => key;
       const { settings, actions = {}, primitives } = options;
@@ -1396,6 +1409,9 @@ window.__ModuleLoader__.load({
         const [soundStatus, setSoundStatus] = React2.useState("loading");
         const [volume, setVolume] = React2.useState(snapshot.volume);
         const volumeWrites = React2.useRef({ pending: 0, tail: Promise.resolve() });
+        const [pending, setPending] = React2.useState({});
+        const writeQueue = React2.useRef(Promise.resolve());
+        const fieldInflight = React2.useRef({});
         React2.useEffect(() => {
           if (volumeWrites.current.pending === 0) setVolume(snapshot.volume);
         }, [snapshot.volume]);
@@ -1425,8 +1441,11 @@ window.__ModuleLoader__.load({
           };
         }, []);
         const readOnly = actions.isWritable?.() !== true;
-        const inactive = readOnly || busy || snapshot.enabled !== true;
-        const soundInactive = inactive || snapshot.soundEnabled !== true;
+        const valueOf = (field) => field in pending ? pending[field] : savedFieldValue(snapshot, field);
+        const enabled = valueOf("enabled") === true;
+        const soundEnabled = valueOf("soundEnabled") === true;
+        const inactive = readOnly || !enabled;
+        const soundInactive = inactive || !soundEnabled;
         const run = async (task) => {
           setBusy(true);
           setError("");
@@ -1441,6 +1460,19 @@ window.__ModuleLoader__.load({
         };
         const change = (task) => {
           void run(task);
+        };
+        const changeField = (field, value, task) => {
+          setError("");
+          setNotice("");
+          setPending((prev) => ({ ...prev, [field]: value }));
+          const inflight = fieldInflight.current;
+          inflight[field] = (inflight[field] ?? 0) + 1;
+          writeQueue.current = writeQueue.current.then(() => task()).catch((cause) => {
+            setError(translate("saveFailed", { reason: String(cause?.message ?? cause) }));
+          }).finally(() => {
+            inflight[field] -= 1;
+            if (inflight[field] === 0) setPending((prev) => withoutField(prev, field));
+          });
         };
         const requestPermission = () => change(async () => {
           const next = await actions.requestPermission();
@@ -1457,16 +1489,18 @@ window.__ModuleLoader__.load({
           setPermission(actions.permission?.() ?? "unsupported");
         };
         const preview = () => change(async () => {
-          if (await actions.previewSound(snapshot.sound) === false) setError(translate("soundUnavailable"));
+          if (await actions.previewSound(valueOf("sound") ?? "system") === false) setError(translate("soundUnavailable"));
         });
-        const selectedSound = snapshot.sound ?? "system";
+        const selectedSound = valueOf("sound") ?? "system";
         const soundChoices = [{ id: "system", label: translate("soundSystem") }, ...sounds.filter((entry) => entry.id !== "system")];
         if (!soundChoices.some((entry) => entry.id === selectedSound)) soundChoices.push({ id: selectedSound, label: translate("soundMissing") });
-        const currentMode = CURRENT_MODES.includes(snapshot.currentMode) ? snapshot.currentMode : "unfocused";
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-page" }, /* @__PURE__ */ __dshReact.createElement("header", { className: "ntf-pageHead" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "ntf-pageTitle" }, translate("title")), /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-pageIntro" }, translate("intro"))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("preferencesHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("enabledTitle"), description: translate("enabledDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.enabled === true, disabled: readOnly || busy, label: translate("enabledTitle"), onChange: (next) => change(() => actions.setEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("currentTitle"), description: translate("currentDesc") }, /* @__PURE__ */ __dshReact.createElement(Timing, { value: currentMode, disabled: inactive, translate, onChange: (next) => change(() => actions.setCurrentMode(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("testTitle"), description: translate("testHint") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: inactive || permission === "denied" || permission === "unsupported", onClick: testNotification }, translate("testButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("permissionTitle"), description: translate(PERMISSION_HINT[permission] ?? "permissionHintUnsupported") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, permission === "default" ? /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: requestPermission }, translate("grantButton")) : permission === "unsupported" ? null : /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: recheckPermission }, translate("recheckButton"))))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("typesHeading") }, KINDS.map((kind) => {
+        const modeValue = valueOf("currentMode");
+        const currentMode = CURRENT_MODES.includes(modeValue) ? modeValue : "unfocused";
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-page" }, /* @__PURE__ */ __dshReact.createElement("header", { className: "ntf-pageHead" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "ntf-pageTitle" }, translate("title")), /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-pageIntro" }, translate("intro"))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("preferencesHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("enabledTitle"), description: translate("enabledDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: enabled, disabled: readOnly, label: translate("enabledTitle"), onChange: (next) => changeField("enabled", next, () => actions.setEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("currentTitle"), description: translate("currentDesc") }, /* @__PURE__ */ __dshReact.createElement(Timing, { value: currentMode, disabled: inactive, translate, onChange: (next) => changeField("currentMode", next, () => actions.setCurrentMode(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("testTitle"), description: translate("testHint") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: inactive || busy || permission === "denied" || permission === "unsupported", onClick: testNotification }, translate("testButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("permissionTitle"), description: translate(PERMISSION_HINT[permission] ?? "permissionHintUnsupported") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, permission === "default" ? /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: requestPermission }, translate("grantButton")) : permission === "unsupported" ? null : /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: recheckPermission }, translate("recheckButton"))))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("typesHeading") }, KINDS.map((kind) => {
           const title = translate(`${KIND_COPY[kind]}Title`);
-          return /* @__PURE__ */ __dshReact.createElement(Row, { key: kind, title, description: translate(`${KIND_COPY[kind]}Desc`) }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.types?.[kind]?.enabled === true, disabled: inactive, label: title, onChange: (next) => change(() => actions.setKindEnabled(kind, next)) }));
-        })), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("soundsHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTitle"), description: translate("soundDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: snapshot.soundEnabled === true, disabled: inactive, label: translate("soundTitle"), onChange: (next) => change(() => actions.setSoundEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTypeTitle"), description: translate(soundStatus === "unavailable" ? "soundCatalogUnavailable" : "soundTypeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement("select", { className: "ntf-select ntf-selectSound", "aria-label": translate("soundTypeTitle"), value: selectedSound, disabled: soundInactive || soundStatus === "loading", onChange: (event) => change(() => actions.setSound(event.target.value)) }, soundChoices.map(({ id, label }) => /* @__PURE__ */ __dshReact.createElement("option", { value: id, key: id }, label))), /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: soundInactive || soundStatus !== "ready", onClick: preview }, translate("previewButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("volumeTitle"), description: translate("volumeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-volume" }, /* @__PURE__ */ __dshReact.createElement("input", { className: "ntf-range", type: "range", min: "0", max: "100", step: "1", value: Math.round(volume * 100), "aria-label": translate("volumeTitle"), disabled: readOnly || snapshot.enabled !== true || snapshot.soundEnabled !== true, onChange: (event) => changeVolume(Number(event.target.value) / 100) }), /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-volumeValue" }, translate("volumeValue", { percent: Math.round(volume * 100) }))))), error !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-error", role: "alert" }, error) : null, notice !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-notice", role: "status" }, notice) : null, readOnly ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-note" }, translate("readOnly")) : null);
+          const field = `${kind}Enabled`;
+          return /* @__PURE__ */ __dshReact.createElement(Row, { key: kind, title, description: translate(`${KIND_COPY[kind]}Desc`) }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: valueOf(field) === true, disabled: inactive, label: title, onChange: (next) => changeField(field, next, () => actions.setKindEnabled(kind, next)) }));
+        })), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("soundsHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTitle"), description: translate("soundDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: soundEnabled, disabled: inactive, label: translate("soundTitle"), onChange: (next) => changeField("soundEnabled", next, () => actions.setSoundEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTypeTitle"), description: translate(soundStatus === "unavailable" ? "soundCatalogUnavailable" : "soundTypeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement("select", { className: "ntf-select ntf-selectSound", "aria-label": translate("soundTypeTitle"), value: selectedSound, disabled: soundInactive || soundStatus === "loading", onChange: (event) => changeField("sound", event.target.value, () => actions.setSound(event.target.value)) }, soundChoices.map(({ id, label }) => /* @__PURE__ */ __dshReact.createElement("option", { value: id, key: id }, label))), /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: soundInactive || soundStatus !== "ready" || busy, onClick: preview }, translate("previewButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("volumeTitle"), description: translate("volumeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-volume" }, /* @__PURE__ */ __dshReact.createElement("input", { className: "ntf-range", type: "range", min: "0", max: "100", step: "1", value: Math.round(volume * 100), "aria-label": translate("volumeTitle"), disabled: readOnly || !enabled || !soundEnabled, onChange: (event) => changeVolume(Number(event.target.value) / 100) }), /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-volumeValue" }, translate("volumeValue", { percent: Math.round(volume * 100) }))))), error !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-error", role: "alert" }, error) : null, notice !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-notice", role: "status" }, notice) : null, readOnly ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-note" }, translate("readOnly")) : null);
       };
     }
 

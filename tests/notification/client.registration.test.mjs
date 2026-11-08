@@ -206,6 +206,32 @@ test('音量连续拖动：保存中保持可用，串行写入并在失败时�
   assert.match(page.document.querySelector('[role="alert"]').textContent, /volume write rejected/)
 })
 
+test('开关点击立即回显，写入在途期间不变灰', async (t) => {
+  const { page, runtime, app } = await bootPanel(t)
+  const document = page.document
+  const master = switchFor(document, '启用通知')
+  const completed = switchFor(document, '会话完成')
+  const mutate = runtime.rootForm.mutate
+  const pending = []
+  runtime.rootForm.mutate = (operations) => new Promise((resolve, reject) => pending.push({ operations, resolve, reject }))
+  await app.click(completed)
+  assert.equal(completed.getAttribute('aria-checked'), 'false', '点击立刻回显')
+  assert.equal(completed.disabled, false, '写入在途时开关不该变灰')
+  assert.equal(pending.length, 1)
+  // 依赖式禁用仍然即时生效：总开关返回 false 后，类型开关立刻不可点。
+  await app.click(master)
+  assert.equal(master.getAttribute('aria-checked'), 'false')
+  assert.equal(master.disabled, false, '总开关保存中也保持可点')
+  assert.equal(completed.disabled, true, '联动禁用跟随乐观值')
+  assert.equal(document.querySelector('.ntf-timingTrigger').disabled, true)
+  await act(async () => { pending[0].resolve(mutate(pending[0].operations)); await sleep(10) })
+  assert.deepEqual(runtime.writes[0], [{ op: 'set', path: ['notification', 'completedEnabled'], value: false }])
+  assert.equal(completed.getAttribute('aria-checked'), 'false')
+  await act(async () => { pending[1].resolve(mutate(pending[1].operations)); await sleep(10) })
+  assertWrite(runtime, 'enabled', false)
+  assert.equal(master.getAttribute('aria-checked'), 'false')
+})
+
 test('通知时机：三个互斥选项、保存后重新挂载保留、方向键与 Escape 捕获', async (t) => {
   const { page, runtime, app, Component } = await bootPanel(t)
   const document = page.document
