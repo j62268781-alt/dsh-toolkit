@@ -1,4 +1,4 @@
-import { DELETE_SESSION_PATH, PENDING_DELETIONS_PATH } from "../host/paths.js";
+import { DELETE_SESSION_PATH, DELETE_SESSIONS_PATH, PENDING_DELETIONS_PATH } from "../host/paths.js";
 import { fetchJson } from "../../../client/http.js";
 
 export async function removeSessionViaHost(sessionId) {
@@ -7,6 +7,24 @@ export async function removeSessionViaHost(sessionId) {
     const result = await response.json();
     if (!response.ok) return { ok: false, reason: String(result?.reason ?? `HTTP ${response.status}`) };
     return result;
+  } catch (error) {
+    return { ok: false, reason: String(error?.message ?? error) };
+  }
+}
+
+/**
+ * Delete a page of rows in one round trip.
+ *
+ * The host still decides each session alone (loaded, running, half-moved), so the
+ * answer is a receipt per id rather than one verdict for the call: a row that
+ * cannot go must not take the rest of the batch with it.
+ */
+export async function removeSessionsViaHost(sessionIds) {
+  try {
+    const response = await fetchJson(DELETE_SESSIONS_PATH, { method: "POST", json: { sessionIds } });
+    const result = await response.json();
+    if (!response.ok) return { ok: false, reason: String(result?.reason ?? `HTTP ${response.status}`) };
+    return { ok: true, results: Array.isArray(result?.results) ? result.results : [] };
   } catch (error) {
     return { ok: false, reason: String(error?.message ?? error) };
   }

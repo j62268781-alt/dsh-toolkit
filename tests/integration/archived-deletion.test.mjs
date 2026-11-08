@@ -7,10 +7,10 @@ import { PassThrough } from 'node:stream'
 import { test } from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import * as archived from '../../src/modules/archived/host/index.js'
-import { DELETE_SESSION_PATH, PENDING_DELETIONS_PATH } from '../../src/modules/archived/host/paths.js'
+import { DELETE_SESSION_PATH, DELETE_SESSIONS_PATH, PENDING_DELETIONS_PATH } from '../../src/modules/archived/host/paths.js'
 import { pruneArchivedTombstones } from '../../src/modules/archived/host/reconcile.js'
 import { listPendingDeletions } from '../../src/modules/archived/host/files.js'
-import { readPendingDeletions, removeSessionViaHost } from '../../src/modules/archived/client/deletion.js'
+import { readPendingDeletions, removeSessionViaHost, removeSessionsViaHost } from '../../src/modules/archived/client/deletion.js'
 
 function response() {
   let finish
@@ -80,6 +80,7 @@ async function host(t, options = {}) {
   return {
     ctx, fiber, routes, reads, guarded, flushes, calls,
     route: routes.get(DELETE_SESSION_PATH),
+    bulkRoute: routes.get(DELETE_SESSIONS_PATH),
     pendingRoute: routes.get(PENDING_DELETIONS_PATH),
     rejectWith(status) { rejection = status },
     get cleanups() { return cleanups },
@@ -105,21 +106,21 @@ async function home(t) {
 test('archived entry owns its authenticated routes, unloads, and reloads without index injection', async (t) => {
   assert.deepEqual(archived.inject, ['sessions', 'agents', 'workspaceRegistry', 'webServer', 'connection'])
   const service = await host(t)
-  assert.deepEqual([...service.routes.keys()].sort(), [DELETE_SESSION_PATH, PENDING_DELETIONS_PATH].sort())
+  assert.deepEqual([...service.routes.keys()].sort(), [DELETE_SESSION_PATH, DELETE_SESSIONS_PATH, PENDING_DELETIONS_PATH].sort())
   const table = []
   await service.ctx.emit('webserver/index-inject', table)
   assert.deepEqual(table, [])
   await service.fiber.dispose()
   await service.fiber.dispose()
   assert.equal(service.routes.size, 0)
-  assert.equal(service.cleanups, 2)
+  assert.equal(service.cleanups, 3)
   const second = service.ctx.plugin(archived)
   await second
   assert.equal(second.state, 2)
-  assert.equal(service.routes.size, 2)
+  assert.equal(service.routes.size, 3)
   await second.dispose()
   assert.equal(service.routes.size, 0)
-  assert.equal(service.cleanups, 4)
+  assert.equal(service.cleanups, 6)
 })
 
 test('archived entry waits for every host dependency before registering', async () => {
@@ -366,6 +367,68 @@ test('pruning without markers never touches the workspace registry', { timeout: 
   assert.deepEqual(service.calls.unpin, [])
 })
 
+test('bulk route validates the id list before touching any session', { timeout: 5000 }, async (t) => {
+  await home(t)
+  const service = await host(t, { getSession: () => ({}) })
+  assert.ok(service.bulkRoute, 'the page needs a route that takes a whole batch')
+  for (const [body, reason] of [
+    ['{', 'bad-json'],
+    ['{}', 'bad-session-ids'],
+    ['{"sessionIds":[]}', 'bad-session-ids'],
+    ['{"sessionIds":"one"}', 'bad-session-ids'],
+    ['{"sessionIds":[null]}', 'bad-session-ids'],
+    ['{"sessionIds":[""]}', 'bad-session-ids'],
+    [`{"sessionIds":${JSON.stringify(Array.from({ length: 501 }, (_, i) => `id-${i}`))}}`, 'bad-session-ids'],
+  ]) {
+    const { res } = await request(service.bulkRoute, body)
+    assert.equal(res.statusCode, 400, body.slice(0, 60))
+    assert.deepEqual(res.json(), { ok: false, reason })
+    assert.equal(res.headers['cache-control'], 'no-store')
+  }
+  // Validation runs before any lookup, so nothing was probed and nothing moved.
+  assert.deepEqual(service.reads, [])
+  for (const method of ['GET', 'OPTIONS']) {
+    const { res } = await request(service.bulkRoute, '', method)
+    assert.equal(res.statusCode, 404)
+    assert.deepEqual(res.json(), { ok: false, reason: 'not-found' })
+  }
+})
+
+test('bulk route answers one receipt per session and a rejected row does not abort the batch', { timeout: 5000 }, async (t) => {
+  const root = await home(t)
+  const removable = 'bulk-removable'
+  const loaded = 'bulk-loaded'
+  const running = 'bulk-running'
+  for (const id of [removable, loaded, running]) await mkdir(join(root, 'sessions', 'bucket', id), { recursive: true })
+  const live = new Map([[loaded, {}], [running, {}]])
+  const service = await host(t, {
+    getSession: id => live.get(id),
+    // `status` is the host's own notion of busy; anything else is idle.
+    getAgent: id => id === running ? { status: 'running' } : { status: 'idle' },
+    archivedIds: [removable, loaded, running],
+  })
+
+  const { res } = await request(service.bulkRoute, JSON.stringify({ sessionIds: [removable, running, loaded, 'bulk-missing'] }))
+  assert.equal(res.statusCode, 200)
+  const body = res.json()
+  assert.equal(body.ok, true)
+  // Order follows the request, and each row carries its own verdict: one moved, one
+  // still running, one that was loaded, one whose files were already gone.
+  const verdicts = body.results.map(({ sessionId, status, ok, reason, retained }) => ({ sessionId, status, ok, reason, retained }))
+  assert.deepEqual(verdicts, [
+    { sessionId: removable, status: 200, ok: true, reason: undefined, retained: undefined },
+    { sessionId: running, status: 409, ok: false, reason: 'session-busy', retained: undefined },
+    { sessionId: loaded, status: 200, ok: true, reason: undefined, retained: true },
+    { sessionId: 'bulk-missing', status: 404, ok: false, reason: 'not-found', retained: undefined },
+  ])
+  assert.ok(body.results[0].moved.endsWith(`-${removable}`), 'the receipt reports where the files went')
+  await assert.rejects(stat(join(root, 'sessions', 'bucket', removable)), { code: 'ENOENT' })
+  await assert.doesNotReject(stat(join(root, 'sessions', 'bucket', running)), 'a refused row keeps its directory')
+  // A row the host still holds leaves the same tombstone the single route does, so a
+  // restart still cleans its archive registration up.
+  assert.deepEqual(await listPendingDeletions(), [loaded])
+})
+
 test('archived client posts a relative URL with host credentials on a remote DSH origin', async (t) => {
   const previous = globalThis.fetch
   t.after(() => { globalThis.fetch = previous })
@@ -384,6 +447,32 @@ test('archived client posts a relative URL with host credentials on a remote DSH
   assert.equal(options.credentials, 'same-origin')
   assert.deepEqual(options.headers, { 'content-type': 'application/json' })
   assert.deepEqual(JSON.parse(options.body), { sessionId: 'archived-123' })
+})
+
+test('archived client sends the whole page to the bulk route and keeps its receipts', async (t) => {
+  const previous = globalThis.fetch
+  t.after(() => { globalThis.fetch = previous })
+  const origin = 'https://dsh.example.test:8443'
+  const calls = []
+  globalThis.fetch = async (input, options) => {
+    calls.push({ input, options, destination: new URL(input, origin).href })
+    return {
+      ok: true, status: 200,
+      json: async () => ({ ok: true, results: [{ sessionId: 'a1', status: 200, ok: true }, { sessionId: 'a2', status: 409, ok: false, reason: 'session-loaded' }] }),
+    }
+  }
+  assert.deepEqual(await removeSessionsViaHost(['a1', 'a2']), {
+    ok: true,
+    results: [{ sessionId: 'a1', status: 200, ok: true }, { sessionId: 'a2', status: 409, ok: false, reason: 'session-loaded' }],
+  })
+  assert.equal(calls.length, 1, 'one round trip for a page of rows')
+  const [{ input, options, destination }] = calls
+  assert.equal(input, DELETE_SESSIONS_PATH)
+  assert.equal(destination, `${origin}${DELETE_SESSIONS_PATH}`)
+  assert.equal(options.method, 'POST')
+  assert.equal(options.credentials, 'same-origin')
+  assert.deepEqual(options.headers, { 'content-type': 'application/json' })
+  assert.deepEqual(JSON.parse(options.body), { sessionIds: ['a1', 'a2'] })
 })
 
 test('archived client preserves error receipts and reports a failed request', async (t) => {

@@ -1,8 +1,13 @@
 import { sendJson } from "../../../host/http.js";
 import { registerAuthenticatedRoute } from "../../../host/routes.js";
-import { DELETE_SESSION_PATH, PENDING_DELETIONS_PATH } from "./paths.js";
+import { DELETE_SESSION_PATH, DELETE_SESSIONS_PATH, PENDING_DELETIONS_PATH } from "./paths.js";
 import { deleteSessionFiles, markPendingDeletion } from "./files.js";
 import { archivedIds, pendingDeletions } from "./reconcile.js";
+
+/** One session id per single request; a page of rows arrives on the bulk route. */
+const SINGLE_BODY_LIMIT = 8_192;
+const BATCH_BODY_LIMIT = 65_536;
+const BATCH_MAX_IDS = 500;
 
 /**
  * "Busy" is the host's own notion (`agent.status`), not "the store still holds it".
@@ -25,6 +30,29 @@ function failure(result) {
   return [500, { ok: false, reason: result.reason }];
 }
 
+/**
+ * Read the JSON body with a hard limit on the decoded characters.
+ *
+ * The limit has to stay on `raw.length`: a body of multi-byte characters is what
+ * the caller sent, and measuring bytes instead would let it overshoot the guard.
+ */
+function collectBody(req, limit, onBody) {
+  let raw = "";
+  let oversized = false;
+  req.setEncoding("utf8");
+  req.on("data", (chunk) => {
+    raw += chunk;
+    if (raw.length > limit) {
+      oversized = true;
+      req.destroy();
+    }
+  });
+  req.on("end", () => {
+    if (oversized) return;
+    onBody(raw);
+  });
+}
+
 export function registerDeleteSessionRoute(ctx) {
   const route = {
     kind: "exact",
@@ -36,20 +64,7 @@ export function registerDeleteSessionRoute(ctx) {
         send(404, { ok: false, reason: "not-found" });
         return;
       }
-
-      let raw = "";
-      let oversized = false;
-      req.setEncoding("utf8");
-      req.on("data", (chunk) => {
-        raw += chunk;
-        // Preserve the original limit on the decoded raw input, including Unicode.
-        if (raw.length > 8_192) {
-          oversized = true;
-          req.destroy();
-        }
-      });
-      req.on("end", () => {
-        if (oversized) return;
+      collectBody(req, SINGLE_BODY_LIMIT, (raw) => {
         let sessionId;
         try {
           sessionId = JSON.parse(raw)?.sessionId;
@@ -72,6 +87,73 @@ export function registerDeleteSessionRoute(ctx) {
     },
   };
   return registerAuthenticatedRoute(ctx, route);
+}
+
+/**
+ * Bulk delete: the same work as calling the single route N times, one round trip.
+ *
+ * A page full of archived rows used to pay admission, JSON parsing and an HTTP
+ * round trip per row before the first file moved. The per-session work is
+ * unchanged and still decided one at a time, so a row that cannot go (loaded,
+ * running, half-moved) fails alone and the rest of the batch completes.
+ */
+export function registerDeleteSessionsRoute(ctx) {
+  return registerAuthenticatedRoute(ctx, {
+    kind: "exact",
+    path: DELETE_SESSIONS_PATH,
+    handler(req, res) {
+      const send = (status, payload) => sendJson(res, status, payload);
+      res.setHeader("cache-control", "no-store");
+      if (req.method !== "POST") {
+        send(404, { ok: false, reason: "not-found" });
+        return;
+      }
+      collectBody(req, BATCH_BODY_LIMIT, (raw) => {
+        let sessionIds;
+        try {
+          sessionIds = JSON.parse(raw)?.sessionIds;
+        } catch {
+          send(400, { ok: false, reason: "bad-json" });
+          return;
+        }
+        if (
+          !Array.isArray(sessionIds) ||
+          sessionIds.length === 0 ||
+          sessionIds.length > BATCH_MAX_IDS ||
+          sessionIds.some((id) => typeof id !== "string" || id === "")
+        ) {
+          send(400, { ok: false, reason: "bad-session-ids" });
+          return;
+        }
+        deleteArchivedSessions(ctx, sessionIds).then(
+          (results) => send(200, { ok: true, results }),
+          (error) => send(500, { ok: false, reason: String(error?.message ?? error) }),
+        );
+      });
+    },
+  });
+}
+
+/**
+ * Every id answers with its own receipt; a rejected one never aborts the batch.
+ *
+ * Serial on purpose: two deletes of the same session directory would race on the
+ * rename, and the host's flush is per-session anyway.
+ */
+async function deleteArchivedSessions(ctx, sessionIds) {
+  const results = [];
+  for (const sessionId of sessionIds) {
+    let status;
+    let payload;
+    try {
+      [status, payload] = await deleteArchivedSession(ctx, sessionId);
+    } catch (error) {
+      // A throw (failed flush, rejected rename) is one row's problem, not the batch's.
+      [status, payload] = [500, { ok: false, reason: String(error?.message ?? error) }];
+    }
+    results.push({ sessionId, status, ...payload });
+  }
+  return results;
 }
 
 async function deleteArchivedSession(ctx, sessionId) {
