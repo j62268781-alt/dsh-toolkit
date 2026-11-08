@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { maskId, normalizeBaseUrl, extractMessageText, readCredential, redirectBaseUrl } from '../../src/modules/weixin-clawbot/host/ilink.js'
-import { createLoginManager } from '../../src/modules/weixin-clawbot/host/login.js'
+import { createLoginManager, QR_TTL_MS } from '../../src/modules/weixin-clawbot/host/login.js'
 import { createMonitor } from '../../src/modules/weixin-clawbot/host/monitor.js'
 import { readConfig, Config, DEFAULT_CREDENTIAL_REF } from '../../src/modules/weixin-clawbot/host/config.js'
 import { createRequire as createRequireForSchema } from 'node:module'
@@ -240,7 +240,7 @@ test('扫码后需要数字校验码：need_verifycode → submitCode → 继续
   }
 })
 
-test('二维码过期会自动换码，超过上限才失败', async () => {
+test('二维码过期即回到未连接，不再自动换码', async () => {
   const credentials = fakeCredentials()
   let qrFetches = 0
   const stub = stubFetch((call) => {
@@ -253,11 +253,79 @@ test('二维码过期会自动换码，超过上限才失败', async () => {
   try {
     const manager = createLoginManager({ credentials, credentialRef: 'REF' })
     await manager.start()
-    for (let i = 0; i < 400 && manager.status().state !== 'failed'; i++) await sleep(10)
+    assert.equal(qrFetches, 1, 'start 只申请一张码')
+    for (let i = 0; i < 400 && manager.status().state === 'waiting_qr'; i++) await sleep(10)
     const final = manager.status()
-    assert.equal(final.state, 'failed')
-    assert.match(final.error, /过期/)
-    assert.ok(qrFetches >= 2, `应当换过码，实际申请 ${qrFetches} 次`)
+    // 过期不是故障：回到 idle，而不是弹红色错误条。
+    assert.equal(final.state, 'idle')
+    assert.equal(final.error, undefined)
+    assert.equal(final.qrUrl, undefined)
+    assert.equal(qrFetches, 1, '过期后不得偷偷再申请新码')
+    manager.dispose()
+  } finally {
+    stub.restore()
+  }
+})
+
+test('二维码 TTL 按实测的 120s，过期后状态自动回 idle', async () => {
+  const credentials = fakeCredentials()
+  const stub = stubFetch((call) => {
+    if (call.url.includes('get_bot_qrcode')) {
+      return jsonResponse({ ret: 0, qrcode: 'q', qrcode_img_content: 'https://liteapp.weixin.qq.com/q/a?qrcode=q&bot_type=3' })
+    }
+    return jsonResponse({ ret: 0, status: 'wait' })
+  })
+  let clock = 5_000_000
+  try {
+    const manager = createLoginManager({ credentials, credentialRef: 'REF', now: () => clock })
+    await manager.start()
+    const started = manager.status()
+    assert.equal(started.state, 'waiting_qr')
+    // 服务端实测：同一张码约 120s 后返回 expired。旧常量 60_000 会让倒计时提前一半归零。
+    assert.equal(started.expiresAt - clock, QR_TTL_MS)
+    assert.equal(QR_TTL_MS, 120_000)
+
+    // 只过 60s：仍然有效，状态不该变。
+    clock += 60_000
+    assert.equal(manager.status().state, 'waiting_qr')
+
+    // 过了 120s：到期 → idle（且不报错）。
+    clock += 61_000
+    const expired = manager.status()
+    assert.equal(expired.state, 'idle')
+    assert.equal(expired.error, undefined)
+    manager.dispose()
+  } finally {
+    stub.restore()
+  }
+})
+
+test('未过期的二维码会被复用，force 才强制换新码', async () => {
+  const credentials = fakeCredentials()
+  let qrFetches = 0
+  const stub = stubFetch((call) => {
+    if (call.url.includes('get_bot_qrcode')) {
+      qrFetches += 1
+      return jsonResponse({ ret: 0, qrcode: `qr-${qrFetches}`, qrcode_img_content: `https://liteapp.weixin.qq.com/q/z?qrcode=qr-${qrFetches}&bot_type=3` })
+    }
+    return jsonResponse({ ret: 0, status: 'wait' })
+  })
+  try {
+    const manager = createLoginManager({ credentials, credentialRef: 'REF' })
+    const first = await manager.start()
+    assert.equal(qrFetches, 1)
+
+    // 再打开一次面板：复用同一张码，不产生新的网络请求。
+    const again = await manager.start()
+    assert.equal(qrFetches, 1, '未过期就该复用，不该重新申请')
+    assert.equal(again.qrUrl, first.qrUrl)
+    assert.equal(again.expiresAt, first.expiresAt)
+    assert.equal(again.loginId, first.loginId)
+
+    // 用户点「刷新二维码」：显式要求换码。
+    const forced = await manager.start({ force: true })
+    assert.equal(qrFetches, 2, 'force 才申请新码')
+    assert.notEqual(forced.qrUrl, first.qrUrl)
     manager.dispose()
   } finally {
     stub.restore()
@@ -341,7 +409,7 @@ test('取消与断开：cancel 不写凭据，logout 清空凭据', async () => 
   }
 })
 
-test('登录超时未完成会被回收，不会永远停在 waiting', async () => {
+test('登录超时未完成会被回收成 idle，不会永远停在 waiting', async () => {
   const credentials = fakeCredentials()
   const stub = stubFetch((call) => {
     if (call.url.includes('get_bot_qrcode')) {
@@ -357,8 +425,9 @@ test('登录超时未完成会被回收，不会永远停在 waiting', async () 
     // 跳过 5 分钟回收窗口。
     clock += 5 * 60_000 + 1
     const recycled = manager.status()
-    assert.equal(recycled.state, 'failed')
-    assert.match(recycled.error, /超时/)
+    // 用户只是走开了，不算失败：回到未连接，不弹错误。
+    assert.equal(recycled.state, 'idle')
+    assert.equal(recycled.error, undefined)
     manager.dispose()
   } finally {
     stub.restore()

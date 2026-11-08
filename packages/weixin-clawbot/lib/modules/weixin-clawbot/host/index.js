@@ -146,7 +146,13 @@ export async function createClawbotService(ctx, config) {
   return {
     snapshot,
 
-    async startLogin() {
+    /**
+     * 申请二维码。
+     *
+     * @param force 为 false（默认）时，只要登录管理器手里还有一张未过期的码就复用它；
+     *   面板上的「刷新二维码」按钮才传 true，明确要求换一张新的。
+     */
+    async startLogin(force = false) {
       if (disposed) throw new Error('插件已停止')
       let localTokens = []
       try {
@@ -155,7 +161,7 @@ export async function createClawbotService(ctx, config) {
       } catch {
         // 旧凭据坏了不该阻止重新登录。
       }
-      await login.start({ localTokens })
+      await login.start({ localTokens, force: force === true })
       return snapshot()
     },
 
@@ -205,13 +211,39 @@ export async function createClawbotService(ctx, config) {
 }
 
 /**
- * 注册全部路由。每个路由都通过 registerAuthenticatedRoute 走宿主的鉴权边界。
- * @param service 由 createClawbotService 创建的服务。
+ * 读取可选 JSON 请求体。
+ *
+ * 与 `login/code` / `monitor` 那种「必须有 body」的路由不同，`login/start` 不带 body
+ * 也是合法调用（等价于 `{ force: false }`），所以这里一律容错：没有 req.on（测试里的
+ * 假请求对象）、空 body、坏 JSON，统统当成「没传参数」，交给调用方用默认值。
+ */
+async function readOptionalJson(req) {
+  if (typeof req?.on !== 'function') return undefined
+  try {
+    const text = await readBody(req, MAX_BODY)
+    if (text.trim() === '') return undefined
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * 注册插件路由。
+ *
+ * 所有接口都在鉴权之后，且强制 `cache-control: no-store`：它们要么带副作用，
+ * 要么返回一次性数据（二维码、凭据状态）。
  */
 export function registerClawbotRoutes(ctx, service) {
   const routes = [
     ['status', 'GET', async () => service.snapshot()],
-    ['login/start', 'POST', async () => service.startLogin()],
+    [
+      'login/start', 'POST',
+      async (req) => {
+        const payload = await readOptionalJson(req)
+        return service.startLogin(payload?.force === true)
+      },
+    ],
     ['login/poll', 'GET', async () => service.snapshot()],
     ['login/cancel', 'POST', async () => service.cancelLogin()],
     ['logout', 'POST', async () => service.logout()],
