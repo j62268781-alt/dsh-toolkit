@@ -93,6 +93,9 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
 .wc-popover {
   position: fixed;
   z-index: 2147482000;
+  /* 定位按 border-box 计算：少了这条，声明的 320px 只是内容宽，
+     实际占位 350px（含 14px 内边距 ×2 与 1px 边框 ×2），右侧会多出 30px 的空档。 */
+  box-sizing: border-box;
   width: 320px;
   display: flex;
   flex-direction: column;
@@ -105,6 +108,14 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   color: var(--dsw-alias-label-primary);
   font-size: 13px;
   line-height: 1.5;
+  /* 兜底：卡片比视口还高时内部滚动，而不是顶到屏幕外。
+     JS 侧会算出同样的上限（placePopover 的 maxHeight），这里保证无 JS 时也不错。 */
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
+.wc-popover > * {
+  flex: none;
 }
 
 .wc-head {

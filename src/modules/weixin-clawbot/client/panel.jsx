@@ -1,5 +1,12 @@
 import { createQrCode } from './qr.jsx'
 import { pollInterval, toneOf } from './model.js'
+import { placePopover } from './position.js'
+
+/** 视口尺寸；定位用的是 `position: fixed`，所以基准必须是视口而不是文档。 */
+function readViewport() {
+  if (typeof window === 'undefined') return { width: 0, height: 0 }
+  return { width: window.innerWidth, height: window.innerHeight }
+}
 
 /**
  * 面板：hover 触发，鼠标离开关闭；面板内的开关可以让它保持展开。
@@ -13,7 +20,7 @@ import { pollInterval, toneOf } from './model.js'
  * 组件都定义在工厂闭包里、只创建一次，避免每次渲染重建组件类型导致 hooks 状态丢失。
  */
 export function createPanel(React, { t, connection, portal }) {
-  const { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } = React
+  const { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } = React
   const h = React.createElement
   const QrCode = createQrCode(React)
 
@@ -173,15 +180,21 @@ export function createPanel(React, { t, connection, portal }) {
   }
 
   /**
-   * 弹出卡片。position 由触发按钮的 boundingRect 决定：
-   * 侧栏在左，卡片贴右侧展开；纵向与按钮底边对齐（入口就在侧栏底部，
-   * 向下展开一定出屏，所以按「卡片底边贴按钮底边」算）。
+   * 弹出卡片。位置由触发按钮的 boundingRect 与卡片的**实测**尺寸共同决定：
+   * 侧栏在左，卡片贴按钮右侧展开（右边放不下就翻到左侧）；纵向按「卡片底边贴按钮底边」算。
+   *
+   * 为什么不能在渲染前一次算定：卡片高度随登录状态变化（未连接 187px、二维码 430px），
+   * 用估计值定位必然在某个状态下错位。所以先渲染、再用 `useLayoutEffect` 量回来重排，
+   * 并在打开期间用 ResizeObserver 跟随内容高度变化。
    */
   function Popover({ anchor, pinned, onPin, onClose }) {
     const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot)
     const [busy, setBusy] = useState(false)
     const [probeNote, setProbeNote] = useState(undefined)
     const [localError, setLocalError] = useState(undefined)
+    const nodeRef = useRef(null)
+    const [box, setBox] = useState(undefined)
+    const [viewport, setViewport] = useState(readViewport)
 
     // 打开时读一次状态；关闭时停止本地状态机。
     useEffect(() => {
@@ -224,15 +237,37 @@ export function createPanel(React, { t, connection, portal }) {
       }
     }, [])
 
+    // 首帧还没有实测尺寸（box === undefined），placePopover 会按 0×0 退化，
+    // 随后 useLayoutEffect 在**同一次提交内**量到真实盒子并重排，所以看不到中间态。
     const style = useMemo(() => {
-      if (anchor === undefined) return { left: 16, top: 16 }
-      const width = 320
-      const estimated = 430
-      const left = Math.min(anchor.right + 10, Math.max(8, window.innerWidth - width - 8))
-      // 入口固定在侧栏底部，卡片只有向上才有空间：底边与按钮底边对齐。
-      const top = Math.max(8, Math.min(anchor.bottom - estimated, window.innerHeight - estimated - 8))
-      return { left: Math.max(8, left), top }
-    }, [anchor])
+      const { left, top, maxHeight } = placePopover({ anchor, size: box, viewport })
+      return { left, top, maxHeight, overflowY: 'auto' }
+    }, [anchor, box, viewport])
+
+    // 量卡片自身的盒子。用 ResizeObserver 而不是只在挂载时量一次：
+    // 登录状态切换会换掉整段 body，卡片高度随之变化（187px ↔ 430px），位置必须跟着重算。
+    useLayoutEffect(() => {
+      const node = nodeRef.current
+      if (node === null) return undefined
+      const measure = () => {
+        const rect = node.getBoundingClientRect()
+        setBox((prev) => (prev !== undefined && prev.width === rect.width && prev.height === rect.height
+          ? prev
+          : { width: rect.width, height: rect.height }))
+      }
+      measure()
+      if (typeof ResizeObserver !== 'function') return undefined
+      const observer = new ResizeObserver(measure)
+      observer.observe(node)
+      return () => observer.disconnect()
+    }, [])
+
+    // 视口尺寸也要跟随：窗口缩放后夹紧值就变了。
+    useEffect(() => {
+      const onResize = () => setViewport(readViewport())
+      window.addEventListener('resize', onResize)
+      return () => window.removeEventListener('resize', onResize)
+    }, [])
 
     const state = value.state
     const connected = value.connected === true
@@ -283,6 +318,7 @@ export function createPanel(React, { t, connection, portal }) {
     })()
 
     return h('div', {
+      ref: nodeRef,
       className: 'wc-popover',
       style,
       role: 'dialog',
@@ -331,15 +367,33 @@ export function createPanel(React, { t, connection, portal }) {
       return () => clearTimeout(closeTimer.current)
     }, [])
 
+    const sampleAnchor = useCallback(() => {
+      const rect = triggerRef.current?.getBoundingClientRect()
+      setAnchor(rect === undefined || rect === null
+        ? undefined
+        : { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right })
+    }, [])
+
     const openNow = useCallback(() => {
       clearTimeout(closeTimer.current)
       closeTimer.current = undefined
-      const rect = triggerRef.current?.getBoundingClientRect()
-      setAnchor(rect === undefined
-        ? undefined
-        : { top: rect.top, bottom: rect.bottom, right: rect.right })
+      sampleAnchor()
       setOpen(true)
-    }, [])
+    }, [sampleAnchor])
+
+    // 打开期间按钮可能被滚走或窗口被缩放（侧栏可折叠、窗口可改大小）。
+    // 锚点只在打开那一刻采样一次的话，卡片就留在原地与按钮脱开，所以要跟着重采。
+    useEffect(() => {
+      if (!open) return undefined
+      const onMove = () => sampleAnchor()
+      // scroll 不冒泡，用捕获阶段才能听到侧栏内部滚动。
+      window.addEventListener('scroll', onMove, true)
+      window.addEventListener('resize', onMove)
+      return () => {
+        window.removeEventListener('scroll', onMove, true)
+        window.removeEventListener('resize', onMove)
+      }
+    }, [open, sampleAnchor])
 
     const closeSoon = useCallback(() => {
       if (pinnedRef.current) return
