@@ -62,6 +62,17 @@ function snapshot(overrides) {
     monitor: { enabled: false, running: false, connected: false, received: 0 },
     lastMessage: undefined,
     credentialRef: 'WEIXIN_CLAWBOT_CREDENTIAL',
+    bridge: {
+      enabled: true,
+      ready: true,
+      accessPolicy: 'allowlist',
+      allowCount: 1,
+      received: 0,
+      replied: 0,
+      skipped: 0,
+      failed: 0,
+      pendingApprovals: 0,
+    },
     ...overrides,
   }
 }
@@ -279,6 +290,63 @@ test('底部开关：宿主尺寸语义（role=switch + aria-checked + 独立 kn
 
     await panel.click(toggle)
     assert.equal(toggle.getAttribute('aria-checked'), 'true', '点一下应切到开')
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('已连接：只留账号/端点/监听收发 + 底部「重新登录|断开连接」，桥接开关与测试通道都不再出现', async () => {
+  const panel = await mountPanel({
+    initial: {
+      state: 'connected',
+      connected: true,
+      monitor: { enabled: true, running: true, connected: true, received: 7 },
+      bridge: {
+        enabled: true,
+        ready: true,
+        accessPolicy: 'allowlist',
+        allowCount: 1,
+        received: 3,
+        replied: 2,
+        skipped: 1,
+        failed: 0,
+        pendingApprovals: 0,
+      },
+    },
+  })
+  try {
+    const popover = panel.popover()
+    const text = popover.textContent
+
+    // 收发计数并进「消息监听」这一行。
+    assert.ok(text.includes('monitorTraffic'), '监听行应带上收发计数')
+    assert.ok(text.includes('"r":3') && text.includes('"s":2'), '收发计数应取 bridge.received / bridge.replied')
+
+    // 桥接区块与凭据位置整块消失。
+    assert.ok(!text.includes('bridgeTitle'), '不再有「消息桥接」区块')
+    assert.ok(!text.includes('bridgeDisable'), '不再有关闭桥接')
+    assert.ok(!text.includes('bridgeEnable'), '不再有开启桥接')
+    assert.ok(!text.includes('allowRecent'), '不再有允许最近联系人')
+    assert.ok(!text.includes('sendTest'), '不再有发送测试消息')
+    assert.ok(!text.includes('credentialRef'), '不再显示凭据位置')
+    assert.ok(!text.includes('bridgePolicy'), '不再显示策略行')
+    assert.ok(!text.includes('probe'), '不再有测试通道')
+
+    const buttons = [...popover.querySelectorAll('button')]
+    const reconnect = buttons.find((node) => node.textContent === 'reconnect')
+    const disconnect = buttons.find((node) => node.textContent === 'disconnect')
+    assert.ok(reconnect !== undefined, '重新登录按钮要保留')
+    assert.ok(disconnect !== undefined, '断开连接按钮要保留')
+
+    // 同一行、左右各一半，断开在右。
+    assert.equal(reconnect.parentElement, disconnect.parentElement, '两个按钮应在同一行')
+    const row = disconnect.parentElement
+    assert.equal(reconnect.nextElementSibling, disconnect, '顺序是「重新登录」在左、「断开连接」在右')
+    assert.ok(reconnect.className.includes('wc-button--half'), '重新登录应占一半')
+    assert.ok(disconnect.className.includes('wc-button--half'), '断开连接应占一半')
+    assert.ok(disconnect.className.includes('wc-button--danger-solid'), '断开连接应是实心填充 + 白字')
+    assert.equal(disconnect.getAttribute('type'), 'button')
+    assert.ok(!row.textContent.includes('probe'), '这一行不再有测试通道')
   } finally {
     await panel.unmount()
   }

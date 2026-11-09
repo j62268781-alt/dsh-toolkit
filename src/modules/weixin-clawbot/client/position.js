@@ -9,8 +9,15 @@
 /** 卡片与视口边缘的最小间距。 */
 export const POPOVER_MARGIN = 8
 
-/** 卡片与按钮之间的缝隙。 */
-export const POPOVER_GAP = 10
+/**
+ * 卡片与按钮**盒子**之间的缝隙。
+ *
+ * 为什么是 2 而不是 10：按钮盒子（32/36px）比里面的图标（18px）大，图标上下各留
+ * 7~9px 的内缩。按盒子留 10px 时，人眼量到的「卡片 → 图标」距离是 17~19px，看起来
+ * 卡片离按钮很远。改成 2px 后：codex 36px 盒 9+2≈11px、原生 32px 盒 7+2≈9px，
+ * 视觉上正好贴住按钮。
+ */
+export const POPOVER_GAP = 2
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 
@@ -36,8 +43,10 @@ export function placePopover({ anchor, size, viewport, gap = POPOVER_GAP, margin
   // 量不到锚点（按钮还没挂上/已卸载）：给一个视口左上角的稳定落点，至少不会跑到屏幕外。
   if (anchor === undefined || anchor === null) return { left: margin, top: margin, maxHeight }
 
-  // 横向：卡片左边与按钮左边对齐，于是卡片从侧栏底部往上长、向右铺开；右侧放不下就整体左移。
-  const left = clamp(anchor.left, margin, Math.max(margin, viewWidth - margin - width))
+  // 横向：卡片左边从按钮的**右**边缘起，卡片整体落在按钮右侧那条竖线上；
+  // 这样卡片不会压住按钮所在的侧栏（rail），视觉上是按钮右下角飞出来的一页。
+  // 右侧放不下时整体左移，最多退到视口 margin 处（窄窗口下会盖住按钮，但不会越界）。
+  const left = clamp(anchor.right, margin, Math.max(margin, viewWidth - margin - width))
 
   // 纵向：卡片长在按钮**上方**，与按钮之间留 gap。入口贴着侧栏底部，上方才是可用空间。
   // 只有上方连 margin 都放不下（视口被压得很矮、或卡片比上方空间还高）时才翻到按钮下方。

@@ -72,13 +72,15 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
 
 /* 状态圆点压在图标右上角，不占布局位置。
    写法对齐宿主 primitives 的 StateDot：外层只给 color，圆点由 :after 用 currentColor 画。
-   这样状态色只有一处来源（data-state），不用为每个状态写一条 background。 */
+   这样状态色只有一处来源（data-state），不用为每个状态写一条 background。
+   直径取 8px、描边 1.5px：与宿主自己的状态点（`_statusDot` 8px、`i04Lra_dot` 6px+1.5px）
+   同一量级；此前的 10px+2px 在 32/36px 的入口按钮上显得占满整个角。 */
 .wc-dot {
   position: absolute;
   top: 3px;
   right: 3px;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   pointer-events: none;
 }
 
@@ -90,7 +92,7 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   corner-shape: round;
   background: currentColor;
   /* 挖出一圈底色的描边，压在图标上时边缘才不会糊在一起。 */
-  box-shadow: 0 0 0 2px var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));
+  box-shadow: 0 0 0 1.5px var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));
   color: var(--dsw-alias-state-idle-primary);
 }
 
@@ -305,7 +307,8 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   flex: 1 1 auto;
   min-width: 96px;
   padding: 7px 12px;
-  border: 1px solid var(--dsw-alias-border-l1);
+  /* 与宿主「新会话」按钮同款描边（0.5px + border-l3），l1 太浅。 */
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
   color: var(--dsw-alias-label-primary);
@@ -341,6 +344,30 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   color: var(--dsw-alias-state-error-primary);
 }
 
+/* 同一行左右各一半：「重新登录」/「断开连接」等宽。 */
+.wc-button--half {
+  flex: 1 1 0;
+}
+
+/* 撑满一行的按钮行：.wc-body 是 align-items:center，容器必须自己拉满。 */
+.wc-actions--full {
+  align-self: stretch;
+  width: 100%;
+}
+
+/* 实心危险按钮：红底白字。 */
+.wc-button--danger-solid {
+  border-color: transparent;
+  background: var(--dsw-alias-state-error-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.wc-button--danger-solid:hover:not(:disabled) {
+  filter: brightness(1.06);
+  background: var(--dsw-alias-state-error-primary);
+}
+
 .wc-button:focus-visible {
   outline: 2px solid var(--dsw-alias-brand-primary);
   outline-offset: 2px;
@@ -354,7 +381,7 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   flex-direction: column;
   gap: 6px;
   padding: 10px;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
 }
@@ -385,7 +412,7 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   padding: 8px 10px;
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   font-size: 12px;
 }
 
@@ -397,6 +424,24 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
 .wc-message__text {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+/* ── 消息桥接区块 ──────────────────────────────────────────── */
+
+.wc-bridge {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+
+/* 桥接里的说明文字左对齐：通用 .wc-hint 是居中的，段落一长就散。 */
+.wc-bridge .wc-hint {
+  text-align: left;
+  max-width: none;
+  line-height: 1.5;
 }
 
 /* ── 输入校验码 ────────────────────────────────────────────── */
@@ -411,7 +456,7 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   flex: 1;
   min-width: 0;
   padding: 7px 10px;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 8px;
   background: var(--dsw-alias-bg-layer-1);
   color: var(--dsw-alias-label-primary);

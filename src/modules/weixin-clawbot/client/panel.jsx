@@ -180,12 +180,19 @@ export function createPanel(React, { t, connection, portal }) {
         h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: onCancel }, t('cancel'))))
   }
 
-  /** 已连接：脱敏账号 + 通道自检 + 断开。 */
-  function Connected({ value, busy, onProbe, onLogout, onReconnect, probeNote }) {
+  /**
+   * 已连接：账号 + 端点 + 监听/收发 + 断开。
+   *
+   * 桥接是固定开启、只对自己开放的（登录即生效），面板里不再提供开关/策略/测试按钮，
+   * 收发计数并进「消息监听」这一行。底部只有一行操作：左「重新登录」、右「断开连接」。
+   */
+  function Connected({ value, busy, onLogout, onReconnect }) {
     const message = value.lastMessage
-    const monitorText = value.monitor.running
-      ? `${t('monitorOn')} · ${t('received', { n: value.monitor.received })}`
-      : t('monitorOff')
+    const bridge = value.bridge
+    const traffic = t(value.monitor.running ? 'monitorTraffic' : 'monitorIdle', {
+      r: bridge.received,
+      s: bridge.replied,
+    })
     return h('div', { className: 'wc-body' },
       h(StatusRow, null, t('stateConnected')),
       h('div', { className: 'wc-info' },
@@ -196,11 +203,8 @@ export function createPanel(React, { t, connection, portal }) {
           h('span', { className: 'wc-info__key' }, t('endpoint')),
           h('span', { className: 'wc-info__value' }, value.account?.baseUrlHost ?? '—')),
         h('div', { className: 'wc-info__row' },
-          h('span', { className: 'wc-info__key' }, t('credentialRef')),
-          h('span', { className: 'wc-info__value' }, value.credentialRef)),
-        h('div', { className: 'wc-info__row' },
           h('span', { className: 'wc-info__key' }, t('monitor')),
-          h('span', { className: 'wc-info__value' }, monitorText))),
+          h('span', { className: 'wc-info__value' }, traffic))),
       h('div', { className: 'wc-message' },
         h('div', { className: 'wc-message__meta' }, t('lastMessage')),
         message === undefined
@@ -208,24 +212,24 @@ export function createPanel(React, { t, connection, portal }) {
           : h('div', null,
             h('div', { className: 'wc-message__meta' }, message.from || '—'),
             h('div', { className: 'wc-message__text' }, message.text || message.note || ''))),
-      probeNote === undefined ? null : h('div', { className: 'wc-hint' }, probeNote),
-      h('div', { className: 'wc-actions' },
-        h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: onProbe },
-          busy ? t('probing') : t('probe')),
+      h('div', { className: 'wc-actions wc-actions--full' },
         h('button', {
           type: 'button',
-          className: 'wc-button wc-button--danger',
+          className: 'wc-button wc-button--half',
+          disabled: busy,
+          onClick: onReconnect,
+        }, t('reconnect')),
+        h('button', {
+          type: 'button',
+          className: 'wc-button wc-button--half wc-button--danger-solid',
           disabled: busy,
           onClick: onLogout,
-        }, t('disconnect'))),
-      h('div', { className: 'wc-actions' },
-        h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: onReconnect },
-          t('reconnect'))))
+        }, t('disconnect'))))
   }
 
   /**
    * 弹出卡片。位置由触发按钮的 boundingRect 与卡片的**实测**尺寸共同决定：
-   * 卡片长在按钮**上方**（左边与按钮左边对齐），上方放不下才翻到下方。
+   * 卡片长在按钮**上方**，横向从按钮的**右边缘**起（见 position.js），上方放不下才翻到下方。
    *
    * 为什么不能在渲染前一次算定：卡片高度随登录状态变化（未连接 187px、二维码 430px），
    * 用估计值定位必然在某个状态下错位。所以先渲染、再用 `useLayoutEffect` 量回来重排，
@@ -238,7 +242,6 @@ export function createPanel(React, { t, connection, portal }) {
   function Popover({ anchor, pinned, onPin, onClose, onEnter, onLeave }) {
     const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot)
     const [busy, setBusy] = useState(false)
-    const [probeNote, setProbeNote] = useState(undefined)
     const [localError, setLocalError] = useState(undefined)
     const nodeRef = useRef(null)
     const [box, setBox] = useState(undefined)
@@ -326,19 +329,10 @@ export function createPanel(React, { t, connection, portal }) {
         return h(Connected, {
           value,
           busy,
-          probeNote,
-          onProbe: () => run(async () => {
-            const result = await connection.probe()
-            setProbeNote(result.messages > 0
-              ? t('probeMessages', { n: result.messages })
-              : t('probeOk'))
-          }),
           onLogout: () => run(async () => {
-            setProbeNote(undefined)
             await connection.logout()
           }),
           onReconnect: () => run(async () => {
-            setProbeNote(undefined)
             await connection.startLogin()
           }),
         })
@@ -451,7 +445,7 @@ export function createPanel(React, { t, connection, portal }) {
     const closeSoon = useCallback(() => {
       if (pinnedRef.current) return
       clearTimeout(closeTimer.current)
-      // 留一点时间让指针从按钮移到卡片上（卡片在按钮上方，中间隔 10px）。
+      // 留一点时间让指针从按钮移到卡片上（卡片在按钮上方，中间只隔 2px，见 position.js）。
       closeTimer.current = setTimeout(() => setOpen(false), 160)
     }, [])
 

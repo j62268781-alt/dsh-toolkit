@@ -30,6 +30,20 @@ const EMPTY = Object.freeze({
   error: undefined,
   monitor: { enabled: false, running: false, connected: false, received: 0 },
   lastMessage: undefined,
+  bridge: {
+    enabled: false,
+    ready: false,
+    accessPolicy: 'allowlist',
+    allowCount: 0,
+    received: 0,
+    replied: 0,
+    skipped: 0,
+    failed: 0,
+    pendingApprovals: 0,
+    lastError: undefined,
+    lastUserId: undefined,
+    canAllowRecent: false,
+  },
   credentialRef: 'WEIXIN_CLAWBOT_CREDENTIAL',
 })
 
@@ -77,6 +91,27 @@ export function normalize(payload) {
         receivedAt: Number.isFinite(payload.lastMessage.receivedAt) ? payload.lastMessage.receivedAt : undefined,
       }
       : undefined,
+    bridge: normalizeBridge(payload.bridge),
+  }
+}
+
+/** 桥接状态：缺字段同样回落，面板只负责展示与开关。 */
+function normalizeBridge(input) {
+  const source = input !== null && typeof input === 'object' ? input : {}
+  const count = (value) => (Number.isFinite(value) ? Number(value) : 0)
+  return {
+    enabled: source.enabled === true,
+    ready: source.ready === true,
+    accessPolicy: source.accessPolicy === 'open' ? 'open' : 'allowlist',
+    allowCount: count(source.allowCount),
+    received: count(source.received),
+    replied: count(source.replied),
+    skipped: count(source.skipped),
+    failed: count(source.failed),
+    pendingApprovals: count(source.pendingApprovals),
+    lastError: typeof source.lastError === 'string' && source.lastError !== '' ? source.lastError : undefined,
+    lastUserId: typeof source.lastUserId === 'string' ? source.lastUserId : undefined,
+    canAllowRecent: source.canAllowRecent === true,
   }
 }
 
@@ -227,6 +262,11 @@ export function createConnection({ onError = () => {} } = {}) {
     logout: () => act('logout'),
     probe,
     setMonitor: (enabled) => act('monitor', { enabled }),
+    setBridgeEnabled: (enabled) => act('bridge/access', { enabled }),
+    allowRecent: () => act('bridge/access', { allowRecent: true }),
+    setBridgePolicy: (policy) => act('bridge/access', { policy }),
+    /** 测试消息：响应是完整状态快照，直接走 act。 */
+    sendTestMessage: (text) => act('bridge/test', text === undefined ? undefined : { text }),
     dispose() {
       disposed = true
       value = { ...EMPTY, state: 'closed' }

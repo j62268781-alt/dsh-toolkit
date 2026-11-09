@@ -3,8 +3,12 @@
  *
  * 为什么要两类断言：`placePopover` 的数学错了会算到屏幕外（第一类能钉住），
  * 但接线错了（比如用写死的高度）纯函数永远是绿的（第二类才能钉住）。
- * 真机报过的现象有两代：先是拿 430 去估一个 187px 的卡片导致纵向错 243px；
- * 后来是卡片长在按钮右侧、与按钮关系不明显 —— 现在统一为「卡片在按钮上方」。
+ * 真机报过的现象有三代：先是拿 430 去估一个 187px 的卡片导致纵向错 243px；
+ * 后来是卡片长在按钮右侧、与按钮关系不明显 —— 纵向统一为「卡片在按钮上方」；
+ * 再后来卡片左边与按钮左边对齐，在 collapsed rail 下会压住整条 rail —— 横向改成
+ * 「卡片左边从按钮右边缘起」，卡片整体落在按钮右侧的竖线上；
+ * 最后是纵向按按钮「盒子」留 10px，但图标在盒子里还内缩 7~9px，人眼看到的是
+ * 17~19px 的空当 —— gap 收紧到 2px，视觉上正好 ~10px。
  */
 import assert from 'node:assert/strict'
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -19,10 +23,23 @@ const VIEWPORT = { width: 1264, height: 785 }
 /** 侧栏底部的图标按钮：32×32，左下角。 */
 const ANCHOR = { top: 737, bottom: 769, left: 240, right: 272 }
 
+test('placePopover: 横向从按钮右边缘起，collapsed rail 下不压按钮', () => {
+  // 真机 collapsed rail 实测：rail 宽 40，按钮 36×36 贴左下（x 2..38），视口 1280×713。
+  const rail = { top: 629, bottom: 665, left: 2, right: 38 }
+  const placed = placePopover({ anchor: rail, size: { width: 320, height: 443 }, viewport: { width: 1280, height: 713 } })
+  assert.equal(placed.left, rail.right, '卡片左边 = 按钮右边缘')
+  assert.ok(placed.left >= rail.right, '卡片不盖住按钮')
+
+  // 展开侧栏时按钮还在左下（x 2..38），同样从右边缘起，不因为侧栏变宽而漂移。
+  const expanded = placePopover({ anchor: rail, size: { width: 350, height: 187 }, viewport: VIEWPORT })
+  assert.equal(expanded.left, 38)
+})
+
 test('placePopover: 卡片长在按钮上方，底边与按钮上边留出 gap', () => {
-  // 未连接态实测 350×187。卡片底边 = 按钮上边 - gap = 737 - 10 = 727，故 top = 727 - 187 = 540。
+  // 未连接态实测 350×187。卡片底边 = 按钮上边 - gap = 737 - 2 = 735，故 top = 735 - 187 = 548。
+  // gap 是「到按钮盒子」的距离，图标在 32px 盒子里还内缩 7px，视觉上约 9px。
   const short = placePopover({ anchor: ANCHOR, size: { width: 350, height: 187 }, viewport: VIEWPORT })
-  assert.equal(short.left, ANCHOR.left, '横向与按钮左边对齐')
+  assert.equal(short.left, ANCHOR.right, '横向从按钮右边缘起')
   assert.equal(short.top + 187, ANCHOR.top - POPOVER_GAP, '卡片底边应离开按钮上边一个 gap')
   assert.equal(short.top, ANCHOR.top - POPOVER_GAP - 187)
 
@@ -40,7 +57,7 @@ test('placePopover: 上方放不下时翻到按钮下方', () => {
   const anchor = { top: 20, bottom: 52, left: 240, right: 272 }
   const placed = placePopover({ anchor, size: { width: 350, height: 187 }, viewport: VIEWPORT })
   assert.equal(placed.top, anchor.bottom + POPOVER_GAP, '翻到下方时上边应离开按钮下边一个 gap')
-  assert.equal(placed.top, 62)
+  assert.equal(placed.top, 54)
 })
 
 test('placePopover: 横向越界时夹在视口内，不越界', () => {
@@ -68,7 +85,7 @@ test('placePopover: 还没量到锚点/尺寸时退化到安全落点', () => {
   // 只量到锚点、还没量到卡片：按 0 高算，卡片底边先贴到按钮上边（随后被实测值修正）。
   const noSize = placePopover({ anchor: ANCHOR, size: undefined, viewport: VIEWPORT })
   assert.equal(noSize.top, ANCHOR.top - POPOVER_GAP)
-  assert.equal(noSize.left, ANCHOR.left)
+  assert.equal(noSize.left, ANCHOR.right)
 })
 
 async function loadPanel() {
@@ -167,7 +184,7 @@ test('Popover: 打开后按卡片实测高度定位，卡片长在按钮上方',
 
     const left = Number.parseFloat(popover.style.left)
     const top = Number.parseFloat(popover.style.top)
-    assert.equal(left, ANCHOR.left, '卡片左边应与按钮左边对齐')
+    assert.equal(left, ANCHOR.right, '卡片左边应从按钮右边缘起')
     // 回归线：卡片底边（top + 实测 187）必须停在按钮上边之上一个 gap 处。
     assert.equal(top, ANCHOR.top - POPOVER_GAP - 187, '卡片应长在按钮上方')
     assert.equal(top + 187, ANCHOR.top - POPOVER_GAP)
