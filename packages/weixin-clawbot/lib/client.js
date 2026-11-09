@@ -60,6 +60,20 @@ window.__ModuleLoader__.load({
       error: void 0,
       monitor: { enabled: false, running: false, connected: false, received: 0 },
       lastMessage: void 0,
+      bridge: {
+        enabled: false,
+        ready: false,
+        accessPolicy: "allowlist",
+        allowCount: 0,
+        received: 0,
+        replied: 0,
+        skipped: 0,
+        failed: 0,
+        pendingApprovals: 0,
+        lastError: void 0,
+        lastUserId: void 0,
+        canAllowRecent: false
+      },
       credentialRef: "WEIXIN_CLAWBOT_CREDENTIAL"
     });
     function normalize(payload) {
@@ -96,7 +110,26 @@ window.__ModuleLoader__.load({
           text: typeof payload.lastMessage.text === "string" ? payload.lastMessage.text : "",
           note: typeof payload.lastMessage.note === "string" ? payload.lastMessage.note : void 0,
           receivedAt: Number.isFinite(payload.lastMessage.receivedAt) ? payload.lastMessage.receivedAt : void 0
-        } : void 0
+        } : void 0,
+        bridge: normalizeBridge(payload.bridge)
+      };
+    }
+    function normalizeBridge(input) {
+      const source = input !== null && typeof input === "object" ? input : {};
+      const count = (value) => Number.isFinite(value) ? Number(value) : 0;
+      return {
+        enabled: source.enabled === true,
+        ready: source.ready === true,
+        accessPolicy: source.accessPolicy === "open" ? "open" : "allowlist",
+        allowCount: count(source.allowCount),
+        received: count(source.received),
+        replied: count(source.replied),
+        skipped: count(source.skipped),
+        failed: count(source.failed),
+        pendingApprovals: count(source.pendingApprovals),
+        lastError: typeof source.lastError === "string" && source.lastError !== "" ? source.lastError : void 0,
+        lastUserId: typeof source.lastUserId === "string" ? source.lastUserId : void 0,
+        canAllowRecent: source.canAllowRecent === true
       };
     }
     function toneOf(state) {
@@ -226,6 +259,11 @@ window.__ModuleLoader__.load({
         logout: () => act("logout"),
         probe,
         setMonitor: (enabled) => act("monitor", { enabled }),
+        setBridgeEnabled: (enabled) => act("bridge/access", { enabled }),
+        allowRecent: () => act("bridge/access", { allowRecent: true }),
+        setBridgePolicy: (policy) => act("bridge/access", { policy }),
+        /** 测试消息：响应是完整状态快照，直接走 act。 */
+        sendTestMessage: (text) => act("bridge/test", text === void 0 ? void 0 : { text }),
         dispose() {
           disposed = true;
           value = { ...EMPTY, state: "closed" };
@@ -270,7 +308,6 @@ window.__ModuleLoader__.load({
         refresh: "刷新二维码",
         cancel: "取消",
         disconnect: "断开连接",
-        probe: "测试通道",
         probing: "正在测试…",
         codePlaceholder: "微信里显示的数字",
         codeSubmit: "提交",
@@ -291,9 +328,31 @@ window.__ModuleLoader__.load({
         noneYet: "尚未收到消息",
         keepOpen: "鼠标离开后保持展开",
         received: "已收到 {n} 条",
-        probeOk: "通道正常，本次没有新消息",
-        probeMessages: "通道正常，收到 {n} 条新消息",
-        probeFailed: "通道测试失败：{reason}",
+        monitorTraffic: "监听中 · 收 {r} · 回 {s}",
+        monitorIdle: "未监听 · 收 {r} · 回 {s}",
+        bridgeTitle: "消息桥接",
+        bridge: "状态",
+        bridgeOff: "未开启",
+        bridgeReady: "已就绪",
+        bridgeNotReady: "未就绪",
+        bridgePolicy: "策略",
+        policyOpen: "任何人",
+        policyAllowlist: "仅白名单（{n} 人）",
+        bridgeCounts: "收发",
+        bridgeCountsValue: "收 {r} · 回 {s}",
+        bridgeApprovals: "待审批",
+        bridgeHint: "开启后，白名单里的微信消息会跑一轮 Agent，并把回复发回微信；/approve、/reject 可直接处理工具审批。",
+        bridgeEnable: "开启桥接",
+        bridgeDisable: "关闭桥接",
+        bridgeEnabledNow: "桥接已开启。",
+        bridgeDisabledNow: "桥接已关闭。",
+        allowRecent: "允许最近联系人",
+        allowRecentDone: "已把最近联系人加入白名单。",
+        sendTest: "发送测试消息",
+        sendTestDone: "测试消息已发出。",
+        useOpen: "改为任何人可用",
+        useAllowlist: "改为仅白名单",
+        policyDone: "策略已更新。",
         failed: "操作失败：{reason}",
         loading: "正在读取状态…",
         close: "关闭",
@@ -318,8 +377,6 @@ window.__ModuleLoader__.load({
         refresh: "Refresh QR code",
         cancel: "Cancel",
         disconnect: "Disconnect",
-        probe: "Test channel",
-        probing: "Testing…",
         codePlaceholder: "Number shown in WeChat",
         codeSubmit: "Submit",
         scanHint: "Scan with WeChat on your phone, then confirm the connection",
@@ -339,9 +396,31 @@ window.__ModuleLoader__.load({
         noneYet: "No messages yet",
         keepOpen: "Keep this panel open after the pointer leaves",
         received: "{n} received",
-        probeOk: "Channel is healthy, no new messages",
-        probeMessages: "Channel is healthy, {n} new messages",
-        probeFailed: "Channel test failed: {reason}",
+        monitorTraffic: "Listening · {r} in · {s} out",
+        monitorIdle: "Idle · {r} in · {s} out",
+        bridgeTitle: "Message bridge",
+        bridge: "State",
+        bridgeOff: "Off",
+        bridgeReady: "Ready",
+        bridgeNotReady: "Not ready",
+        bridgePolicy: "Policy",
+        policyOpen: "Anyone",
+        policyAllowlist: "Allowlist ({n})",
+        bridgeCounts: "Traffic",
+        bridgeCountsValue: "{r} in · {s} out",
+        bridgeApprovals: "Pending approvals",
+        bridgeHint: "When enabled, allowlisted WeChat messages run one agent turn and the reply is sent back; /approve and /reject answer tool approvals.",
+        bridgeEnable: "Enable bridge",
+        bridgeDisable: "Disable bridge",
+        bridgeEnabledNow: "Bridge enabled.",
+        bridgeDisabledNow: "Bridge disabled.",
+        allowRecent: "Allow recent contact",
+        allowRecentDone: "Recent contact added to the allowlist.",
+        sendTest: "Send test message",
+        sendTestDone: "Test message sent.",
+        useOpen: "Allow anyone",
+        useAllowlist: "Allowlist only",
+        policyDone: "Policy updated.",
         failed: "Action failed: {reason}",
         loading: "Reading state…",
         close: "Close",
@@ -744,7 +823,7 @@ window.__ModuleLoader__.load({
 
     // src/modules/weixin-clawbot/client/position.js
     var POPOVER_MARGIN = 8;
-    var POPOVER_GAP = 10;
+    var POPOVER_GAP = 2;
     var clamp = (value, min, max) => Math.max(min, Math.min(max, value));
     function placePopover({ anchor, size, viewport, gap = POPOVER_GAP, margin = POPOVER_MARGIN }) {
       const width = Math.max(0, size?.width ?? 0);
@@ -753,7 +832,7 @@ window.__ModuleLoader__.load({
       const viewHeight = Math.max(0, viewport?.height ?? 0);
       const maxHeight = Math.max(0, viewHeight - margin * 2);
       if (anchor === void 0 || anchor === null) return { left: margin, top: margin, maxHeight };
-      const left = clamp(anchor.left, margin, Math.max(margin, viewWidth - margin - width));
+      const left = clamp(anchor.right, margin, Math.max(margin, viewWidth - margin - width));
       const above = anchor.top - gap - height;
       const placed = above >= margin ? above : anchor.bottom + gap;
       const top = clamp(placed, margin, Math.max(margin, viewHeight - margin - height));
@@ -922,9 +1001,13 @@ window.__ModuleLoader__.load({
           )
         );
       }
-      function Connected({ value, busy, onProbe, onLogout, onReconnect, probeNote }) {
+      function Connected({ value, busy, onLogout, onReconnect }) {
         const message = value.lastMessage;
-        const monitorText = value.monitor.running ? `${t("monitorOn")} · ${t("received", { n: value.monitor.received })}` : t("monitorOff");
+        const bridge = value.bridge;
+        const traffic = t(value.monitor.running ? "monitorTraffic" : "monitorIdle", {
+          r: bridge.received,
+          s: bridge.replied
+        });
         return h(
           "div",
           { className: "wc-body" },
@@ -947,14 +1030,8 @@ window.__ModuleLoader__.load({
             h(
               "div",
               { className: "wc-info__row" },
-              h("span", { className: "wc-info__key" }, t("credentialRef")),
-              h("span", { className: "wc-info__value" }, value.credentialRef)
-            ),
-            h(
-              "div",
-              { className: "wc-info__row" },
               h("span", { className: "wc-info__key" }, t("monitor")),
-              h("span", { className: "wc-info__value" }, monitorText)
+              h("span", { className: "wc-info__value" }, traffic)
             )
           ),
           h(
@@ -968,37 +1045,27 @@ window.__ModuleLoader__.load({
               h("div", { className: "wc-message__text" }, message.text || message.note || "")
             )
           ),
-          probeNote === void 0 ? null : h("div", { className: "wc-hint" }, probeNote),
           h(
             "div",
-            { className: "wc-actions" },
-            h(
-              "button",
-              { type: "button", className: "wc-button", disabled: busy, onClick: onProbe },
-              busy ? t("probing") : t("probe")
-            ),
+            { className: "wc-actions wc-actions--full" },
             h("button", {
               type: "button",
-              className: "wc-button wc-button--danger",
+              className: "wc-button wc-button--half",
+              disabled: busy,
+              onClick: onReconnect
+            }, t("reconnect")),
+            h("button", {
+              type: "button",
+              className: "wc-button wc-button--half wc-button--danger-solid",
               disabled: busy,
               onClick: onLogout
             }, t("disconnect"))
-          ),
-          h(
-            "div",
-            { className: "wc-actions" },
-            h(
-              "button",
-              { type: "button", className: "wc-button", disabled: busy, onClick: onReconnect },
-              t("reconnect")
-            )
           )
         );
       }
       function Popover({ anchor, pinned, onPin, onClose, onEnter, onLeave }) {
         const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot);
         const [busy, setBusy] = useState(false);
-        const [probeNote, setProbeNote] = useState(void 0);
         const [localError, setLocalError] = useState(void 0);
         const nodeRef = useRef(null);
         const [box, setBox] = useState(void 0);
@@ -1067,17 +1134,10 @@ window.__ModuleLoader__.load({
             return h(Connected, {
               value,
               busy,
-              probeNote,
-              onProbe: () => run(async () => {
-                const result = await connection.probe();
-                setProbeNote(result.messages > 0 ? t("probeMessages", { n: result.messages }) : t("probeOk"));
-              }),
               onLogout: () => run(async () => {
-                setProbeNote(void 0);
                 await connection.logout();
               }),
               onReconnect: () => run(async () => {
-                setProbeNote(void 0);
                 await connection.startLogin();
               })
             });
@@ -1317,7 +1377,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/weixin-clawbot/client/styles.css
-    var styles_default = '/* 微信扫码登录面板：全部使用宿主主题 token，浅色/深色自动跟随。 */\n\n/* 挂载容器本身不参与布局，按钮直接落在账户行里。 */\n.wc-mount {\n  display: flex;\n  flex: none;\n  align-items: center;\n}\n\n.wc-entry {\n  position: relative;\n  display: flex;\n  min-width: 0;\n}\n\n/* 账户行里的图标按钮。尺寸/圆角/hover 对齐宿主自己的账户按钮与连接指示器。 */\n.wc-icon {\n  box-sizing: border-box;\n  display: flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 32px;\n  height: 32px;\n  padding: 0;\n  border: 0;\n  border-radius: var(--dsw-radius-md);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n  transition: background-color .16s ease, color .16s ease;\n}\n\n.wc-icon:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n}\n\n.wc-icon:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: 2px;\n}\n\n.wc-icon__glyph {\n  display: grid;\n  place-items: center;\n  width: 18px;\n  height: 18px;\n}\n\n.wc-icon__glyph svg {\n  display: block;\n}\n\n/* codex 皮肤的 rail：与最左侧的 .sk-home 同款尺寸与 hover 底色。 */\nhtml[data-sk-palette="codex"] .wc-icon {\n  width: 36px;\n  height: 36px;\n  margin: 0 auto;\n  border-radius: var(--dsw-radius-md);\n  color: var(--dsw-alias-label-primary);\n}\n\nhtml[data-sk-palette="codex"] .wc-icon:hover {\n  background: var(--cx-rail-item-hover);\n}\n\nhtml[data-sk-palette="codex"] .wc-icon__glyph svg {\n  width: 18px;\n  height: 18px;\n}\n\n/* 状态圆点压在图标右上角，不占布局位置。\n   写法对齐宿主 primitives 的 StateDot：外层只给 color，圆点由 :after 用 currentColor 画。\n   这样状态色只有一处来源（data-state），不用为每个状态写一条 background。 */\n.wc-dot {\n  position: absolute;\n  top: 3px;\n  right: 3px;\n  width: 10px;\n  height: 10px;\n  pointer-events: none;\n}\n\n.wc-dot::after {\n  content: "";\n  position: absolute;\n  inset: 0;\n  border-radius: 50%;\n  corner-shape: round;\n  background: currentColor;\n  /* 挖出一圈底色的描边，压在图标上时边缘才不会糊在一起。 */\n  box-shadow: 0 0 0 2px var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));\n  color: var(--dsw-alias-state-idle-primary);\n}\n\n.wc-dot[data-state="ok"]::after { color: var(--dsw-alias-state-success-primary); }\n.wc-dot[data-state="busy"]::after { color: var(--dsw-alias-state-warn-primary); }\n.wc-dot[data-state="bad"]::after { color: var(--dsw-alias-state-error-primary); }\n\n/* ── 弹出卡片 ───────────────────────────────────────────────── */\n\n.wc-popover {\n  position: fixed;\n  z-index: 2147482000;\n  /* 定位按 border-box 计算：少了这条，声明的 320px 只是内容宽，\n     实际占位 350px（含 14px 内边距 ×2 与 1px 边框 ×2），右侧会多出 30px 的空档。 */\n  box-sizing: border-box;\n  width: 320px;\n  display: flex;\n  flex-direction: column;\n  padding: 14px;\n  gap: 12px;\n  /* 浮层配方对齐宿主：不画 border，0.5px 描边由 elevation-panel 自带的那一层来，\n     底色用 bg-layer-1（bg-overlay 在宿主里其实没人用在浮层上，浅色下偏灰）。 */\n  border: 0;\n  border-radius: var(--dsw-radius-lg);\n  background: var(--dsw-alias-bg-layer-1);\n  box-shadow: var(--dsw-elevation-panel);\n  color: var(--dsw-alias-label-primary);\n  font-size: 13px;\n  line-height: 1.5;\n  /* 兜底：卡片比视口还高时内部滚动，而不是顶到屏幕外。\n     JS 侧会算出同样的上限（placePopover 的 maxHeight），这里保证无 JS 时也不错。 */\n  max-height: calc(100vh - 16px);\n  overflow-y: auto;\n}\n\n.wc-popover > * {\n  flex: none;\n}\n\n.wc-head {\n  display: flex;\n  align-items: flex-start;\n  gap: 8px;\n}\n\n.wc-head__text {\n  flex: 1;\n  min-width: 0;\n}\n\n.wc-title {\n  font-size: 14px;\n  font-weight: 600;\n  line-height: 20px;\n}\n\n.wc-subtitle {\n  margin-top: 2px;\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n/* 与宿主 Modal 的关闭按钮同款：28×28、radius-sm、hover 只加深底色、不改文字色。 */\n.wc-close {\n  flex: none;\n  width: 28px;\n  height: 28px;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n  border: 0;\n  border-radius: var(--dsw-radius-sm);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  .wc-close:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n.wc-body {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 10px;\n}\n\n.wc-status {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  align-self: flex-start;\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n/* 二维码容器：蒙层要绝对定位压在码上，所以这里给一个定位祖先，并锁死二维码尺寸，\n   换态（等待扫码 → 已扫码 → 已过期）时卡片高度不跳动。 */\n.wc-qr-wrap {\n  position: relative;\n  width: 176px;\n  height: 176px;\n  flex: none;\n}\n\n.wc-qr {\n  display: block;\n  border-radius: 6px;\n  background: #fff;\n}\n\n/* 蒙层：半透明底色 + 居中文字。已过期那一档本身是按钮，点了就换新码。 */\n.wc-qr-mask {\n  position: absolute;\n  inset: 0;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  gap: 6px;\n  padding: 0;\n  border: 0;\n  border-radius: 6px;\n  background: var(--dsw-alias-bg-mask-1);\n  color: #fff;\n  font: inherit;\n  text-align: center;\n}\n\n.wc-qr-mask--expired {\n  cursor: pointer;\n}\n\n.wc-qr-mask--expired:disabled {\n  cursor: default;\n}\n\n.wc-qr-mask--expired:hover:not(:disabled) {\n  background: var(--dsw-alias-bg-mask-2);\n}\n\n/* 文字坐在自己的色块上：二维码是黑白高对比花纹，白字直接压上去根本读不出来。\n   用宿主浮层色 + 主文字色，浅色/深色主题下都是一块干净的衬底。 */\n.wc-qr-mask__panel {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  padding: 8px 14px;\n  border-radius: var(--dsw-radius-md);\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  box-shadow: var(--dsw-elevation-panel);\n}\n\n.wc-qr-mask__title {\n  font-size: 13px;\n  font-weight: 600;\n  line-height: 18px;\n}\n\n.wc-qr-mask__action {\n  font-size: 12px;\n  line-height: 18px;\n  text-decoration: underline;\n}\n\n.wc-qr--failed {\n  display: grid;\n  place-items: center;\n  width: 176px;\n  height: 176px;\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 12px;\n}\n\n.wc-hint {\n  text-align: center;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n  max-width: 260px;\n}\n\n.wc-countdown {\n  font-variant-numeric: tabular-nums;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n}\n\n.wc-error {\n  align-self: stretch;\n  padding: 8px 10px;\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-2);\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 12px;\n  overflow-wrap: anywhere;\n}\n\n/* ── 按钮 ──────────────────────────────────────────────────── */\n\n.wc-actions {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n}\n\n.wc-button {\n  flex: 1 1 auto;\n  min-width: 96px;\n  padding: 7px 12px;\n  border: 1px solid var(--dsw-alias-border-l1);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n  line-height: 18px;\n  cursor: pointer;\n  transition: background-color .16s ease, border-color .16s ease;\n}\n\n.wc-button:hover:not(:disabled) {\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n.wc-button:disabled {\n  opacity: .55;\n  cursor: default;\n}\n\n.wc-button--primary {\n  border-color: transparent;\n  background: var(--dsw-alias-brand-primary);\n  color: #fff;\n  font-weight: 600;\n}\n\n.wc-button--primary:hover:not(:disabled) {\n  filter: brightness(1.06);\n  background: var(--dsw-alias-brand-primary);\n}\n\n.wc-button--danger {\n  color: var(--dsw-alias-state-error-primary);\n}\n\n.wc-button:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: 2px;\n}\n\n/* ── 已连接信息 ────────────────────────────────────────────── */\n\n.wc-info {\n  align-self: stretch;\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n  padding: 10px;\n  border: 1px solid var(--dsw-alias-border-l1);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.wc-info__row {\n  display: flex;\n  align-items: baseline;\n  gap: 8px;\n  min-width: 0;\n}\n\n.wc-info__key {\n  flex: none;\n  width: 68px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n}\n\n.wc-info__value {\n  flex: 1;\n  min-width: 0;\n  overflow-wrap: anywhere;\n  font-variant-numeric: tabular-nums;\n}\n\n.wc-message {\n  align-self: stretch;\n  padding: 8px 10px;\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n  border: 1px solid var(--dsw-alias-border-l1);\n  font-size: 12px;\n}\n\n.wc-message__meta {\n  color: var(--dsw-alias-label-secondary);\n  margin-bottom: 2px;\n}\n\n.wc-message__text {\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n/* ── 输入校验码 ────────────────────────────────────────────── */\n\n.wc-code {\n  display: flex;\n  gap: 8px;\n  align-self: stretch;\n}\n\n.wc-code__input {\n  flex: 1;\n  min-width: 0;\n  padding: 7px 10px;\n  border: 1px solid var(--dsw-alias-border-l1);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n}\n\n.wc-code__input:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: 1px;\n}\n\n/* ── 底部开关 ──────────────────────────────────────────────── */\n\n.wc-footer {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  padding-top: 10px;\n  border-top: 1px solid var(--dsw-alias-border-l1);\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.wc-footer__label {\n  flex: 1;\n  min-width: 0;\n}\n\n/* DSH General Settings Switch: 36×20 track, 16px thumb, native state tokens.\n   与 src/modules/boot/client/styles.css 的同名复刻保持一致；插件拿不到宿主 primitives，\n   只能按这套尺寸/令牌复刻，改一处就要同步另一处。 */\n.wc-switch {\n  box-sizing: border-box;\n  position: relative;\n  flex: 0 0 auto;\n  width: 36px;\n  height: 20px;\n  padding: 2px;\n  border: 0;\n  border-radius: 999px;\n  corner-shape: round;\n  background: var(--dsw-alias-border-l3);\n  cursor: pointer;\n}\n\n.wc-switch[aria-checked="true"] {\n  background: var(--dsw-alias-brand-primary);\n}\n\n.wc-switch:disabled {\n  cursor: default;\n  opacity: .5;\n}\n\n.wc-switch:focus-visible {\n  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 2px;\n}\n\n.wc-switch__knob {\n  display: block;\n  width: 16px;\n  height: 16px;\n  border-radius: 50%;\n  corner-shape: round;\n  background: var(--dsw-alias-label-primary-foreground);\n  transition: transform .12s ease;\n}\n\n.wc-switch[aria-checked="false"] .wc-switch__knob {\n  background: var(--dsw-alias-switch-thumb);\n}\n\n.wc-switch[aria-checked="true"] .wc-switch__knob {\n  transform: translate(16px);\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .wc-icon,\n  .wc-button,\n  .wc-switch,\n  .wc-switch__knob {\n    transition: none;\n  }\n}\n';
+    var styles_default = '/* 微信扫码登录面板：全部使用宿主主题 token，浅色/深色自动跟随。 */\n\n/* 挂载容器本身不参与布局，按钮直接落在账户行里。 */\n.wc-mount {\n  display: flex;\n  flex: none;\n  align-items: center;\n}\n\n.wc-entry {\n  position: relative;\n  display: flex;\n  min-width: 0;\n}\n\n/* 账户行里的图标按钮。尺寸/圆角/hover 对齐宿主自己的账户按钮与连接指示器。 */\n.wc-icon {\n  box-sizing: border-box;\n  display: flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 32px;\n  height: 32px;\n  padding: 0;\n  border: 0;\n  border-radius: var(--dsw-radius-md);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n  transition: background-color .16s ease, color .16s ease;\n}\n\n.wc-icon:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n}\n\n.wc-icon:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: 2px;\n}\n\n.wc-icon__glyph {\n  display: grid;\n  place-items: center;\n  width: 18px;\n  height: 18px;\n}\n\n.wc-icon__glyph svg {\n  display: block;\n}\n\n/* codex 皮肤的 rail：与最左侧的 .sk-home 同款尺寸与 hover 底色。 */\nhtml[data-sk-palette="codex"] .wc-icon {\n  width: 36px;\n  height: 36px;\n  margin: 0 auto;\n  border-radius: var(--dsw-radius-md);\n  color: var(--dsw-alias-label-primary);\n}\n\nhtml[data-sk-palette="codex"] .wc-icon:hover {\n  background: var(--cx-rail-item-hover);\n}\n\nhtml[data-sk-palette="codex"] .wc-icon__glyph svg {\n  width: 18px;\n  height: 18px;\n}\n\n/* 状态圆点压在图标右上角，不占布局位置。\n   写法对齐宿主 primitives 的 StateDot：外层只给 color，圆点由 :after 用 currentColor 画。\n   这样状态色只有一处来源（data-state），不用为每个状态写一条 background。\n   直径取 8px、描边 1.5px：与宿主自己的状态点（`_statusDot` 8px、`i04Lra_dot` 6px+1.5px）\n   同一量级；此前的 10px+2px 在 32/36px 的入口按钮上显得占满整个角。 */\n.wc-dot {\n  position: absolute;\n  top: 3px;\n  right: 3px;\n  width: 8px;\n  height: 8px;\n  pointer-events: none;\n}\n\n.wc-dot::after {\n  content: "";\n  position: absolute;\n  inset: 0;\n  border-radius: 50%;\n  corner-shape: round;\n  background: currentColor;\n  /* 挖出一圈底色的描边，压在图标上时边缘才不会糊在一起。 */\n  box-shadow: 0 0 0 1.5px var(--dsw-specific-sidebar-fill, var(--dsw-alias-bg-base));\n  color: var(--dsw-alias-state-idle-primary);\n}\n\n.wc-dot[data-state="ok"]::after { color: var(--dsw-alias-state-success-primary); }\n.wc-dot[data-state="busy"]::after { color: var(--dsw-alias-state-warn-primary); }\n.wc-dot[data-state="bad"]::after { color: var(--dsw-alias-state-error-primary); }\n\n/* ── 弹出卡片 ───────────────────────────────────────────────── */\n\n.wc-popover {\n  position: fixed;\n  z-index: 2147482000;\n  /* 定位按 border-box 计算：少了这条，声明的 320px 只是内容宽，\n     实际占位 350px（含 14px 内边距 ×2 与 1px 边框 ×2），右侧会多出 30px 的空档。 */\n  box-sizing: border-box;\n  width: 320px;\n  display: flex;\n  flex-direction: column;\n  padding: 14px;\n  gap: 12px;\n  /* 浮层配方对齐宿主：不画 border，0.5px 描边由 elevation-panel 自带的那一层来，\n     底色用 bg-layer-1（bg-overlay 在宿主里其实没人用在浮层上，浅色下偏灰）。 */\n  border: 0;\n  border-radius: var(--dsw-radius-lg);\n  background: var(--dsw-alias-bg-layer-1);\n  box-shadow: var(--dsw-elevation-panel);\n  color: var(--dsw-alias-label-primary);\n  font-size: 13px;\n  line-height: 1.5;\n  /* 兜底：卡片比视口还高时内部滚动，而不是顶到屏幕外。\n     JS 侧会算出同样的上限（placePopover 的 maxHeight），这里保证无 JS 时也不错。 */\n  max-height: calc(100vh - 16px);\n  overflow-y: auto;\n}\n\n.wc-popover > * {\n  flex: none;\n}\n\n.wc-head {\n  display: flex;\n  align-items: flex-start;\n  gap: 8px;\n}\n\n.wc-head__text {\n  flex: 1;\n  min-width: 0;\n}\n\n.wc-title {\n  font-size: 14px;\n  font-weight: 600;\n  line-height: 20px;\n}\n\n.wc-subtitle {\n  margin-top: 2px;\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n/* 与宿主 Modal 的关闭按钮同款：28×28、radius-sm、hover 只加深底色、不改文字色。 */\n.wc-close {\n  flex: none;\n  width: 28px;\n  height: 28px;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  padding: 0;\n  border: 0;\n  border-radius: var(--dsw-radius-sm);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  .wc-close:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n.wc-body {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 10px;\n}\n\n.wc-status {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  align-self: flex-start;\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n/* 二维码容器：蒙层要绝对定位压在码上，所以这里给一个定位祖先，并锁死二维码尺寸，\n   换态（等待扫码 → 已扫码 → 已过期）时卡片高度不跳动。 */\n.wc-qr-wrap {\n  position: relative;\n  width: 176px;\n  height: 176px;\n  flex: none;\n}\n\n.wc-qr {\n  display: block;\n  border-radius: 6px;\n  background: #fff;\n}\n\n/* 蒙层：半透明底色 + 居中文字。已过期那一档本身是按钮，点了就换新码。 */\n.wc-qr-mask {\n  position: absolute;\n  inset: 0;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  gap: 6px;\n  padding: 0;\n  border: 0;\n  border-radius: 6px;\n  background: var(--dsw-alias-bg-mask-1);\n  color: #fff;\n  font: inherit;\n  text-align: center;\n}\n\n.wc-qr-mask--expired {\n  cursor: pointer;\n}\n\n.wc-qr-mask--expired:disabled {\n  cursor: default;\n}\n\n.wc-qr-mask--expired:hover:not(:disabled) {\n  background: var(--dsw-alias-bg-mask-2);\n}\n\n/* 文字坐在自己的色块上：二维码是黑白高对比花纹，白字直接压上去根本读不出来。\n   用宿主浮层色 + 主文字色，浅色/深色主题下都是一块干净的衬底。 */\n.wc-qr-mask__panel {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  padding: 8px 14px;\n  border-radius: var(--dsw-radius-md);\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  box-shadow: var(--dsw-elevation-panel);\n}\n\n.wc-qr-mask__title {\n  font-size: 13px;\n  font-weight: 600;\n  line-height: 18px;\n}\n\n.wc-qr-mask__action {\n  font-size: 12px;\n  line-height: 18px;\n  text-decoration: underline;\n}\n\n.wc-qr--failed {\n  display: grid;\n  place-items: center;\n  width: 176px;\n  height: 176px;\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 12px;\n}\n\n.wc-hint {\n  text-align: center;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n  max-width: 260px;\n}\n\n.wc-countdown {\n  font-variant-numeric: tabular-nums;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n}\n\n.wc-error {\n  align-self: stretch;\n  padding: 8px 10px;\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-2);\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 12px;\n  overflow-wrap: anywhere;\n}\n\n/* ── 按钮 ──────────────────────────────────────────────────── */\n\n.wc-actions {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n}\n\n.wc-button {\n  flex: 1 1 auto;\n  min-width: 96px;\n  padding: 7px 12px;\n  /* 与宿主「新会话」按钮同款描边（0.5px + border-l3），l1 太浅。 */\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n  line-height: 18px;\n  cursor: pointer;\n  transition: background-color .16s ease, border-color .16s ease;\n}\n\n.wc-button:hover:not(:disabled) {\n  background: var(--dsw-alias-bg-layer-2);\n}\n\n.wc-button:disabled {\n  opacity: .55;\n  cursor: default;\n}\n\n.wc-button--primary {\n  border-color: transparent;\n  background: var(--dsw-alias-brand-primary);\n  color: #fff;\n  font-weight: 600;\n}\n\n.wc-button--primary:hover:not(:disabled) {\n  filter: brightness(1.06);\n  background: var(--dsw-alias-brand-primary);\n}\n\n.wc-button--danger {\n  color: var(--dsw-alias-state-error-primary);\n}\n\n/* 同一行左右各一半：「重新登录」/「断开连接」等宽。 */\n.wc-button--half {\n  flex: 1 1 0;\n}\n\n/* 撑满一行的按钮行：.wc-body 是 align-items:center，容器必须自己拉满。 */\n.wc-actions--full {\n  align-self: stretch;\n  width: 100%;\n}\n\n/* 实心危险按钮：红底白字。 */\n.wc-button--danger-solid {\n  border-color: transparent;\n  background: var(--dsw-alias-state-error-primary);\n  color: #fff;\n  font-weight: 600;\n}\n\n.wc-button--danger-solid:hover:not(:disabled) {\n  filter: brightness(1.06);\n  background: var(--dsw-alias-state-error-primary);\n}\n\n.wc-button:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: 2px;\n}\n\n/* ── 已连接信息 ────────────────────────────────────────────── */\n\n.wc-info {\n  align-self: stretch;\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n  padding: 10px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.wc-info__row {\n  display: flex;\n  align-items: baseline;\n  gap: 8px;\n  min-width: 0;\n}\n\n.wc-info__key {\n  flex: none;\n  width: 68px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 12px;\n}\n\n.wc-info__value {\n  flex: 1;\n  min-width: 0;\n  overflow-wrap: anywhere;\n  font-variant-numeric: tabular-nums;\n}\n\n.wc-message {\n  align-self: stretch;\n  padding: 8px 10px;\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  font-size: 12px;\n}\n\n.wc-message__meta {\n  color: var(--dsw-alias-label-secondary);\n  margin-bottom: 2px;\n}\n\n.wc-message__text {\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n/* ── 消息桥接区块 ──────────────────────────────────────────── */\n\n.wc-bridge {\n  align-self: stretch;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  padding-top: 10px;\n  border-top: 1px solid var(--dsw-alias-border-l1);\n}\n\n/* 桥接里的说明文字左对齐：通用 .wc-hint 是居中的，段落一长就散。 */\n.wc-bridge .wc-hint {\n  text-align: left;\n  max-width: none;\n  line-height: 1.5;\n}\n\n/* ── 输入校验码 ────────────────────────────────────────────── */\n\n.wc-code {\n  display: flex;\n  gap: 8px;\n  align-self: stretch;\n}\n\n.wc-code__input {\n  flex: 1;\n  min-width: 0;\n  padding: 7px 10px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n}\n\n.wc-code__input:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary);\n  outline-offset: 1px;\n}\n\n/* ── 底部开关 ──────────────────────────────────────────────── */\n\n.wc-footer {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  padding-top: 10px;\n  border-top: 1px solid var(--dsw-alias-border-l1);\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.wc-footer__label {\n  flex: 1;\n  min-width: 0;\n}\n\n/* DSH General Settings Switch: 36×20 track, 16px thumb, native state tokens.\n   与 src/modules/boot/client/styles.css 的同名复刻保持一致；插件拿不到宿主 primitives，\n   只能按这套尺寸/令牌复刻，改一处就要同步另一处。 */\n.wc-switch {\n  box-sizing: border-box;\n  position: relative;\n  flex: 0 0 auto;\n  width: 36px;\n  height: 20px;\n  padding: 2px;\n  border: 0;\n  border-radius: 999px;\n  corner-shape: round;\n  background: var(--dsw-alias-border-l3);\n  cursor: pointer;\n}\n\n.wc-switch[aria-checked="true"] {\n  background: var(--dsw-alias-brand-primary);\n}\n\n.wc-switch:disabled {\n  cursor: default;\n  opacity: .5;\n}\n\n.wc-switch:focus-visible {\n  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 2px;\n}\n\n.wc-switch__knob {\n  display: block;\n  width: 16px;\n  height: 16px;\n  border-radius: 50%;\n  corner-shape: round;\n  background: var(--dsw-alias-label-primary-foreground);\n  transition: transform .12s ease;\n}\n\n.wc-switch[aria-checked="false"] .wc-switch__knob {\n  background: var(--dsw-alias-switch-thumb);\n}\n\n.wc-switch[aria-checked="true"] .wc-switch__knob {\n  transform: translate(16px);\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .wc-icon,\n  .wc-button,\n  .wc-switch,\n  .wc-switch__knob {\n    transition: none;\n  }\n}\n';
 
     // src/modules/weixin-clawbot/client/index.jsx
     globalThis.__dshReact = import_react.default;

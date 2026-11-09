@@ -1,31 +1,50 @@
 /**
- * Host 半边：微信扫码登录（ClawBot / iLink）。
+ * Host 半边：微信扫码登录（ClawBot / iLink）+ 双向消息桥。
  *
  * 职责边界：
- *   · 只做登录与通道自检，不做消息桥接（不复用、不修改 deepseek-harness-weixin）。
+ *   · 登录、通道自检，以及可选的「微信 ↔ DSH Agent」桥接（bridge.js）。
  *   · token 只经 ctx.credentials 存取，绝不进日志、绝不回前端。
  *   · 二维码 URL 是短生命周期凭据，只在 start() 的响应里回给前端，不打印。
  *
  * 路由（全部同源 fetch，无需 CORS）：
- *   GET  /api/plugins/dsh-toolkit/weixin-clawbot/status      当前状态
- *   POST /api/plugins/dsh-toolkit/weixin-clawbot/login/start 发起扫码
- *   GET  /api/plugins/dsh-toolkit/weixin-clawbot/login/poll  前端轮询
- *   POST /api/plugins/dsh-toolkit/weixin-clawbot/login/code  回传数字校验码
+ *   GET  /api/plugins/dsh-toolkit/weixin-clawbot/status       当前状态（含 bridge）
+ *   POST /api/plugins/dsh-toolkit/weixin-clawbot/login/start  发起扫码
+ *   GET  /api/plugins/dsh-toolkit/weixin-clawbot/login/poll   前端轮询
+ *   POST /api/plugins/dsh-toolkit/weixin-clawbot/login/code   回传数字校验码
  *   POST /api/plugins/dsh-toolkit/weixin-clawbot/login/cancel 取消扫码
- *   POST /api/plugins/dsh-toolkit/weixin-clawbot/logout      断开并清空凭据
- *   POST /api/plugins/dsh-toolkit/weixin-clawbot/probe       单次通道探测
- *   POST /api/plugins/dsh-toolkit/weixin-clawbot/monitor     开启/关闭常驻监听
+ *   POST /api/plugins/dsh-toolkit/weixin-clawbot/logout       断开并清空凭据
+ *   POST /api/plugins/dsh-toolkit/weixin-clawbot/probe        单次通道探测
+ *   POST /api/plugins/dsh-toolkit/weixin-clawbot/monitor      开启/关闭常驻监听
+ *   POST /api/plugins/dsh-toolkit/weixin-clawbot/bridge/test  发一条测试消息
+ *   POST /api/plugins/dsh-toolkit/weixin-clawbot/bridge/access 改访问策略/白名单
  */
 
 import { sendJson, readBody } from '../../../host/http.js'
 import { registerAuthenticatedRoute } from '../../../host/routes.js'
+import { createBridge } from './bridge.js'
 import { Config, DEFAULT_CREDENTIAL_REF, readConfig } from './config.js'
 import { createLoginManager } from './login.js'
 import { createMonitor } from './monitor.js'
 import { maskId, normalizeBaseUrl } from './ilink.js'
 
 export const name = 'toolkit-weixin-clawbot'
+/**
+ * 登录只需要这三样；双向桥额外依赖的宿主服务在服务创建时用 `ctx.inject` 按需装载，
+ * 这样缺服务时登录/二维码仍然可用，不会把整个模块卡在 pending。
+ */
 export const inject = ['webServer', 'connection', 'credentials']
+
+/** 桥接需要的宿主服务。 */
+const BRIDGE_SERVICES = [
+  'agents',
+  'agentDefaultModel',
+  'agentPresets',
+  'permissionPresets',
+  'sessionPersistence',
+  'attachments',
+  'sessionTitle',
+  'llm',
+]
 
 export const API_PATH = '/api/plugins/dsh-toolkit/weixin-clawbot'
 
@@ -78,12 +97,34 @@ export async function createClawbotService(ctx, config) {
   let lastMessage
   let monitorEnabled = settings.monitorOnConnect
 
+  /** 唯一读凭据的入口（登录、探测、桥接共用）。 */
+  const getCredential = () => resolveCredential(ctx.credentials, credentialRef)
+
+  /**
+   * 双向桥：等宿主把 agents/llm/attachments 等服务装上之后再创建。
+   * 桥不在时其他功能照常工作，status 里会说明原因。
+   */
+  let bridge
+  ctx.inject(BRIDGE_SERVICES, (bridgeCtx) => {
+    bridge = createBridge({ ctx: bridgeCtx, settings, getCredential, logger })
+    logger?.info?.('[weixin-clawbot] 双向桥已装载')
+    // 预热落盘状态：面板里的开关/策略/白名单一启动就要对上，而不是等第一条消息。
+    void bridge.warmup()
+  })
+
   const monitor = createMonitor({
     logger,
-    getCredential: () => resolveCredential(ctx.credentials, credentialRef),
-    onMessage: (summary) => {
+    getCredential,
+    // 游标尽量持久化；桥还没装载时退化成空游标。
+    cursorStore: {
+      get: () => bridge?.cursor.get() ?? '',
+      set: (value) => bridge?.cursor.set(value),
+    },
+    onMessage: (summary, rawMessage) => {
       lastMessage = summary
       login.recordMessage(summary)
+      // 桥接自己处理异常并计数，这里不 await，避免拖住长轮询。
+      void bridge?.handleMessage(rawMessage)
     },
   })
 
@@ -94,11 +135,15 @@ export async function createClawbotService(ctx, config) {
     onConnected: async (credential, session) => {
       lastMessage = undefined
       if (session !== undefined) session.localTokens = []
+      // 账号可能变了：桥接的 api/store 必须按新账号重建，再按新账号预热状态。
+      bridge?.reset()
+      void bridge?.warmup()
       if (monitorEnabled) monitor.start()
     },
     onDisconnected: async () => {
       monitor.stop()
       lastMessage = undefined
+      bridge?.reset()
     },
   })
 
@@ -128,6 +173,19 @@ export async function createClawbotService(ctx, config) {
       error: loginState.error,
       monitor: { enabled: monitorEnabled, ...monitor.getState() },
       lastMessage: lastMessage ?? loginState.lastMessage,
+      bridge: bridge?.status() ?? {
+        enabled: settings.bridgeEnabled,
+        ready: false,
+        accessPolicy: settings.bridgeAccessPolicy,
+        allowCount: settings.bridgeAllowFrom.length,
+        received: 0,
+        replied: 0,
+        skipped: 0,
+        failed: 0,
+        pendingApprovals: 0,
+        store: {},
+        lastError: '宿主缺少桥接所需服务（agents / llm / attachments 等）',
+      },
     }
   }
 
@@ -186,6 +244,20 @@ export async function createClawbotService(ctx, config) {
       return { ...result, snapshot: await snapshot() }
     },
 
+    /** 发一条测试消息（默认发给最近一位给自己发过消息的人）。 */
+    async sendTestMessage(text) {
+      if (bridge === undefined) throw new Error('宿主缺少桥接所需服务，无法发送测试消息')
+      await bridge.sendTest(undefined, typeof text === 'string' && text.trim() !== '' ? text.trim() : undefined)
+      return snapshot()
+    },
+
+    /** 改访问策略 / 白名单（落盘到桥状态文件，重启后仍生效）。 */
+    async setBridgeAccess(patch) {
+      if (bridge === undefined) throw new Error('宿主缺少桥接所需服务，无法修改访问策略')
+      await bridge.setAccess(patch ?? {})
+      return snapshot()
+    },
+
     async setMonitor(enabled) {
       monitorEnabled = enabled === true
       if (disposed) return snapshot()
@@ -202,6 +274,7 @@ export async function createClawbotService(ctx, config) {
       disposed = true
       monitor.dispose()
       login.dispose()
+      await bridge?.dispose()
     },
 
     get monitorEnabled() {
@@ -270,6 +343,30 @@ export function registerClawbotRoutes(ctx, service) {
           throw Object.assign(new Error('请求体不是合法 JSON'), { statusCode: 400 })
         }
         return service.setMonitor(payload?.enabled === true)
+      },
+    ],
+    [
+      'bridge/test', 'POST',
+      async (req) => {
+        const payload = await readOptionalJson(req)
+        return service.sendTestMessage(payload?.text)
+      },
+    ],
+    [
+      'bridge/access', 'POST',
+      async (req) => {
+        let payload
+        try {
+          payload = JSON.parse(await readBody(req, MAX_BODY))
+        } catch {
+          throw Object.assign(new Error('请求体不是合法 JSON'), { statusCode: 400 })
+        }
+        return service.setBridgeAccess({
+          enabled: typeof payload?.enabled === 'boolean' ? payload.enabled : undefined,
+          policy: payload?.policy,
+          allowFrom: payload?.allowFrom,
+          allowRecent: payload?.allowRecent === true,
+        })
       },
     ],
   ]
