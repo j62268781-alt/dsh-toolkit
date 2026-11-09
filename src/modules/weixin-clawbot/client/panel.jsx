@@ -404,7 +404,9 @@ export function createPanel(React, { t, connection, portal }) {
     pinnedRef.current = pinned
 
     const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot)
-    const state = value.connected ? 'connected' : value.state
+    // 失败态优先：refresh/act 失败时 model 只把 state 改成 'failed'，上一次快照的 connected 仍是 true，
+    // 若这里让 connected 先决，掉线时圆点会一直停在 ok（B17 实测：面板已显示「操作失败」，圆点还绿着）。
+    const state = value.state === 'failed' ? 'failed' : value.connected ? 'connected' : value.state
     // 小圆点跟随真实连接状态；面板开不开都不影响它（见 model.js 里 close() 的注释）。
     const tone = toneOf(state)
 

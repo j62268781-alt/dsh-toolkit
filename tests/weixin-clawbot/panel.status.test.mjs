@@ -244,6 +244,12 @@ test('入口圆点：data-state 跟随连接状态，与面板开关无关', asy
     { initial: { state: 'waiting_qr' }, expected: 'busy' },
     { initial: { state: 'failed', error: 'boom' }, expected: 'bad' },
     { initial: { state: 'idle' }, expected: 'idle' },
+    /**
+     * 掉线回归：model.js 在 refresh/act 失败时只把 state 改成 'failed'，
+     * 保留上一次快照里的 connected=true。若圆点让 connected 先决，掉线时它就一直绿着
+     * （B17 实测：面板已经显示「操作失败：连不上插件路由」，圆点还是 ok）。
+     */
+    { initial: { state: 'failed', connected: true, error: '连不上插件路由' }, expected: 'bad' },
   ]
   for (const item of cases) {
     const panel = await mountPanel({ initial: item.initial, open: false })

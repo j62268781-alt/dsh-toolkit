@@ -1213,7 +1213,7 @@ window.__ModuleLoader__.load({
         const pinnedRef = useRef(false);
         pinnedRef.current = pinned;
         const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot);
-        const state = value.connected ? "connected" : value.state;
+        const state = value.state === "failed" ? "failed" : value.connected ? "connected" : value.state;
         const tone = toneOf(state);
         useEffect(() => {
           void connection.refresh();
