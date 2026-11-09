@@ -76,6 +76,8 @@ const PATHS = [
   ['POST', 'probe'],
   ['POST', 'login/code'],
   ['POST', 'monitor'],
+  ['POST', 'bridge/test'],
+  ['POST', 'bridge/access'],
 ]
 
 test('插件声明与其依赖', () => {
@@ -85,7 +87,7 @@ test('插件声明与其依赖', () => {
   assert.equal(typeof plugin.Config, 'function', 'Config 是 Schemastery 的 schema 工厂')
 })
 
-test('八条路由全部注册为 exact 且挂在独立前缀下', async (t) => {
+test('十条路由全部注册为 exact 且挂在独立前缀下', async (t) => {
   const ctx = new Context()
   await ctx.plugin(WebServer)
   await ctx.plugin(Connection)
