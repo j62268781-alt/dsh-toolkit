@@ -339,3 +339,29 @@ test('every shell, sidebar, rightbar and radius selector requires the Codex pale
     dom.window.close()
   }
 })
+
+test('the empty sidebar footer slot hands its row back to the workspace tree', async () => {
+  // `sidebar.footer.action` is optional and DSH 0.2.1-rc.5 left it empty; the grid
+  // still reserves the `foot` row, which painted a blank band under the tree.
+  const css = await readFile(new URL('../../src/modules/theme/client/styles/sidebar.css', import.meta.url), 'utf8')
+  const emptySlot = /html\[data-sk-palette="codex"\][^{]*:not\(:has\(> \[class\*="_footArea"\] > \[class\*="_footerActions"\] :not\(:empty\)\)\)[^{]*\{\s*([^}]*)\}/g
+  const rules = [...css.matchAll(emptySlot)]
+  const declarations = rules.map(rule => rule[1])
+  assert.ok(
+    declarations.some(block => /grid-template-areas:\s*"nav\s+brand"\s*"nav\s+new"\s*"nav\s+region"\s*"account\s+region"/.test(block)),
+    'the workspace tree takes the empty foot row'
+  )
+  assert.ok(
+    declarations.some(block => /position:\s*absolute/.test(block)),
+    'the empty footer actions leave the grid flow instead of holding the row'
+  )
+  assert.ok(
+    declarations.some(block => /padding-bottom:\s*var\(--cx-gap,\s*4px\)/.test(block)),
+    'the tree stops at the rounded card edge'
+  )
+  for (const rule of rules) {
+    // Rail mode and the collapsed sidebar already hide or re-flow the footer.
+    assert.match(rule[0], /:not\(\[class\*="_collapsed"\]\)/)
+    assert.match(rule[0], /:not\(\[data-sk-rail-only\]\)/)
+  }
+})

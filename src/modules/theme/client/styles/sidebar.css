@@ -299,6 +299,37 @@ html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([clas
   min-width: 0;
 }
 
+/* `sidebar.footer.action` is an optional host slot, and DSH 0.2.1-rc.5 stopped
+   filling it (the update pill moved into the settings trigger row above). The
+   grid still reserves a `foot` row for it, so the empty slot paints a blank band
+   under the workspace tree and the tree clips mid-row right above that band.
+   When the slot holds no content the tree takes the row back; a host that fills
+   the slot keeps the layout untouched. */
+html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only]):not(:has(> [class*="_footArea"] > [class*="_footerActions"] :not(:empty))) {
+  grid-template-areas:
+    "nav     brand"
+    "nav     new"
+    "nav     region"
+    "account region";
+}
+
+/* Take the empty slot out of the grid so the removed `foot` row cannot reflow it,
+   but leave it rendered: an action the emptiness probe cannot see would still
+   show above the account button instead of disappearing. */
+html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only]):not(:has(> [class*="_footArea"] > [class*="_footerActions"] :not(:empty))) > [class*="_footArea"] > [class*="_footerActions"] {
+  position: absolute;
+  grid-area: auto;
+  left: var(--cx-rail-w);
+  right: 0;
+  bottom: 0;
+  padding: 0 8px var(--cx-gap, 4px);
+}
+
+/* The tree now ends at the card edge instead of one gutter above it. */
+html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only]):not(:has(> [class*="_footArea"] > [class*="_footerActions"] :not(:empty))) > [class*="_regionArea"] {
+  padding-bottom: var(--cx-gap, 4px);
+}
+
 html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] {
   grid-area: account;
   align-self: end;
