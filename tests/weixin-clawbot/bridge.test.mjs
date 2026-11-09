@@ -7,7 +7,7 @@
 
 import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { tmpdir, homedir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 
@@ -400,7 +400,9 @@ test('/workspaces 与 /sessions 在没有工作区数据时给可读提示', asy
 })
 
 test('斜杠命令：/use 按 /sessions 的序号与 id 前缀切换会话', async () => {
-  const home = process.env.HOME
+  // 与 bridge.js 的 homeWorkspace() 保持一致：Windows 上 process.env.HOME 是 undefined，
+  // 只有 homedir() 有值。两边取法不同会让 cwd 匹配不上，会话列表变空。
+  const home = homedir()
   const records = [
     { header: { id: 'gui-session-aaaa', cwd: home, createdAt: 2 }, live: false, persisted: true },
     { header: { id: 'gui-session-bbbb', cwd: home, createdAt: 1 }, live: false, persisted: true },
@@ -450,7 +452,7 @@ test('/use 在回答进行中不切会话，先要求 /cancel', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-wc-bridge-'))
   const sent = []
   const switched = []
-  const home = process.env.HOME
+  const home = homedir()
   try {
     const bridge = createBridge({
       ctx: {

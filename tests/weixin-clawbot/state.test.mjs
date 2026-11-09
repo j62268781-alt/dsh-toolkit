@@ -24,12 +24,13 @@ async function withTempDir(run) {
 }
 
 test('bridgeStatePath 按 accountId 派生稳定文件路径', () => {
-  const first = bridgeStatePath('ilink-bot-account-0123456789', { homeDir: '/tmp/home' })
-  const second = bridgeStatePath('ilink-bot-account-0123456789', { homeDir: '/tmp/home' })
-  const other = bridgeStatePath('ilink-bot-account-9999', { homeDir: '/tmp/home' })
+  const first = bridgeStatePath('ilink-bot-account-0123456789', { homeDir: join(tmpdir(), 'home') })
+  const second = bridgeStatePath('ilink-bot-account-0123456789', { homeDir: join(tmpdir(), 'home') })
+  const other = bridgeStatePath('ilink-bot-account-9999', { homeDir: join(tmpdir(), 'home') })
   assert.equal(first, second)
   assert.notEqual(first, other)
-  assert.ok(first.startsWith('/tmp/home/weixin-clawbot/'))
+  // 用 join 拼期望值：Windows 上分隔符是 \，硬编码 '/' 会误判成回归。
+  assert.ok(first.startsWith(join(tmpdir(), 'home', 'weixin-clawbot')))
   assert.ok(first.endsWith('.json'))
   assert.ok(!first.includes('ilink-bot-account'))
 })
