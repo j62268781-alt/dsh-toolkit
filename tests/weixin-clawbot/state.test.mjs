@@ -496,3 +496,106 @@ test('/new 新建的会话即使还没落盘也不会被当成「丢失」，rot
     conversations.dispose()
   }
 })
+
+/**
+ * 复现线上那条 `处理失败: cannot get property "ctx" without inject`：
+ * cordis 的 Context 是 Proxy —— 读一个没注入的属性会直接抛错，`?.` 兜不住。
+ * setup 的签名是 (agentCtx, agent)，审批监听必须挂 agent.ctx，不能挂 agentCtx。
+ */
+test('setup 里挂审批监听用 agent 而不是 agentCtx，别让 Context proxy 抛错带崩整轮对话', async () => {
+  const throwingCtx = new Proxy({}, {
+    get(_target, prop) {
+      // 模拟 cordis：只放行特殊属性，其余一律抛（这就是线上的报错）
+      if (typeof prop === 'symbol' || prop === 'then' || prop.startsWith('_')) return undefined
+      throw new Error(`cannot get property "${String(prop)}" without inject`)
+    },
+  })
+  const approvalListeners = []
+  const agent = {
+    session: {
+      id: 'weixin-clawbot-approval-1',
+      seq: 0,
+      snapshotEvents: () => [
+        { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '收到' }] } } },
+        { type: 'turn/end', data: { turn: 1, reason: { kind: 'completed' } } },
+      ],
+    },
+    status: 'idle',
+    async whenIdle() {},
+    followup() {},
+    cancel() {},
+    inject() {},
+    ctx: { on: (event, listener) => { approvalListeners.push({ event, listener }); return () => { approvalListeners.pop() } } },
+  }
+  const ctx = {
+    agents: {
+      get: () => undefined,
+      async create({ setup }) {
+        // 关键：真宿主会调 setup，假宿主以前没调，所以这个 bug 一直没被测试抓到
+        await setup?.(throwingCtx, agent)
+        return { agent, dispose() {} }
+      },
+      async resume() { throw new Error('不该走到 resume') },
+    },
+    agentDefaultModel: { currentSelection: () => ({ model: 'test' }) },
+    agentPresets: { async resolve() { return { id: 'standard' } }, async mount() {}, async acquireScope() { return undefined } },
+    sessionPersistence: { async stat() { return undefined }, async list() { return [] } },
+    sessionTitle: { rename() {} },
+    permissionPresets: { async resolve() { return { id: 'workspace-write' } }, set() {} },
+  }
+  const conversations = createConversations({
+    ctx,
+    settings: { accountId: 'acc-1' },
+    onApproval: () => (request, next) => next(),
+  })
+  try {
+    const reply = await conversations.process('user-1', [{ type: 'text', text: '在吗' }])
+    assert.equal(reply.text, '收到')
+    assert.equal(approvalListeners.length, 1, '审批监听应挂在 agent.ctx 上')
+    assert.equal(approvalListeners[0].event, 'approval/request')
+  } finally {
+    conversations.dispose()
+  }
+})
+
+test('attachApproval：agent 没有 ctx 时安静跳过，不抛错', async () => {
+  const agent = {
+    session: {
+      id: 'weixin-clawbot-noctx-1',
+      seq: 0,
+      snapshotEvents: () => [
+        { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '好' }] } } },
+        { type: 'turn/end', data: { turn: 1, reason: { kind: 'completed' } } },
+      ],
+    },
+    status: 'idle',
+    async whenIdle() {},
+    followup() {},
+    cancel() {},
+    inject() {},
+    // 故意不给 ctx
+  }
+  const ctx = {
+    agents: {
+      get: () => undefined,
+      async create({ setup }) { await setup?.({}, agent); return { agent, dispose() {} } },
+      async resume() { throw new Error('不该走到 resume') },
+    },
+    agentDefaultModel: { currentSelection: () => ({ model: 'test' }) },
+    agentPresets: { async resolve() { return { id: 'standard' } }, async mount() {}, async acquireScope() { return undefined } },
+    sessionPersistence: { async stat() { return undefined }, async list() { return [] } },
+    sessionTitle: { rename() {} },
+    permissionPresets: { async resolve() { return { id: 'workspace-write' } }, set() {} },
+  }
+  const conversations = createConversations({
+    ctx,
+    settings: { accountId: 'acc-1' },
+    onApproval: () => () => {},
+  })
+  try {
+    const reply = await conversations.process('user-1', [{ type: 'text', text: '在吗' }])
+    assert.equal(reply.text, '好')
+  } finally {
+    conversations.dispose()
+  }
+})

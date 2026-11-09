@@ -165,12 +165,22 @@ export function createConversations({ ctx, settings, workspaceCwd, logger, onApp
     return state
   }
 
-  /** 挂审批监听；接管来的 agent 没有走过 setup，所以这里单独挂一次。 */
+  /**
+   * 挂审批监听；接管来的 agent 没有走过 setup，所以这里单独挂一次。
+   * 注意：agent.ctx 是 cordis 的 Context proxy —— 读它没有的属性会抛错而不是返回
+   * undefined，?. 兜不住。所以先 try 再判定，别让审批监听把整轮对话带崩。
+   */
   function attachApproval(agent, userId) {
     if (typeof onApproval !== 'function' || disposers.has(userId)) return
-    if (typeof agent?.ctx?.on !== 'function') return
+    let agentCtx
+    try {
+      agentCtx = agent?.ctx
+    } catch {
+      return
+    }
+    if (typeof agentCtx?.on !== 'function') return
     const listener = onApproval(userId)
-    if (typeof listener === 'function') disposers.set(userId, agent.ctx.on('approval/request', listener))
+    if (typeof listener === 'function') disposers.set(userId, agentCtx.on('approval/request', listener))
   }
 
   function detachApproval(userId) {
@@ -204,9 +214,11 @@ export function createConversations({ ctx, settings, workspaceCwd, logger, onApp
     const presetId = persisted === undefined
       ? await resolvePresetId(settings.agentPreset)
       : await resolvePresetId(storedPreset)
-    const setup = async (agentCtx) => {
+    // setup 收到两个参数：(agentCtx, agent)。审批监听要挂在 agent 上，不能挂 agentCtx ——
+    // agentCtx 是 cordis 的 Context proxy，读它没有的 `ctx` 属性会直接抛错（?. 兜不住）。
+    const setup = async (agentCtx, agent) => {
       await ctx.agentPresets.mount(agentCtx, presetId)
-      attachApproval(agentCtx, userId)
+      attachApproval(agent, userId)
     }
     const scope = await ctx.agentPresets.acquireScope(presetId)
     let handle
