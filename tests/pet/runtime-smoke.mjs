@@ -24,7 +24,10 @@ const server = http.createServer((req,res) => {
 await mkdir(output,{ recursive:true })
 server.listen(0,'127.0.0.1')
 await once(server,'listening')
-const env = { ...process.env, DSH_TOOLKIT_PET_URL:`http://127.0.0.1:${server.address().port}`,DSH_TOOLKIT_PET_TOKEN:token,DSH_TOOLKIT_HOST_PID:String(process.pid),DSH_TOOLKIT_PET_SMOKE_DIR:output }
+const home = path.join(output,'home')
+await mkdir(home,{ recursive:true })
+// Own DSH_HOME: the user's real toolkit layout (dragged islands) must not move the smoke windows.
+const env = { ...process.env, DSH_HOME:home,DSH_TOOLKIT_PET_URL:`http://127.0.0.1:${server.address().port}`,DSH_TOOLKIT_PET_TOKEN:token,DSH_TOOLKIT_HOST_PID:String(process.pid),DSH_TOOLKIT_PET_SMOKE_DIR:output }
 delete env.ELECTRON_RUN_AS_NODE
 const child = spawn(electron,[path.join(runtime,'main.cjs')],{ env,stdio:['ignore','pipe','pipe'] })
 let stdout='',stderr=''

@@ -8,17 +8,45 @@ const animations = {
   idle: [0,[280,110,110,140,140,320]], runningRight:[1,[120,120,120,120,120,120,120,220]], runningLeft:[2,[120,120,120,120,120,120,120,220]], waving:[3,[140,140,140,280]], jumping:[4,[140,140,140,140,280]], failed:[5,[140,140,140,140,140,140,140,240]], waiting:[6,[150,150,150,150,150,260]], running:[7,[120,120,120,120,120,220]], review:[8,[150,150,150,150,150,280]],
 }
 const words = {
-  zh: { idle:'暂时没有会话活动', running:'会话执行中', waiting:'需要你处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。' },
-  en: { idle:'No active sessions', running:'Session running', waiting:'Needs your attention', failed:'Turn failed', completed:'Turn complete', open:'Open session', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.' },
+  zh: { idle:'暂时没有会话活动', running:'会话执行中', waiting:'需要你处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。', greeting:'hi~' },
+  en: { idle:'No active sessions', running:'Session running', waiting:'Needs your attention', failed:'Turn failed', completed:'Turn complete', open:'Open session', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.', greeting:'hi~' },
 }
-let state, expanded = false, hovered = false, image, imageKey = '', frame = 0, motion = '', look = null, timer, hoverTimer, leaveTimer, waveUntil = performance.now() + 2600, drag = null, signature = ''
+// Qoder 的收起态只有「宠物 + 状态徽标」，状态靠短语 + 语义色表达，数量进 tooltip。
+const badges = {
+  zh: { running:'正在工作', waiting:'需要你处理', completed:'有新结果', failed:'失败' },
+  en: { running:'Working', waiting:'Needs you', completed:'New result', failed:'Failed' },
+}
+let state, expanded = false, hovered = false, image, imageKey = '', frame = 0, motion = '', look = null, timer, hoverTimer, leaveTimer, waveUntil = performance.now() + 2600, drag = null, padChecks = 0, lastPointer = null, signature = ''
+const meter = document.createElement('canvas').getContext?.('2d') || null
+// JSDOM 里没有 canvas 量宽，退回按字宽估算（CJK 1em、ASCII 约 0.56em）。
+function measureText(text, size) {
+  if (meter && typeof meter.measureText === 'function') { meter.font = `600 ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`; return meter.measureText(text).width }
+  let width = 0
+  for (const char of text) width += char.codePointAt(0) > 0x2e7f ? size : size * 0.56
+  return width
+}
 const reduced = matchMedia('(prefers-reduced-motion: reduce)')
 function t(key) { return words[state?.settings.language === 'en' ? 'en' : 'zh'][key] || key }
+function badgeWord(status) { return badges[state?.settings.language === 'en' ? 'en' : 'zh'][status] || t(status) }
+// 仿 Qoder dt()：按徽标文案量宽 → 夹进区间 → 取偶数 → 再被几何宽封顶（菜单里调宽度仍生效）。
+function compactWidth(status) {
+  const g = dimensions()
+  const notch = state?.display?.notch
+  if (!state || state.kind !== 'island') return g.compact
+  const text = status === 'idle' ? t('greeting') : badgeWord(status)
+  const badge = Math.ceil(measureText(text, 11.5)) + 12 + 4 + 14
+  const side = Math.max(27, badge)
+  const natural = notch ? Math.round(notch.width + 2 * (12 + side)) : Math.round(16 + 2 * side)
+  const low = notch ? Math.min(g.compact, 300) : 212
+  const high = notch ? Math.min(g.compact, 360) : Math.min(g.compact, 280)
+  return Math.max(low, Math.min(high, natural + (natural % 2)))
+}
 function selectedPet() { return state.pets.find(p => p.id === state.settings.activePet) || state.pets[0] }
 function dimensions() {
   if (state.display?.island) return { compact: state.display.island.compact, wide: state.display.island.expanded, height: state.display.island.height }
   const scale = Math.max(75, Math.min(150, state.settings.islandWidth || 100)) / 100
-  return { compact: Math.round(220 * scale), wide: Math.max(390, Math.round(220 * scale)), height: Math.round(38 * Math.max(75, Math.min(150, state.settings.islandHeight || 100)) / 100) }
+  const compact = Math.min(360, Math.round(280 * scale))
+  return { compact, wide: Math.max(390, compact), height: Math.round(38 * Math.max(75, Math.min(150, state.settings.islandHeight || 100)) / 100) }
 }
 function layout() {
   if (!state) return
@@ -31,7 +59,8 @@ function layout() {
   document.body.classList.toggle('notched', Boolean(notch))
   document.body.style.setProperty('--notch-width', `${notch?.width || 0}px`)
   document.body.style.setProperty('--notch-height', `${notch?.height || 0}px`)
-  surface.style.width = `${expanded ? g.wide : hovered ? Math.min(g.wide, g.compact + 24) : g.compact}px`
+  const compact = compactWidth(state.sessions[0]?.status || 'idle')
+  surface.style.width = `${expanded ? g.wide : hovered ? Math.min(g.wide, compact + 32) : compact}px`
   const capHeight = g.height + (!expanded && hovered ? 4 : 0)
   cap.style.height = `${capHeight}px`
   activity.style.width = `${g.wide}px`
@@ -95,9 +124,13 @@ function update(next) {
   document.body.classList.toggle('pet', state.kind === 'pet')
   document.body.classList.toggle('island', state.kind === 'island')
   const current = state.sessions[0]
-  document.body.dataset.status = current?.status || 'idle'
-  $('summary').textContent = current ? `${t(current.status)}${state.sessions.length > 1 ? ` · ${state.sessions.length}` : ''}` : t('idle')
-  cap.setAttribute('aria-label', current ? `${current.title} · ${t(current.status)}` : t('idle'))
+  const status = current?.status || 'idle'
+  const count = state.sessions.length
+  document.body.dataset.status = status
+  $('badge-text').textContent = status === 'idle' ? t('greeting') : badgeWord(status)
+  const hint = status === 'idle' ? t('idle') : `${t(status)}${count > 1 ? ` · ${count}` : ''}`
+  cap.title = hint
+  cap.setAttribute('aria-label', status === 'idle' ? t('idle') : `${badgeWord(status)}${count > 1 ? ` · ${count}` : ''}`)
   const pet = selectedPet()
   if (pet && imageKey !== pet.spritesheet) {
     imageKey = pet.spritesheet; image = new Image(); image.onload = draw; image.onerror = () => { $('error').textContent = t('error') }; image.src = imageKey
@@ -129,13 +162,27 @@ function animate() {
   const delays = (animations[next] || animations.idle)[1]
   timer = setTimeout(() => { frame = (frame + 1) % delays.length; animate() }, delays[frame])
 }
-cap.onclick = () => { if (!drag?.moved) setExpanded(!expanded) }
-surface.onpointerenter = () => { hovered = true; clearTimeout(leaveTimer); bridge.interactive(true); layout(); animate(); if (state?.kind === 'island') hoverTimer = setTimeout(() => setExpanded(true), 300) }
+cap.onclick = () => { if (drag?.moved || !state) return; if (state.kind === 'island' && !state.sessions.length) return; setExpanded(!expanded) }
+surface.onpointerenter = () => { hovered = true; padChecks = 0; clearTimeout(leaveTimer); bridge.interactive(true); layout(); animate(); if (state?.kind === 'island' && state.sessions.length) hoverTimer = setTimeout(() => setExpanded(true), 300) }
 function typing() { const active = document.activeElement; return Boolean(active && active !== cap && surface.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) }
-surface.onpointerleave = () => { hovered = false; clearTimeout(hoverTimer); layout(); animate(); if (!drag) bridge.interactive(false); leaveTimer = setTimeout(() => { if (!hovered && !typing()) setExpanded(false) }, 100) }
+// 仿 Qoder：展开态的「命中区」比面板本身大一圈（左右各 12px、上沿 6px、向下到内容底部或 480px），
+// 指针刚滑出边缘时先不收起，避免展开/收起动画中途被抖动打断。
+function withinPad(x, y) {
+  const rect = surface.getBoundingClientRect()
+  if (!rect.width || !rect.height) return false
+  return x >= rect.left - 12 && x <= rect.right + 12 && y >= rect.top - 6 && y <= rect.top + Math.min(480, Math.max(rect.height, activity.scrollHeight))
+}
+function collapse() {
+  if (hovered || typing()) return
+  if (lastPointer && withinPad(lastPointer.x, lastPointer.y) && ++padChecks <= 5) { leaveTimer = setTimeout(collapse, 120); return }
+  if (!drag) bridge.interactive(false)
+  setExpanded(false)
+}
+surface.onpointerleave = event => { hovered = false; clearTimeout(hoverTimer); lastPointer = { x: event.clientX, y: event.clientY }; layout(); animate(); leaveTimer = setTimeout(collapse, 100) }
 document.addEventListener('pointermove', event => {
+  lastPointer = { x: event.clientX, y: event.clientY }
   const target = document.elementFromPoint(event.clientX, event.clientY)
-  bridge.interactive(Boolean(drag || surface.contains(target)))
+  bridge.interactive(Boolean(drag || surface.contains(target) || withinPad(event.clientX, event.clientY)))
   if (drag) {
     const dx = event.screenX - drag.x, dy = event.screenY - drag.y
     if (Math.hypot(dx, dy) >= 4) drag.moved = true
@@ -147,10 +194,12 @@ document.addEventListener('pointermove', event => {
   }
   animate()
 })
-cap.onpointerdown = event => { if (state?.kind !== 'pet' || event.button !== 0) return; cap.setPointerCapture(event.pointerId); drag = { x:event.screenX, y:event.screenY, direction:0, moved:false }; bridge.drag('start') }
+// 桌宠和灵动岛都按住胶囊拖动；移动超过 4px 就不再当成点击（点击仍然是展开/收起）。
+cap.onpointerdown = event => { if (!state || event.button !== 0) return; cap.setPointerCapture(event.pointerId); drag = { x:event.screenX, y:event.screenY, direction:0, moved:false }; bridge.drag('start') }
 cap.onpointerup = () => { if (!drag) return; bridge.drag('end'); setTimeout(() => { drag = null; animate() }, 0) }
 cap.onpointercancel = () => { if (drag) bridge.drag('end'); drag = null; animate() }
 document.addEventListener('keydown', event => { if (event.key === 'Escape') { document.activeElement?.blur(); setExpanded(false) } })
+window.addEventListener('blur', () => { if (!typing()) setExpanded(false) })
 document.addEventListener('visibilitychange', animate)
 reduced.addEventListener('change', animate)
 bridge.onState(update)

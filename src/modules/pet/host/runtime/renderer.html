@@ -9,11 +9,15 @@
 </head>
 <body>
   <main id="surface">
+    <div id="silhouette" aria-hidden="true">
+      <div id="silhouette-body"></div>
+      <svg class="shoulder shoulder-left" viewBox="0 0 1 1" preserveAspectRatio="none"><path d="M0 0Q1 0 1 1V0Z" /></svg>
+      <svg class="shoulder shoulder-right" viewBox="0 0 1 1" preserveAspectRatio="none"><path d="M1 0Q0 0 0 1V0Z" /></svg>
+    </div>
     <button id="cap" type="button">
-      <canvas id="sprite" width="128" height="139"></canvas>
-      <span id="summary"></span>
+      <span id="brand" aria-hidden="true"><canvas id="sprite" width="128" height="139"></canvas></span>
       <span id="camera-space" aria-hidden="true"></span>
-      <span id="indicator" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      <span id="badge" aria-hidden="true"><span id="badge-icon"></span><span id="badge-text"></span></span>
     </button>
     <section id="activity" aria-live="polite">
       <header id="activity-heading"><span id="activity-label"></span><span id="session-count"></span></header>

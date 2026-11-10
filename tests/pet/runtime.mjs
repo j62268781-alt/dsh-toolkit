@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { readFile } from 'node:fs/promises'
 import { JSDOM } from 'jsdom'
 const require = createRequire(import.meta.url)
-const { readEnvironment, publicState, islandGeometry, assetPath, validatedAction, consumeEvents } = require('../../src/modules/pet/host/runtime/core.cjs')
+const { readEnvironment, publicState, islandGeometry, islandAnchor, islandPlacement, islandOffset, assetPath, validatedAction, consumeEvents } = require('../../src/modules/pet/host/runtime/core.cjs')
 const { notchForDisplay } = require('../../src/modules/pet/host/runtime/native.cjs')
 const env = { DSH_TOOLKIT_PET_URL:'http://127.0.0.1:1234', DSH_TOOLKIT_PET_TOKEN:'secret', DSH_TOOLKIT_HOST_PID:'123' }
 
@@ -34,11 +34,23 @@ test('actions exclude grants and reject malformed prompts and coordinates', () =
   assert.deepEqual(validatedAction({ action:'prompt', sessionId:'x', text:' hello ', token:'secret' }), { action:'prompt',sessionId:'x',text:'hello' })
 })
 test('island geometry reserves native camera space and a stable expanded width', () => {
-  assert.deepEqual(islandGeometry(), { compact:220,expanded:390,height:38 })
-  assert.deepEqual(islandGeometry({}, { width:185,height:32 }), { compact:297,expanded:390,height:38 })
+  assert.deepEqual(islandGeometry(), { compact:280,expanded:390,height:38 })
+  assert.deepEqual(islandGeometry({}, { width:185,height:32 }), { compact:360,expanded:390,height:38 })
   assert.equal(islandGeometry({ islandWidth:150 }).expanded, 390)
-  assert.equal(islandGeometry({ islandWidth:75 }).compact, 165)
+  assert.equal(islandGeometry({ islandWidth:75 }).compact, 210)
   assert.ok(islandGeometry({ islandHeight:75 }, { width:185,height:32 }).height >= 36)
+})
+test('island placement follows the display anchor and keeps a dragged offset on screen', () => {
+  const notched = { id:1, bounds:{ x:1920,y:0,width:1512,height:982 }, workArea:{ x:1920,y:33,width:1512,height:949 }, notch:{ x:663.5,width:185,height:32 } }
+  const plain = { id:2, bounds:{ x:0,y:0,width:1920,height:1080 }, workArea:{ x:0,y:30,width:1920,height:943 }, notch:null }
+  const size = { width:414,height:500 }
+  assert.deepEqual(islandAnchor(notched,size.width), { x:2469,y:0 })
+  assert.deepEqual(islandAnchor(plain,size.width), { x:753,y:36 })
+  assert.deepEqual(islandPlacement(notched,size), { x:2469,y:0 })
+  assert.deepEqual(islandPlacement(plain,size), { x:753,y:36 })
+  assert.deepEqual(islandPlacement(plain,size,{ dx:-200,dy:120 }), { x:553,y:156 })
+  assert.deepEqual(islandPlacement(plain,size,{ dx:-99999,dy:99999 }), { x:0,y:580 })
+  assert.deepEqual(islandOffset(plain,size,553,156), { dx:-200,dy:120 })
 })
 test('only native safe-area and auxiliary regions establish a notch by display ID', () => {
   const display = { id:1,bounds:{ width:1512,height:982 },workArea:{ y:32 } }
@@ -88,6 +100,42 @@ test('real renderer safely displays sessions, forwards actions, and directs pend
   dom.window.close()
 })
 
+test('collapsed pill speaks Qoder: status badge on the right, greeting when idle, no idle expansion', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  const timers = new Map()
+  dom.window.setTimeout = (fn, ms) => { timers.set(ms, fn); return ms }
+  dom.window.clearTimeout = id => timers.delete(id)
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+  dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+  const base = {
+    settings: { language: 'zh', activePet: 'duck' }, pets: [], kind: 'island',
+    display: { notch: { width: 185, height: 32 }, island: { compact: 360, expanded: 390, height: 38 } },
+    sessions: [{ id: 'a', title: 'A', status: 'running', running: true }],
+  }
+  let update
+  dom.window.pet = { initial: async () => base, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState(fn) { update = fn }, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const doc = dom.window.document, body = doc.body, badge = doc.getElementById('badge-text'), surface = doc.getElementById('surface')
+  assert.equal(body.dataset.status, 'running')
+  assert.equal(badge.textContent, '正在工作')
+  const width = Number(surface.style.width.replace('px', ''))
+  assert.ok(width >= 300 && width <= 360, `notch compact stays in range: ${width}`)
+  update({ ...base, sessions: [{ id: 'b', title: 'B', status: 'waiting', pendingKind: 'approval' }] })
+  assert.equal(body.dataset.status, 'waiting')
+  assert.equal(badge.textContent, '需要你处理')
+  update({ ...base, sessions: [] })
+  assert.equal(body.dataset.status, 'idle')
+  assert.equal(badge.textContent, 'hi~')
+  surface.dispatchEvent(new dom.window.Event('pointerenter'))
+  assert.equal(timers.has(300), false)
+  doc.getElementById('cap').click()
+  assert.equal(body.classList.contains('expanded'), false)
+})
+
 test('clicking the island never pins it: leaving the view collapses unless a reply is being typed', async (t) => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
@@ -116,10 +164,37 @@ test('clicking the island never pins it: leaving the view collapses unless a rep
   timers.get(100)()
   assert.equal(expanded(), true)
 })
+
+test('dragging the island pill moves the window instead of expanding it', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+  dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+  const drags = []
+  const state = { settings: { language: 'en', activePet: 'duck' }, pets: [], kind: 'island', sessions: [{ id: 'a', title: 'Build', status: 'running', detail: 'Working' }] }
+  dom.window.pet = { initial: async () => state, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag: value => drags.push(value), onState() {}, onExpanded() {}, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const { document } = dom.window
+  const cap = document.getElementById('cap'), surface = document.getElementById('surface')
+  cap.setPointerCapture = () => {}
+  document.elementFromPoint = () => cap
+  const fire = (target, type, props) => { const event = new dom.window.Event(type, { bubbles: true, cancelable: true }); Object.assign(event, { pointerId: 1, button: 0, screenX: 0, screenY: 0 }, props); target.dispatchEvent(event) }
+  fire(cap, 'pointerdown', { screenX: 100, screenY: 20 })
+  assert.deepEqual(drags, ['start'])
+  fire(cap, 'pointermove', { screenX: 160, screenY: 20 })
+  assert.deepEqual(drags, ['start', 'move'])
+  fire(cap, 'pointerup')
+  assert.deepEqual(drags, ['start', 'move', 'end'])
+  fire(cap, 'click')
+  assert.equal(dom.window.document.body.classList.contains('expanded'), false)
+})
 test('island hover and collapse stay local when session updates reach both displays', async (t) => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
-  const state = { settings: { language: 'en' }, pets: [], kind: 'island', sessions: [] }
+  const state = { settings: { language: 'en' }, pets: [], kind: 'island', sessions: [{ id: 'a', title: 'Updated session', status: 'running' }] }
   const displays = Array.from({ length: 2 }, () => {
     const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
     t.after(() => dom.window.close())
@@ -138,7 +213,7 @@ test('island hover and collapse stay local when session updates reach both displ
     display.surface.dispatchEvent(new display.dom.window.Event('pointerenter'))
     display.timers.get(300)()
     assert.deepEqual(displays.map(item => item.expanded()), displays.map((_, index) => index === i))
-    for (const item of displays) item.update({ ...state, sessions: [{ id: 'a', title: 'Updated session', status: 'running' }] })
+    for (const item of displays) item.update({ ...state, sessions: [{ id: 'a', title: 'Updated session 2', status: 'running' }] })
     assert.deepEqual(displays.map(item => item.expanded()), displays.map((_, index) => index === i))
     display.surface.dispatchEvent(new display.dom.window.Event('pointerleave'))
     display.timers.get(100)()

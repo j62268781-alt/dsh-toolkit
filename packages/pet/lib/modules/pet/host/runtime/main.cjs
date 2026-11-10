@@ -2,8 +2,10 @@
 const { app, BrowserWindow, ipcMain, protocol, screen, net, session } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs/promises')
+const { readFileSync } = require('node:fs')
+const os = require('node:os')
 const { pathToFileURL } = require('node:url')
-const { readEnvironment, publicState, islandGeometry, assetPath, validatedAction, consumeEvents } = require('./core.cjs')
+const { readEnvironment, publicState, islandGeometry, islandPlacement, islandOffset, assetPath, validatedAction, consumeEvents } = require('./core.cjs')
 const { notchForDisplay, queryNativeScreens } = require('./native.cjs')
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'pet-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
@@ -13,7 +15,22 @@ const abort = new AbortController()
 const windows = new Map()
 let state = { settings: {}, pets: [], sessions: [] }
 let quitting = false
-let petPosition = null
+// 窗口位置属于本地布局状态，不属于插件配置：拖过之后重开也应该还在原处。
+const layoutFile = path.join(process.env.DSH_HOME || path.join(os.homedir(), '.dsh'), 'toolkit', 'pet', 'layout.json')
+function readLayout() {
+  try {
+    const data = JSON.parse(readFileSync(layoutFile, 'utf8'))
+    const pet = Number.isFinite(data?.pet?.x) && Number.isFinite(data?.pet?.y) ? { x: Math.round(data.pet.x), y: Math.round(data.pet.y) } : null
+    const islands = {}
+    if (data?.islands && typeof data.islands === 'object') for (const [key, value] of Object.entries(data.islands)) if (Number.isFinite(value?.dx) && Number.isFinite(value?.dy)) islands[key] = { dx: Math.round(value.dx), dy: Math.round(value.dy) }
+    return { pet, islands }
+  } catch { return { pet: null, islands: {} } }
+}
+const layout = readLayout()
+function saveLayout() {
+  fs.mkdir(path.dirname(layoutFile), { recursive: true }).then(() => fs.writeFile(layoutFile, JSON.stringify(layout))).catch(() => {})
+}
+let petPosition = layout.pet
 let hostWatch
 let nativeScreens = []
 let displayTimer
@@ -46,11 +63,10 @@ function dimensions(kind, display) {
   const height = Math.min(kind === 'pet' ? 440 : 500, display.workArea.height)
   const area = display.workArea
   if (kind === 'pet') return { width, height, x: Math.round(Math.max(area.x, Math.min(area.x + area.width - width, petPosition?.x ?? area.x + area.width - width - 24))), y: Math.round(Math.max(area.y, Math.min(area.y + area.height - height, petPosition?.y ?? area.y + area.height - height - 16))) }
-  const center = display.notch ? display.bounds.x + display.notch.x + display.notch.width / 2 : display.bounds.x + display.bounds.width / 2
   // 有刘海的屏幕由相机凸起占住顶部，岛贴着屏幕顶端画（screen-saver 层级，可以压在菜单栏上）。
   // 没有刘海的屏幕顶部是菜单栏，岛必须挂在菜单栏下方，否则会被菜单栏裁掉一截。
-  const top = display.notch ? display.bounds.y : display.workArea.y
-  return { width, height, x: Math.round(center - width / 2), y: top + (display.notch ? 0 : 6) }
+  // 用户拖动过的屏幕按记住的偏移量摆放，偏移量始终夹在该屏幕范围内。
+  return { width, height, ...islandPlacement(display, { width, height }, layout.islands[String(display.id)]) }
 }
 async function createWindow(key, kind, display) {
   const win = new BrowserWindow({ ...dimensions(kind, display), enableLargerThanScreen: kind === 'island', type: process.platform === 'darwin' && kind === 'island' ? 'panel' : undefined, show: false, frame: false, transparent: true, hasShadow: false, resizable: false, maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true, alwaysOnTop: true, title: 'DSH Pet', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true, backgroundThrottling: true } })
@@ -118,17 +134,22 @@ ipcMain.on('pet:interactive', (event, value) => { const { win } = entryFor(event
 ipcMain.on('pet:focus', event => { const { win } = entryFor(event); win.setIgnoreMouseEvents(false); win.focus() })
 ipcMain.on('pet:drag', (event, value) => {
   const entry = entryFor(event)
-  if (entry.kind !== 'pet') return
   const point = screen.getCursorScreenPoint()
   if (value === 'start') { const [x, y] = entry.win.getPosition(); entry.dragging = { dx: point.x - x, dy: point.y - y }; return }
   if (!entry.dragging) return
-  const display = screen.getDisplayNearestPoint(point)
-  const area = display.workArea
+  // 桌宠可以拖到任意屏幕；灵动岛只属于它自己的屏幕，拖动被夹在该屏幕内，避免拖丢或跨屏重影。
+  const area = entry.kind === 'island' ? entry.display.bounds : screen.getDisplayNearestPoint(point).workArea
   const [w, h] = entry.win.getSize()
   const x = Math.round(Math.max(area.x, Math.min(area.x + area.width - w, point.x - entry.dragging.dx)))
   const y = Math.round(Math.max(area.y, Math.min(area.y + area.height - h, point.y - entry.dragging.dy)))
-  entry.win.setPosition(x, y); petPosition = { x, y }
-  if (value === 'end') { entry.dragging = null; request('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'position', x, y }) }).catch(() => {}) }
+  entry.win.setPosition(x, y)
+  if (entry.kind === 'island') layout.islands[String(entry.display.id)] = islandOffset(entry.display, { width: w, height: h }, x, y)
+  else petPosition = { x, y }
+  if (value === 'end') {
+    entry.dragging = null
+    saveLayout()
+    if (entry.kind === 'pet') request('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'position', x, y }) }).catch(() => {})
+  }
 })
 
 app.on('window-all-closed', () => {})
@@ -214,20 +235,22 @@ app.whenReady().then(async () => {
           const body = document.getElementById('activity'), surface = document.getElementById('surface')
           const style = getComputedStyle(body), rect = body.getBoundingClientRect(), bounds = surface.getBoundingClientRect()
           const buttons = [...document.querySelectorAll('.session .session-open')]
-          const spriteBounds = document.getElementById('sprite').getBoundingClientRect(), indicatorBounds = document.getElementById('indicator').getBoundingClientRect()
+          const spriteBounds = document.getElementById('sprite').getBoundingClientRect(), badgeBounds = document.getElementById('badge').getBoundingClientRect()
+          const badgeText = document.getElementById('badge-text').textContent
           const camera = document.getElementById('camera-space').getBoundingClientRect()
           return {
             expanded: document.body.classList.contains('expanded'), opacity: Number(style.opacity), filter: style.filter,
-            cameraExcluded: !document.body.classList.contains('notched') || spriteBounds.right <= camera.left && indicatorBounds.left >= camera.right && rect.top >= camera.bottom,
+            cameraExcluded: !document.body.classList.contains('notched') || spriteBounds.right <= camera.left && badgeBounds.left >= camera.right && rect.top >= camera.bottom,
             surface: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
             visible: style.visibility === 'visible' && rect.height > 0 && bounds.height > cap.getBoundingClientRect().height + 40,
             sessionCount: document.querySelectorAll('.session').length,
             buttonsVisible: buttons.length > 0 && buttons.every(button => { const box = button.getBoundingClientRect(); return box.width > 0 && box.height > 0 && box.bottom <= bounds.bottom && box.top >= bounds.top }),
             noScroll: Boolean(body) && body.scrollHeight <= body.clientHeight + 1 && body.scrollWidth <= body.clientWidth + 1,
             height: bounds.height,
+            badgeText,
           }
         })()`)
-        if (!visible.expanded || !visible.visible || !visible.cameraExcluded || visible.opacity < .99 || visible.filter !== 'blur(0px)' && visible.filter !== 'none' || !visible.sessionCount || !visible.buttonsVisible || !visible.noScroll) throw new Error(`Island ${key} did not visibly expand: ${JSON.stringify(visible)}`)
+        if (!visible.expanded || !visible.visible || !visible.cameraExcluded || visible.opacity < .99 || visible.filter !== 'blur(0px)' && visible.filter !== 'none' || !visible.sessionCount || !visible.buttonsVisible || !visible.noScroll || !visible.badgeText) throw new Error(`Island ${key} did not visibly expand: ${JSON.stringify(visible)}`)
         report.islands.push({ key, displayId: entry.display.id, screenBounds: entry.display.bounds, workArea: entry.display.workArea, windowBounds: entry.win.getBounds(), notch: entry.display.notch, ...visible })
         await captureSurface(entry, `${key}-surface.png`)
       }
