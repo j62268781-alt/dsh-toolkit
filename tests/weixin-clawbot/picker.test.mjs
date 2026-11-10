@@ -140,6 +140,26 @@ test('会话卡：工作区里一条会话都没有时也有可读提示', () =>
   assert.ok(text.includes('1. 新建一条会话'))
 })
 
+test('会话卡：工作区里的会话超过上限时只列最近 100 条，卡尾说明总数', async () => {
+  // total 来自真实条数、sessions 来自 limit 之后的结果，两者对不上时必须给出说明，
+  // 否则用户会以为「回复 137 就能直接选」到那条排在列表外的会话。
+  const { picker } = pickerWith({ ctx: fakeCtx({ sessions: records(137) }) })
+  await picker.showWorkspaces('user-1')
+  const card = (await picker.choose('user-1', 2)).texts[0] // 2 = dsh-toolkit
+
+  assert.ok(card.includes('共 137 条，这里列了最近 100 条，用 /sessions 看剩下的。'))
+  // 1 = 新建、2..101 = 会话、0 = 换工作区，一共 102 个带序号的选项。
+  const numbered = card.split('\n').filter((line) => /^\d+\. /.test(line))
+  assert.equal(numbered.length, 102)
+  assert.ok(numbered[0].startsWith(`${NEW_SESSION_OPTION}. 新建一条会话`))
+  assert.ok(numbered.at(-1).startsWith(`${BACK_TO_WORKSPACES}. 换个工作区`))
+  assert.equal(SESSION_LIST_LIMIT, 100)
+
+  // 越界提示要按「上限后的条数 + 1」算，不能报 137。
+  const out = await picker.choose('user-1', 102)
+  assert.ok(out.texts[0].includes('没有「102」这个选项：回复 1-101 选会话，0 换工作区。'))
+})
+
 test('parseChoice：只有纯数字算选项', () => {
   assert.equal(parseChoice('2'), 2)
   assert.equal(parseChoice(' 09 '), 9)

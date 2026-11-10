@@ -161,6 +161,52 @@ test('入站：图片走 attachments.saveImage，拿到的是图片块而不是 
   assert.ok(!text.includes('http'))
 })
 
+test('入站：图片超过宿主上限时只交上限内的，剩下的留说明', async () => {
+  const saved = []
+  const attachments = {
+    imageLimits: { maxImagesPerMessage: 3, maxMessageImageBytes: 1_000_000 },
+    async saveImage(input) {
+      saved.push(input)
+      return { mediaType: input.mediaType, attachmentId: `att-${saved.length}` }
+    },
+  }
+  const many = await buildInboundContent({
+    message: {
+      from_user_id: 'user-1',
+      item_list: [1, 2, 3, 4, 5].map(() => ({ type: 2, image_item: { media: {} } })),
+    },
+    api: { async downloadImage() { return PNG } },
+    attachments,
+  })
+  // 上限来自宿主（attachments.imageLimits），本插件不自己定数字。
+  assert.equal(saved.length, 3)
+  assert.equal(many.content.filter((block) => block.type === 'image').length, 3)
+  assert.ok(many.text.includes('[图片过多，已跳过第 4 张及之后的图片]'))
+
+  // 体积上限是整个消息累计的：第一张就超限时一张都不交，且说清是第几张。
+  const heavy = await buildInboundContent({
+    message: { from_user_id: 'user-1', item_list: [{ type: 2, image_item: { media: {} } }] },
+    api: { async downloadImage() { return PNG } },
+    attachments: {
+      imageLimits: { maxImagesPerMessage: 4, maxMessageImageBytes: 4 },
+      async saveImage() { throw new Error('不该走到这里') },
+    },
+  })
+  assert.equal(heavy.content.filter((block) => block.type === 'image').length, 0)
+  assert.ok(heavy.text.includes('[第 1 张图片超出体积上限，已跳过]'))
+})
+
+test('入站：超长文本按 32000 字符截断并标注，不会把整段塞给模型', async () => {
+  const long = '甲'.repeat(40_000)
+  const { text } = await buildInboundContent({
+    message: { from_user_id: 'user-1', item_list: [{ type: 1, text_item: { text: long } }] },
+  })
+  assert.ok(text.endsWith('…（内容过长，已截断）'))
+  // 正文被截到 32000，加上发送者前缀与截断标注，总量应远低于原文。
+  assert.ok(text.length < 33_000)
+  assert.ok(text.length > 32_000)
+})
+
 test('入站：文件落盘到工作区收件箱，正文标注为不可信输入', async () => {
   await withTempDir(async (dir) => {
     const { text } = await buildInboundContent({
@@ -553,6 +599,74 @@ test('setup 里挂审批监听用 agent 而不是 agentCtx，别让 Context prox
     assert.equal(reply.text, '收到')
     assert.equal(approvalListeners.length, 1, '审批监听应挂在 agent.ctx 上')
     assert.equal(approvalListeners[0].event, 'approval/request')
+  } finally {
+    conversations.dispose()
+  }
+})
+
+test('同一用户连发消息：串行入队，前一轮跑完才开下一轮，回复不串台', async () => {
+  const events = []
+  const starts = []
+  const agent = {
+    session: {
+      id: 'weixin-clawbot-serial-1',
+      get seq() {
+        return events.length
+      },
+      snapshotEvents(from) {
+        return events.slice(from)
+      },
+    },
+    status: 'idle',
+    // 每轮固定 20ms，用来区分「串行」和「并发」：并发时两条 followup 会几乎同时发生。
+    async whenIdle() {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 20)
+      })
+    },
+    followup(message) {
+      starts.push(Date.now())
+      const text = message.content[0].text
+      events.push({
+        type: 'assistant/message',
+        data: { message: { content: [{ type: 'text', text: `回:${text}` }] } },
+      })
+      events.push({ type: 'turn/end', data: { turn: 1, reason: { kind: 'completed' } } })
+    },
+    cancel() {},
+    inject() {},
+  }
+  const ctx = {
+    agents: {
+      get: () => undefined,
+      async create({ setup }) {
+        await setup?.({}, agent)
+        return { agent, dispose() {} }
+      },
+      async resume() {
+        throw new Error('不该走到 resume')
+      },
+    },
+    agentDefaultModel: { currentSelection: () => ({ model: 'test' }) },
+    agentPresets: { async resolve() { return { id: 'standard' } }, async mount() {}, async acquireScope() { return undefined } },
+    sessionPersistence: { async stat() { return undefined }, async list() { return [] } },
+    sessionTitle: { rename() {} },
+    permissionPresets: { async resolve() { return { id: 'workspace-write' } }, set() {} },
+  }
+  const conversations = createConversations({ ctx, settings: { accountId: 'acc-1' }, onApproval: () => () => {} })
+  try {
+    // 一次性连发三条：如果没入队，三条会同时写同一个 agent，回复会互相顶掉。
+    const replies = await Promise.all([
+      conversations.process('user-1', [{ type: 'text', text: 'A' }]),
+      conversations.process('user-1', [{ type: 'text', text: 'B' }]),
+      conversations.process('user-1', [{ type: 'text', text: 'C' }]),
+    ])
+    assert.deepEqual(replies.map((reply) => reply.text), ['回:A', '回:B', '回:C'])
+    assert.equal(starts.length, 3)
+    assert.ok(
+      starts[1] - starts[0] >= 15,
+      `第二条应在第一条结束后才开始（实际间隔 ${starts[1] - starts[0]}ms，接近 0 说明是并发）`,
+    )
   } finally {
     conversations.dispose()
   }

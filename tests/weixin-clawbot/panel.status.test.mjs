@@ -13,7 +13,7 @@ import { JSDOM } from 'jsdom'
 import { build } from 'esbuild'
 import React, { act } from 'react'
 
-import { createConnection, toneOf } from '../../src/modules/weixin-clawbot/client/model.js'
+import { createConnection, pollInterval, toneOf } from '../../src/modules/weixin-clawbot/client/model.js'
 
 const VIEWPORT = { width: 1264, height: 785 }
 /** 侧栏底部的图标按钮：32×32，左下角。 */
@@ -163,6 +163,19 @@ test('toneOf: 已过期归到 bad（要用户动手），已连接归 ok', () =>
   assert.equal(toneOf('idle'), 'idle')
 })
 
+test('pollInterval: 扫码期间 1.5s 一次、已连接 6s 一次、其余不轮询', () => {
+  // 节奏是「扫码要快、连接后要省」的取舍：改错会导致 IP 被 iLink 限流或二维码状态明显滞后。
+  for (const state of ['waiting_qr', 'scanned', 'need_code', 'requesting']) {
+    assert.equal(pollInterval(state), 1500, `${state} 应该 1.5 秒轮询一次`)
+  }
+  for (const state of ['connected', 'confirmed']) {
+    assert.equal(pollInterval(state), 6000, `${state} 应该 6 秒轮询一次`)
+  }
+  for (const state of ['idle', 'failed', 'expired', 'closed', undefined]) {
+    assert.equal(pollInterval(state), 0, `${state} 不该起轮询`)
+  }
+})
+
 test('connection.close(): 关面板不改状态，入口圆点才不会变灰', async () => {
   const original = globalThis.fetch
   globalThis.fetch = async () => new Response(
@@ -233,6 +246,38 @@ test('Waiting: 已过期保留过期二维码 + 蒙版，点蒙版强制换新�
     assert.equal(panel.connection.calls.length, 1, '点蒙版应触发一次刷新')
     assert.equal(panel.connection.calls[0].name, 'startLogin')
     assert.equal(panel.connection.calls[0].options?.force, true, '点「点击刷新」必须强制换码')
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('Disconnected: 未连接只有一个主按钮，点它就去申请二维码', async () => {
+  const panel = await mountPanel({ initial: { state: 'idle', connected: false } })
+  try {
+    const popover = panel.popover()
+    assert.ok(popover !== null, '卡片应已展开')
+    // 未连接不该出现二维码/输入框/连接信息，只留状态行 + 一个主按钮。
+    assert.equal(popover.querySelector('.wc-qr'), null)
+    assert.equal(popover.querySelector('input'), null)
+    const buttons = [...popover.querySelectorAll('button')].filter((button) => !button.classList.contains('wc-icon'))
+    const primary = buttons.find((button) => button.textContent.trim() === 'connect')
+    assert.ok(primary !== undefined, `未连接要有「连接微信」主按钮，实际按钮：${buttons.map((b) => b.textContent).join('|')}`)
+
+    await panel.click(primary)
+    assert.equal(panel.connection.calls.length, 1, '点主按钮应触发一次登录')
+    assert.equal(panel.connection.calls[0].name, 'startLogin')
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('requesting: 还没拿到二维码时用「正在申请二维码…」占位，不画空码', async () => {
+  const panel = await mountPanel({ initial: { state: 'requesting' } })
+  try {
+    const popover = panel.popover()
+    // 服务端还在申请：卡片留在扫码阶段，但没有二维码可画，只能给一句提示。
+    assert.equal(popover.querySelector('.wc-qr'), null, '没拿到二维码不该画空码')
+    assert.match(popover.textContent, /stateRequesting/)
   } finally {
     await panel.unmount()
   }
