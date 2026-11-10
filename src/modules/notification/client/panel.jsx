@@ -43,39 +43,9 @@ export function createNotificationPanel(React, options = {}) {
     return <section className="ntf-section" aria-label={title}><h3 className="ntf-sectionTitle">{title}</h3><div className="ntf-card">{children}</div></section>
   }
 
-  /** Three-option popup; Escape dismisses this menu before the settings dialog. */
+  /** 三个互斥选项，原生 <select>：弹出列表交还系统，键盘与 Escape 都由浏览器和设置弹窗处理。 */
   function Timing({ value, disabled, translate, onChange }) {
-    const [open, setOpen] = React.useState(false)
-    const root = React.useRef(null)
-    const trigger = React.useRef(null)
-    const items = React.useRef([])
-    const close = () => { setOpen(false); trigger.current?.focus() }
-    React.useEffect(() => {
-      if (!open) return
-      items.current[Math.max(0, CURRENT_MODES.indexOf(value))]?.focus()
-      const outside = (event) => { if (!root.current?.contains(event.target)) setOpen(false) }
-      const escape = (event) => {
-        if (event.key !== 'Escape') return
-        event.preventDefault(); event.stopImmediatePropagation(); close()
-      }
-      document.addEventListener('pointerdown', outside, true)
-      window.addEventListener('keydown', escape, true)
-      return () => { document.removeEventListener('pointerdown', outside, true); window.removeEventListener('keydown', escape, true) }
-    }, [open])
-    React.useEffect(() => { if (disabled) setOpen(false) }, [disabled])
-    return <div className="ntf-timing" ref={root} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false) }}>
-      <button ref={trigger} type="button" className="ntf-select ntf-timingTrigger" aria-label={translate('currentTitle')} aria-haspopup="menu" aria-expanded={open} disabled={disabled} onClick={() => setOpen(!open)} onKeyDown={(event) => { if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setOpen(true) } }}>{translate(MODE_COPY[value])}</button>
-      {open ? <div className="ntf-menu" role="menu" aria-label={translate('currentTitle')} onKeyDown={(event) => {
-        const index = items.current.indexOf(document.activeElement)
-        let next
-        if (event.key === 'ArrowDown') next = (index + 1) % CURRENT_MODES.length
-        if (event.key === 'ArrowUp') next = (index + CURRENT_MODES.length - 1) % CURRENT_MODES.length
-        if (event.key === 'Home') next = 0
-        if (event.key === 'End') next = CURRENT_MODES.length - 1
-        if (next !== undefined) { event.preventDefault(); items.current[next]?.focus() }
-        if (event.key === 'Tab') setOpen(false)
-      }}>{CURRENT_MODES.map((mode, index) => <button key={mode} ref={(node) => { items.current[index] = node }} type="button" role="menuitemradio" aria-checked={value === mode} className="ntf-menuItem" onClick={() => { onChange(mode); close() }}><span>{translate(MODE_COPY[mode])}</span><span aria-hidden="true">{value === mode ? '✓' : ''}</span></button>)}</div> : null}
-    </div>
+    return <select className="ntf-select ntf-selectTiming" aria-label={translate('currentTitle')} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>{CURRENT_MODES.map((mode) => <option key={mode} value={mode}>{translate(MODE_COPY[mode])}</option>)}</select>
   }
 
   return function NotificationSection(props) {

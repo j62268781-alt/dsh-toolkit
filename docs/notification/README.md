@@ -80,7 +80,7 @@ Cordis 服务注入：`['slots', 'locale', 'configForms', 'sessions', 'uiSession
 版式：行容器用宿主「通用设置」页 item 行的几何（`padding:16px 0`、`border-bottom:.5px solid
 var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层级对齐 Skills & MCP
 （标题 14px/500/22px 主色，副标题 12px/18px 三级灰）。控件优先用官方 `primitives.Switch` /
-`primitives.Button`，缺失时回落到自绘开关与按钮；下拉是原生 `<select>`（宿主没有 Select primitive）。
+`primitives.Button`，缺失时回落到自绘开关与按钮；下拉是原生 `<select>`（宿主没有 Select primitive），外观与「启动动画」面板共用 [settings.css](../../src/client/styles/settings.css) 的 `.boot-select` / `.ntf-select` 统一规则（`appearance:none` + 自绘 chevron、距右 10px）。
 
 页头 = 标题 + 副标题（复用 `src/client/styles/settings.css` 的 `.ntf-pageTitle` /
 `.ntf-pageIntro`，与「通用设置」「浏览器」「Skills & MCP」页一致，通知模块只做

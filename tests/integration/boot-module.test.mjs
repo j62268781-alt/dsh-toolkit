@@ -279,6 +279,16 @@ test('mode cards reuse the desktop whale and toggles match General Settings geom
   assert.equal(getComputedStyle(thumb).height, '16px')
   assert.equal(getComputedStyle(thumb).transform, 'translate(16px)')
   assert.equal(thumb.getAttribute('aria-hidden'), 'true')
+  // 画面配色下拉是原生 <select>，外观与通知面板共用 settings.css 里的一条规则（箭头右侧留 10px）。
+  const themeSelect = document.querySelector('.boot-select')
+  assert.ok(themeSelect, 'theme dropdown keeps a native select')
+  assert.equal(themeSelect.tagName, 'SELECT')
+  assert.equal(getComputedStyle(themeSelect).height, '30px')
+  assert.equal(getComputedStyle(themeSelect).paddingRight, '30px')
+  const bootSheet = document.querySelector('style[data-plugin="toolkit-boot-panel"]').textContent
+  assert.match(bootSheet, /\.boot-select\{[^}]*appearance:none/)
+  assert.match(bootSheet, /\.boot-select\{[^}]*background-position:right 10px center/)
+  assert.doesNotMatch(bootSheet, /\.ntf-select\{/, 'each panel keeps only its own prefixed rule')
   const rules = [...document.querySelector('style[data-plugin="toolkit-boot-panel"]').sheet.cssRules]
   const rule = (selector) => rules.find((item) => item.selectorText === selector).style
   assert.equal(rule('.boot-switch[aria-checked=true]').getPropertyValue('background'), 'var(--dsw-alias-brand-primary)')

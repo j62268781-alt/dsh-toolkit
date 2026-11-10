@@ -50,12 +50,6 @@ async function changeValue(page, node, value) {
   })
 }
 
-async function key(page, node, value) {
-  await act(async () => {
-    node.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true }))
-  })
-}
-
 function switchFor(document, title) {
   return document.querySelector(`[role="switch"][aria-label="${title}"]`)
 }
@@ -106,7 +100,8 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
   assert.match(css, /\.ntf-title\{[^}]*font-size:14px/)
   assert.match(css, /\.ntf-desc\{[^}]*font-size:12px/)
   assert.match(css, /\.ntf-card\{/)
-  assert.match(css, /\.ntf-menuItem\{/)
+  assert.match(css, /\.ntf-select\{[^}]*appearance:none/)
+  assert.match(css, /\.ntf-select\{[^}]*background-position:right10pxcenter/)
   assert.match(css, /var\(--dsw-alias-/)
   assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}/)
   const sections = runtime.sections.filter(({ meta }) => meta.name === 'settings.section')
@@ -135,7 +130,7 @@ test('页面：四张分组卡片、全局声音与四种类型开关，无最�
   }
   assert.doesNotMatch(document.body.textContent, /最近通知|通知范围/)
   assert.equal(document.querySelector('[class*="ntf-recent"]'), null)
-  assert.equal(document.querySelectorAll('select').length, 1, 'one global sound selector; no per-type sound or scope selectors')
+  assert.equal(document.querySelectorAll('select').length, 2, 'global timing + sound selectors; no per-type sound or scope selectors')
   assert.equal(document.querySelectorAll('[role="switch"]').length, 6)
   assert.equal(fetch.requests.length, 1)
   assert.equal(fetch.requests[0].url.pathname, '/api/plugins/dsh-toolkit/notification/sounds')
@@ -146,7 +141,7 @@ test('页面：四张分组卡片、全局声音与四种类型开关，无最�
   await app.click(master)
   assertWrite(runtime, 'enabled', false)
   assert.equal(master.getAttribute('aria-checked'), 'false')
-  assert.equal(document.querySelector('.ntf-timingTrigger').disabled, true)
+  assert.equal(document.querySelector('.ntf-selectTiming').disabled, true)
   assert.equal(document.querySelector('.ntf-range').disabled, true)
   await app.click(master)
   assertWrite(runtime, 'enabled', true)
@@ -225,7 +220,7 @@ test('开关点击立即回显，写入在途期间不变灰', async (t) => {
   assert.equal(master.getAttribute('aria-checked'), 'false')
   assert.equal(master.disabled, false, '总开关保存中也保持可点')
   assert.equal(completed.disabled, true, '联动禁用跟随乐观值')
-  assert.equal(document.querySelector('.ntf-timingTrigger').disabled, true)
+  assert.equal(document.querySelector('.ntf-selectTiming').disabled, true)
   await act(async () => { pending[0].resolve(mutate(pending[0].operations)); await sleep(10) })
   assert.deepEqual(runtime.writes[0], [{ op: 'set', path: ['notification', 'completedEnabled'], value: false }])
   assert.equal(completed.getAttribute('aria-checked'), 'false')
@@ -234,49 +229,24 @@ test('开关点击立即回显，写入在途期间不变灰', async (t) => {
   assert.equal(master.getAttribute('aria-checked'), 'false')
 })
 
-test('通知时机：三个互斥选项、保存后重新挂载保留、方向键与 Escape 捕获', async (t) => {
+test('通知时机：原生 select 三选一、写入后重新挂载保留', async (t) => {
   const { page, runtime, app, Component } = await bootPanel(t)
   const document = page.document
-  const trigger = document.querySelector('.ntf-timingTrigger')
-  assert.equal(trigger.textContent, '仅在失焦时')
-  assert.equal(trigger.getAttribute('aria-haspopup'), 'menu')
-  assert.equal(trigger.getAttribute('aria-expanded'), 'false')
-  await app.click(trigger)
-  const choices = [...document.querySelectorAll('[role="menuitemradio"]')]
-  assert.equal(document.querySelectorAll('[role="menu"]').length, 1)
-  assert.deepEqual(choices.map((node) => node.firstElementChild.textContent), ['从不', '仅在失焦时', '始终'])
-  assert.deepEqual(choices.map((node) => node.getAttribute('aria-checked')), ['false', 'true', 'false'])
-  assert.equal(document.activeElement, choices[1])
-  await key(page, choices[1], 'ArrowDown')
-  assert.equal(document.activeElement, choices[2])
-  await key(page, choices[2], 'ArrowDown')
-  assert.equal(document.activeElement, choices[0])
-  await key(page, choices[0], 'ArrowUp')
-  assert.equal(document.activeElement, choices[2])
-  await key(page, choices[2], 'Home')
-  assert.equal(document.activeElement, choices[0])
-  await key(page, choices[0], 'End')
-  assert.equal(document.activeElement, choices[2])
-  let dialogEscapes = 0
-  const outerEscape = (event) => { if (event.key === 'Escape') dialogEscapes++ }
-  document.addEventListener('keydown', outerEscape, true)
-  await key(page, choices[2], 'Escape')
-  assert.equal(document.querySelector('[role="menu"]'), null)
-  assert.equal(document.activeElement, trigger)
-  assert.equal(dialogEscapes, 0, 'menu consumes Escape before a dialog handler')
-  assert.deepEqual(runtime.writes, [], 'navigation and dismissal do not change the setting')
-  await key(page, trigger, 'ArrowDown')
-  await app.click(document.querySelectorAll('[role="menuitemradio"]')[2])
+  const timing = document.querySelector('.ntf-selectTiming')
+  assert.ok(timing, 'the timing control is a native <select>')
+  assert.equal(timing.tagName, 'SELECT')
+  assert.equal(timing.value, 'unfocused')
+  assert.deepEqual([...timing.options].map((option) => [option.value, option.textContent]), [['never', '从不'], ['unfocused', '仅在失焦时'], ['always', '始终']])
+  await changeValue(page, timing, 'always')
   assertWrite(runtime, 'currentMode', 'always')
-  assert.equal(trigger.textContent, '始终')
-  await app.click(trigger)
-  await app.click(document.querySelectorAll('[role="menuitemradio"]')[0])
+  assert.equal(timing.value, 'always')
+  await changeValue(page, timing, 'never')
   assertWrite(runtime, 'currentMode', 'never')
+  assert.deepEqual(runtime.writes.length, 2)
   await app.unmount()
   const remounted = await mountComponent(Component)
-  assert.equal(document.querySelector('.ntf-timingTrigger').textContent, '从不')
+  assert.equal(document.querySelector('.ntf-selectTiming').value, 'never')
   await remounted.unmount()
-  document.removeEventListener('keydown', outerEscape, true)
 })
 
 test('移除最近通知列表后，系统通知仍使用会话标题和固定正文，点击打开会话', async (t) => {
@@ -299,7 +269,7 @@ test('configForms 缺失时页面只读，禁用所有配置控件', async (t) =
   const { page, runtime, app } = await bootPanel(t, { withConfigForms: false })
   assert.ok(page.document.querySelector('.ntf-page'))
   assert.match(page.document.body.textContent, /宿主没有提供可写的配置表单/)
-  for (const control of page.document.querySelectorAll('[role="switch"], .ntf-timingTrigger, select, input')) assert.equal(control.disabled, true)
+  for (const control of page.document.querySelectorAll('[role="switch"], select, input')) assert.equal(control.disabled, true)
   await app.click(switchFor(page.document, '启用通知'))
   assert.deepEqual(runtime.writes, [])
 })

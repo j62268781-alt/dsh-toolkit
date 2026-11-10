@@ -31,7 +31,8 @@
 .boot-row:last-child { border-bottom: 0; }
 .boot-row-text { min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 20px; }
 .boot-row-text small { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; }
-.boot-row select { flex: none; max-width: 55%; min-width: 120px; height: 30px; padding: 0 10px; border: .5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); background: var(--dsw-alias-bg-layer-1); color: inherit; font: inherit; font-size: 13px; }
+/* 外观与通知面板共用 src/client/styles/settings.css 里的 .boot-select/.ntf-select，这里只约束行内宽度。 */
+.boot-row .boot-select { flex: none; max-width: 55%; min-width: 120px; }
 /* DSH General Settings Switch: 36×20 track, 16px thumb, native state tokens. */
 .boot-switch { box-sizing: border-box; position: relative; flex: 0 0 auto; width: 36px; height: 20px; padding: 2px; border: 0; border-radius: 999px; corner-shape: round; background: var(--dsw-alias-border-l3); cursor: pointer; }
 .boot-switch[aria-checked=true] { background: var(--dsw-alias-brand-primary); }
@@ -43,8 +44,8 @@
 .boot-footer { display: flex; align-items: center; gap: 16px; }
 .boot-button { display: inline-flex; align-items: center; justify-content: center; flex: none; min-height: 30px; padding: 0 10px; border: .5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); color: inherit; background: transparent; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
 .boot-button:hover { background: var(--dsw-alias-interactive-bg-hover); }
-.boot-mode:disabled,.boot-switch:disabled,.boot-row select:disabled { opacity: .5; cursor: not-allowed; }
-.boot-page button:focus-visible,.boot-page select:focus-visible,.boot-page input:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 3px; }
+.boot-mode:disabled,.boot-switch:disabled { opacity: .5; cursor: not-allowed; }
+.boot-page button:focus-visible,.boot-page input:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 3px; }
 .boot-note,.boot-error,.boot-ok { margin: 0; font-size: 12px; line-height: 18px; }
 .boot-note { color: var(--dsw-alias-label-secondary); }
 .boot-error { color: var(--dsw-alias-state-error-primary, #b42318); }

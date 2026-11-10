@@ -6,11 +6,14 @@ import { createPreviewDocument } from '../host/scene.js'
 import { findScopedForm } from '../../../client/config.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
 import { installStylesheet } from '../../../client/ui/stylesheet.js'
+import { settingsStyles } from '../../../client/styles/settings.js'
 import { DSH_DESKTOP_LOGO } from '../../../client/ui/dsh-logo.js'
 import { registerSettingsIcon } from '../../../client/settings-icon.jsx'
-import panelCss from './styles.css'
+import panelStyles from './styles.css'
 
 export const inject = ['slots', 'configForms']
+// 面板样式 = 跨面板共用的设置页规则（按 `boot-` 前缀裁剪）+ 本模块自己的规则。
+const panelCss = `${settingsStyles('boot')}\n${panelStyles}`
 const DEFAULTS = Object.freeze({ animation: 'draw', theme: 'auto', showWordmark: true, allowSkip: true })
 const FIELDS = Object.keys(DEFAULTS)
 const LABELS = Object.freeze({ animation: '启动动画', theme: '画面配色', showWordmark: '显示文字标识', allowSkip: '允许跳过' })
@@ -123,7 +126,7 @@ export function BootPanel({ form }) {
     </section>
     <div className="boot-feedback" aria-live="polite">{error ? <p className="boot-error" role="alert">{error}</p> : notice ? <p className="boot-ok" role="status">{notice}</p> : null}</div>
     <Group title="显示设置">
-      <label className="boot-row"><span className="boot-row-text"><span>画面配色</span><small>独立设置启动画面的明暗</small></span><select disabled={controlsDisabled} value={current.theme} onChange={(event) => void write('theme', event.target.value)}><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
+      <label className="boot-row"><span className="boot-row-text"><span>画面配色</span><small>独立设置启动画面的明暗</small></span><select className="boot-select" disabled={controlsDisabled} value={current.theme} onChange={(event) => void write('theme', event.target.value)}><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
       <div className="boot-row"><span className="boot-row-text"><span>显示文字标识</span><small>在鲸标下方显示 DEEPSEEK HARNESS</small></span><Toggle label="显示文字标识" checked={current.showWordmark} disabled={controlsDisabled} onChange={(value) => void write('showWordmark', value)} /></div>
     </Group>
     <Group title="交互设置"><div className="boot-row"><span className="boot-row-text"><span>允许跳过</span><small>点击画面，或按 Esc、空格、Enter 跳过</small></span><Toggle label="允许跳过" checked={current.allowSkip} disabled={controlsDisabled} onChange={(value) => void write('allowSkip', value)} /></div></Group>

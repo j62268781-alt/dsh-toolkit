@@ -27,49 +27,7 @@ window.__ModuleLoader__.load({
     ));
 
     // src/modules/notification/client/styles.css
-    var styles_default = `/* Notification cards use the same title/description metrics as General settings.
-     * 页头（标题 + 副标题）直接复用 src/client/styles/settings.css 的 .ntf-pageTitle /
-     * .ntf-pageIntro（index.jsx 用 settingsStyles('ntf') 拼在前），这里不再重复声明。 */
-    .ntf-page { box-sizing: border-box; width: 100%; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }
-    .ntf-page > * { width: 100%; max-width: 960px; }
-    .ntf-pageHead { box-sizing: border-box; display: flex; flex-direction: column; }
-    .ntf-section { min-width: 0; }
-    .ntf-sectionTitle { margin: 0 0 10px; color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 500; line-height: 20px; }
-    .ntf-card { border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; padding: 0 16px; min-width: 0; }
-    .ntf-row { box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 16px 0; border-bottom: 0.5px solid var(--dsw-alias-border-l2); }
-    .ntf-row:last-child { border-bottom: none; }
-    .ntf-rowText { display: flex; flex-direction: column; flex: 1 1 auto; gap: 4px; min-width: 0; }
-    .ntf-title { color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 400; line-height: 20px; overflow-wrap: anywhere; }
-    .ntf-desc { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
-    .ntf-rowControl { flex: none; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 55%; }
-    .ntf-select { box-sizing: border-box; height: 30px; max-width: 100%; font: inherit; font-size: 13px; color: var(--dsw-alias-label-primary); background-color: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); appearance: none; -webkit-appearance: none; padding: 0 28px 0 10px; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; background-size: 14px; text-overflow: ellipsis; }
-    .ntf-select:focus-visible, .ntf-menuItem:focus-visible, .ntf-button:focus-visible, .ntf-switch:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }
-    .ntf-select:disabled, .ntf-range:disabled, .ntf-switch:disabled, .ntf-button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .ntf-selectSound { width: 156px; }
-    .ntf-timing { position: relative; max-width: 100%; }
-    .ntf-timingTrigger { cursor: pointer; white-space: nowrap; }
-    .ntf-menu { box-sizing: border-box; position: absolute; z-index: 5; right: 0; top: calc(100% + 4px); width: 224px; max-width: calc(100vw - 48px); padding: 4px; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; background: var(--dsw-alias-bg-layer-2); box-shadow: var(--dsw-elevation-prominent); }
-    .ntf-menuItem { width: 100%; min-height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 8px; color: var(--dsw-alias-label-primary); background: transparent; border: 0; border-radius: var(--dsw-radius-md, 8px); font: inherit; font-size: 13px; line-height: 20px; text-align: left; cursor: pointer; }
-    .ntf-menuItem:hover, .ntf-menuItem:focus { background: var(--dsw-alias-interactive-bg-hover); }
-    .ntf-volume { display: flex; align-items: center; gap: 10px; max-width: 100%; }
-    .ntf-range { width: 140px; min-width: 50px; accent-color: var(--dsw-alias-state-business-primary, var(--dsw-alias-button-primary-fill)); cursor: pointer; }
-    .ntf-volumeValue { min-width: 38px; text-align: right; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; font-variant-numeric: tabular-nums; }
-    .ntf-switch { box-sizing: border-box; flex: none; position: relative; width: 26px; height: 15px; padding: 0; border: 0; border-radius: 999px; cursor: pointer; background: var(--dsw-alias-border-l3); transition: background 0.12s ease; }
-    .ntf-switch[data-on=true] { background: var(--dsw-alias-state-success-primary, var(--dsw-alias-state-business-primary)); }
-    .ntf-switchKnob { position: absolute; top: 1.5px; left: 1.5px; width: 12px; height: 12px; border-radius: 50%; background: var(--dsw-alias-label-primary-foreground); box-shadow: 0 1px 2px var(--dsw-alias-bg-mask-1, transparent); transition: transform 0.12s ease; }
-    .ntf-switch[data-on=true] .ntf-switchKnob { transform: translateX(11px); }
-    .ntf-button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 30px; padding: 0 10px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; cursor: pointer; flex: none; white-space: nowrap; }
-    .ntf-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
-    .ntf-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .ntf-error, .ntf-notice, .ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
-    .ntf-error { color: var(--dsw-alias-state-error-primary); }
-    @media (max-width: 720px) {
-      .ntf-row { gap: 12px; }
-      .ntf-rowControl { max-width: 60%; }
-      .ntf-selectSound { width: 120px; }
-      .ntf-range { width: 80px; }
-    }
-    `;
+    var styles_default = "/* Notification cards use the same title/description metrics as General settings.\n * 页头（标题 + 副标题）直接复用 src/client/styles/settings.css 的 .ntf-pageTitle /\n * .ntf-pageIntro（index.jsx 用 settingsStyles('ntf') 拼在前），这里不再重复声明。 */\n.ntf-page { box-sizing: border-box; width: 100%; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }\n.ntf-page > * { width: 100%; max-width: 960px; }\n.ntf-pageHead { box-sizing: border-box; display: flex; flex-direction: column; }\n.ntf-section { min-width: 0; }\n.ntf-sectionTitle { margin: 0 0 10px; color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 500; line-height: 20px; }\n.ntf-card { border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; padding: 0 16px; min-width: 0; }\n.ntf-row { box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 16px 0; border-bottom: 0.5px solid var(--dsw-alias-border-l2); }\n.ntf-row:last-child { border-bottom: none; }\n.ntf-rowText { display: flex; flex-direction: column; flex: 1 1 auto; gap: 4px; min-width: 0; }\n.ntf-title { color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 400; line-height: 20px; overflow-wrap: anywhere; }\n.ntf-desc { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }\n.ntf-rowControl { flex: none; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 55%; }\n.ntf-selectSound { width: 156px; }\n.ntf-button:focus-visible, .ntf-switch:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }\n.ntf-range:disabled, .ntf-switch:disabled, .ntf-button:disabled { opacity: 0.5; cursor: not-allowed; }\n.ntf-volume { display: flex; align-items: center; gap: 10px; max-width: 100%; }\n.ntf-range { width: 140px; min-width: 50px; accent-color: var(--dsw-alias-state-business-primary, var(--dsw-alias-button-primary-fill)); cursor: pointer; }\n.ntf-volumeValue { min-width: 38px; text-align: right; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; font-variant-numeric: tabular-nums; }\n.ntf-switch { box-sizing: border-box; flex: none; position: relative; width: 26px; height: 15px; padding: 0; border: 0; border-radius: 999px; cursor: pointer; background: var(--dsw-alias-border-l3); transition: background 0.12s ease; }\n.ntf-switch[data-on=true] { background: var(--dsw-alias-state-success-primary, var(--dsw-alias-state-business-primary)); }\n.ntf-switchKnob { position: absolute; top: 1.5px; left: 1.5px; width: 12px; height: 12px; border-radius: 50%; background: var(--dsw-alias-label-primary-foreground); box-shadow: 0 1px 2px var(--dsw-alias-bg-mask-1, transparent); transition: transform 0.12s ease; }\n.ntf-switch[data-on=true] .ntf-switchKnob { transform: translateX(11px); }\n.ntf-button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 30px; padding: 0 10px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; cursor: pointer; flex: none; white-space: nowrap; }\n.ntf-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }\n.ntf-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }\n.ntf-error, .ntf-notice, .ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }\n.ntf-error { color: var(--dsw-alias-state-error-primary); }\n@media (max-width: 720px) {\n  .ntf-row { gap: 12px; }\n  .ntf-rowControl { max-width: 60%; }\n  .ntf-selectSound { width: 120px; }\n  .ntf-range { width: 80px; }\n}\n";
 
     // src/client/ui/stylesheet.js
     function installStylesheet(css, id) {
@@ -82,7 +40,48 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/styles/settings.css
-    var settings_default = "/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */\n.ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}\n/* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */\n.ab-pageTitle,.jdg-pageTitle,.smp-pageTitle,.ntf-pageTitle,.sk-arch__title{color:var(--dsw-alias-label-primary);margin:0;font-size:18px;font-weight:600}\n.ab-pageIntro,.jdg-pageIntro,.smp-pageIntro,.ntf-pageIntro,.sk-arch__subtitle{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:13px}\n.ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}\n.ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}\n.ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}\n.ab-button[data-variant=outline],.jdg-button[data-variant=outline],.smp-button[data-variant=outline]{border-color:var(--dsw-alias-border-l3)}\n.ab-button[data-variant=primary],.jdg-button[data-variant=primary],.smp-button[data-variant=primary]{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}\n.ab-button[data-variant=primary]:hover:not(:disabled),.jdg-button[data-variant=primary]:hover:not(:disabled),.smp-button[data-variant=primary]:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}\n.ab-button:disabled,.jdg-button:disabled,.smp-button:disabled{opacity:.4;cursor:not-allowed}\n.jdg-filterRow,.smp-filterRow,.sk-filterRow{display:flex;align-items:center;gap:8px}\n/* Search matches the built-in plugin inventory (36px, l4 stroke, icon at 12px, 34px right inset, focus ring). */\n.jdg-search,.smp-search,.sk-search{flex:1 1 auto;min-width:140px;color:var(--dsw-alias-label-tertiary);align-items:center;display:flex;position:relative}\n.jdg-searchIcon,.smp-searchIcon,.sk-searchIcon{position:absolute;left:12px;display:inline-flex;pointer-events:none}\n.jdg-searchInput,.smp-searchInput,.sk-searchInput{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);padding:0 34px 0 36px;outline:none}\n.jdg-searchInput::placeholder,.smp-searchInput::placeholder,.sk-searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}\n.jdg-searchInput:focus-visible,.smp-searchInput:focus-visible,.sk-searchInput:focus-visible{border-color:var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)) 18%,transparent)}\n.jdg-tabs,.smp-tabs{display:flex;gap:24px;border-bottom:.5px solid var(--dsw-alias-border-l2)}\n.jdg-tab,.smp-tab{appearance:none;background:none;border:0;padding:0 2px 10px;font:inherit;font-size:14px;line-height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}\n.jdg-tab[data-active=true],.smp-tab[data-active=true]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-label-primary)}\n.jdg-cards,.smp-cards{flex-direction:column;gap:14px;margin:0;padding:0;list-style:none;display:flex}\n.jdg-card,.smp-card{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:4px;padding:12px 14px;min-width:0;display:flex}\n.jdg-cardRow,.smp-cardRow{align-items:center;gap:10px;min-width:0;display:flex}\n.jdg-cardIdentity,.smp-cardIdentity{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;min-width:0;overflow-wrap:anywhere}\n.jdg-cardEnd,.smp-cardEnd{flex:none;align-items:center;gap:8px;display:inline-flex}\n.jdg-cardDetails,.smp-cardDetails{border-top:.5px solid var(--dsw-alias-border-l2);padding:12px 0 0}\n.jdg-card>.jdg-cardDetails:first-child,.smp-card>.smp-cardDetails:first-child{border-top:0;padding-top:0}\n.jdg-chevron,.smp-chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .14s ease-in-out}\n.jdg-chevron[data-open=false],.smp-chevron[data-open=false]{transform:rotate(-90deg)}\n.jdg-tag,.smp-tag{display:inline-flex;align-items:center;border-radius:999px;padding:1px 8px;font-size:11px;line-height:17px;font-weight:500;white-space:nowrap}\n.jdg-tag[data-tone=neutral],.smp-tag[data-tone=neutral]{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary)}\n.jdg-tag[data-tone=ok],.smp-tag[data-tone=ok]{background:var(--dsw-alias-state-success-tertiary,var(--dsw-alias-bg-module-platform));color:var(--dsw-alias-state-success-primary,#067647)}\n.jdg-formGrid,.smp-formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}\n";
+    var settings_default = `/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */
+    .ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}
+    /* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */
+    .ab-pageTitle,.jdg-pageTitle,.smp-pageTitle,.ntf-pageTitle,.sk-arch__title{color:var(--dsw-alias-label-primary);margin:0;font-size:18px;font-weight:600}
+    .ab-pageIntro,.jdg-pageIntro,.smp-pageIntro,.ntf-pageIntro,.sk-arch__subtitle{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:13px}
+    .ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}
+    .ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
+    .ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}
+    .ab-button[data-variant=outline],.jdg-button[data-variant=outline],.smp-button[data-variant=outline]{border-color:var(--dsw-alias-border-l3)}
+    .ab-button[data-variant=primary],.jdg-button[data-variant=primary],.smp-button[data-variant=primary]{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}
+    .ab-button[data-variant=primary]:hover:not(:disabled),.jdg-button[data-variant=primary]:hover:not(:disabled),.smp-button[data-variant=primary]:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}
+    .ab-button:disabled,.jdg-button:disabled,.smp-button:disabled{opacity:.4;cursor:not-allowed}
+    .jdg-filterRow,.smp-filterRow,.sk-filterRow{display:flex;align-items:center;gap:8px}
+    /* Search matches the built-in plugin inventory (36px, l4 stroke, icon at 12px, 34px right inset, focus ring). */
+    .jdg-search,.smp-search,.sk-search{flex:1 1 auto;min-width:140px;color:var(--dsw-alias-label-tertiary);align-items:center;display:flex;position:relative}
+    .jdg-searchIcon,.smp-searchIcon,.sk-searchIcon{position:absolute;left:12px;display:inline-flex;pointer-events:none}
+    .jdg-searchInput,.smp-searchInput,.sk-searchInput{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);padding:0 34px 0 36px;outline:none}
+    .jdg-searchInput::placeholder,.smp-searchInput::placeholder,.sk-searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}
+    .jdg-searchInput:focus-visible,.smp-searchInput:focus-visible,.sk-searchInput:focus-visible{border-color:var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)) 18%,transparent)}
+    .jdg-tabs,.smp-tabs{display:flex;gap:24px;border-bottom:.5px solid var(--dsw-alias-border-l2)}
+    .jdg-tab,.smp-tab{appearance:none;background:none;border:0;padding:0 2px 10px;font:inherit;font-size:14px;line-height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+    .jdg-tab[data-active=true],.smp-tab[data-active=true]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-label-primary)}
+    .jdg-cards,.smp-cards{flex-direction:column;gap:14px;margin:0;padding:0;list-style:none;display:flex}
+    .jdg-card,.smp-card{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:4px;padding:12px 14px;min-width:0;display:flex}
+    .jdg-cardRow,.smp-cardRow{align-items:center;gap:10px;min-width:0;display:flex}
+    .jdg-cardIdentity,.smp-cardIdentity{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;min-width:0;overflow-wrap:anywhere}
+    .jdg-cardEnd,.smp-cardEnd{flex:none;align-items:center;gap:8px;display:inline-flex}
+    .jdg-cardDetails,.smp-cardDetails{border-top:.5px solid var(--dsw-alias-border-l2);padding:12px 0 0}
+    .jdg-card>.jdg-cardDetails:first-child,.smp-card>.smp-cardDetails:first-child{border-top:0;padding-top:0}
+    .jdg-chevron,.smp-chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .14s ease-in-out}
+    .jdg-chevron[data-open=false],.smp-chevron[data-open=false]{transform:rotate(-90deg)}
+    .jdg-tag,.smp-tag{display:inline-flex;align-items:center;border-radius:999px;padding:1px 8px;font-size:11px;line-height:17px;font-weight:500;white-space:nowrap}
+    .jdg-tag[data-tone=neutral],.smp-tag[data-tone=neutral]{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary)}
+    .jdg-tag[data-tone=ok],.smp-tag[data-tone=ok]{background:var(--dsw-alias-state-success-tertiary,var(--dsw-alias-bg-module-platform));color:var(--dsw-alias-state-success-primary,#067647)}
+    .jdg-formGrid,.smp-formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+    /* 原生下拉在这套设置页里只有一种外观：启动动画与通知两个面板共用同一条规则，由
+     * settingsStyles() 按面板前缀各自裁剪。appearance:none 去掉平台自带箭头（macOS 会把它
+     * 紧贴右边框），改由 data-URI 自绘 14px chevron，距右边缘 10px。 */
+    .boot-select,.ntf-select{box-sizing:border-box;height:30px;max-width:100%;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md,8px);appearance:none;-webkit-appearance:none;padding:0 30px 0 10px;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:14px;text-overflow:ellipsis;cursor:pointer}
+    .boot-select:focus-visible,.ntf-select:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}
+    .boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}
+    `;
 
     // src/client/styles/settings.js
     function settingsStyles(namespace) {
@@ -1350,61 +1349,7 @@ window.__ModuleLoader__.load({
         return /* @__PURE__ */ __dshReact.createElement("section", { className: "ntf-section", "aria-label": title }, /* @__PURE__ */ __dshReact.createElement("h3", { className: "ntf-sectionTitle" }, title), /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-card" }, children));
       }
       function Timing({ value, disabled, translate, onChange }) {
-        const [open, setOpen] = React2.useState(false);
-        const root = React2.useRef(null);
-        const trigger = React2.useRef(null);
-        const items = React2.useRef([]);
-        const close = () => {
-          setOpen(false);
-          trigger.current?.focus();
-        };
-        React2.useEffect(() => {
-          if (!open) return;
-          items.current[Math.max(0, CURRENT_MODES.indexOf(value))]?.focus();
-          const outside = (event) => {
-            if (!root.current?.contains(event.target)) setOpen(false);
-          };
-          const escape = (event) => {
-            if (event.key !== "Escape") return;
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            close();
-          };
-          document.addEventListener("pointerdown", outside, true);
-          window.addEventListener("keydown", escape, true);
-          return () => {
-            document.removeEventListener("pointerdown", outside, true);
-            window.removeEventListener("keydown", escape, true);
-          };
-        }, [open]);
-        React2.useEffect(() => {
-          if (disabled) setOpen(false);
-        }, [disabled]);
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-timing", ref: root, onBlur: (event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
-        } }, /* @__PURE__ */ __dshReact.createElement("button", { ref: trigger, type: "button", className: "ntf-select ntf-timingTrigger", "aria-label": translate("currentTitle"), "aria-haspopup": "menu", "aria-expanded": open, disabled, onClick: () => setOpen(!open), onKeyDown: (event) => {
-          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-            event.preventDefault();
-            setOpen(true);
-          }
-        } }, translate(MODE_COPY[value])), open ? /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-menu", role: "menu", "aria-label": translate("currentTitle"), onKeyDown: (event) => {
-          const index = items.current.indexOf(document.activeElement);
-          let next;
-          if (event.key === "ArrowDown") next = (index + 1) % CURRENT_MODES.length;
-          if (event.key === "ArrowUp") next = (index + CURRENT_MODES.length - 1) % CURRENT_MODES.length;
-          if (event.key === "Home") next = 0;
-          if (event.key === "End") next = CURRENT_MODES.length - 1;
-          if (next !== void 0) {
-            event.preventDefault();
-            items.current[next]?.focus();
-          }
-          if (event.key === "Tab") setOpen(false);
-        } }, CURRENT_MODES.map((mode, index) => /* @__PURE__ */ __dshReact.createElement("button", { key: mode, ref: (node) => {
-          items.current[index] = node;
-        }, type: "button", role: "menuitemradio", "aria-checked": value === mode, className: "ntf-menuItem", onClick: () => {
-          onChange(mode);
-          close();
-        } }, /* @__PURE__ */ __dshReact.createElement("span", null, translate(MODE_COPY[mode])), /* @__PURE__ */ __dshReact.createElement("span", { "aria-hidden": "true" }, value === mode ? "✓" : "")))) : null);
+        return /* @__PURE__ */ __dshReact.createElement("select", { className: "ntf-select ntf-selectTiming", "aria-label": translate("currentTitle"), value, disabled, onChange: (event) => onChange(event.target.value) }, CURRENT_MODES.map((mode) => /* @__PURE__ */ __dshReact.createElement("option", { key: mode, value: mode }, translate(MODE_COPY[mode]))));
       }
       return function NotificationSection(props) {
         const translate = typeof props?.t === "function" ? props.t : t;
