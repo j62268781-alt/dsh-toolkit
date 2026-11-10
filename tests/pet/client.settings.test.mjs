@@ -36,6 +36,9 @@ function context() {
   const sections = []
   const writes = []
   const opened = []
+  const sessionSubscribers = new Set()
+  let sessionList = { byId: {} }
+  const sessions = { list: { getSnapshot: () => sessionList, subscribe(listener) { sessionSubscribers.add(listener); return () => sessionSubscribers.delete(listener) } } }
   const form = { getSnapshot: () => snapshot, subscribe(listener) { subscribers.add(listener); return () => subscribers.delete(listener) }, async mutate(operations) {
     writes.push(operations)
     if (reject) return false
@@ -44,8 +47,14 @@ function context() {
     snapshot = { value: { ...snapshot.value, pet } }
     for (const listener of subscribers) listener()
   } }
-  const ctx = { configForms: { get: (id) => id === 'dsh-toolkit' ? form : undefined }, locale: { language: 'en', register: () => () => {} }, effect(run, name) { effects.push(name); const off = run(); if (typeof off === 'function') cleanups.push(off) }, slots: { inject: (_, run) => run(), register: (meta, Component) => { sections.push({ meta, Component }); return () => sections.pop() } }, workspaces: { list: { getSnapshot: () => ({ archivedSessionIds: ['archived'] }) } }, uiWorkspace: { unarchiveSession: async (id) => { opened.push(`unarchive:${id}`) }, openSession: async (id) => { opened.push(`open:${id}`) } } }
-  return { ctx, effects, sections, writes, opened, subscribers, reject(value) { reject = value }, dispose() { for (const off of cleanups.reverse()) off() } }
+  const ctx = { configForms: { get: (id) => id === 'dsh-toolkit' ? form : undefined }, locale: { language: 'en', register: () => () => {} }, effect(run, name) { effects.push(name); const off = run(); if (typeof off === 'function') cleanups.push(off) }, slots: { inject: (_, run) => run(), register: (meta, Component) => { sections.push({ meta, Component }); return () => sections.pop() } }, sessions, workspaces: { list: { getSnapshot: () => ({ archivedSessionIds: ['archived'] }) } }, uiWorkspace: { unarchiveSession: async (id) => { opened.push(`unarchive:${id}`) }, openSession: async (id) => { opened.push(`open:${id}`) } } }
+  return { ctx, effects, sections, writes, opened, subscribers, sessionSubscribers,
+    /** 模拟主视图切到某个会话（`retainedBy.mainView`），用于验证「已读」上报。 */
+    retain(id) {
+      sessionList = { byId: id === undefined ? {} : { [id]: { id, retainedBy: { mainView: 1 } } } }
+      for (const listener of [...sessionSubscribers]) listener()
+    },
+    reject(value) { reject = value }, dispose() { for (const off of cleanups.reverse()) off() } }
 }
 
 test('authenticated SSE baselines navigation, deduplicates sequence, and cancels reader on disposal', async (t) => {
@@ -109,7 +118,7 @@ test('settings use root-scoped accepted config writes, independent toggles, runt
   assert.equal(meta.id, 'desktop-pet')
   assert.equal(meta.order, 25)
   assert.equal(meta.locale, 'dsh-toolkit.pet')
-  assert.deepEqual(client.inject, ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces'])
+  assert.deepEqual(client.inject, ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces', 'sessions'])
   const root = createRoot(document.getElementById('root'))
   t.after(async () => { await act(async () => root.unmount()); runtime.dispose(); net.restore(); for (const [key, value] of saved) { if (value) Object.defineProperty(globalThis, key, value); else delete globalThis[key] }; dom.window.close() })
   await act(async () => { root.render(React.createElement(Component)); await flush() })
@@ -138,4 +147,47 @@ test('settings use root-scoped accepted config writes, independent toggles, runt
   assert.equal(runtime.subscribers.size, 0)
   assert.equal(document.querySelector('style[data-plugin=toolkit-pet]'), null)
   assert.equal(net.streams[0].cancelled, true)
+})
+
+test('switching the main view to a Session marks it read so the island updates', async (t) => {
+  const net = network()
+  const runtime = context()
+  const module = await clientModule()
+  const client = module.default((name) => {
+    if (name === 'react') return React
+    return { Switch: () => null }
+  })
+  t.after(() => { runtime.dispose(); net.restore() })
+  client.apply(runtime.ctx)
+  await flush()
+  const seen = () => net.requests
+    .filter((request) => request.options.method === 'POST')
+    .map((request) => JSON.parse(request.options.body))
+  assert.deepEqual(seen(), [], 'a plugin load with no main view must not report anything')
+
+  // 系统通知点击跳转 / 侧栏切到另一个会话：主视图持有它 → 立刻上报已读。
+  runtime.retain('session-b')
+  await flush()
+  assert.deepEqual(seen(), [{ action: 'seen', sessionId: 'session-b' }])
+
+  // 同一个会话反复渲染不重复上报（去抖只认「换了会话」）。
+  runtime.retain('session-b')
+  await flush()
+  assert.equal(seen().length, 1)
+
+  // 切到空视图不产生新的已读；再切到另一个会话才上报。
+  runtime.retain(undefined)
+  await flush()
+  assert.equal(seen().length, 1)
+  runtime.retain('session-c')
+  await flush()
+  assert.deepEqual(seen().at(-1), { action: 'seen', sessionId: 'session-c' })
+
+  // 卸载后不再有订阅者，也不再有上报。
+  runtime.dispose()
+  await flush()
+  assert.equal(runtime.sessionSubscribers.size, 0)
+  runtime.retain('session-d')
+  await flush()
+  assert.equal(seen().at(-1).sessionId, 'session-c')
 })

@@ -14,7 +14,7 @@ const EXPECTED_INJECT = {
   'toolkit-mobile-client': ['slots', 'sidebarRightTabs'],
   'toolkit-notification-client': ['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces'],
   'toolkit-boot-client': ['slots', 'configForms'],
-  'toolkit-pet-client': ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces'],
+  'toolkit-pet-client': ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces', 'sessions'],
   'toolkit-weixin-clawbot-client': ['locale'],
 }
 const ALL_SERVICES = new Set([
@@ -313,12 +313,14 @@ test('the unified bundle registers the original settings pages, Remote faces, an
 
 test('missing archived session services leave theme, other pages, and the mobile tab active', async () => {
   const result = await boot({ missing: ['sessions'] })
-  assert.deepEqual(result.pending, ['toolkit-archived-client', 'toolkit-notification-client'])
-  assert.equal(result.active.length, 8)
-  assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['boot', 'browser', 'desktop-pet', 'judgment', 'skills-mcp', 'theme'])
+  // pet 客户端现在也读 sessions（主视图切会话时上报已读），缺该服务时与其他会话相关插件一起等待。
+  assert.deepEqual(result.pending, ['toolkit-archived-client', 'toolkit-notification-client', 'toolkit-pet-client'])
+  assert.equal(result.active.length, 7)
+  assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['boot', 'browser', 'judgment', 'skills-mcp', 'theme'])
   assert.equal(result.tabTypes.length, 1)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'toolkit-theme-client'), true)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'toolkit-archived-client'), false)
+  assert.equal(result.effects.some(({ plugin }) => plugin === 'toolkit-pet-client'), false)
 })
 
 test('nested Remote dependencies block only the client that declares them', async () => {

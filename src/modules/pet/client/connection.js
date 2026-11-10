@@ -48,6 +48,12 @@ export function createPetConnection({ onNavigation, onNavigationError = () => {}
     await request('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: name }) })
     return refresh()
   }
+  // 用户已经看到某个会话（主视图切过去）：告诉 host 标记已读，岛上的提醒随即消失。
+  // 失败只丢一条诊断，不阻塞任何界面 —— 下一次活动事件仍会重新算状态。
+  const seen = async (sessionId) => {
+    await request('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'seen', sessionId }) })
+    return refresh()
+  }
   const connect = async () => {
     if (disposed) return
     controller = new AbortController()
@@ -87,7 +93,7 @@ export function createPetConnection({ onNavigation, onNavigationError = () => {}
   return {
     getSnapshot: () => snapshot,
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener) },
-    refresh, action,
+    refresh, action, seen,
     start() { void connect() },
     dispose() {
       disposed = true

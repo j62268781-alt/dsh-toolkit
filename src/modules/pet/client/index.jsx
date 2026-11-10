@@ -13,7 +13,7 @@ export default function createPet(require) {
   globalThis.__dshReact = React
   return {
     name: 'toolkit-pet-client',
-    inject: ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces'],
+    inject: ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces', 'sessions'],
     apply(ctx) {
       const { form } = findScopedForm(ctx, CONFIG_NS)
       const t = createTranslator(ctx)
@@ -75,6 +75,31 @@ export default function createPet(require) {
           delete root.dataset.dshIsland
         }
       }, 'toolkit-pet:island-mark')
+      // 别人把主视图切到这个会话时（系统通知点击跳转、侧栏点另一个会话），
+      // 灵动岛的状态也要跟着刷新：主视图持有该会话（`retainedBy.mainView > 0`）
+      // 就把它标记为已读。不监听宿主事件，不新增会话通道 —— 只读既有列表快照。
+      ctx.effect(() => {
+        const list = ctx.sessions?.list
+        if (typeof list?.subscribe !== 'function' || typeof list?.getSnapshot !== 'function') return undefined
+        let last
+        const sync = () => {
+          let id
+          try {
+            const byId = list.getSnapshot()?.byId ?? {}
+            for (const key of Object.keys(byId)) {
+              if ((byId[key]?.retainedBy?.mainView ?? 0) > 0) { id = key; break }
+            }
+          } catch {
+            return
+          }
+          if (typeof id !== 'string' || id === '' || id === last) return
+          last = id
+          Promise.resolve(connection.seen(id)).catch(warn)
+        }
+        const off = list.subscribe(sync)
+        sync()
+        return () => { off?.() }
+      }, 'toolkit-pet:seen-on-focus')
       ctx.effect(() => ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'desktop-pet', order: 25, label: () => t('nav'), locale: PET_NS }, Panel)), 'toolkit-pet:section')
       ctx.effect(() => registerSettingsIcon(ctx, 'desktop-pet', 'paw'), 'toolkit-pet:settings-icon')
     },
