@@ -268,12 +268,16 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   const installed = new Set()
   const pets = () => [{ id: 'qoduck-lab', name: 'Qoduck', source: 'builtin' }, ...(installed.has('boba') ? [{ id: 'petdex:boba', name: 'Boba', source: 'petdex' }] : [])]
   const catalog = Array.from({ length: 21 }, (_, index) => ({ slug: index === 0 ? 'boba' : `pet-${index + 1}`, displayName: index === 0 ? 'Boba' : `Pet ${index + 1}` }))
+  let events
+  let releaseInstall = () => {}
+  const installGate = new Promise((resolve) => { releaseInstall = resolve })
   globalThis.fetch = async (url, options = {}) => {
-    if (url.endsWith('/events')) { const body = new ReadableStream({ start() {} }); return { ok: true, body } }
+    if (url.endsWith('/events')) { const body = new ReadableStream({ start(controller) { events = controller } }); return { ok: true, body } }
     const action = options.body ? JSON.parse(options.body) : undefined
     if (action) calls.push(action)
-    if (action?.action === 'catalog') return new Response(JSON.stringify({ ok: true, total: catalog.length, matched: catalog.length, offset: action.offset, limit: action.limit, pets: catalog.slice(action.offset, action.offset + action.limit).map((pet) => ({ ...pet, installed: installed.has(pet.slug) })) }), { headers: { 'Content-Type': 'application/json' } })
-    if (action?.action === 'install') installed.add(action.slug)
+    if (action?.action === 'catalog') return new Response(JSON.stringify({ ok: true, total: catalog.length, matched: catalog.length, offset: action.offset, limit: action.limit, filter: action.filter, pets: catalog.slice(action.offset, action.offset + action.limit).map((pet) => ({ ...pet, installed: installed.has(pet.slug) })) }), { headers: { 'Content-Type': 'application/json' } })
+    // 安装这一步挂起，等测试塞一帧下载进度进来再放行 —— 用来验证按钮内的进度条。
+    if (action?.action === 'install') { installed.add(action.slug); await installGate }
     if (action?.action === 'remove') installed.delete(action.slug)
     return new Response(JSON.stringify({ ok: true, settings: DEFAULT_SETTINGS, pets: pets(), runtime: { status: 'stopped', available: false }, navigation: { seq: 0 } }), { headers: { 'Content-Type': 'application/json' } })
   }
@@ -290,7 +294,7 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   assert.deepEqual(document.querySelectorAll('select optgroup').length, 0, 'the native select is a flat list')
   const browse = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Browse library')
   await act(async () => { browse.click(); await flush() })
-  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 0, limit: 20 })
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 0, limit: 20, filter: 'all' })
   const dialogCard = document.querySelector('.tk-dialogCard')
   assert.ok(dialogCard, 'the library opens in the shared resizable dialog')
   assert.equal(dialogCard.style.width, '920px', 'the dialog keeps its own default width instead of filling the window')
@@ -307,6 +311,22 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   assert.ok(document.querySelector('.tk-dialogClose svg'), 'closing happens through the host icon in the header')
   assert.ok(document.querySelector('.tk-dialogFoot .tk-pageSummary'), 'the total sits on the same row as the page buttons')
   assert.equal(document.querySelector('.tk-dialogBody .tk-pagination'), null, 'the pager is not part of the scrolling body')
+  // 搜索按钮旁的筛选：默认「全部」，切到「已安装」后按筛选重新从第一页拉。
+  const chips = [...document.querySelectorAll('.pet-filter .pet-filterChip')]
+  assert.deepEqual(chips.map((chip) => chip.textContent), ['All', 'Installed', 'Not installed'], 'the install-state filter sits next to the search button')
+  assert.equal(chips[0].getAttribute('aria-pressed'), 'true', 'the filter defaults to All')
+  // 切筛选时搜索框与分页条必须是同一批 DOM 节点（不被销毁重建），否则会闪一下。
+  const searchInput = document.querySelector('.pet-search input')
+  const pager = document.querySelector('.tk-pagination')
+  assert.ok(searchInput && pager)
+  await act(async () => { chips[1].click(); await flush() })
+  assert.equal(document.querySelector('.pet-search input'), searchInput, 'the search field is not remounted when the filter changes')
+  assert.equal(document.querySelector('.tk-pagination'), pager, 'the pager is not remounted when the filter changes')
+  assert.equal(searchInput.disabled, false, 'the search field stays usable while a page loads')
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 0, limit: 20, filter: 'installed' })
+  assert.equal([...document.querySelectorAll('.pet-filter .pet-filterChip')][1].getAttribute('aria-pressed'), 'true')
+  await act(async () => { [...document.querySelectorAll('.pet-filter .pet-filterChip')][0].click(); await flush() })
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 0, limit: 20, filter: 'all' })
   const tiles = [...document.querySelectorAll('.pet-tile')]
   assert.equal(tiles.length, 20, 'one page shows 20 pets')
   const row = tiles[0]
@@ -318,17 +338,36 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   assert.ok(row.querySelector('.pet-tileActions button'), 'the install action sits in its own row under the copy')
   assert.match(thumb.getAttribute('style'), /\/api\/plugins\/dsh-toolkit\/pet\/asset\?slug=boba/)
   const install = [...row.querySelectorAll('button')].find((button) => button.textContent === 'Install')
+  const catalogCalls = () => calls.filter((call) => call.action === 'catalog').length
+  const catalogBefore = catalogCalls()
   await act(async () => { install.click(); await flush() })
   assert.deepEqual(calls.filter((call) => call.action === 'install'), [{ action: 'install', slug: 'boba' }])
+  // 安装中：按钮变成进度条，host 通过 SSE 推来的百分比直接显示在按钮中间。
+  const progress = () => document.querySelector('.pet-tileProgress')
+  assert.ok(progress(), 'the install button turns into a progress bar while downloading')
+  assert.equal(progress().textContent, '0%')
+  await act(async () => { events.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ petdex: { skipped: 0, progress: { slug: 'boba', phase: 'download', percent: 42 } } })}\n\n`)); await flush() })
+  assert.equal(progress().textContent, '42%', 'the percentage comes from the host download progress')
+  assert.equal(progress().getAttribute('aria-valuenow'), '42')
+  // 进度条是 span 扮的按钮：宽度撑满，底条按百分比铺。
+  assert.equal(progress().querySelector('.pet-tileProgressFill').style.width, '42%', 'the fill tracks the host percentage')
+  const fill = progress().querySelector('.pet-tileProgressFill')
+  assert.ok(fill, 'the progress bar paints a fill under the label')
+  releaseInstall()
+  await act(async () => { await flush(); await flush() })
+  assert.equal(progress(), null, 'the progress bar goes away once the install finishes')
+  assert.equal(catalogCalls(), catalogBefore, 'installing patches the card instead of reloading the whole page')
   const uninstall = [...document.querySelectorAll('.pet-tile button')].find((button) => button.textContent === 'Uninstall')
   assert.ok(uninstall, 'an installed pet offers removal')
   await act(async () => { uninstall.click(); await flush() })
   assert.deepEqual(calls.filter((call) => call.action === 'remove'), [{ action: 'remove', slug: 'boba' }])
+  assert.equal(catalogCalls(), catalogBefore, 'removing patches the card instead of reloading the whole page')
+  assert.ok([...document.querySelectorAll('.pet-tile button')].some((button) => button.textContent === 'Install'), 'the card flips back to Install right away')
   // 分页：第 2 页只请求剩下的 1 只。
   const next = [...document.querySelectorAll('.tk-pagination button')].find((button) => button.textContent === 'Next')
   assert.ok(next, 'the shared pagination control is rendered')
   await act(async () => { next.click(); await flush() })
-  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 20, limit: 20 })
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 20, limit: 20, filter: 'all' })
   assert.equal(document.querySelectorAll('.pet-tile').length, 1)
   const options = [...document.querySelectorAll('select option')].map((option) => option.textContent)
   assert.ok(options.includes('Qoduck'))

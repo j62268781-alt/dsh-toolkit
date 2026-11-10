@@ -55,12 +55,19 @@
   .pet-size > .pet-sectionHeader { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { .pet-switch span { transition: none; } }
-.pet-search { display: flex; gap: 8px; padding: 0; }
+.pet-search { display: flex; align-items: center; gap: 8px; padding: 0; }
+/* 搜索按钮旁的「全部 / 已安装 / 未安装」：分段控件，选中态用主色文字 + 底色。 */
+.pet-filter { display: flex; flex: none; align-items: center; gap: 2px; padding: 2px; border-radius: var(--dsw-radius-md, 8px); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); }
+.pet-filterChip { border: 0; border-radius: 6px; padding: 3px 9px; font-size: 12px; line-height: 16px; color: var(--dsw-alias-label-secondary); background: transparent; cursor: pointer; white-space: nowrap; }
+.pet-filterChip:hover:not(:disabled) { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-interactive-bg-hover); }
+.pet-filterChipActive { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-interactive-bg-active, var(--dsw-alias-interactive-bg-hover)); font-weight: 600; }
 .pet-search input { box-sizing: border-box; flex: 1; min-width: 0; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); padding: 6px 10px; }
 .pet-libraryNote { margin-top: 10px; }
 
 /* 宠物库弹窗：一行 6 个的紧凑宫格，每页 20 只；卡片=预览图 + 右侧名称/ID 与安装按钮。 */
 .pet-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+/* 重新搜索/翻页期间保留旧卡片、不压暗也不重建：只挡住点击，避免明暗切换又来一次「闪」。 */
+.pet-gridBusy { pointer-events: none; }
 .pet-grid .pet-tile { min-width: 0; }
 .pet-tile { display: flex; flex-direction: column; min-width: 0; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 10px; overflow: hidden; background: var(--dsw-alias-bg-layer-1); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease; }
 .pet-tile:hover, .pet-tile:focus-within { transform: translateY(-2px); border-color: var(--dsw-alias-border-l3); background: var(--dsw-alias-interactive-bg-hover); box-shadow: 0 8px 18px rgba(0, 0, 0, .16); }
@@ -75,7 +82,14 @@
 .pet-tileButton { width: 100%; height: 28px; padding: 0 8px; font-size: 11.5px; background: transparent; border: 0; border-top: 0.5px solid var(--dsw-alias-border-l2); border-radius: 0; opacity: .8; transition: opacity .18s ease, background-color .18s ease, border-color .18s ease, color .18s ease; }
 .pet-tile:hover .pet-tileButton, .pet-tile:focus-within .pet-tileButton { opacity: 1; }
 .pet-tile:hover .pet-tileButton:not(.pet-quietButton), .pet-tile:focus-within .pet-tileButton:not(.pet-quietButton) { color: var(--dsw-alias-label-primary-foreground); background: var(--dsw-alias-state-business-primary); border-top-color: transparent; }
-.pet-tile:hover .pet-tileButton.pet-quietButton, .pet-tile:focus-within .pet-tileButton.pet-quietButton { background: var(--dsw-alias-interactive-bg-hover); border-top-color: var(--dsw-alias-border-l3); }
+/* 卸载沿用 DSH 的删除语义：平时安静，hover 才转成危险红与危险底色。 */
+.pet-tileButton.pet-quietButton { color: var(--dsw-alias-label-secondary); }
+.pet-tile:hover .pet-tileButton.pet-quietButton, .pet-tile:focus-within .pet-tileButton.pet-quietButton { color: var(--dsw-alias-state-error-primary, #d92d20); background: var(--dsw-alias-interactive-bg-hover-danger, var(--dsw-alias-interactive-bg-hover)); border-top-color: var(--dsw-alias-border-l3); }
+/* 安装中的按钮本身变成进度条：底条铺一层主色，中间是百分比。 */
+/* 进度条是 span（不是 button）：必须自己撑满按钮原本的宽高，百分比才会真正居中。 */
+.pet-tileProgress { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 28px; box-sizing: border-box; padding: 0 8px; overflow: hidden; cursor: progress; opacity: 1; color: var(--dsw-alias-label-primary); border-top-color: var(--dsw-alias-border-l3); }
+.pet-tileProgressFill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--dsw-alias-state-business-primary); opacity: .22; transition: width .18s ease; }
+.pet-tileProgressText { position: relative; z-index: 1; font-variant-numeric: tabular-nums; }
 /* 弹窗底部的分页条固定在卡片底部，列表滚动时始终可见。 */
 .tk-dialogFoot .tk-pagination { width: 100%; }
-@media (prefers-reduced-motion: reduce) { .pet-tile, .pet-tileArt, .pet-tileButton { transition: none; } .pet-tile:hover, .pet-tile:focus-within { transform: none; } .pet-tile:hover .pet-tileArt { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pet-tile, .pet-tileArt, .pet-tileButton, .pet-tileProgressFill { transition: none; } .pet-tile:hover, .pet-tile:focus-within { transform: none; } .pet-tile:hover .pet-tileArt { transform: none; } }

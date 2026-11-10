@@ -15,7 +15,7 @@ async function request(path, options = {}) {
 
 /** Own one authenticated stream for all settings views and helper navigation. */
 export function createPetConnection({ onNavigation, onNavigationError = () => {} } = {}) {
-  let snapshot = { pets: [], sessions: [], runtime: { status: 'stopped' }, connected: false, loaded: false }
+  let snapshot = { pets: [], sessions: [], petdex: { skipped: 0, progress: null }, runtime: { status: 'stopped' }, connected: false, loaded: false }
   const listeners = new Set()
   let disposed = false
   let controller
@@ -35,6 +35,16 @@ export function createPetConnection({ onNavigation, onNavigationError = () => {}
     if (Array.isArray(value.pets)) patch.pets = value.pets.filter((pet) => typeof pet?.id === 'string' && typeof pet?.name === 'string')
     if (value.runtime && typeof value.runtime === 'object') patch.runtime = value.runtime
     if (value.settings && typeof value.settings === 'object') patch.settings = value.settings
+    // 宠物库的安装进度：只有正在装的那一只有值，装完 host 会把它置空。
+    if (value.petdex && typeof value.petdex === 'object') {
+      const progress = value.petdex.progress
+      patch.petdex = {
+        skipped: Number.isFinite(Number(value.petdex.skipped)) ? Number(value.petdex.skipped) : 0,
+        progress: progress && typeof progress.slug === 'string' && Number.isFinite(Number(progress.percent))
+          ? { slug: progress.slug, percent: Math.max(0, Math.min(100, Number(progress.percent))), phase: typeof progress.phase === 'string' ? progress.phase : '' }
+          : null,
+      }
+    }
     // 岛上那份「会话 → 状态」也留给客户端自己用：前台安静时据此自动清掉「有新结果」。
     if (Array.isArray(value.sessions)) patch.sessions = value.sessions.filter((row) => typeof row?.id === 'string')
     publish(patch)
@@ -57,7 +67,7 @@ export function createPetConnection({ onNavigation, onNavigationError = () => {}
   }
   // Petdex 宠物库：搜索只取一页，安装/卸载后 host 会重扫目录并广播新列表。
   // 目录分页走服务端切片：query 决定匹配集，offset/limit 只搬当前这一页。
-  const catalog = (query = '', offset = 0, limit = 20) => request(`/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'catalog', query, offset, limit }) })
+  const catalog = (query = '', offset = 0, limit = 20, filter = 'all') => request(`/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'catalog', query, offset, limit, filter }) })
   const installPet = (slug) => action('install', { slug })
   const removePet = (slug) => action('remove', { slug })
   // 用户已经看到某个会话（主视图切过去）：告诉 host 标记已读，岛上的提醒随即消失。
