@@ -19,11 +19,30 @@ export function createActivityFeed(ctx, onChange = () => {}, options = {}) {
   const removals = new Set()
   const disposers = []
   const abort = new AbortController()
+  const boots = []
+  // 会话摘要里的 running 是**持久化**的：DSH 被强杀/重启后，被杀掉那一回合的会话仍然带着
+  // running:true，光看摘要就会永远显示「正在工作」。真正的运行回合一定对应本进程里活着的
+  // Session，所以只信任「活会话 + 摘要」的交集，其余交给 api-session/status 事件。
+  const liveIds = new Set()
+  // 本进程确实发过事件（added/status/activity/error）的会话才算「这几分钟内真跑过」：插件启动时
+  // ctx.sessions.list() 可能还是空的，不能因为那一刻没列出来就把正在跑的会话当成结束态；
+  // 反过来，摘要里持久化的 running 单独出现（重启后残留）也不足以说明它现在还在跑。
+  const eventLive = new Set()
+  const LIVE_FRESH = 10 * 60 * 1000
+  let refreshing = false
   let disposed = false
   let loading = true
   let journal = []
   let current = []
   const warn = (message, error) => ctx.logger?.warn?.(`pet activity: ${message}: ${String(error)}`)
+  const refreshLive = () => {
+    liveIds.clear()
+    try {
+      for (const session of ctx.sessions.list()) liveIds.add(session.id)
+    } catch (error) {
+      warn('live session list unavailable', error)
+    }
+  }
   const ensure = (id) => {
     let row = rows.get(id)
     if (!row) {
@@ -52,8 +71,30 @@ export function createActivityFeed(ctx, onChange = () => {}, options = {}) {
     const seq = projections?.kind === 'sequenced' ? projections.asOfSeq : -Infinity
     for (const key of KEYS) if (Object.hasOwn(projections?.values ?? {}, key)) mergeProjection(row, key, projections.values[key], seq)
   }
+  // 摘要里的 running 是持久化状态，重启后可能残留。真正的权威来源是宿主会话状态
+  // （sessionController.state 的 `running`），它对每个可见会话都是现算的。
+  const refreshStates = async () => {
+    if (refreshing || disposed) return
+    refreshing = true
+    try {
+      for (const row of rows.values()) {
+        if (disposed) return
+        try {
+          const state = await ctx.sessionController.state({ sessionId: row.sessionId }, abort.signal)
+          if (disposed) return
+          row.verified = true
+          row.running = Boolean(state?.running)
+          if (row.running) row.error = undefined
+        } catch {}
+      }
+    } finally {
+      refreshing = false
+    }
+    publish()
+  }
   const publish = () => {
     if (disposed) return
+    refreshLive()
     const now = Date.now()
     const children = new Map()
     for (const row of rows.values()) {
@@ -65,7 +106,7 @@ export function createActivityFeed(ctx, onChange = () => {}, options = {}) {
     const aggregate = (row, seen = new Set()) => {
       if (seen.has(row.sessionId)) return { running: false, updatedAt: 0 }
       seen.add(row.sessionId)
-      const own = facts(row)
+      const own = facts(row, { liveIds, eventLive, now, freshMs: LIVE_FRESH })
       for (const child of children.get(row.sessionId) ?? []) {
         // 子行自己都陈旧了就不再参与聚合，否则几天前卡住的 subagent 会一直把父会话算成「正在跑」。
         if (now - child.updatedAt > STALE_RUNNING) continue
@@ -99,7 +140,7 @@ export function createActivityFeed(ctx, onChange = () => {}, options = {}) {
     try { onChange() } catch (error) { warn('subscriber failed', error) }
   }
   // 没有新事件时也要让过期会话自己消失（只依赖事件驱动的话，停止活动后就永远不会重算）。
-  const tick = setInterval(publish, TICK)
+  const tick = setInterval(() => { publish(); void refreshStates() }, TICK)
   tick.unref?.()
   const mutate = (operation) => {
     if (disposed) return
@@ -111,22 +152,30 @@ export function createActivityFeed(ctx, onChange = () => {}, options = {}) {
     const dispose = ctx.on(event, callback, { global: true, ...options })
     if (typeof dispose === 'function') disposers.push(dispose)
   }
-  listen('api-session/added', (summary) => mutate(() => mergeSummary(summary)))
+  listen('api-session/added', (summary) => mutate(() => {
+    if (summary?.sessionId) eventLive.add(summary.sessionId)
+    mergeSummary(summary)
+  }))
   listen('api-session/status', (id, running) => mutate(() => {
     if (removals.has(id)) return
+    // 能收到本进程的状态事件，本身就说明这个会话是活的（比摘要里的持久化 running 可信）。
+    eventLive.add(id)
     const row = ensure(id)
+    row.verified = true
     row.running = running
     if (running) { row.error = undefined; row.blank = false }
     row.updatedAt = Math.max(row.updatedAt, Date.now())
   }))
   listen('api-session/activity', (id, updatedAt) => mutate(() => {
     if (removals.has(id)) return
+    eventLive.add(id)
     const row = ensure(id)
     row.updatedAt = Math.max(row.updatedAt, time(updatedAt))
     row.error = undefined
   }))
   listen('api-session/error', (id, error) => mutate(() => {
     if (removals.has(id)) return
+    eventLive.add(id)
     const row = ensure(id)
     row.error = text(error) || 'Session failed'
     row.running = false
@@ -178,6 +227,14 @@ export function createActivityFeed(ctx, onChange = () => {}, options = {}) {
       loading = false
       journal = []
       publish()
+      // 插件往往比「当前会话恢复成活会话」更早启动：几次短延迟重算，别让真正在跑的会话
+      // 因为那一刻还不在 live 集合里而被当成结束态。
+      void refreshStates()
+      for (const delay of [1500, 5000, 15000]) {
+        const timer = setTimeout(publish, delay)
+        timer.unref?.()
+        boots.push(timer)
+      }
     }
   })()
   const markSeen = (sessionId, at = Date.now()) => {
@@ -193,6 +250,8 @@ export function createActivityFeed(ctx, onChange = () => {}, options = {}) {
       disposed = true
       abort.abort()
       clearInterval(tick)
+      for (const timer of boots) clearTimeout(timer)
+      boots.length = 0
       for (const dispose of disposers.reverse()) dispose?.()
       rows.clear()
       removals.clear()
@@ -206,7 +265,7 @@ function headerFields(session) {
   return session ? { origin: session.header.origin, parentSessionId: session.header.parentSession } : {}
 }
 
-function facts(row) {
+function facts(row, { liveIds = new Set(), eventLive = new Set(), now = Date.now(), freshMs = 10 * 60 * 1000 } = {}) {
   const inbox = row.values.inbox
   const queued = (inbox?.['next-turn']?.length ?? 0) + (inbox?.['next-step']?.length ?? 0) > 0
   const goal = row.values.goal
@@ -215,7 +274,9 @@ function facts(row) {
   const waiting = goal?.goal?.phase === 'paused' || goal?.goal?.phase === 'blocked' || exhausted && !row.running && !queued
   const pending = [...row.pending.values()].sort((a, b) => (a.kind === 'permission' ? 0 : 1) - (b.kind === 'permission' ? 0 : 1))[0]
     ?? (row.values.userQuestions?.active?.length ? { kind: 'question', detail: text(row.values.userQuestions.active[0].questions?.[0]?.question) || 'Answer requested' } : undefined)
-  return { running: Boolean(row.running || queued || activeGoal && !exhausted), waiting, pending, error: row.error,
-    detail: waiting ? text(goal?.goal?.blockedReason?.message) || (exhausted ? 'Goal round limit reached' : 'Goal paused') : queued ? 'Input queued' : activeGoal ? 'Goal in progress' : row.running ? 'Working' : 'Turn finished',
+  // 「现在还在跑」= 本进程见过它的事件，或它确实是活会话且摘要刚刚更新过。
+  const live = row.verified === true || eventLive.has(row.sessionId) || liveIds.has(row.sessionId) && now - row.updatedAt <= freshMs
+  return { running: Boolean(row.running && live || queued || activeGoal && !exhausted), waiting, pending, error: row.error,
+    detail: waiting ? text(goal?.goal?.blockedReason?.message) || (exhausted ? 'Goal round limit reached' : 'Goal paused') : queued ? 'Input queued' : activeGoal ? 'Goal in progress' : row.running && live ? 'Working' : 'Turn finished',
     updatedAt: Math.max(row.updatedAt, time(goal?.updatedAt)) }
 }

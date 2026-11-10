@@ -54,6 +54,11 @@ export function createPetConnection({ onNavigation, onNavigationError = () => {}
     await request('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'seen', sessionId }) })
     return refresh()
   }
+  // 诊断用：客户端半部的会话能力实况（哪些来源可用），host 只把它挂在私有 /state 上。
+  const diag = async (payload) => {
+    await request('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'diag', payload }) })
+    return refresh()
+  }
   const connect = async () => {
     if (disposed) return
     controller = new AbortController()
@@ -93,7 +98,7 @@ export function createPetConnection({ onNavigation, onNavigationError = () => {}
   return {
     getSnapshot: () => snapshot,
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener) },
-    refresh, action, seen,
+    refresh, action, seen, diag,
     start() { void connect() },
     dispose() {
       disposed = true

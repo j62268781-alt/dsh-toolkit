@@ -75,30 +75,93 @@ export default function createPet(require) {
           delete root.dataset.dshIsland
         }
       }, 'toolkit-pet:island-mark')
-      // 别人把主视图切到这个会话时（系统通知点击跳转、侧栏点另一个会话），
-      // 灵动岛的状态也要跟着刷新：主视图持有该会话（`retainedBy.mainView > 0`）
-      // 就把它标记为已读。不监听宿主事件，不新增会话通道 —— 只读既有列表快照。
+      // 别人把主视图切到这个会话时（系统通知点击跳转、侧栏点另一个会话），灵动岛的状态也要
+      // 跟着刷新：读到「主视图持有哪个会话」就把它标记成已读。只读既有快照，不新增事件通道。
+      // 三路来源互为兜底（列表快照 → retainInfo → 当前会话的本地记录），并每秒重扫一次，
+      // 免得任何一路的订阅语义变化就让整条链路静默失效。
       ctx.effect(() => {
-        const list = ctx.sessions?.list
-        if (typeof list?.subscribe !== 'function' || typeof list?.getSnapshot !== 'function') return undefined
+        const sessions = ctx.sessions
+        const list = sessions?.list
+        const ids = () => {
+          try {
+            const snap = list?.getSnapshot?.()
+            if (Array.isArray(snap?.ids)) return snap.ids
+            return Object.keys(snap?.byId ?? {})
+          } catch {
+            return []
+          }
+        }
+        const mainView = () => {
+          try {
+            const byId = list?.getSnapshot?.()?.byId ?? {}
+            for (const key of Object.keys(byId)) {
+              if ((byId[key]?.retainedBy?.mainView ?? 0) > 0) return key
+            }
+          } catch {}
+          try {
+            for (const id of ids()) {
+              if ((sessions?.retainInfo?.(id)?.getSnapshot?.()?.retainedBy?.mainView ?? 0) > 0) return id
+            }
+          } catch {}
+          try {
+            const raw = globalThis.localStorage?.getItem('dsh.sessions.current')
+            if (!raw) return undefined
+            const parsed = JSON.parse(raw)
+            const id = typeof parsed === 'string' ? parsed : parsed?.sessionId
+            if (typeof id === 'string' && id) return id
+          } catch {}
+          return undefined
+        }
         let last
         const sync = () => {
-          let id
-          try {
-            const byId = list.getSnapshot()?.byId ?? {}
-            for (const key of Object.keys(byId)) {
-              if ((byId[key]?.retainedBy?.mainView ?? 0) > 0) { id = key; break }
-            }
-          } catch {
-            return
-          }
+          const id = mainView()
           if (typeof id !== 'string' || id === '' || id === last) return
           last = id
           Promise.resolve(connection.seen(id)).catch(warn)
         }
-        const off = list.subscribe(sync)
+        const offs = []
+        if (typeof list?.subscribe === 'function') offs.push(list.subscribe(sync))
+        try {
+          for (const id of ids()) {
+            const observable = sessions?.retainInfo?.(id)
+            if (typeof observable?.subscribe === 'function') offs.push(observable.subscribe(sync))
+          }
+        } catch {}
+        const timer = setInterval(sync, 1000)
+        timer.unref?.()
+        // 一次性的能力自报：只进 host 私有 /state，用来确认客户端到底读到了什么。
+        const report = () => {
+          try {
+            const snap = list?.getSnapshot?.()
+            const byId = snap?.byId ?? {}
+            const first = Object.keys(byId)[0]
+            void connection.diag({
+              hasSessions: Boolean(sessions),
+              hasList: Boolean(list),
+              canSubscribe: typeof list?.subscribe === 'function',
+              canSnapshot: typeof list?.getSnapshot === 'function',
+              canRetainInfo: typeof sessions?.retainInfo === 'function',
+              count: ids().length,
+              rowKeys: first ? Object.keys(byId[first] ?? {}).slice(0, 24) : [],
+              retainedKeys: first ? Object.keys(byId[first]?.retainedBy ?? {}) : [],
+              current: String(globalThis.localStorage?.getItem('dsh.sessions.current') ?? '').slice(0, 120),
+              resolved: String(mainView() ?? ''),
+            }).catch(warn)
+          } catch (error) { warn(error) }
+        }
+        const reportTimer = setTimeout(report, 3000)
+        reportTimer.unref?.()
         sync()
-        return () => { off?.() }
+        const wake = () => sync()
+        globalThis.addEventListener?.('focus', wake)
+        globalThis.addEventListener?.('visibilitychange', wake)
+        return () => {
+          for (const off of offs) { try { off?.() } catch {} }
+          clearInterval(timer)
+          clearTimeout(reportTimer)
+          globalThis.removeEventListener?.('focus', wake)
+          globalThis.removeEventListener?.('visibilitychange', wake)
+        }
       }, 'toolkit-pet:seen-on-focus')
       ctx.effect(() => ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'desktop-pet', order: 25, label: () => t('nav'), locale: PET_NS }, Panel)), 'toolkit-pet:section')
       ctx.effect(() => registerSettingsIcon(ctx, 'desktop-pet', 'paw'), 'toolkit-pet:settings-icon')

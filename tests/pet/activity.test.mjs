@@ -22,6 +22,7 @@ function fixture(items = [], options = {}) {
       snapshot(session, keys) { assert.deepEqual(keys, ['title', 'sessionListMetadata', 'inbox', 'goal', 'userQuestions']); if (options.projectionError) throw new Error('projection unavailable'); return values.get(session.id) ?? { asOfSeq: 0, values: {} } },
     },
   }
+  for (const item of items) live.set(item.sessionId, { id: item.sessionId, header: { origin: item.origin, parentSession: item.parentSessionId } })
   let notifications = 0
   const feed = createActivityFeed(ctx, () => { notifications++ }, options.feed)
   return { feed, ctx, warnings, listeners, projections,
@@ -29,6 +30,7 @@ function fixture(items = [], options = {}) {
     emit(event, ...args) { for (const { listener } of listeners.get(event) ?? []) listener(...args) },
     project(id, key, value, seq = 2) { const session = live.get(id) ?? { id, header: {} }; for (const listener of projections) listener(session, key, value, seq) },
     live(id, header = {}, block = { asOfSeq: 2, values: {} }) { const session = { id, header }; live.set(id, session); values.set(id, block); return session },
+    unlive(id) { live.delete(id) },
     request(event, request, next) { const [{ listener, config }] = listeners.get(event); assert.equal(config.global, true); assert.equal(config.prepend, true); return listener(request, next) },
   }
 }
@@ -183,8 +185,11 @@ test('drops stale sessions, even stuck running ones, but never a pending request
     row('fresh-running', { running: true, updatedAt: Date.now() - 5 * 60_000 }),
     row('fresh-done', { updatedAt: Date.now() - 5 * 60_000 }),
     row('later-running', { running: true, updatedAt: Date.now() - 2 * 60 * 60_000 }),
-  ]); await f.feed.ready
-  assert.deepEqual(f.feed.snapshot().map(({ id }) => id), ['question', 'fresh-running', 'later-running', 'fresh-done'])
+  ])
+  // 2 小时的长回合只有在本进程里见过它的状态事件时才算还在跑（摘要里过期的 running 不算）。
+  f.emit('api-session/status', 'later-running', true)
+  await f.feed.ready
+  assert.deepEqual(f.feed.snapshot().map(({ id }) => id), ['question', 'later-running', 'fresh-running', 'fresh-done'])
   f.feed.dispose()
 })
 
@@ -195,6 +200,18 @@ test('a stuck subagent cannot keep its ancient parent session alive', async () =
     row('child', { origin: 'subagent', parentSessionId: 'parent', running: true, updatedAt: longAgo }),
   ]); await f.feed.ready
   assert.deepEqual(f.feed.snapshot(), [])
+  f.feed.dispose()
+})
+
+test('a persisted running flag on a Session that is no longer live is not work', async () => {
+  // DSH 被强杀后：被杀那一回合的摘要仍带 running:true，但本进程里没有对应活会话。
+  const f = fixture([row('zombie', { running: true, updatedAt: Date.now() - 2 * 60_000 })])
+  f.unlive('zombie'); await f.feed.ready
+  assert.deepEqual(f.feed.snapshot().map(({ id, status, running, detail }) => ({ id, status, running, detail })),
+    [{ id: 'zombie', status: 'completed', running: false, detail: 'Turn finished' }])
+  // 真正开始跑：本进程收到状态事件就恢复成「正在工作」。
+  f.emit('api-session/status', 'zombie', true)
+  assert.deepEqual(f.feed.snapshot().map(({ id, status, detail }) => ({ id, status, detail })), [{ id: 'zombie', status: 'running', detail: 'Working' }])
   f.feed.dispose()
 })
 

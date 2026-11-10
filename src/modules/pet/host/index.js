@@ -57,11 +57,13 @@ export async function createPetService(ctx, initialConfig = {}) {
   }
   const pets = await loadPets()
   let manager, feed, bridge
+  let clientDiag
   const snapshot = (privateState = false) => ({
     ok: true, settings,
     pets: privateState ? pets : pets.map(({ id, name }) => ({ id, name })),
     runtime: manager?.state || { status: 'stopped', available: false },
     sessions: feed?.snapshot() || [], navigation,
+    ...(privateState && clientDiag ? { client: clientDiag } : {}),
   })
   const publish = () => {
     if (disposed) return
@@ -77,6 +79,28 @@ export async function createPetService(ctx, initialConfig = {}) {
       return { ok: true }
     }
     if (input.action === 'position') return { ok: true }
+    if (input.action === 'diag') {
+      // 客户端半部自报「会话来源是否可用」；只进私有 /state，不进公开 API，也不落盘。
+      clientDiag = input.payload && typeof input.payload === 'object' ? input.payload : {}
+      if (clientDiag.probe === 'states') {
+        // 诊断用：直接回读每个会话的宿主状态，用来确认 active/running 的真实语义。
+        const { items } = await ctx.sessionController.list({})
+        const controller = new AbortController()
+        const states = []
+        for (const item of items) {
+          if (!item.running) continue
+          if (states.length >= 8) break
+          try {
+            const state = await ctx.sessionController.state({ sessionId: item.sessionId }, controller.signal)
+            states.push({ id: item.sessionId, updatedAt: item.updatedAt, summaryRunning: item.running, active: state?.active, running: state?.running, queue: state?.queue?.length, pending: state?.pendingInput })
+          } catch (error) {
+            states.push({ id: item.sessionId, error: String(error && error.message || error) })
+          }
+        }
+        return { ok: true, runningSummary: items.filter((item) => item.running).length, total: items.length, states }
+      }
+      return { ok: true }
+    }
     const sessionId = input.sessionId
     if (input.action === 'seen') {
       // 主视图已经切到这个会话（通知点击、侧栏切换、或岛自己点开）：立刻当作已读，

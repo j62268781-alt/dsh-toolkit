@@ -32,7 +32,7 @@ test('helper bridge binds loopback and requires the exact bearer capability', as
     const result = await f.json('/state', { headers: { authorization } })
     assert.deepEqual(result, { status: 403, body: { error: 'Forbidden' } })
   }
-  assert.deepEqual(await f.json('/state'), { status: 200, body: { settings: { petEnabled: true }, sessions: [] } })
+  assert.deepEqual(await f.json('/state'), { status: 200, body: { settings: { petEnabled: true }, sessions: [], streams: 0, requests: 0 } })
 })
 
 test('bridge rejects browser origins even with a valid capability, before dispatching actions', async (t) => {
