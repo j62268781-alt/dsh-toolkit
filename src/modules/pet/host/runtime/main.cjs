@@ -228,13 +228,13 @@ app.whenReady().then(async () => {
         const visible = await entry.win.webContents.executeJavaScript(`(async () => {
           const cap = document.getElementById('cap')
           if (!document.body.classList.contains('expanded')) cap.click()
-          ;(document.querySelector('.island-footer .island-button.primary') || document.querySelector('.session-open') || cap).focus()
+          ;(document.querySelector('.session .session-open') || cap).focus()
           await new Promise(resolve => setTimeout(resolve, 750))
           await Promise.all(document.getAnimations().filter(animation => animation.effect?.getComputedTiming().endTime !== Infinity).map(animation => animation.finished.catch(() => {})))
           await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
           const body = document.getElementById('activity'), surface = document.getElementById('surface')
           const style = getComputedStyle(body), rect = body.getBoundingClientRect(), bounds = surface.getBoundingClientRect()
-          const buttons = [...document.querySelectorAll('.session .session-open, .island-footer .island-button')]
+          const buttons = [...document.querySelectorAll('.session .session-open')]
           const spriteBounds = document.getElementById('sprite').getBoundingClientRect(), badgeBounds = document.getElementById('badge').getBoundingClientRect()
           const badgeText = document.getElementById('badge-text').textContent
           const camera = document.getElementById('camera-space').getBoundingClientRect()
@@ -246,7 +246,6 @@ app.whenReady().then(async () => {
             sessionCount: document.querySelectorAll('.session').length,
             form: document.body.dataset.form || '',
             rows: document.querySelectorAll('.island-row').length,
-            footer: Boolean(document.querySelector('.island-footer')),
             pending: document.body.dataset.pending || '',
             buttonsVisible: buttons.length > 0 && buttons.every(button => { const box = button.getBoundingClientRect(); return box.width > 0 && box.height > 0 && box.bottom <= bounds.bottom && box.top >= bounds.top }),
             noScroll: Boolean(body) && body.scrollHeight <= body.clientHeight + 1 && body.scrollWidth <= body.clientWidth + 1,
@@ -254,7 +253,7 @@ app.whenReady().then(async () => {
             badgeText,
           }
         })()`)
-        if (!visible.expanded || !visible.visible || !visible.cameraExcluded || visible.opacity < .99 || visible.filter !== 'blur(0px)' && visible.filter !== 'none' || !visible.sessionCount || !['list', 'detail'].includes(visible.form) || visible.rows > 3 || visible.form === 'detail' && !visible.footer || !visible.buttonsVisible || !visible.noScroll || !visible.badgeText) throw new Error(`Island ${key} did not visibly expand: ${JSON.stringify(visible)}`)
+        if (!visible.expanded || !visible.visible || !visible.cameraExcluded || visible.opacity < .99 || visible.filter !== 'blur(0px)' && visible.filter !== 'none' || !visible.sessionCount || !['list', 'detail'].includes(visible.form) || visible.rows > 3 || !visible.buttonsVisible || !visible.noScroll || !visible.badgeText) throw new Error(`Island ${key} did not visibly expand: ${JSON.stringify(visible)}`)
         report.islands.push({ key, displayId: entry.display.id, screenBounds: entry.display.bounds, workArea: entry.display.workArea, windowBounds: entry.win.getBounds(), notch: entry.display.notch, ...visible })
         await captureSurface(entry, `${key}-surface.png`)
       }

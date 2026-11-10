@@ -8,8 +8,8 @@ const animations = {
   idle: [0,[280,110,110,140,140,320]], runningRight:[1,[120,120,120,120,120,120,120,220]], runningLeft:[2,[120,120,120,120,120,120,120,220]], waving:[3,[140,140,140,280]], jumping:[4,[140,140,140,140,280]], failed:[5,[140,140,140,140,140,140,140,240]], waiting:[6,[150,150,150,150,150,260]], running:[7,[120,120,120,120,120,220]], review:[8,[150,150,150,150,150,280]],
 }
 const words = {
-  zh: { idle:'暂时没有会话活动', running:'正在执行', waiting:'等待你的处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', later:'稍后', handle:'打开会话处理', todo:'待办', approval:'审批请求', question:'待回答的问题', hint:'打开会话即可批准或回答', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。', greeting:'hi~', live:'实时活动' },
-  en: { idle:'No active sessions', running:'Running', waiting:'Waiting for you', failed:'Turn failed', completed:'Turn complete', open:'Open session', later:'Later', handle:'Open to handle', todo:'Todo', approval:'Approval request', question:'Question', hint:'Open the session to approve or answer', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.', greeting:'hi~', live:'Live activity' },
+  zh: { idle:'暂时没有会话活动', running:'正在执行', waiting:'等待你的处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', todo:'待办', approval:'审批请求', question:'待回答的问题', hint:'打开会话即可批准或回答', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。', greeting:'hi~', live:'实时活动' },
+  en: { idle:'No active sessions', running:'Running', waiting:'Waiting for you', failed:'Turn failed', completed:'Turn complete', open:'Open session', todo:'Todo', approval:'Approval request', question:'Question', hint:'Open the session to approve or answer', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.', greeting:'hi~', live:'Live activity' },
 }
 // Qoder 的收起态只有「宠物 + 状态徽标」，状态靠短语 + 语义色表达，数量进 tooltip。
 const badges = {
@@ -75,13 +75,6 @@ function setExpanded(value) {
   clearTimeout(hoverTimer)
   layout()
 }
-// 用户点「稍后」时是明确的收起动作：不再等 hover/typing 守卫，并且马上把透明区域还给下面的 App。
-function dismiss() {
-  hovered = false
-  clearTimeout(hoverTimer)
-  setExpanded(false)
-  release()
-}
 function element(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node }
 async function action(value, button) {
   if (button) button.disabled = true
@@ -90,6 +83,15 @@ async function action(value, button) {
   $('error').textContent = result.ok ? '' : t('error')
   layout()
   return result.ok
+}
+// 展开态没有单独的 footer：整行 / 整卡本身就是「打开会话」入口，打开成功后立刻收起，
+// 把窗口空间还给桌面（用户 2026-11-10 反馈：不要「稍后 / 打开会话」按钮）。
+async function openAndCollapse(session, button) {
+  if (!await action({ action: 'open', sessionId: session.id }, button)) return
+  hovered = false
+  clearTimeout(hoverTimer)
+  setExpanded(false)
+  release()
 }
 
 // 展开态两形态互斥（对齐 Qoder 的内容模型）：
@@ -102,15 +104,6 @@ function formOf() {
 }
 function countLabel(total) {
   return state?.settings.language === 'en' ? `${total} ${total === 1 ? 'session' : 'sessions'}` : `${total} 个会话`
-}
-function hueOf(text) { let hue = 0; for (const char of String(text)) hue = (hue * 31 + char.codePointAt(0)) % 360; return hue }
-function initialOf(session) { const text = String(session.title || '').trim(); return text ? [...text][0].toUpperCase() : '·' }
-// 头像没有真实图片源，用会话 id 派生的确定性色相 + 首字母，重绘时不会闪色。
-function avatarOf(session, large) {
-  const node = element('span', initialOf(session), large ? 'avatar avatar-large' : 'avatar')
-  node.setAttribute('aria-hidden', 'true')
-  node.style.setProperty('--avatar-hue', String(hueOf(session.id)))
-  return node
 }
 // Qoder 的相对时间：刚发生、分钟级、小时级、天级，更早退回日期。
 function stamp(value) {
@@ -126,7 +119,14 @@ function stamp(value) {
   if (days < 7) return en ? `${days} d ago` : `${days} 天前`
   return new Date(time).toLocaleDateString(en ? 'en' : 'zh-CN', { month: 'numeric', day: 'numeric' })
 }
-// 形态 A：≤3 行运行中列表。两行都是单行省略，没有 footer、没有输入框、不滚动。
+// 宿主给 detail 的几个固定英文短语（core.cjs 里的兜底文案）在本地化后和状态短语重复，
+// 只在 detail 有真正内容时才拼接，避免出现「正在执行 · Working」这种中英混排。
+const genericDetails = new Set(['Working', 'Turn finished', 'Input queued', 'Goal in progress', 'Goal paused', 'Goal round limit reached'])
+function summarise(session) {
+  const detail = String(session.detail || '').trim()
+  return detail && !genericDetails.has(detail) ? detail : ''
+}
+// 形态 A：≤3 行运行中列表。整行是一枚打开会话的按钮（hover 高亮），两行都单行省略。
 function runningRow(session) {
   const row = element('div', '', 'session island-row')
   row.dataset.session = session.id
@@ -134,13 +134,12 @@ function runningRow(session) {
   open.type = 'button'
   open.title = session.title || t(session.status)
   open.setAttribute('aria-label', `${session.title || t(session.status)} · ${t('open')}`)
-  open.append(avatarOf(session, false))
   const lines = element('span', '', 'row-lines')
   lines.append(element('strong', session.title || t(session.status), 'title'))
-  const detail = String(session.detail || '').trim(), phrase = t(session.status)
+  const phrase = t(session.status), detail = summarise(session)
   lines.append(element('small', detail && detail !== phrase ? `${phrase} · ${detail}` : phrase, 'note'))
   open.append(lines)
-  open.onclick = () => action({ action: 'open', sessionId: session.id }, open)
+  open.onclick = () => openAndCollapse(session, open)
   row.append(open)
   return row
 }
@@ -149,59 +148,41 @@ function runningForm(sessions) {
   for (const session of sessions.slice(0, 3)) list.append(runningRow(session))
   return list
 }
-// 形态 B：单会话详情 = 38px 头像 + 标题/状态短语 + 三行说明 + 相对时间，待办内联在说明下面。
-function identityButton(session) {
-  const open = element('button', '', 'session-open island-identity')
-  open.type = 'button'
-  open.title = t('open')
-  open.setAttribute('aria-label', `${session.title || t(session.status)} · ${t('open')}`)
-  open.append(avatarOf(session, true))
-  const text = element('span', '', 'identity-text')
-  const head = element('span', '', 'identity-head')
-  head.append(element('strong', session.title || t(session.status), 'title'))
-  head.append(element('span', session.pendingKind ? t('waiting') : t(session.status), 'status-phrase'))
-  text.append(head)
-  text.append(element('span', session.detail || (session.pendingKind ? t('waiting') : t(session.status)), 'detail'))
-  open.append(text)
-  const when = stamp(session.updatedAt)
-  if (when) open.append(element('time', when, 'stamp'))
-  open.onclick = () => action({ action: 'open', sessionId: session.id }, open)
-  return open
-}
+// 形态 B：单会话详情 —— 整张卡就是一枚按钮：标题行（标题 + 状态短语 + 相对时间）、
+// 三行说明，待办内联在说明下面。没有头像、没有 footer，点击整卡直接打开会话。
 function pendingBlock(session) {
   const question = session.pendingKind === 'question'
-  const block = element('div', '', 'island-pending')
+  // 待办块渲染在 button 内部，所以只用 phrasing 元素（CSS 里按块级排版）。
+  const block = element('span', '', 'island-pending')
   block.dataset.kind = question ? 'question' : 'permission'
-  const head = element('div', '', 'pending-head')
+  const head = element('span', '', 'pending-head')
   head.append(element('span', t('todo'), 'pending-tag'))
   head.append(element('span', question ? t('question') : t('approval'), 'pending-kind'))
   block.append(head)
   const body = String(session.detail || '').trim()
-  if (body) block.append(element('p', body, 'pending-body'))
-  // 宿主没有公开的批准 / 回答接口（见 docs/pet/README.md）：这里的入口只负责把人带回原会话，
+  if (body) block.append(element('span', body, 'pending-body'))
+  // 宿主没有公开的批准 / 回答接口（见 docs/pet/README.md）：整卡只负责把人带回原会话，
   // 绝不伪造 allow/deny —— 审批必须由会话里的 answerer 决定。
-  block.append(element('p', t('hint'), 'pending-hint'))
+  block.append(element('span', t('hint'), 'pending-hint'))
   return block
-}
-function footerBar(session) {
-  const bar = element('footer', '', 'island-footer')
-  const later = element('button', t('later'), 'island-button ghost')
-  later.type = 'button'
-  later.setAttribute('aria-label', t('later'))
-  later.onclick = () => dismiss()
-  const pending = Boolean(session.pendingKind)
-  const open = element('button', pending ? t('handle') : t('open'), pending ? 'island-button primary is-pending' : 'island-button primary')
-  open.type = 'button'
-  open.onclick = () => action({ action: 'open', sessionId: session.id }, open)
-  bar.append(later, open)
-  return bar
 }
 function detailForm(session) {
   const card = element('article', '', 'session session-detail')
   card.dataset.session = session.id
-  card.append(identityButton(session))
-  if (session.pendingKind) card.append(pendingBlock(session))
-  card.append(footerBar(session))
+  const open = element('button', '', 'session-open island-detail-card')
+  open.type = 'button'
+  open.title = session.title || t(session.status)
+  open.setAttribute('aria-label', `${session.title || t(session.status)} · ${t('open')}`)
+  const head = element('span', '', 'detail-head')
+  head.append(element('strong', session.title || t(session.status), 'title'))
+  head.append(element('span', session.pendingKind ? t('waiting') : t(session.status), 'status-phrase'))
+  const when = stamp(session.updatedAt)
+  if (when) head.append(element('time', when, 'stamp'))
+  open.append(head)
+  open.append(element('span', summarise(session) || (session.pendingKind ? t('waiting') : t(session.status)), 'detail'))
+  if (session.pendingKind) open.append(pendingBlock(session))
+  open.onclick = () => openAndCollapse(session, open)
+  card.append(open)
   return card
 }
 function emptyForm() { return element('p', t('idle'), 'island-empty') }

@@ -37,9 +37,11 @@ test('actions exclude grants and reject malformed prompts and coordinates', () =
   assert.deepEqual(validatedAction({ action:'prompt', sessionId:'x', text:' hello ', token:'secret' }), { action:'prompt',sessionId:'x',text:'hello' })
 })
 test('island geometry reserves native camera space and a stable expanded width', () => {
-  assert.deepEqual(islandGeometry(), { compact:280,expanded:390,height:38 })
-  assert.deepEqual(islandGeometry({}, { width:185,height:32 }), { compact:360,expanded:390,height:38 })
-  assert.equal(islandGeometry({ islandWidth:150 }).expanded, 390)
+  assert.deepEqual(islandGeometry(), { compact:280,expanded:552,height:38 })
+  assert.deepEqual(islandGeometry({}, { width:185,height:32 }), { compact:360,expanded:590,height:38 })
+  assert.equal(islandGeometry({ islandWidth:150 }).expanded, 552)
+  // 屏幕太窄时按屏宽封顶，展开面板不能超出显示器。
+  assert.equal(islandGeometry({}, { width:185,height:32 }, { width:600,height:900 }).expanded, 480)
   assert.equal(islandGeometry({ islandWidth:75 }).compact, 210)
   assert.ok(islandGeometry({ islandHeight:75 }, { width:185,height:32 }).height >= 36)
 })
@@ -72,7 +74,7 @@ test('SSE decoder handles fragmented UTF8, comments and CRLF', async () => {
   await consumeEvents(body, item => seen.push(item), new AbortController().signal)
   assert.deepEqual(seen,[{ title:'小鸭' },{ revision:2 }])
 })
-test('real renderer focuses one session with an inline todo and only opens it instead of answering for the host', async () => {
+test('real renderer focuses one session with an inline todo on a single clickable card', async () => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url),'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url),'utf8')
   const dom = new JSDOM(html,{ runScripts:'outside-only',url:'file:///renderer.html',pretendToBeVisual:true })
@@ -94,28 +96,31 @@ test('real renderer focuses one session with an inline todo and only opens it in
   assert.equal(doc.querySelector('.island-pending').dataset.kind,'permission')
   assert.equal(doc.querySelector('.pending-body').textContent,'Run: rm -rf build')
   assert.equal(doc.querySelector('.stamp').textContent,'2 min ago')
+  // 两形态都不再有头像、footer 与内联输入：整张卡就是唯一的「打开会话」入口。
+  assert.equal(doc.querySelector('.avatar'),null)
+  assert.equal(doc.querySelector('.island-footer'),null)
+  assert.equal(doc.querySelectorAll('.island-button').length,0)
   assert.equal(doc.querySelectorAll('form').length,0)
-  assert.deepEqual([...doc.querySelectorAll('.island-footer .island-button')].map(button=>button.textContent),['Later','Open to handle'])
+  const card = doc.querySelector('.session-detail > button.session-open.island-detail-card')
+  assert.ok(card,'the whole detail card is one button')
+  assert.equal(doc.querySelectorAll('.session-open').length,1)
   assert.equal(doc.getElementById('workbench'),null)
   assert.equal(doc.querySelector('.actions'),null)
-  doc.querySelector('.session-open').click()
-  assert.deepEqual(JSON.parse(JSON.stringify(actions[0])),{ action:'open',sessionId:'a' })
-  // 宿主没有公开的批准 / 回答接口，主按钮同样只能把人带回会话，绝不伪造 allow / deny。
-  doc.querySelector('.island-button.primary').click()
-  assert.deepEqual(JSON.parse(JSON.stringify(actions[1])),{ action:'open',sessionId:'a' })
   doc.getElementById('cap').click()
   assert.equal(doc.body.classList.contains('expanded'),true)
-  doc.querySelector('.island-button.ghost').click()
-  assert.equal(doc.body.classList.contains('expanded'),false,'Later dismisses immediately')
+  card.click()
+  await new Promise(resolve=>setImmediate(resolve))
+  assert.equal(doc.body.classList.contains('expanded'),false,'opening a session collapses the island again')
+  // 宿主没有公开的批准 / 回答接口：整卡只能把人带回会话，绝不伪造 allow / deny。
+  assert.deepEqual(JSON.parse(JSON.stringify(actions)),[{ action:'open',sessionId:'a' }])
   update({ ...state,sessions:[] })
   assert.equal(doc.querySelectorAll('.session').length,0)
   assert.equal(doc.querySelectorAll('.session-open').length,0)
   assert.equal(doc.body.dataset.form,'empty')
-  assert.equal(actions.length,2)
   dom.window.close()
 })
 
-test('running sessions expand as a three-row list with no footer, input or scrolling', async (t) => {
+test('running sessions expand as a three-row list with no avatar, footer, input or scrolling', async (t) => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
   const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
@@ -133,14 +138,19 @@ test('running sessions expand as a three-row list with no footer, input or scrol
   assert.equal(doc.querySelectorAll('.island-row').length, 3, 'the list never grows past three rows')
   assert.equal(doc.querySelectorAll('.session-open').length, 3)
   assert.equal(doc.querySelector('.island-footer'), null)
+  assert.equal(doc.querySelector('.avatar'), null, 'session rows have no initial-letter avatar')
   assert.equal(doc.querySelectorAll('form').length, 0, 'the list form has no inline input')
   assert.equal(doc.getElementById('session-count').textContent, '5 个会话')
   const first = doc.querySelector('.island-row .session-open')
-  assert.equal(first.querySelector('.avatar').textContent, 'S')
+  assert.deepEqual([...first.children].map(node => node.className), ['row-lines'], 'the row is a single column: only the two text lines')
   assert.equal(first.querySelector('.title').textContent, 'Session 0')
   assert.equal(first.querySelector('.note').textContent, '正在执行 · step 0')
+  doc.getElementById('cap').click()
+  assert.equal(doc.body.classList.contains('expanded'), true)
   first.click()
-  assert.deepEqual(JSON.parse(JSON.stringify(actions[0])), { action: 'open', sessionId: 's0' })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual(JSON.parse(JSON.stringify(actions)), [{ action: 'open', sessionId: 's0' }])
+  assert.equal(doc.body.classList.contains('expanded'), false, 'opening a row collapses the island again')
 })
 
 test('collapsed pill speaks Qoder: status badge on the right, greeting when idle, no idle expansion', async (t) => {
@@ -187,6 +197,17 @@ test('the island panel keeps its own stacking context and never fades in', async
   // 展开时内容不能有淡入：透明窗口里先模糊再变清楚会闪一下黑。
   assert.match(css, /body\.island #activity\{opacity:1;filter:none;transition:none\}/)
   assert.match(css, /body\.island:not\(\.expanded\) #activity\{visibility:hidden\}/)
+  // 刘海屏：可见黑面板比 #surface 左右各窄 19px（肩宽），内容必须跟着让出这段，
+  // 否则展开态文字/高亮距可见边缘只剩 22-19=3px，看起来贴边。
+  assert.match(css, /#activity\{[^}]*padding:9px 20px 18px/)
+  assert.match(css, /body\.notched #activity\{padding-top:13px;padding-inline:39px\}/)
+  // 胶囊里的宠物/徽标同理：可见面板左内缩 6（收起）/19（展开），再加 12 的品牌内边距。
+  assert.match(css, /body\.notched #cap\{padding:0 18px/)
+  assert.match(css, /body\.notched\.expanded #cap\{padding-inline:31px\}/)
+  // 两形态都去掉了首字母头像与 footer（用户 2026-11-10 反馈），行/卡整块可点。
+  assert.doesNotMatch(css, /\.avatar/)
+  assert.doesNotMatch(css, /\.island-footer/)
+  assert.match(css, /\.row-open\{display:block/)
 })
 
 test('clicking the island never pins it: leaving the view collapses it', async (t) => {
