@@ -50,14 +50,14 @@ test('bridge rejects browser origins even with a valid capability, before dispat
 test('bridge validates actions and never dispatches malformed session input', async (t) => {
   const calls = []
   const f = await fixture(t, async (value) => { calls.push(value); return { ok: true } })
-  for (const body of ['{', 'null', '[]', JSON.stringify({ action: 'unknown' }), JSON.stringify({ action: 'cancel' }), JSON.stringify({ action: 'open', sessionId: 'x'.repeat(257) }), JSON.stringify({ action: 'prompt', sessionId: 's', text: '  ' }), JSON.stringify({ action: 'prompt', sessionId: 's', text: 'x'.repeat(8001) }), JSON.stringify({ action: 'position', x: 1, y: null })]) {
+  for (const body of ['{', 'null', '[]', JSON.stringify({ action: 'unknown' }), JSON.stringify({ action: 'seen' }), JSON.stringify({ action: 'cancel' }), JSON.stringify({ action: 'open', sessionId: 'x'.repeat(257) }), JSON.stringify({ action: 'prompt', sessionId: 's', text: '  ' }), JSON.stringify({ action: 'prompt', sessionId: 's', text: 'x'.repeat(8001) }), JSON.stringify({ action: 'position', x: 1, y: null })]) {
     assert.equal((await f.json('/action', { method: 'POST', body })).status, 400, body.slice(0, 100))
   }
   assert.deepEqual(calls, [])
-  for (const value of [{ action: 'prompt', sessionId: 's', text: 'reply' }, { action: 'position', x: -100, y: 300 }]) {
+  for (const value of [{ action: 'prompt', sessionId: 's', text: 'reply' }, { action: 'seen', sessionId: 's' }, { action: 'position', x: -100, y: 300 }]) {
     assert.deepEqual(await f.json('/action', { method: 'POST', body: JSON.stringify(value) }), { status: 200, body: { ok: true } })
   }
-  assert.equal(calls.length, 2)
+  assert.equal(calls.length, 3)
   assert.equal((await f.json('/missing')).status, 404)
   assert.equal((await f.json('/action')).status, 404)
 })

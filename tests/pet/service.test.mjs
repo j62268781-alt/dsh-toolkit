@@ -4,7 +4,7 @@ import http from 'node:http'
 import { EventEmitter } from 'node:events'
 import { syncBuiltinESMExports } from 'node:module'
 import { test } from 'node:test'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createPetService } from '../../src/modules/pet/host/index.js'
@@ -169,4 +169,27 @@ test('the host volatile references are read into live settings, including later 
   await f.emit('settings/document-updated', 'dsh-toolkit-pet', 2)
   assert.equal(f.service.snapshot().settings.petSize, 75)
   assert.equal(f.service.snapshot().settings.activePet, 'retro-duck')
+})
+
+test('a seen action clears an already-seen result without navigating or requiring a live Session', async (t) => {
+  const f = await fixture(t)
+  // 让 feed 里出现一条「刚结束、有新结果」的会话（基线里 updatedAt=1 会被陈旧过滤掉）。
+  await f.emit('api-session/activity', 'session-a', Date.now())
+  assert.equal(f.service.snapshot().sessions.length, 1)
+  assert.equal(f.service.snapshot().sessions[0].status, 'completed')
+
+  // 主视图切过去（通知点击 / 侧栏切换）→ 已读，岛上的提醒立刻消失。
+  assert.deepEqual(await f.service.action({ action: 'seen', sessionId: 'session-a' }), { ok: true })
+  assert.deepEqual(f.service.snapshot().sessions, [])
+  assert.equal(f.calls.length, 0, 'seen must not navigate or touch the Session controller')
+
+  // 已被归档/移除的会话标记已读同样无害：不能抛 Session no longer exists。
+  f.setListed([])
+  assert.deepEqual(await f.service.action({ action: 'seen', sessionId: 'gone' }), { ok: true })
+
+  // 已读会落盘，重启后半小时内不会再当「新结果」弹出来。
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  const saved = JSON.parse(readFileSync(join(process.env.DSH_HOME, 'toolkit', 'pet', 'seen.json'), 'utf8'))
+  assert.ok(Number.isFinite(saved['session-a']))
+  assert.ok(Number.isFinite(saved.gone))
 })

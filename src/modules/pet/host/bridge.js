@@ -18,8 +18,8 @@ export async function parseAction(req) {
   const value = JSON.parse(await readBody(req, 20 * 1024))
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid pet action')
   const action = value.action
-  if (!['prepare', 'retry', 'start', 'open', 'cancel', 'prompt', 'position'].includes(action)) throw new Error('Unknown pet action')
-  if (['open', 'cancel', 'prompt'].includes(action) && (typeof value.sessionId !== 'string' || value.sessionId.length < 1 || value.sessionId.length > 256)) throw new Error('A session is required')
+  if (!['prepare', 'retry', 'start', 'open', 'seen', 'cancel', 'prompt', 'position'].includes(action)) throw new Error('Unknown pet action')
+  if (['open', 'seen', 'cancel', 'prompt'].includes(action) && (typeof value.sessionId !== 'string' || value.sessionId.length < 1 || value.sessionId.length > 256)) throw new Error('A session is required')
   if (action === 'prompt' && (typeof value.text !== 'string' || !value.text.trim() || value.text.length > 8000)) throw new Error('Reply must contain 1–8000 characters')
   if (action === 'position' && (!Number.isFinite(value.x) || !Number.isFinite(value.y))) throw new Error('Invalid pet position')
   return value
