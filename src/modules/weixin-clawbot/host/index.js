@@ -157,8 +157,17 @@ export async function createClawbotService(ctx, config) {
       credentialError = String(error?.message ?? error)
     }
     const loginState = login.status()
+    const monitorState = monitor.getState()
     const connected = credential !== undefined
-    const state = connected ? (loginState.state === 'confirmed' ? 'confirmed' : 'connected') : loginState.state
+    // 凭据还在，不代表通道还通：被别处登录顶掉后 token 会被服务端拒（getUpdates 回 -14），
+    // 只看凭据会让面板一直显示「已连接」，而实际上一条消息也进不来（用户毫无察觉）。
+    const degraded = connected
+      && monitorState.running === true
+      && monitorState.connected === false
+      && (monitorState.phase === 'stale' || monitorState.phase === 'invalid' || monitorState.phase === 'error')
+    const state = connected
+      ? (degraded ? 'reconnecting' : (loginState.state === 'confirmed' ? 'confirmed' : 'connected'))
+      : loginState.state
     return {
       ok: true,
       state,
@@ -171,7 +180,7 @@ export async function createClawbotService(ctx, config) {
         : { url: loginState.qrUrl, expiresAt: loginState.expiresAt, loginId: loginState.loginId },
       code: loginState.code,
       error: loginState.error,
-      monitor: { enabled: monitorEnabled, ...monitor.getState() },
+      monitor: { enabled: monitorEnabled, ...monitorState },
       lastMessage: lastMessage ?? loginState.lastMessage,
       bridge: bridge?.status() ?? {
         enabled: settings.bridgeEnabled,

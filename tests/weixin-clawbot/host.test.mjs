@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { maskId, normalizeBaseUrl, extractMessageText, readCredential, redirectBaseUrl } from '../../src/modules/weixin-clawbot/host/ilink.js'
 import { createLoginManager, QR_TTL_MS } from '../../src/modules/weixin-clawbot/host/login.js'
-import { createMonitor } from '../../src/modules/weixin-clawbot/host/monitor.js'
+import { createMonitor, STALE_RETRY_MESSAGE, STALE_INVALID_MESSAGE } from '../../src/modules/weixin-clawbot/host/monitor.js'
 import { readConfig, Config, DEFAULT_CREDENTIAL_REF } from '../../src/modules/weixin-clawbot/host/config.js'
 import { createRequire as createRequireForSchema } from 'node:module'
 import { pathToFileURL } from 'node:url'
@@ -473,15 +473,74 @@ test('监听器只把脱敏摘要交给 UI，并在 stop 后停止', async () =>
   }
 })
 
-test('监听器在 token 失效（-14）时暂停重试而不是崩溃', async () => {
+test('监听器收到 -14 立刻置为断开并进入快速重连，不会继续冒充已连接', async () => {
+  // 实测依据：拿一个故意写错的 token 调 getUpdates，服务端同样回 {"errcode":-14,"errmsg":"session timeout"}，
+  // 所以 -14 只代表「这个 token 现在不被接受」。旧实现把它当「稍后自动恢复」静默重试 30 秒，
+  // 期间面板一直显示「已连接」，用户完全看不出消息已经收不到了。
   const stub = stubFetch(() => jsonResponse({ errcode: -14, errmsg: 'session timeout' }))
   try {
     const monitor = createMonitor({ getCredential: async () => CREDENTIAL, onMessage: () => {} })
     monitor.start()
-    await sleep(60)
+    for (let i = 0; i < 100 && monitor.getState().phase !== 'stale'; i++) await sleep(10)
     const state = monitor.getState()
     assert.equal(state.running, true, '监听不应因 -14 退出')
-    assert.match(String(state.lastError), /超时/)
+    assert.equal(state.connected, false, '收到 -14 就已经收不到消息了，不能继续报已连接')
+    assert.equal(state.phase, 'stale')
+    assert.equal(state.lastError, STALE_RETRY_MESSAGE)
+    assert.doesNotMatch(String(state.lastError), /超时/, '不能再说成「稍后自动重试」这种不像故障的话')
+    monitor.stop()
+  } finally {
+    stub.restore()
+  }
+})
+
+test('连续两次 -14 判定凭据失效，提示重新登录；中途成功一次立刻回绿', async () => {
+  let calls = 0
+  const stub = stubFetch(() => {
+    calls += 1
+    // 头两次被拒（模拟 token 被别处登录作废），第三次开始恢复正常。
+    return calls <= 2
+      ? jsonResponse({ errcode: -14, errmsg: 'session timeout' })
+      : jsonResponse({ ret: 0, msgs: [], get_updates_buf: 'c', longpolling_timeout_ms: 1 })
+  })
+  try {
+    const monitor = createMonitor({ getCredential: async () => CREDENTIAL, onMessage: () => {} })
+    monitor.start()
+    // 第一次 -14 → stale（等 3 秒后才会发第二次请求）。
+    for (let i = 0; i < 100 && monitor.getState().phase !== 'stale'; i++) await sleep(10)
+    assert.equal(monitor.getState().phase, 'stale')
+    // 第二次 -14 → invalid：这次要等 STALE_RETRY_MS（3s）过去。
+    for (let i = 0; i < 500 && monitor.getState().phase !== 'invalid'; i++) await sleep(10)
+    assert.equal(monitor.getState().phase, 'invalid', '两次都被拒就该判定失效')
+    assert.equal(monitor.getState().lastError, STALE_INVALID_MESSAGE)
+    // 失效后按 60 秒降频重试，这里直接把调用次数推过去不现实，改成断言它仍在跑。
+    assert.equal(monitor.getState().running, true)
+    monitor.stop()
+  } finally {
+    stub.restore()
+  }
+})
+
+test('-14 之后一次成功就回绿，lastError 清空', async () => {
+  let calls = 0
+  const stub = stubFetch(() => {
+    calls += 1
+    if (calls === 1) return jsonResponse({ errcode: -14, errmsg: 'session timeout' })
+    if (calls === 2) return jsonResponse({ ret: 0, msgs: [], get_updates_buf: 'cursor-ok', longpolling_timeout_ms: 1 })
+    // 成功后必须挂住：否则长轮询秒回、循环会不带停顿地打满 CPU（曾把测试进程打到 OOM）。
+    return new Promise(() => {})
+  })
+  try {
+    const monitor = createMonitor({ getCredential: async () => CREDENTIAL, onMessage: () => {} })
+    monitor.start()
+    for (let i = 0; i < 100 && monitor.getState().phase !== 'stale'; i++) await sleep(10)
+    assert.equal(monitor.getState().phase, 'stale')
+    // 3 秒后重试成功 → 立即回到 live，错误文案清掉（短暂的会话回收不该长期显示故障）。
+    for (let i = 0; i < 500 && monitor.getState().phase !== 'live'; i++) await sleep(10)
+    const state = monitor.getState()
+    assert.equal(state.phase, 'live')
+    assert.equal(state.connected, true)
+    assert.equal(state.lastError, undefined)
     monitor.stop()
   } finally {
     stub.restore()

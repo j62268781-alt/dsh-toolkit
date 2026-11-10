@@ -16,7 +16,15 @@ const DEFAULT_TIMEOUT_MS = 40_000
 const MIN_TIMEOUT_MS = 1_000
 const MAX_TIMEOUT_MS = 120_000
 const RETRY_DELAY_MS = 1_500
-const STALE_PAUSE_MS = 30_000
+/** 首次 -14 之后多久重试：真抖动 3 秒就够，没必要按半分钟等（等的时候一条消息也进不来）。 */
+const STALE_RETRY_MS = 3_000
+/** 判定凭据已失效之后的重试间隔：留一点自愈可能，但不再密集打扰服务端。 */
+const STALE_INVALID_RETRY_MS = 60_000
+/** 连续几次 -14 判定凭据失效。2 次 ≈ 6 秒，够区分「抖动」与「token 被作废」。 */
+const STALE_INVALID_AFTER = 2
+
+export const STALE_RETRY_MESSAGE = '微信连接已断开，正在重连…'
+export const STALE_INVALID_MESSAGE = '微信连接已失效（可能在其他设备重新登录），请点「重新登录」'
 
 const sleep = (ms, signal) => new Promise((resolve) => {
   const timer = setTimeout(resolve, ms)
@@ -36,7 +44,16 @@ const sleep = (ms, signal) => new Promise((resolve) => {
 export function createMonitor({ getCredential, onMessage, logger, onStateChange = () => {}, cursorStore } = {}) {
   let controller
   let running = false
-  let state = { running: false, connected: false, lastError: undefined, received: 0 }
+  /**
+   * phase 是给界面用的「通道阶段」，比 connected 布尔值多一档信息：
+   *   idle       没在监听
+   *   connecting 刚启动、还没拿到一次成功的轮询（首轮长轮询最长 40s，这期间不该报红）
+   *   live       上一轮长轮询成功
+   *   stale      刚收到 -14：已断开，正在快速重连（界面立刻报红）
+   *   invalid    连续 -14，token 已失效，需要用户重新登录
+   *   error      其它网络/接口错误
+   */
+  let state = { running: false, connected: false, phase: 'idle', lastError: undefined, received: 0 }
 
   const setState = (patch) => {
     state = { ...state, ...patch }
@@ -56,6 +73,7 @@ export function createMonitor({ getCredential, onMessage, logger, onStateChange 
     }
     let timeoutMs = DEFAULT_TIMEOUT_MS
     let failures = 0
+    let staleCount = 0
     while (!signal.aborted) {
       let credential
       try {
@@ -64,7 +82,7 @@ export function createMonitor({ getCredential, onMessage, logger, onStateChange 
         credential = undefined
       }
       if (credential === undefined) {
-        setState({ connected: false, lastError: '未找到微信凭据' })
+        setState({ connected: false, phase: 'error', lastError: '未找到微信凭据' })
         await sleep(RETRY_DELAY_MS, signal)
         continue
       }
@@ -80,19 +98,29 @@ export function createMonitor({ getCredential, onMessage, logger, onStateChange 
         const code = Number(response?.errcode ?? response?.ret ?? 0)
         if (code !== 0) {
           if (code === STALE_TOKEN_CODE) {
-            // token 会话超时：不是永久失效，暂停后重试即可。
-            setState({ connected: false, lastError: '微信会话暂时超时，稍后自动重试' })
+            // -14 不是「稍后自动恢复」：拿一个故意写错的 token 调 getUpdates，服务端同样秒回
+            // {"errcode":-14,"errmsg":"session timeout"}。所以它只说明「这个 token 现在不被接受」，
+            // 第一次就要把界面切成断开（否则面板绿着、消息一条都进不来，用户毫无察觉），
+            // 再用 3 秒快重试兜住「服务端会话被回收」这种能自愈的情况。
+            staleCount += 1
+            const invalid = staleCount >= STALE_INVALID_AFTER
+            setState({
+              connected: false,
+              phase: invalid ? 'invalid' : 'stale',
+              lastError: invalid ? STALE_INVALID_MESSAGE : STALE_RETRY_MESSAGE,
+            })
             failures = 0
-            await sleep(STALE_PAUSE_MS, signal)
+            await sleep(invalid ? STALE_INVALID_RETRY_MS : STALE_RETRY_MS, signal)
             continue
           }
           failures += 1
-          setState({ lastError: `getUpdates 返回错误码 ${code}` })
+          setState({ connected: false, phase: 'error', lastError: `getUpdates 返回错误码 ${code}` })
           await sleep(Math.min(RETRY_DELAY_MS * failures, 15_000), signal)
           continue
         }
         failures = 0
-        setState({ connected: true, lastError: undefined })
+        staleCount = 0
+        setState({ connected: true, phase: 'live', lastError: undefined })
         const nextTimeout = Number(response?.longpolling_timeout_ms)
         if (Number.isFinite(nextTimeout) && nextTimeout > 0) {
           timeoutMs = Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, nextTimeout))
@@ -126,7 +154,7 @@ export function createMonitor({ getCredential, onMessage, logger, onStateChange 
       } catch (error) {
         if (signal.aborted) return
         failures += 1
-        setState({ connected: false, lastError: String(error?.message ?? error) })
+        setState({ connected: false, phase: 'error', lastError: String(error?.message ?? error) })
         await sleep(Math.min(RETRY_DELAY_MS * failures, 15_000), signal)
       }
     }
@@ -139,7 +167,7 @@ export function createMonitor({ getCredential, onMessage, logger, onStateChange 
       if (running) return
       running = true
       controller = new AbortController()
-      setState({ running: true, connected: false, lastError: undefined })
+      setState({ running: true, connected: false, phase: 'connecting', lastError: undefined })
       void loop(controller.signal)
     },
 
@@ -148,7 +176,7 @@ export function createMonitor({ getCredential, onMessage, logger, onStateChange 
       running = false
       controller?.abort()
       controller = undefined
-      setState({ running: false, connected: false })
+      setState({ running: false, connected: false, phase: 'idle' })
     },
 
     /** 单次探测（不常驻）：给「测试通道」按钮用。 */
@@ -171,7 +199,11 @@ export function createMonitor({ getCredential, onMessage, logger, onStateChange 
           signal: controllerOnce.signal,
         })
         const code = Number(response?.errcode ?? response?.ret ?? 0)
-        if (code !== 0 && code !== STALE_TOKEN_CODE) {
+        if (code === STALE_TOKEN_CODE) {
+          // 单次探测没有「抖动」这一说：token 被拒就是真的用不了了。
+          return { ok: false, reason: STALE_INVALID_MESSAGE, messages: 0, invalid: true }
+        }
+        if (code !== 0) {
           return { ok: false, reason: `getUpdates 返回错误码 ${code}`, messages: 0 }
         }
         const messages = Array.isArray(response?.msgs) ? response.msgs : []
