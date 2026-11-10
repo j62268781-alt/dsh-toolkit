@@ -9,7 +9,7 @@
 
 export const API_PREFIX = '/api/plugins/dsh-toolkit/weixin-clawbot'
 
-/** 前端状态机（与 host 的登录状态机一一对应，外加 closed）。 */
+/** 前端状态机（与 host 的登录状态机一一对应，外加 closed 与 reconnecting）。 */
 export const STATES = Object.freeze({
   closed: 'closed',
   idle: 'idle',
@@ -18,6 +18,8 @@ export const STATES = Object.freeze({
   scanned: 'scanned',
   needCode: 'need_code',
   connected: 'connected',
+  /** 凭据还在但长轮询已被服务端拒（-14）：已断开，正在重连。 */
+  reconnecting: 'reconnecting',
   failed: 'failed',
 })
 
@@ -28,7 +30,7 @@ const EMPTY = Object.freeze({
   qr: undefined,
   code: undefined,
   error: undefined,
-  monitor: { enabled: false, running: false, connected: false, received: 0 },
+  monitor: { enabled: false, running: false, connected: false, phase: 'idle', received: 0 },
   lastMessage: undefined,
   bridge: {
     enabled: false,
@@ -80,6 +82,9 @@ export function normalize(payload) {
       enabled: payload.monitor?.enabled === true,
       running: payload.monitor?.running === true,
       connected: payload.monitor?.connected === true,
+      // 通道阶段：connecting / live / stale / invalid / error / idle。
+      // 面板靠 invalid 区分「正在重连」与「凭据已失效要重新登录」。
+      phase: typeof payload.monitor?.phase === 'string' ? payload.monitor.phase : 'idle',
       received: Number.isFinite(payload.monitor?.received) ? payload.monitor.received : 0,
       lastError: typeof payload.monitor?.lastError === 'string' ? payload.monitor.lastError : undefined,
     },
@@ -129,6 +134,9 @@ export function toneOf(state) {
     case 'failed':
       // 二维码过期不是故障，但需要用户动手刷新，用告警色提示。
     case 'expired':
+      return 'bad'
+    case 'reconnecting':
+      // 已经收不到消息了（服务端拒了 token），不能继续亮绿灯。
       return 'bad'
     default:
       return 'idle'
@@ -286,6 +294,9 @@ export function pollInterval(state) {
     case 'connected':
     case 'confirmed':
       return 6000
+    case 'reconnecting':
+      // 断开期间刷快一点：恢复（或判定失效）要尽快反映到面板。
+      return 1500
     default:
       return 0
   }

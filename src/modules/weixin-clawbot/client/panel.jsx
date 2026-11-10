@@ -32,6 +32,7 @@ export function createPanel(React, { t, connection, portal }) {
     need_code: 'stateNeedCode',
     connected: 'stateConnected',
     confirmed: 'stateConnected',
+    reconnecting: 'stateReconnecting',
     failed: 'stateFailed',
     expired: 'stateExpired',
   }
@@ -186,15 +187,19 @@ export function createPanel(React, { t, connection, portal }) {
    * 桥接是固定开启、只对自己开放的（登录即生效），面板里不再提供开关/策略/测试按钮，
    * 收发计数并进「消息监听」这一行。底部只有一行操作：左「重新登录」、右「断开连接」。
    */
-  function Connected({ value, busy, onLogout, onReconnect }) {
+  function Connected({ value, busy, degraded, onLogout, onReconnect }) {
     const message = value.lastMessage
     const bridge = value.bridge
-    const traffic = t(value.monitor.running ? 'monitorTraffic' : 'monitorIdle', {
-      r: bridge.received,
-      s: bridge.replied,
-    })
+    // 断线（服务端拒了 token）时「消息监听」这一行改成说人话的错误，而不是继续显示「监听中 · 收 N」。
+    const invalid = degraded === true && value.monitor?.phase === 'invalid'
+    const traffic = degraded === true
+      ? (value.monitor?.lastError ?? t('stateReconnecting'))
+      : t(value.monitor.running ? 'monitorTraffic' : 'monitorIdle', {
+        r: bridge.received,
+        s: bridge.replied,
+      })
     return h('div', { className: 'wc-body' },
-      h(StatusRow, null, t('stateConnected')),
+      h(StatusRow, null, t(invalid === true ? 'stateInvalid' : degraded === true ? 'stateReconnecting' : 'stateConnected')),
       h('div', { className: 'wc-info' },
         h('div', { className: 'wc-info__row' },
           h('span', { className: 'wc-info__key' }, t('account')),
@@ -204,7 +209,10 @@ export function createPanel(React, { t, connection, portal }) {
           h('span', { className: 'wc-info__value' }, value.account?.baseUrlHost ?? '—')),
         h('div', { className: 'wc-info__row' },
           h('span', { className: 'wc-info__key' }, t('monitor')),
-          h('span', { className: 'wc-info__value' }, traffic))),
+          h('span', {
+            className: 'wc-info__value',
+            ...(degraded === true ? { 'data-state': 'bad' } : {}),
+          }, traffic))),
       h('div', { className: 'wc-message' },
         h('div', { className: 'wc-message__meta' }, t('lastMessage')),
         message === undefined
@@ -215,7 +223,9 @@ export function createPanel(React, { t, connection, portal }) {
       h('div', { className: 'wc-actions wc-actions--full' },
         h('button', {
           type: 'button',
-          className: 'wc-button wc-button--half',
+          className: degraded === true
+            ? 'wc-button wc-button--half wc-button--primary'
+            : 'wc-button wc-button--half',
           disabled: busy,
           onClick: onReconnect,
         }, t('reconnect')),
@@ -329,6 +339,7 @@ export function createPanel(React, { t, connection, portal }) {
         return h(Connected, {
           value,
           busy,
+          degraded: state === 'reconnecting',
           onLogout: () => run(async () => {
             await connection.logout()
           }),
@@ -404,9 +415,11 @@ export function createPanel(React, { t, connection, portal }) {
     pinnedRef.current = pinned
 
     const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot)
-    // 失败态优先：refresh/act 失败时 model 只把 state 改成 'failed'，上一次快照的 connected 仍是 true，
-    // 若这里让 connected 先决，掉线时圆点会一直停在 ok（B17 实测：面板已显示「操作失败」，圆点还绿着）。
-    const state = value.state === 'failed' ? 'failed' : value.connected ? 'connected' : value.state
+    // 失败/重连态优先：这两种情况下凭据还在（connected 仍为 true），若让 connected 先决，
+    // 圆点会停在 ok —— 掉线时用户永远看不出通道已经断了（B17 实测 + 被顶号场景）。
+    const state = value.state === 'failed' || value.state === 'reconnecting'
+      ? value.state
+      : value.connected ? 'connected' : value.state
     // 小圆点跟随真实连接状态；面板开不开都不影响它（见 model.js 里 close() 的注释）。
     const tone = toneOf(state)
 

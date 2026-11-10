@@ -407,6 +407,12 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   font-variant-numeric: tabular-nums;
 }
 
+/* 断线时「消息监听」这一行显示的是错误文案，不能和正常计数长一个样。 */
+.wc-info__value[data-state="bad"] {
+  color: var(--dsw-alias-state-error-primary);
+  font-variant-numeric: normal;
+}
+
 .wc-message {
   align-self: stretch;
   padding: 8px 10px;

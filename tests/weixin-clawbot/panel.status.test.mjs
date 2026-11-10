@@ -59,7 +59,7 @@ function snapshot(overrides) {
     qr: undefined,
     code: undefined,
     error: undefined,
-    monitor: { enabled: false, running: false, connected: false, received: 0 },
+    monitor: { enabled: false, running: false, connected: false, phase: 'idle', received: 0 },
     lastMessage: undefined,
     credentialRef: 'WEIXIN_CLAWBOT_CREDENTIAL',
     bridge: {
@@ -161,6 +161,8 @@ test('toneOf: 已过期归到 bad（要用户动手），已连接归 ok', () =>
   assert.equal(toneOf('connected'), 'ok')
   assert.equal(toneOf('waiting_qr'), 'busy')
   assert.equal(toneOf('idle'), 'idle')
+  // 重连态必须报警：这时凭据还在、但通道已经被服务端拒了，亮绿灯等于骗人。
+  assert.equal(toneOf('reconnecting'), 'bad')
 })
 
 test('pollInterval: 扫码期间 1.5s 一次、已连接 6s 一次、其余不轮询', () => {
@@ -174,6 +176,8 @@ test('pollInterval: 扫码期间 1.5s 一次、已连接 6s 一次、其余不�
   for (const state of ['idle', 'failed', 'expired', 'closed', undefined]) {
     assert.equal(pollInterval(state), 0, `${state} 不该起轮询`)
   }
+  // 断开期间要尽快反映「恢复」或「判定失效」，所以比已连接的 6 秒更快。
+  assert.equal(pollInterval('reconnecting'), 1500)
 })
 
 test('connection.close(): 关面板不改状态，入口圆点才不会变灰', async () => {
@@ -295,6 +299,8 @@ test('入口圆点：data-state 跟随连接状态，与面板开关无关', asy
      * （B17 实测：面板已经显示「操作失败：连不上插件路由」，圆点还是 ok）。
      */
     { initial: { state: 'failed', connected: true, error: '连不上插件路由' }, expected: 'bad' },
+    // 被别处登录顶掉：凭据还在（connected=true），但长轮询已被服务端拒（-14），圆点必须报红。
+    { initial: { state: 'reconnecting', connected: true, monitor: { enabled: true, running: true, connected: false, phase: 'stale', received: 3 } }, expected: 'bad' },
   ]
   for (const item of cases) {
     const panel = await mountPanel({ initial: item.initial, open: false })
@@ -400,5 +406,55 @@ test('已连接：只留账号/端点/监听收发 + 底部「重新登录|断�
     assert.ok(!row.textContent.includes('probe'), '这一行不再有测试通道')
   } finally {
     await panel.unmount()
+  }
+})
+
+test('被顶号断开：文案从「正在重连」升级到「连接已失效」，监听行说明原因，重新登录变主按钮', async () => {
+  // 真实场景：另一台电脑扫码后旧 token 被服务端作废，getUpdates 只回 -14。
+  // 老实现只记一条「稍后自动重试」，面板还是「已连接」，用户根本不知道消息已经断了。
+  const cases = [
+    { phase: 'stale', label: 'stateReconnecting', lastError: '微信连接已断开，正在重连…' },
+    { phase: 'invalid', label: 'stateInvalid', lastError: '微信连接已失效（可能在其他设备重新登录），请点「重新登录」' },
+  ]
+  for (const item of cases) {
+    const panel = await mountPanel({
+      initial: {
+        state: 'reconnecting',
+        connected: true,
+        account: { accountId: '95be******.bot', baseUrlHost: 'ilinkai.weixin.qq.com' },
+        monitor: {
+          enabled: true,
+          running: true,
+          connected: false,
+          phase: item.phase,
+          received: 8,
+          lastError: item.lastError,
+        },
+        bridge: {
+          enabled: true,
+          ready: true,
+          accessPolicy: 'allowlist',
+          allowCount: 1,
+          received: 8,
+          replied: 8,
+          skipped: 0,
+          failed: 0,
+          pendingApprovals: 0,
+        },
+      },
+    })
+    try {
+      const popover = panel.popover()
+      const text = popover.textContent
+      assert.ok(text.includes(item.label), `${item.phase} 状态下应渲染 ${item.label}`)
+      assert.ok(text.includes(item.lastError), '监听行要把断线原因说出来')
+      assert.ok(!text.includes('monitorTraffic'), '断线时不能再显示「监听中 · 收 N 回 M」')
+      const buttons = [...popover.querySelectorAll('button')]
+      const reconnect = buttons.find((node) => node.textContent === 'reconnect')
+      assert.ok(reconnect !== undefined, '重新登录按钮要在')
+      assert.ok(reconnect.className.includes('wc-button--primary'), '断线时「重新登录」应是主按钮')
+    } finally {
+      await panel.unmount()
+    }
   }
 })
