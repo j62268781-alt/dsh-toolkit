@@ -47,7 +47,10 @@ function dimensions(kind, display) {
   const area = display.workArea
   if (kind === 'pet') return { width, height, x: Math.round(Math.max(area.x, Math.min(area.x + area.width - width, petPosition?.x ?? area.x + area.width - width - 24))), y: Math.round(Math.max(area.y, Math.min(area.y + area.height - height, petPosition?.y ?? area.y + area.height - height - 16))) }
   const center = display.notch ? display.bounds.x + display.notch.x + display.notch.width / 2 : display.bounds.x + display.bounds.width / 2
-  return { width, height, x: Math.round(center - width / 2), y: display.bounds.y + (display.notch ? 0 : 6) }
+  // 有刘海的屏幕由相机凸起占住顶部，岛贴着屏幕顶端画（screen-saver 层级，可以压在菜单栏上）。
+  // 没有刘海的屏幕顶部是菜单栏，岛必须挂在菜单栏下方，否则会被菜单栏裁掉一截。
+  const top = display.notch ? display.bounds.y : display.workArea.y
+  return { width, height, x: Math.round(center - width / 2), y: top + (display.notch ? 0 : 6) }
 }
 async function createWindow(key, kind, display) {
   const win = new BrowserWindow({ ...dimensions(kind, display), enableLargerThanScreen: kind === 'island', type: process.platform === 'darwin' && kind === 'island' ? 'panel' : undefined, show: false, frame: false, transparent: true, hasShadow: false, resizable: false, maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true, alwaysOnTop: true, title: 'DSH Pet', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true, backgroundThrottling: true } })
@@ -210,7 +213,7 @@ app.whenReady().then(async () => {
           await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
           const body = document.getElementById('activity'), surface = document.getElementById('surface')
           const style = getComputedStyle(body), rect = body.getBoundingClientRect(), bounds = surface.getBoundingClientRect()
-          const buttons = [...document.querySelectorAll('.session .actions button')]
+          const buttons = [...document.querySelectorAll('.session .session-open')]
           const spriteBounds = document.getElementById('sprite').getBoundingClientRect(), indicatorBounds = document.getElementById('indicator').getBoundingClientRect()
           const camera = document.getElementById('camera-space').getBoundingClientRect()
           return {
@@ -220,11 +223,12 @@ app.whenReady().then(async () => {
             visible: style.visibility === 'visible' && rect.height > 0 && bounds.height > cap.getBoundingClientRect().height + 40,
             sessionCount: document.querySelectorAll('.session').length,
             buttonsVisible: buttons.length > 0 && buttons.every(button => { const box = button.getBoundingClientRect(); return box.width > 0 && box.height > 0 && box.bottom <= bounds.bottom && box.top >= bounds.top }),
+            noScroll: Boolean(body) && body.scrollHeight <= body.clientHeight + 1 && body.scrollWidth <= body.clientWidth + 1,
             height: bounds.height,
           }
         })()`)
-        if (!visible.expanded || !visible.visible || !visible.cameraExcluded || visible.opacity < .99 || visible.filter !== 'blur(0px)' && visible.filter !== 'none' || !visible.sessionCount || !visible.buttonsVisible) throw new Error(`Island ${key} did not visibly expand: ${JSON.stringify(visible)}`)
-        report.islands.push({ key, displayId: entry.display.id, screenBounds: entry.display.bounds, windowBounds: entry.win.getBounds(), notch: entry.display.notch, ...visible })
+        if (!visible.expanded || !visible.visible || !visible.cameraExcluded || visible.opacity < .99 || visible.filter !== 'blur(0px)' && visible.filter !== 'none' || !visible.sessionCount || !visible.buttonsVisible || !visible.noScroll) throw new Error(`Island ${key} did not visibly expand: ${JSON.stringify(visible)}`)
+        report.islands.push({ key, displayId: entry.display.id, screenBounds: entry.display.bounds, workArea: entry.display.workArea, windowBounds: entry.win.getBounds(), notch: entry.display.notch, ...visible })
         await captureSurface(entry, `${key}-surface.png`)
       }
       const image = await entry.win.webContents.capturePage()

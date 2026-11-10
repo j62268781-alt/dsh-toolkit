@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 import { resolveElectron, helperEnvironment } from './electron.js'
+import { readElectronPath } from './config.js'
 
 export class HelperManager {
   constructor({ onChange, bridge, resolve = resolveElectron, launch = spawn }) {
@@ -24,7 +25,7 @@ export class HelperManager {
     this.update({ status: 'starting', error: undefined })
     this.pending = (async () => {
       try {
-        const binary = await this.resolve({ electronPath: config.electronPath, download: true })
+        const binary = await this.resolve({ electronPath: readElectronPath(config), download: true })
         if (this.disposed || generation !== this.generation) return
         this.update({ available: true, status: 'stopped' })
         if (this.enabled) this.start(binary)

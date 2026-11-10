@@ -13,7 +13,7 @@ const output = path.resolve(process.argv[2] || path.join(os.tmpdir(), 'dsh-pet-s
 const electron = process.env.ELECTRON_PATH
 if (!electron) throw new Error('Set ELECTRON_PATH to a standalone Electron executable')
 const manifest = JSON.parse(await readFile(path.join(runtime,'pets/qoduck-lab/pet.json'),'utf8'))
-const snapshot = { settings:{ activePet:'qoduck-lab',petEnabled:true,petSize:100,bubbleWidth:280,islandEnabled:true,islandAllDisplays:process.env.PET_SMOKE_ALL_DISPLAYS === '1',islandIdle:true,islandWidth:100,islandHeight:100,language:'zh' }, pets:[{ id:'qoduck-lab',name:'Qoduck Lab',assetDir:path.join(runtime,'pets/qoduck-lab'),manifest }],sessions:[{ id:'smoke',title:'桌宠与灵动岛运行验证',status:'running',detail:'实际 Electron 窗口，已连接本地 Host。',running:true }],revision:1 }
+const snapshot = { settings:{ activePet:'qoduck-lab',petEnabled:true,petSize:100,bubbleWidth:280,islandEnabled:true,islandAllDisplays:process.env.PET_SMOKE_ALL_DISPLAYS === '1',islandIdle:true,islandWidth:100,islandHeight:100,language:'zh' }, pets:[{ id:'qoduck-lab',name:'Qoduck Lab',assetDir:path.join(runtime,'pets/qoduck-lab'),manifest }],sessions:[{ id:'smoke',title:'桌宠与灵动岛运行验证',status:'running',detail:'实际 Electron 窗口，已连接本地 Host。这段说明故意写得比较长，用来验证展开面板里的说明最多显示三行、超出部分省略，并且整个面板不会出现滚动条。再多写一句，确保文字确实超过三行的容量，可以看到末尾的省略号。',running:true }],revision:1 }
 const token = 'runtime-smoke-local-token'
 const server = http.createServer((req,res) => {
   if (req.headers.authorization !== `Bearer ${token}`) { res.writeHead(401).end(); return }
@@ -61,7 +61,12 @@ try {
       assert.equal(island.windowBounds.y, island.screenBounds.y)
       const cameraCenter = island.screenBounds.x + island.notch.x + island.notch.width / 2
       assert.ok(Math.abs(island.windowBounds.x + island.windowBounds.width / 2 - cameraCenter) <= 1)
-    } else assert.equal(island.windowBounds.y, island.screenBounds.y + 6)
+    } else {
+      // A display without a notch has the menu bar across the top: the pill hangs just below it.
+      assert.ok(island.workArea, 'the report must carry the display work area')
+      assert.equal(island.windowBounds.y, island.workArea.y + 6)
+      assert.ok(island.windowBounds.y > island.screenBounds.y + 6, 'the pill must clear the menu bar, not sit inside it')
+    }
   }
   console.log(JSON.stringify({ ok:true,pet,island:path.join(output,islandName), displays:report.displays, islandCount:report.islands.length, multiDisplayVerified:allDisplays && report.displays > 1 }))
 } finally { clearTimeout(timeout); server.closeAllConnections(); server.close() }

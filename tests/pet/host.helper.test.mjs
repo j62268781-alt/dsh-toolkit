@@ -179,3 +179,12 @@ test('resolution and synchronous launch failures become visible error states', a
   assert.equal(launching.manager.state.status, 'error')
   assert.equal(launching.manager.state.error, 'spawn denied')
 })
+
+test('volatile configuration references reach Electron resolution as plain strings', async (t) => {
+  const f = fixture(t)
+  const volatile = (value) => ({ get: () => value, [Symbol.for('cosmokit.volatile.write')]: () => {} })
+  await f.manager.configure({ electronPath: volatile('/from/reference') }, enabled)
+  assert.deepEqual(f.resolutions, [{ electronPath: '/from/reference', download: true }])
+  assert.equal(f.manager.state.status, 'starting')
+  assert.equal(f.manager.state.error, undefined)
+})

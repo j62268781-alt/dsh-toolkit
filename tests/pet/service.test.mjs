@@ -143,3 +143,23 @@ test('live standalone and legacy config events resolve profile entry IDs and nes
   await f.emit('settings/document-updated', 'dsh-toolkit-pet', 5)
   assert.equal(f.service.snapshot().settings.petSize, 80, 'a missing descriptor must preserve the current values')
 })
+
+test('the host volatile references are read into live settings, including later edits', async (t) => {
+  const volatile = (value) => ({ get: () => value })
+  const f = await fixture(t, {
+    petEnabled: volatile(false), islandEnabled: volatile(false),
+    petSize: volatile(80), islandWidth: volatile(150), activePet: volatile('neon-cat'),
+  })
+  const initial = f.service.snapshot().settings
+  assert.equal(initial.activePet, 'neon-cat')
+  assert.equal(initial.petSize, 80)
+  assert.equal(initial.islandWidth, 150)
+  assert.equal(initial.petEnabled, false)
+  assert.equal(initial.islandEnabled, false)
+  assert.equal(f.service.snapshot().runtime.status, 'stopped', 'a disabled pet must not prepare the runtime')
+
+  f.setDescriptors([{ ns: 'dsh-toolkit-pet', value: { petSize: volatile(75), activePet: volatile('retro-duck') } }])
+  await f.emit('settings/document-updated', 'dsh-toolkit-pet', 2)
+  assert.equal(f.service.snapshot().settings.petSize, 75)
+  assert.equal(f.service.snapshot().settings.activePet, 'retro-duck')
+})
