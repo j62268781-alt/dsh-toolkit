@@ -88,6 +88,18 @@ export function publicAccount(credential) {
   return { accountId: maskId(credential.accountId), baseUrlHost: host }
 }
 
+/** 面板/圆点该按哪个状态显示：凭据还在不代表通道还通。 */
+export function deriveConnectionState({ connected, loginState, monitorState }) {
+  if (connected !== true) return loginState?.state
+  // 被别处登录顶掉后 token 会被服务端拒（getUpdates 回 -14），凭据却还在盘上。
+  // 只看凭据会让面板一直显示「已连接」，实际上一条消息也进不来，用户毫无察觉。
+  const broken = monitorState?.running === true
+    && monitorState.connected === false
+    && (monitorState.phase === 'stale' || monitorState.phase === 'invalid' || monitorState.phase === 'error')
+  if (broken) return 'reconnecting'
+  return loginState?.state === 'confirmed' ? 'confirmed' : 'connected'
+}
+
 export async function createClawbotService(ctx, config) {
   const settings = readConfig(config)
   const credentialRef = settings.credentialRef || DEFAULT_CREDENTIAL_REF
@@ -159,15 +171,7 @@ export async function createClawbotService(ctx, config) {
     const loginState = login.status()
     const monitorState = monitor.getState()
     const connected = credential !== undefined
-    // 凭据还在，不代表通道还通：被别处登录顶掉后 token 会被服务端拒（getUpdates 回 -14），
-    // 只看凭据会让面板一直显示「已连接」，而实际上一条消息也进不来（用户毫无察觉）。
-    const degraded = connected
-      && monitorState.running === true
-      && monitorState.connected === false
-      && (monitorState.phase === 'stale' || monitorState.phase === 'invalid' || monitorState.phase === 'error')
-    const state = connected
-      ? (degraded ? 'reconnecting' : (loginState.state === 'confirmed' ? 'confirmed' : 'connected'))
-      : loginState.state
+    const state = deriveConnectionState({ connected, loginState, monitorState })
     return {
       ok: true,
       state,

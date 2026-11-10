@@ -87,6 +87,30 @@ test('插件声明与其依赖', () => {
   assert.equal(typeof plugin.Config, 'function', 'Config 是 Schemastery 的 schema 工厂')
 })
 
+test('对外状态：凭据还在但监听断了就报 reconnecting，不能继续冒充已连接', () => {
+  const live = { running: true, connected: true, phase: 'live' }
+  // 正常在线：confirmed / connected 沿用登录态说法
+  assert.equal(plugin.deriveConnectionState({ connected: true, loginState: { state: 'confirmed' }, monitorState: live }), 'confirmed')
+  assert.equal(plugin.deriveConnectionState({ connected: true, loginState: { state: 'connected' }, monitorState: live }), 'connected')
+
+  // 被顶号：凭据在、登录态还是 confirmed，但监听已经 -14 断开
+  for (const phase of ['stale', 'invalid', 'error']) {
+    assert.equal(
+      plugin.deriveConnectionState({ connected: true, loginState: { state: 'confirmed' }, monitorState: { running: true, connected: false, phase } }),
+      'reconnecting',
+      `${phase} 阶段应报 reconnecting`,
+    )
+  }
+
+  // 监听没开（用户关掉或在扫码阶段）不算降级，否则未监听会被误画成掉线
+  assert.equal(plugin.deriveConnectionState({ connected: true, loginState: { state: 'connected' }, monitorState: { running: false, connected: false, phase: 'idle' } }), 'connected')
+  assert.equal(plugin.deriveConnectionState({ connected: true, loginState: { state: 'confirmed' }, monitorState: { running: true, connected: false, phase: 'idle' } }), 'confirmed')
+
+  // 没凭据时照实返回登录状态（扫码中等），不要冒出 connected
+  assert.equal(plugin.deriveConnectionState({ connected: false, loginState: { state: 'waiting_qr' }, monitorState: { running: false, connected: false, phase: 'idle' } }), 'waiting_qr')
+  assert.equal(plugin.deriveConnectionState({ connected: false, loginState: { state: 'expired' }, monitorState: { running: true, connected: false, phase: 'error' } }), 'expired')
+})
+
 test('十条路由全部注册为 exact 且挂在独立前缀下', async (t) => {
   const ctx = new Context()
   await ctx.plugin(WebServer)
