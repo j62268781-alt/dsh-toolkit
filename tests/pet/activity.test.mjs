@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createActivityFeed } from '../../src/modules/pet/host/activity.js'
 
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
-const row = (sessionId, fields = {}, values = {}) => ({ sessionId, blank: false, running: false, updatedAt: 10, ...fields, projections: { kind: 'sequenced', asOfSeq: 1, values } })
+const row = (sessionId, fields = {}, values = {}) => ({ sessionId, blank: false, running: false, updatedAt: Date.now() - 60_000, ...fields, projections: { kind: 'sequenced', asOfSeq: 1, values } })
 function fixture(items = [], options = {}) {
   const listeners = new Map(), projections = new Set(), live = new Map(), values = new Map(), warnings = []
   let calls = 0, signal
@@ -23,7 +23,7 @@ function fixture(items = [], options = {}) {
     },
   }
   let notifications = 0
-  const feed = createActivityFeed(ctx, () => { notifications++ })
+  const feed = createActivityFeed(ctx, () => { notifications++ }, options.feed)
   return { feed, ctx, warnings, listeners, projections,
     get calls() { return calls }, get signal() { return signal }, get notifications() { return notifications },
     emit(event, ...args) { for (const { listener } of listeners.get(event) ?? []) listener(...args) },
@@ -163,13 +163,38 @@ test('exact attached snapshots replace stale cached list hints', async () => {
 })
 
 test('bounds recent output to twenty while prioritizing older waiting/running rows', async () => {
-  const items = Array.from({ length: 30 }, (_, index) => row(`done-${index}`, { updatedAt: 100 + index }))
-  items.push(row('busy', { running: true, updatedAt: 1 }), row('question', { updatedAt: 2 }, { userQuestions: { active: [{ questions: [] }] } }))
+  const items = Array.from({ length: 30 }, (_, index) => row(`done-${index}`, { updatedAt: Date.now() - 60_000 + index }))
+  items.push(row('busy', { running: true, updatedAt: Date.now() - 120_000 }), row('question', { updatedAt: Date.now() - 180_000 }, { userQuestions: { active: [{ questions: [] }] } }))
   const f = fixture(items); await f.feed.ready
   assert.equal(f.feed.snapshot().length, 20)
   assert.deepEqual(f.feed.snapshot().slice(0, 3).map((item) => item.id), ['question', 'busy', 'done-29'])
   const copy = f.feed.snapshot(); copy[0].title = 'Mutation'
   assert.notEqual(f.feed.snapshot()[0].title, 'Mutation')
+  f.feed.dispose()
+})
+
+test('drops stale sessions, even stuck running ones, but never a pending request', async () => {
+  const longAgo = Date.now() - 4 * 24 * 60 * 60 * 1000
+  const f = fixture([
+    row('old-paused', { updatedAt: longAgo }, { goal: { goal: { phase: 'paused', blockedReason: { message: 'stale' } } } }),
+    row('old-done', { updatedAt: longAgo }),
+    row('stuck-running', { running: true, updatedAt: longAgo }),
+    row('question', { updatedAt: longAgo }, { userQuestions: { active: [{ questions: [{ question: 'Pick' }] }] } }),
+    row('fresh-running', { running: true, updatedAt: Date.now() - 5 * 60_000 }),
+    row('fresh-done', { updatedAt: Date.now() - 5 * 60_000 }),
+    row('later-running', { running: true, updatedAt: Date.now() - 2 * 60 * 60_000 }),
+  ]); await f.feed.ready
+  assert.deepEqual(f.feed.snapshot().map(({ id }) => id), ['question', 'fresh-running', 'later-running', 'fresh-done'])
+  f.feed.dispose()
+})
+
+test('a stuck subagent cannot keep its ancient parent session alive', async () => {
+  const longAgo = Date.now() - 4 * 24 * 60 * 60 * 1000
+  const f = fixture([
+    row('parent', { updatedAt: longAgo }),
+    row('child', { origin: 'subagent', parentSessionId: 'parent', running: true, updatedAt: longAgo }),
+  ]); await f.feed.ready
+  assert.deepEqual(f.feed.snapshot(), [])
   f.feed.dispose()
 })
 
@@ -194,5 +219,28 @@ test('baseline failures leave live events usable; projection failures are contai
   f.feed.dispose()
   const g = fixture([row('b')], { projectionError: true }); g.live('b'); await g.feed.ready
   assert.equal(g.feed.snapshot()[0].id, 'b'); assert.equal(g.warnings.length, 1)
+  g.feed.dispose()
+})
+
+test('a result the user already opened stops nagging until the session moves again', async () => {
+  const persisted = []
+  const f = fixture([row('done', {}, { title: 'Finished' }), row('busy', { running: true })], { feed: { onSeen: (id, at) => persisted.push([id, at]) } })
+  await f.feed.ready
+  assert.deepEqual(f.feed.snapshot().map(({ id }) => id).sort(), ['busy', 'done'])
+  const opened = Date.now()
+  f.feed.markSeen('done', opened)
+  // 点开过的结果立刻从「实时活动」里消失，跑着的会话不受影响。
+  assert.deepEqual(f.feed.snapshot().map(({ id }) => id), ['busy'])
+  assert.deepEqual(persisted, [['done', opened]])
+  // 该会话再出新动作（updatedAt 前进）时重新回到列表。
+  f.emit('api-session/activity', 'done', opened + 1000)
+  assert.deepEqual(f.feed.snapshot().map(({ id }) => id).sort(), ['busy', 'done'])
+  f.feed.dispose()
+
+  // 正在跑的会话即使被标记看过也继续显示；回到启动时的持久化状态同样有效。
+  const g = fixture([row('busy', { running: true })])
+  await g.feed.ready
+  g.feed.markSeen('busy')
+  assert.deepEqual(g.feed.snapshot().map(({ id }) => id), ['busy'])
   g.feed.dispose()
 })

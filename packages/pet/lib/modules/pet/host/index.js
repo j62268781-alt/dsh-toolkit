@@ -1,4 +1,6 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, mkdir, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { sendJson } from '../../../host/http.js'
@@ -12,6 +14,21 @@ export const name = 'toolkit-pet'
 export const inject = ['webServer', 'connection', 'sessionController', 'sessionProjections', 'sessions', 'settings']
 export const API_PATH = '/api/plugins/dsh-toolkit/pet'
 const PET_IDS = ['qoduck-lab', 'kleidis-lab', 'neon-cat', 'retro-duck']
+
+// 「已经看过的会话」落盘：否则重启后半小时内已读的结果又会被当成「有新结果」弹出来。
+function seenFile() {
+  return join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'toolkit', 'pet', 'seen.json')
+}
+
+async function loadSeen() {
+  try {
+    const data = JSON.parse(await readFile(seenFile(), 'utf8'))
+    const entries = Object.entries(data).filter(([id, at]) => typeof id === 'string' && Number.isFinite(at)).slice(-200)
+    return new Map(entries)
+  } catch {
+    return new Map()
+  }
+}
 
 async function loadPets() {
   return Promise.all(PET_IDS.map(async (id) => {
@@ -28,6 +45,16 @@ export async function createPetService(ctx, initialConfig = {}) {
   let navigation = { seq: 0, sessionId: null }
   const listeners = new Set()
   const publicResponses = new Set()
+  const seen = await loadSeen()
+  let seenWrite = Promise.resolve()
+  const persistSeen = (sessionId, at) => {
+    seen.set(sessionId, at)
+    const snapshot = JSON.stringify(Object.fromEntries(seen))
+    seenWrite = seenWrite
+      .then(() => mkdir(join(seenFile(), '..'), { recursive: true }))
+      .then(() => writeFile(seenFile(), snapshot, 'utf8'))
+      .catch(() => {})
+  }
   const pets = await loadPets()
   let manager, feed, bridge
   const snapshot = (privateState = false) => ({
@@ -55,6 +82,8 @@ export async function createPetService(ctx, initialConfig = {}) {
     if (!items.some((session) => session.sessionId === sessionId)) throw new Error('Session no longer exists')
     if (input.action === 'open') {
       navigation = { seq: navigation.seq + 1, sessionId }
+      // 点开即视为「看过了」：灵动岛上的「有新结果 / 需要你处理」立刻消失。
+      feed?.markSeen(sessionId)
       publish()
       // The web client selects the session; Desktop's supported URI brings its main window forward.
       if (process.platform === 'darwin') {
@@ -73,7 +102,7 @@ export async function createPetService(ctx, initialConfig = {}) {
   bridge = await createHelperBridge(() => snapshot(true), action)
   manager = new HelperManager({ onChange: publish, bridge })
   try {
-    feed = createActivityFeed(ctx, publish)
+    feed = createActivityFeed(ctx, publish, { seen, onSeen: persistSeen })
     await feed.ready
   } catch (error) {
     feed?.dispose()

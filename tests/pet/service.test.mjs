@@ -4,7 +4,14 @@ import http from 'node:http'
 import { EventEmitter } from 'node:events'
 import { syncBuiltinESMExports } from 'node:module'
 import { test } from 'node:test'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { createPetService } from '../../src/modules/pet/host/index.js'
+
+// 服务会把「已读会话」写进 $DSH_HOME/toolkit/pet/seen.json；测试必须指向临时目录，
+// 否则点开动作的用例会污染用户真实的 seen 记录。
+process.env.DSH_HOME = mkdtempSync(join(tmpdir(), 'dsh-pet-seen-'))
 
 async function fixture(t, initial = {}) {
   const handlers = new Map(), calls = [], descriptions = []
