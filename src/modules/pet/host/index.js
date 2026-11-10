@@ -1,4 +1,4 @@
-import { readFile, mkdir, writeFile } from 'node:fs/promises'
+import { readFile, mkdir, rename, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -47,12 +47,16 @@ export async function createPetService(ctx, initialConfig = {}) {
   const publicResponses = new Set()
   const seen = await loadSeen()
   let seenWrite = Promise.resolve()
+  // 先写临时文件再 rename：读到一半的 seen.json 既不会解析失败，也不会把历史清空。
   const persistSeen = (sessionId, at) => {
     seen.set(sessionId, at)
     const snapshot = JSON.stringify(Object.fromEntries(seen))
+    const file = seenFile()
+    const temp = `${file}.${process.pid}.tmp`
     seenWrite = seenWrite
-      .then(() => mkdir(join(seenFile(), '..'), { recursive: true }))
-      .then(() => writeFile(seenFile(), snapshot, 'utf8'))
+      .then(() => mkdir(join(file, '..'), { recursive: true }))
+      .then(() => writeFile(temp, snapshot, 'utf8'))
+      .then(() => rename(temp, file))
       .catch(() => {})
   }
   const pets = await loadPets()

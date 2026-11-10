@@ -107,7 +107,7 @@ window.__ModuleLoader__.load({
     }
     function createPetConnection({ onNavigation, onNavigationError = () => {
     } } = {}) {
-      let snapshot = { pets: [], runtime: { status: "stopped" }, connected: false, loaded: false };
+      let snapshot = { pets: [], sessions: [], runtime: { status: "stopped" }, connected: false, loaded: false };
       const listeners = /* @__PURE__ */ new Set();
       let disposed = false;
       let controller;
@@ -127,6 +127,7 @@ window.__ModuleLoader__.load({
         if (Array.isArray(value.pets)) patch.pets = value.pets.filter((pet) => typeof pet?.id === "string" && typeof pet?.name === "string");
         if (value.runtime && typeof value.runtime === "object") patch.runtime = value.runtime;
         if (value.settings && typeof value.settings === "object") patch.settings = value.settings;
+        if (Array.isArray(value.sessions)) patch.sessions = value.sessions.filter((row) => typeof row?.id === "string");
         publish(patch);
         if (!navigate) return;
         const seq = Number(value.navigation?.seq) || 0;
@@ -617,12 +618,42 @@ window.__ModuleLoader__.load({
               }
               return void 0;
             };
+            const present = () => {
+              try {
+                if (typeof document === "undefined") return false;
+                if (document.visibilityState !== "visible") return false;
+                return typeof document.hasFocus !== "function" || document.hasFocus();
+              } catch {
+                return false;
+              }
+            };
+            const sent = /* @__PURE__ */ new Set();
+            const report = (id, stamp) => {
+              if (typeof id !== "string" || id === "" || !present()) return;
+              const key = `${id}@${stamp}`;
+              if (sent.has(key)) return;
+              sent.add(key);
+              Promise.resolve(connection.seen(id)).catch(warn);
+            };
             let last;
             const sync = () => {
               const id = mainView();
               if (typeof id !== "string" || id === "" || id === last) return;
               last = id;
               Promise.resolve(connection.seen(id)).catch(warn);
+            };
+            const rowStamp = (id) => {
+              if (typeof id !== "string" || id === "") return void 0;
+              const rows = connection.getSnapshot()?.sessions;
+              if (!Array.isArray(rows)) return void 0;
+              const row = rows.find((item) => item?.id === id);
+              if (!row || row.status !== "completed" && row.status !== "failed") return void 0;
+              return `row:${row.updatedAt ?? 0}`;
+            };
+            const settle = () => {
+              const id = mainView();
+              const stamp = rowStamp(id);
+              if (stamp) report(id, stamp);
             };
             const offs = [];
             if (typeof list?.subscribe === "function") offs.push(list.subscribe(sync));
@@ -633,9 +664,12 @@ window.__ModuleLoader__.load({
               }
             } catch {
             }
-            const timer = setInterval(sync, 1e3);
+            const timer = setInterval(() => {
+              sync();
+              settle();
+            }, 1e3);
             timer.unref?.();
-            const report = () => {
+            const submitDiag = () => {
               try {
                 const snap = list?.getSnapshot?.();
                 const byId = snap?.byId ?? {};
@@ -656,10 +690,21 @@ window.__ModuleLoader__.load({
                 warn(error);
               }
             };
-            const reportTimer = setTimeout(report, 3e3);
+            const reportTimer = setTimeout(submitDiag, 3e3);
             reportTimer.unref?.();
             sync();
-            const wake = () => sync();
+            offs.push(connection.subscribe(settle));
+            let activations = 0;
+            const wake = () => {
+              sync();
+              const id = mainView();
+              activations += 1;
+              if (present()) {
+                const stamp = rowStamp(id);
+                if (stamp) sent.add(`${id}@${stamp}`);
+              }
+              report(id, `focus:${activations}`);
+            };
             globalThis.addEventListener?.("focus", wake);
             globalThis.addEventListener?.("visibilitychange", wake);
             return () => {

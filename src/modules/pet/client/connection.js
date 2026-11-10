@@ -10,7 +10,7 @@ async function request(path, options = {}) {
 
 /** Own one authenticated stream for all settings views and helper navigation. */
 export function createPetConnection({ onNavigation, onNavigationError = () => {} } = {}) {
-  let snapshot = { pets: [], runtime: { status: 'stopped' }, connected: false, loaded: false }
+  let snapshot = { pets: [], sessions: [], runtime: { status: 'stopped' }, connected: false, loaded: false }
   const listeners = new Set()
   let disposed = false
   let controller
@@ -30,6 +30,8 @@ export function createPetConnection({ onNavigation, onNavigationError = () => {}
     if (Array.isArray(value.pets)) patch.pets = value.pets.filter((pet) => typeof pet?.id === 'string' && typeof pet?.name === 'string')
     if (value.runtime && typeof value.runtime === 'object') patch.runtime = value.runtime
     if (value.settings && typeof value.settings === 'object') patch.settings = value.settings
+    // 岛上那份「会话 → 状态」也留给客户端自己用：前台安静时据此自动清掉「有新结果」。
+    if (Array.isArray(value.sessions)) patch.sessions = value.sessions.filter((row) => typeof row?.id === 'string')
     publish(patch)
     if (!navigate) return
     const seq = Number(value.navigation?.seq) || 0

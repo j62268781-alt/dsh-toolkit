@@ -187,9 +187,17 @@ test('a seen action clears an already-seen result without navigating or requirin
   f.setListed([])
   assert.deepEqual(await f.service.action({ action: 'seen', sessionId: 'gone' }), { ok: true })
 
-  // 已读会落盘，重启后半小时内不会再当「新结果」弹出来。
-  await new Promise((resolve) => setTimeout(resolve, 20))
-  const saved = JSON.parse(readFileSync(join(process.env.DSH_HOME, 'toolkit', 'pet', 'seen.json'), 'utf8'))
+  // 已读会落盘，重启后半小时内不会再当「新结果」弹出来。落盘是异步链（临时文件 + rename），
+  // 所以这里等两条记录都出现，而不是赌一个固定延迟。
+  const file = join(process.env.DSH_HOME, 'toolkit', 'pet', 'seen.json')
+  let saved
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      const parsed = JSON.parse(readFileSync(file, 'utf8'))
+      if (Number.isFinite(parsed.gone)) { saved = parsed; break }
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
   assert.ok(Number.isFinite(saved['session-a']))
   assert.ok(Number.isFinite(saved.gone))
 })

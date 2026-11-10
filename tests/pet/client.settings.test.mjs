@@ -191,3 +191,63 @@ test('switching the main view to a Session marks it read so the island updates',
   await flush()
   assert.equal(seen().at(-1).sessionId, 'session-c')
 })
+
+test('coming back to the foreground, or a finished turn on the island, marks the open Session read', async (t) => {
+  // pretendToBeVisual 才能拿到 visibilityState === 'visible'（jsdom 默认是 'prerender'）。
+  const dom = new JSDOM('<html><head></head><body></body></html>', { url: 'https://dsh.test', pretendToBeVisual: true })
+  const saved = new Map()
+  let focused = true
+  dom.window.document.hasFocus = () => focused
+  for (const [key, value] of Object.entries({
+    window: dom.window,
+    document: dom.window.document,
+    HTMLElement: dom.window.HTMLElement,
+    localStorage: dom.window.localStorage,
+    addEventListener: dom.window.addEventListener.bind(dom.window),
+    removeEventListener: dom.window.removeEventListener.bind(dom.window),
+  })) { saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key)); Object.defineProperty(globalThis, key, { configurable: true, writable: true, value }) }
+  dom.window.localStorage.setItem('dsh.sessions.current', JSON.stringify({ sessionId: 'session-a' }))
+  const net = network()
+  const runtime = context()
+  const module = await clientModule()
+  const client = module.default((name) => {
+    if (name === 'react') return React
+    return { Switch: () => null }
+  })
+  t.after(() => {
+    runtime.dispose()
+    net.restore()
+    for (const [key, value] of saved) { if (value) Object.defineProperty(globalThis, key, value); else delete globalThis[key] }
+    dom.window.close()
+  })
+  client.apply(runtime.ctx)
+  await flush()
+  const seen = () => net.requests
+    .filter((request) => request.options.method === 'POST')
+    .map((request) => JSON.parse(request.options.body))
+  assert.deepEqual(seen(), [{ action: 'seen', sessionId: 'session-a' }])
+
+  // 灵动岛推来「回合结束、有新结果」，而窗口就在前台 —— 用户正看着它，直接算已读。
+  await act(async () => { net.send({ sessions: [{ id: 'session-a', status: 'completed', updatedAt: 123 }] }); await flush() })
+  assert.equal(seen().length, 2)
+  assert.deepEqual(seen().at(-1), { action: 'seen', sessionId: 'session-a' })
+
+  // 同一帧反复推送不重复上报。
+  await act(async () => { net.send({ sessions: [{ id: 'session-a', status: 'completed', updatedAt: 123 }] }); await flush() })
+  assert.equal(seen().length, 2)
+
+  // 切到别的应用（窗口失焦）：新的「有新结果」不再自动已读。
+  focused = false
+  await act(async () => { net.send({ sessions: [{ id: 'session-a', status: 'completed', updatedAt: 456 }] }); await flush() })
+  assert.equal(seen().length, 2)
+
+  // 切回 DSH：恢复前台这一下就该把「有新结果」清掉，哪怕会话没变、也没点通知。
+  focused = true
+  await act(async () => { dom.window.dispatchEvent(new dom.window.Event('focus')); await flush() })
+  assert.equal(seen().length, 3)
+  assert.deepEqual(seen().at(-1), { action: 'seen', sessionId: 'session-a' })
+
+  // 再切回来一次：新的激活事实重新上报（不是永久去重）。
+  await act(async () => { dom.window.dispatchEvent(new dom.window.Event('focus')); await flush() })
+  assert.equal(seen().length, 4)
+})

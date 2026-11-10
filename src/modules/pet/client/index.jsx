@@ -112,12 +112,44 @@ export default function createPet(require) {
           } catch {}
           return undefined
         }
+        // 只有「窗口真的在前台」才算看过了：用户从别的应用切回来、既没点通知也没点
+        // 灵动岛时，岛上残留的「有新结果」必须自己清爽 —— 他此刻就坐在会话前面。
+        const present = () => {
+          try {
+            if (typeof document === 'undefined') return false
+            if (document.visibilityState !== 'visible') return false
+            return typeof document.hasFocus !== 'function' || document.hasFocus()
+          } catch { return false }
+        }
+        const sent = new Set()
+        const report = (id, stamp) => {
+          if (typeof id !== 'string' || id === '' || !present()) return
+          const key = `${id}@${stamp}`
+          if (sent.has(key)) return
+          sent.add(key)
+          Promise.resolve(connection.seen(id)).catch(warn)
+        }
         let last
         const sync = () => {
           const id = mainView()
           if (typeof id !== 'string' || id === '' || id === last) return
           last = id
           Promise.resolve(connection.seen(id)).catch(warn)
+        }
+        // 岛上把当前会话标成「有新结果 / 失败」时，取那一条的指纹用于一次去重。
+        const rowStamp = (id) => {
+          if (typeof id !== 'string' || id === '') return undefined
+          const rows = connection.getSnapshot()?.sessions
+          if (!Array.isArray(rows)) return undefined
+          const row = rows.find((item) => item?.id === id)
+          if (!row || (row.status !== 'completed' && row.status !== 'failed')) return undefined
+          return `row:${row.updatedAt ?? 0}`
+        }
+        // 前台安静时出现「有新结果」：用户正看着这个会话，直接算已读。
+        const settle = () => {
+          const id = mainView()
+          const stamp = rowStamp(id)
+          if (stamp) report(id, stamp)
         }
         const offs = []
         if (typeof list?.subscribe === 'function') offs.push(list.subscribe(sync))
@@ -127,10 +159,10 @@ export default function createPet(require) {
             if (typeof observable?.subscribe === 'function') offs.push(observable.subscribe(sync))
           }
         } catch {}
-        const timer = setInterval(sync, 1000)
+        const timer = setInterval(() => { sync(); settle() }, 1000)
         timer.unref?.()
         // 一次性的能力自报：只进 host 私有 /state，用来确认客户端到底读到了什么。
-        const report = () => {
+        const submitDiag = () => {
           try {
             const snap = list?.getSnapshot?.()
             const byId = snap?.byId ?? {}
@@ -149,10 +181,23 @@ export default function createPet(require) {
             }).catch(warn)
           } catch (error) { warn(error) }
         }
-        const reportTimer = setTimeout(report, 3000)
+        const reportTimer = setTimeout(submitDiag, 3000)
         reportTimer.unref?.()
         sync()
-        const wake = () => sync()
+        // 主视图订阅之外，再盯一眼岛推来的会话状态：前台时「有新结果」不该留在岛上。
+        offs.push(connection.subscribe(settle))
+        let activations = 0
+        // 恢复前台＝看过了：这一次激活已经覆盖岛上那条「有新结果」，不必再多发一次。
+        const wake = () => {
+          sync()
+          const id = mainView()
+          activations += 1
+          if (present()) {
+            const stamp = rowStamp(id)
+            if (stamp) sent.add(`${id}@${stamp}`)
+          }
+          report(id, `focus:${activations}`)
+        }
         globalThis.addEventListener?.('focus', wake)
         globalThis.addEventListener?.('visibilitychange', wake)
         return () => {
