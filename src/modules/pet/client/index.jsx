@@ -1,6 +1,8 @@
 import { findScopedForm } from '../../../client/config.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
 import { installStylesheet } from '../../../client/ui/stylesheet.js'
+import { paginationCss } from '../../../client/ui/pagination.jsx'
+import { resizableDialogCss } from '../../../client/ui/resizable-dialog.jsx'
 import { createPetConnection } from './connection.js'
 import { CONFIG_NS, formSnapshot, readSettings } from './model.js'
 import { createTranslator, PET_COPY, PET_NS } from './locale.js'
@@ -46,7 +48,8 @@ export default function createPet(require) {
       // Panel-local CSS injected globally: every selector is a `.pet-*` class under the settings
       // panel, so an inline <style> would work too — kept as-is so the plugin keeps using the
       // host's `data-plugin` reclaim contract (tests assert `style[data-plugin=toolkit-pet]`).
-      ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet(css, 'toolkit-pet'), 'toolkit-pet:stylesheet')
+      // 分页控件是共享件（src/client/ui/pagination.jsx），样式随本模块的样式表一起注入。
+      ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet(css + paginationCss + resizableDialogCss, 'toolkit-pet'), 'toolkit-pet:stylesheet')
       ctx.effect(() => {
         const off = form ? (form.subscribe?.(refresh) ?? form.store?.subscribe?.(refresh)) : connection.subscribe(refresh)
         return () => { off?.(); listeners.clear() }

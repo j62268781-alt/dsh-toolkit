@@ -13,7 +13,10 @@
 .pet-desc { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; margin: 4px 0 0; overflow-wrap: anywhere; }
 .pet-control { flex: none; max-width: 45%; }
 .pet-page button, .pet-page select, .pet-page input { font: inherit; }
-.pet-button, .pet-page select { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); padding: 6px 10px; cursor: pointer; max-width: 100%; }
+/* 形象下拉与启动动画、通知两个面板同款：去掉平台自带箭头（macOS 会把它紧贴右边框），
+ * 自绘 14px chevron 距右边缘 10px，三个设置面板的下拉外观因此一致。 */
+.pet-page select { box-sizing: border-box; height: 30px; max-width: 100%; font: inherit; font-size: 13px; color: var(--dsw-alias-label-primary); background-color: var(--dsw-alias-bg-layer-1); border: .5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); appearance: none; -webkit-appearance: none; padding: 0 30px 0 10px; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; text-overflow: ellipsis; cursor: pointer; }
+.pet-button { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); padding: 6px 10px; cursor: pointer; max-width: 100%; }
 .pet-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
 .pet-quietButton { font-size: 12px; white-space: nowrap; }
 .pet-button:disabled, .pet-switch:disabled, .pet-page input:disabled, .pet-page select:disabled { opacity: .45; cursor: default; }
@@ -52,17 +55,18 @@
   .pet-size > .pet-sectionHeader { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { .pet-switch span { transition: none; } }
-.pet-libraryIntro { margin-top: 12px; }
 .pet-search { display: flex; gap: 8px; padding: 4px 0 12px; }
 .pet-search input { box-sizing: border-box; flex: 1; min-width: 0; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); padding: 6px 10px; }
-.pet-results { padding-bottom: 12px; }
-.pet-results > .pet-desc:first-child { margin-top: 0; }
-.pet-libraryList { list-style: none; margin: 0; padding: 0; }
-.pet-libraryRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 0.5px solid var(--dsw-alias-border-l2); }
-.pet-libraryRow .pet-desc { margin-top: 2px; font-variant-numeric: tabular-nums; }
+.pet-libraryNote { margin-top: 10px; }
 
-/* 宠物预览：官方预览条是 idle 的 6 帧横排，容器只露第一格。 */
-.pet-identity { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.pet-thumb { flex: none; width: 48px; height: 52px; border-radius: 8px; background-color: var(--dsw-alias-bg-layer-1); background-repeat: no-repeat; background-position: 0 0; background-size: 600% 100%; box-shadow: inset 0 0 0 0.5px var(--dsw-alias-border-l2); }
-.pet-libraryRow { gap: 12px; }
-.pet-control .pet-identity select { min-width: 0; }
+/* 宠物库弹窗：4 列宫格，每页 20 只；卡片=预览图 + 名称/ID + 右侧安装或已安装。 */
+.pet-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.pet-grid .pet-tile { min-width: 0; }
+.pet-tile { display: flex; flex-direction: column; min-width: 0; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 10px; overflow: hidden; background: var(--dsw-alias-bg-layer-1); }
+.pet-tileArt { display: block; aspect-ratio: 192 / 208; background-color: var(--dsw-alias-bg-layer-1); background-repeat: no-repeat; background-position: 0 0; background-size: 600% 100%; }
+.pet-tileCopy { padding: 8px 10px 0; min-width: 0; }
+.pet-tileCopy .pet-title { font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-tileCopy .pet-desc { margin-top: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-tileFoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 10px 10px; }
+.pet-tileState { flex: 1; min-width: 0; font-size: 12px; color: var(--dsw-alias-state-success-primary, var(--dsw-alias-label-secondary)); }
+.pet-tileFoot .pet-button { font-size: 12px; padding: 4px 10px; }

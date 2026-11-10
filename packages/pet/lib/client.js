@@ -96,6 +96,210 @@ window.__ModuleLoader__.load({
       return () => tag.remove();
     }
 
+    // src/client/ui/pagination.jsx
+    function paginationWindow(page, pages, span = 2) {
+      if (!Number.isInteger(page) || !Number.isInteger(pages) || pages <= 0 || page < 0) return [];
+      const shown = [];
+      let last = -1;
+      for (let index = 0; index < pages; index += 1) {
+        const near = Math.abs(index - page) <= span;
+        const edge = index === 0 || index === pages - 1;
+        if (!near && !edge) continue;
+        if (last >= 0 && index - last > 1) shown.push(null);
+        shown.push(index);
+        last = index;
+      }
+      return shown;
+    }
+    function Pagination({ page = 0, pages = 1, onChange, labels = {}, disabled = false }) {
+      const shown = paginationWindow(page, pages);
+      if (shown.length === 0 || pages <= 1) return null;
+      const go = (next) => {
+        if (disabled) return;
+        if (!Number.isInteger(next) || next < 0 || next >= pages || next === page) return;
+        if (typeof onChange === "function") onChange(next);
+      };
+      return /* @__PURE__ */ __dshReact.createElement("nav", { className: "tk-pagination", "aria-label": labels.label ?? "Pagination" }, /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "tk-page", disabled: disabled || page <= 0, onClick: () => go(page - 1) }, labels.prev ?? "Previous"), shown.map((entry, index) => entry === null ? /* @__PURE__ */ __dshReact.createElement("span", { className: "tk-pageGap", key: `gap:${index}`, "aria-hidden": "true" }, "…") : /* @__PURE__ */ __dshReact.createElement("button", { type: "button", key: entry, "aria-current": entry === page ? "page" : void 0, className: entry === page ? "tk-page tk-pageCurrent" : "tk-page", disabled, onClick: () => go(entry) }, entry + 1)), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "tk-page", disabled: disabled || page >= pages - 1, onClick: () => go(page + 1) }, labels.next ?? "Next"));
+    }
+    var paginationCss = `
+    .tk-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 14px; }
+    .tk-pagination .tk-page { font: inherit; min-width: 30px; height: 30px; padding: 0 9px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); cursor: pointer; font-variant-numeric: tabular-nums; }
+    .tk-pagination .tk-page:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
+    .tk-pagination .tk-pageCurrent { background: var(--dsw-alias-label-primary); color: var(--dsw-alias-label-primary-foreground); border-color: transparent; }
+    .tk-pagination .tk-page:disabled { opacity: .45; cursor: default; }
+    .tk-pagination .tk-page:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 3px; }
+    .tk-pagination .tk-pageGap { color: var(--dsw-alias-label-secondary); padding: 0 2px; }
+    `;
+
+    // src/client/ui/resizable-dialog.jsx
+    var import_react = require("react");
+    var OVERLAY_PADDING = 24;
+    var DIALOG_DEFAULTS = { width: 920, height: 640, minWidth: 640, minHeight: 420, maxWidth: 1120, maxHeight: 860 };
+    var STEP = 16;
+    function limitsOf(base, viewport) {
+      const width = Number.isFinite(viewport?.width) && viewport.width > 0 ? viewport.width : base.maxWidth + OVERLAY_PADDING * 2;
+      const height = Number.isFinite(viewport?.height) && viewport.height > 0 ? viewport.height : base.maxHeight + OVERLAY_PADDING * 2;
+      const maxWidth = Math.max(240, Math.min(base.maxWidth, width - OVERLAY_PADDING * 2));
+      const maxHeight = Math.max(200, Math.min(base.maxHeight, height - OVERLAY_PADDING * 2));
+      return {
+        minWidth: Math.min(base.minWidth, maxWidth),
+        minHeight: Math.min(base.minHeight, maxHeight),
+        maxWidth,
+        maxHeight
+      };
+    }
+    function clampTo(size, limits) {
+      const width = Math.round(Number(size?.width));
+      const height = Math.round(Number(size?.height));
+      const safeWidth = Number.isFinite(width) ? width : limits.minWidth;
+      const safeHeight = Number.isFinite(height) ? height : limits.minHeight;
+      return {
+        width: Math.min(Math.max(safeWidth, limits.minWidth), limits.maxWidth),
+        height: Math.min(Math.max(safeHeight, limits.minHeight), limits.maxHeight)
+      };
+    }
+    function readStored(key) {
+      if (!key || typeof localStorage === "undefined") return null;
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return null;
+        return { width: Number(parsed.width), height: Number(parsed.height) };
+      } catch {
+        return null;
+      }
+    }
+    function storeSize(key, size) {
+      if (!key || typeof localStorage === "undefined") return;
+      try {
+        localStorage.setItem(key, JSON.stringify({ width: size.width, height: size.height }));
+      } catch {
+      }
+    }
+    function ResizableDialog({
+      open,
+      onClose,
+      title,
+      description,
+      children,
+      footer,
+      closeLabel = "Close",
+      resizeLabel = "Resize dialog",
+      storageKey,
+      width,
+      height,
+      minWidth = DIALOG_DEFAULTS.minWidth,
+      minHeight = DIALOG_DEFAULTS.minHeight,
+      maxWidth = DIALOG_DEFAULTS.maxWidth,
+      maxHeight = DIALOG_DEFAULTS.maxHeight
+    }) {
+      const base = { minWidth, minHeight, maxWidth, maxHeight };
+      const [size, setSize] = (0, import_react.useState)(() => {
+        const viewport = typeof window === "undefined" ? void 0 : { width: window.innerWidth, height: window.innerHeight };
+        const limits = limitsOf(base, viewport);
+        const stored = readStored(storageKey);
+        return clampTo(stored ?? { width: width ?? DIALOG_DEFAULTS.width, height: height ?? DIALOG_DEFAULTS.height }, limits);
+      });
+      const drag = (0, import_react.useRef)(null);
+      (0, import_react.useEffect)(() => {
+        if (!open) return void 0;
+        const reflow = () => setSize((prev) => clampTo(prev, limitsOf(base, { width: window.innerWidth, height: window.innerHeight })));
+        reflow();
+        window.addEventListener("resize", reflow);
+        return () => window.removeEventListener("resize", reflow);
+      }, [open, minWidth, minHeight, maxWidth, maxHeight]);
+      (0, import_react.useEffect)(() => {
+        if (!open) return void 0;
+        const onKey = (event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            if (typeof onClose === "function") onClose();
+          }
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+      }, [open, onClose]);
+      (0, import_react.useEffect)(() => {
+        if (!open) return void 0;
+        storeSize(storageKey, size);
+        return void 0;
+      }, [open, size, storageKey]);
+      if (!open) return null;
+      const dragStart = (event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        const limits = limitsOf(base, { width: window.innerWidth, height: window.innerHeight });
+        drag.current = { x: event.clientX, y: event.clientY, width: size.width, height: size.height, limits };
+        if (typeof document !== "undefined" && document.body) document.body.classList.add("tk-dialogDragging");
+        const onMove = (move) => {
+          const start = drag.current;
+          if (!start) return;
+          setSize(clampTo({ width: start.width + (move.clientX - start.x), height: start.height + (move.clientY - start.y) }, start.limits));
+        };
+        const onUp = () => {
+          drag.current = null;
+          if (typeof document !== "undefined" && document.body) document.body.classList.remove("tk-dialogDragging");
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
+        };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      };
+      const resizeKeys = (event) => {
+        const step = event.shiftKey ? STEP * 4 : STEP;
+        const limits = limitsOf(base, { width: window.innerWidth, height: window.innerHeight });
+        const next = { width: size.width, height: size.height };
+        if (event.key === "ArrowRight") next.width += step;
+        else if (event.key === "ArrowLeft") next.width -= step;
+        else if (event.key === "ArrowDown") next.height += step;
+        else if (event.key === "ArrowUp") next.height -= step;
+        else return;
+        event.preventDefault();
+        setSize(clampTo(next, limits));
+      };
+      return /* @__PURE__ */ __dshReact.createElement(
+        "div",
+        {
+          className: "tk-dialog",
+          role: "dialog",
+          "aria-modal": "true",
+          "aria-label": title,
+          onMouseDown: (event) => {
+            if (event.target === event.currentTarget && typeof onClose === "function") onClose();
+          }
+        },
+        /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogCard", style: { width: `${size.width}px`, height: `${size.height}px` } }, /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogHead" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogHeading" }, /* @__PURE__ */ __dshReact.createElement("h3", { className: "tk-dialogTitle" }, title), description && /* @__PURE__ */ __dshReact.createElement("p", { className: "tk-dialogDesc" }, description)), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "tk-dialogClose", "aria-label": closeLabel, onClick: onClose }, "×")), /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogBody" }, children), footer && /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogFoot" }, footer), /* @__PURE__ */ __dshReact.createElement(
+          "button",
+          {
+            type: "button",
+            className: "tk-dialogResize",
+            "aria-label": resizeLabel,
+            title: resizeLabel,
+            onMouseDown: dragStart,
+            onKeyDown: resizeKeys
+          }
+        ))
+      );
+    }
+    var resizableDialogCss = `
+    .tk-dialog { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: ${OVERLAY_PADDING}px; background: rgba(0, 0, 0, .42); }
+    .tk-dialogCard { position: relative; box-sizing: border-box; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--dsw-alias-bg-base, #fff); color: var(--dsw-alias-label-primary); border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 14px; box-shadow: 0 18px 48px rgba(0, 0, 0, .24); }
+    .tk-dialogHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 18px 10px; }
+    .tk-dialogHeading { min-width: 0; }
+    .tk-dialogTitle { margin: 0; font-size: 15px; line-height: 22px; font-weight: 600; }
+    .tk-dialogDesc { margin: 4px 0 0; max-width: 60ch; }
+    .tk-dialogClose { flex: none; width: 26px; height: 26px; padding: 0; font-size: 17px; line-height: 1; color: var(--dsw-alias-label-secondary); background: transparent; border: 0; border-radius: 7px; cursor: pointer; }
+    .tk-dialogClose:hover { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-interactive-bg-hover); }
+    .tk-dialogBody { flex: 1; min-height: 0; overflow: auto; padding: 2px 18px 16px; }
+    .tk-dialogFoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 18px 14px; border-top: 0.5px solid var(--dsw-alias-border-l2); }
+    .tk-dialogResize { position: absolute; right: 3px; bottom: 3px; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 5px; background: transparent; cursor: nwse-resize; }
+    .tk-dialogResize::after { content: ''; position: absolute; inset: 3px; background-image: repeating-linear-gradient(135deg, var(--dsw-alias-border-l3) 0 1px, transparent 1px 4px); pointer-events: none; }
+    .tk-dialogResize:hover::after, .tk-dialogResize:focus-visible::after { background-image: repeating-linear-gradient(135deg, var(--dsw-alias-label-secondary) 0 1px, transparent 1px 4px); }
+    .tk-dialogResize:focus-visible { outline: 2px solid var(--dsw-alias-state-focus-primary, var(--dsw-alias-label-secondary)); outline-offset: 1px; }
+    body.tk-dialogDragging { cursor: nwse-resize; user-select: none; }
+    `;
+
     // src/modules/pet/client/connection.js
     var PREFIX = "/api/plugins/dsh-toolkit/pet";
     function petPreviewUrl(slug) {
@@ -155,7 +359,7 @@ window.__ModuleLoader__.load({
         await request("/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: name, ...extra && typeof extra === "object" ? extra : {} }) });
         return refresh();
       };
-      const catalog = (query = "") => request(`/action`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "catalog", query }) });
+      const catalog = (query = "", offset = 0, limit = 20) => request(`/action`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "catalog", query, offset, limit }) });
       const installPet = (slug) => action("install", { slug });
       const removePet = (slug) => action("remove", { slug });
       const seen = async (sessionId) => {
@@ -296,12 +500,10 @@ window.__ModuleLoader__.load({
         width: "宽度",
         height: "高度",
         preview: "收起状态尺寸预览",
-        builtInGroup: "内置",
-        petdexGroup: "Petdex 已安装",
         library: "宠物库",
         libraryIntro: "不用安装 CLI，直接在这里搜索并安装 Petdex 社区的宠物；安装后可随时卸载。",
         browseLibrary: "浏览宠物库",
-        refreshLibrary: "刷新宠物库",
+        close: "关闭",
         searchPets: "搜索宠物名称或 ID",
         search: "搜索",
         searching: "正在搜索…",
@@ -310,7 +512,11 @@ window.__ModuleLoader__.load({
         install: "安装",
         uninstall: "卸载",
         installed: "已安装",
-        libraryTotal: "共 {total} 个匹配的宠物。",
+        prevPage: "上一页",
+        nextPage: "下一页",
+        pagination: "宠物库分页",
+        pageSummary: "第 {page}/{pages} 页，共 {matched} 个匹配的宠物。",
+        resizeDialog: "调整弹窗大小",
         skippedPets: "有 {count} 个本地宠物包无法读取。",
         runtime: "桌面运行时",
         runtimeUnknown: "正在读取桌面运行时状态…",
@@ -358,12 +564,10 @@ window.__ModuleLoader__.load({
         width: "Width",
         height: "Height",
         preview: "Collapsed size preview",
-        builtInGroup: "Built-in",
-        petdexGroup: "Petdex installed",
         library: "Pet library",
         libraryIntro: "Search and install pets from the Petdex community right here — no CLI needed. Uninstall anytime.",
         browseLibrary: "Browse library",
-        refreshLibrary: "Refresh library",
+        close: "Close",
         searchPets: "Search pets by name or ID",
         search: "Search",
         searching: "Searching…",
@@ -372,7 +576,11 @@ window.__ModuleLoader__.load({
         install: "Install",
         uninstall: "Uninstall",
         installed: "Installed",
-        libraryTotal: "{total} matching pets.",
+        prevPage: "Previous",
+        nextPage: "Next",
+        pagination: "Pet library pages",
+        pageSummary: "Page {page} of {pages} · {matched} matching pets.",
+        resizeDialog: "Resize dialog",
         skippedPets: "{count} local pet packages could not be read.",
         runtime: "Desktop runtime",
         runtimeUnknown: "Reading desktop runtime status…",
@@ -413,22 +621,24 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/pet/client/panel.jsx
+    var PAGE_SIZE = 20;
     function createPetPanel(React2, { t, settings, connection, actions, primitives }) {
-      const { useEffect, useRef, useState, useSyncExternalStore } = React2;
+      const { useEffect: useEffect2, useRef: useRef2, useState: useState2, useSyncExternalStore } = React2;
       const Switch = primitives?.Switch;
+      const Modal = ResizableDialog;
       function Toggle({ field, value, disabled, change }) {
         if (Switch !== void 0) return /* @__PURE__ */ __dshReact.createElement(Switch, { checked: value, disabled, label: t(field), onChange: (next) => change(field, next === true) });
         return /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-switch", role: "switch", "aria-label": t(field), "aria-checked": value, disabled, onClick: () => change(field, !value) }, /* @__PURE__ */ __dshReact.createElement("span", null));
       }
       function Slider({ field, value, disabled, change, label = t(field) }) {
-        const [draft, setDraft] = useState(value);
-        const timer = useRef();
-        const actual = useRef(value);
+        const [draft, setDraft] = useState2(value);
+        const timer = useRef2();
+        const actual = useRef2(value);
         actual.current = value;
-        useEffect(() => {
+        useEffect2(() => {
           if (!timer.current) setDraft(value);
         }, [value]);
-        useEffect(() => () => clearTimeout(timer.current), []);
+        useEffect2(() => () => clearTimeout(timer.current), []);
         const [min, max, step] = LIMITS[field];
         const update = (next) => {
           setDraft(next);
@@ -449,10 +659,12 @@ window.__ModuleLoader__.load({
       return function PetPanel() {
         const value = useSyncExternalStore(settings.subscribe, settings.getSnapshot, settings.getSnapshot);
         const state = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot);
-        const [busy, setBusy] = useState(false);
-        const [error, setError] = useState("");
+        const [busy, setBusy] = useState2(false);
+        const [error, setError] = useState2("");
+        const [query, setQuery] = useState2("");
+        const [library, setLibrary] = useState2({ open: false, loading: false, pets: [], error: "", page: 0, pages: 1, matched: 0 });
         const readonly = !actions.isWritable();
-        useEffect(() => {
+        useEffect2(() => {
           let active = true;
           connection.refresh().catch((reason) => {
             if (active) setError(String(reason.message ?? reason));
@@ -475,54 +687,54 @@ window.__ModuleLoader__.load({
           }
         };
         const change = (field, next) => run(() => actions.write(field, next));
-        const searchLibrary = async (term) => {
-          setLibrary((current) => ({ ...current, loading: true, error: "" }));
+        const searchLibrary = async (term, page = 0) => {
+          const wanted = Number.isInteger(page) && page >= 0 ? page : 0;
+          setLibrary((current) => ({ ...current, open: true, loading: true, error: "" }));
           try {
-            const result = await connection.catalog(term);
+            const result = await connection.catalog(term, wanted * PAGE_SIZE, PAGE_SIZE);
             const found = Array.isArray(result?.pets) ? result.pets.filter((pet) => typeof pet?.slug === "string") : [];
-            setLibrary({ loading: false, total: Number(result?.total) || found.length, pets: found, error: "" });
+            const matched = Number.isFinite(Number(result?.matched)) ? Number(result.matched) : found.length;
+            const pages = Math.max(1, Math.ceil(matched / PAGE_SIZE));
+            setLibrary({ open: true, loading: false, pets: found, error: "", page: Math.min(wanted, pages - 1), pages, matched });
           } catch (reason) {
-            setLibrary({ loading: false, total: 0, pets: [], error: String(reason?.message ?? reason) });
+            setLibrary((current) => ({ ...current, open: true, loading: false, pets: [], error: String(reason?.message ?? reason) }));
           }
         };
         const openLibrary = () => {
-          setLibraryOpen(true);
-          return searchLibrary(query);
+          setLibrary((current) => ({ ...current, open: true }));
+          return searchLibrary(query, 0);
+        };
+        const closeLibrary = () => setLibrary((current) => ({ ...current, open: false }));
+        const togglePet = async (pet, installed) => {
+          if (installed) await connection.removePet(pet.slug);
+          else await connection.installPet(pet.slug);
+          await connection.refresh();
+          await searchLibrary(query, library.page);
         };
         const toggle = (field) => /* @__PURE__ */ __dshReact.createElement(Row, { title: t(field), description: t(`${field}Desc`) }, /* @__PURE__ */ __dshReact.createElement(Toggle, { field, value: value[field], disabled: readonly || busy, change }));
         const runtime = state.runtime ?? {};
         const runtimeText = !state.loaded ? "runtimeUnknown" : runtime.status === "error" ? "runtimeError" : runtime.status === "starting" ? "runtimeStarting" : runtime.status === "running" ? "runtimeRunning" : runtime.available === false ? "runtimeUnavailable" : "runtimeStopped";
         const selected = state.pets.some((pet) => pet.id === value.activePet);
-        const installedPets = state.pets.filter((pet) => pet.source === "petdex");
         const skippedPets = Array.isArray(state.petdex?.skipped) ? state.petdex.skipped.length : 0;
-        const [libraryOpen, setLibraryOpen] = useState(false);
-        const [library, setLibrary] = useState({ loading: false, total: 0, pets: [], error: "" });
-        const [query, setQuery] = useState("");
-        const thumb = (slug) => /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-thumb", "aria-hidden": "true", style: { backgroundImage: `url("${petPreviewUrl(slug)}")` } });
-        const libraryRows = library.pets.map((pet) => {
+        const tile = (pet) => {
+          const name = pet.displayName || pet.slug;
           const installed = pet.installed === true || state.pets.some((entry) => entry.id === `petdex:${pet.slug}`);
-          return /* @__PURE__ */ __dshReact.createElement("li", { className: "pet-libraryRow", key: pet.slug }, thumb(pet.slug), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-rowCopy" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, pet.displayName || pet.slug), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-desc" }, pet.slug, installed ? ` · ${t("installed")}` : "")), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-control" }, /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button", disabled: busy, onClick: () => run(async () => {
-            if (installed) await connection.removePet(pet.slug);
-            else await connection.installPet(pet.slug);
-            await searchLibrary(query);
-          }) }, t(installed ? "uninstall" : "install"))));
-        });
-        const libraryResults = library.loading ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc" }, t("searching")) : library.error ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc" }, t("catalogFailed")) : libraryRows.length ? /* @__PURE__ */ __dshReact.createElement("ul", { className: "pet-libraryList" }, libraryRows) : /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc" }, t("noResults"));
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-page" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "pet-pageTitle" }, t("title")), /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-pageIntro" }, t("intro")), readonly && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-notice", role: "status" }, t("readOnly")), error && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-error", role: "alert" }, t("failed", { reason: error })), /* @__PURE__ */ __dshReact.createElement("section", { className: "pet-section", "aria-label": t("appearance") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-sectionHeader" }, /* @__PURE__ */ __dshReact.createElement("h3", null, t("appearance")), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: busy, onClick: () => run(connection.refresh) }, t("refresh"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-card" }, /* @__PURE__ */ __dshReact.createElement(Row, { title: t("identity"), description: t("identityDesc") }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-identity" }, value.activePet.startsWith("petdex:") && thumb(value.activePet.slice("petdex:".length)), /* @__PURE__ */ __dshReact.createElement("select", { "aria-label": t("identity"), value: value.activePet, disabled: readonly || busy || !state.pets.length, onChange: (event) => change("activePet", event.target.value) }, !selected && /* @__PURE__ */ __dshReact.createElement("option", { value: value.activePet }, state.pets.length ? t("missingPet") : t("emptyPets")), /* @__PURE__ */ __dshReact.createElement("optgroup", { label: t("builtInGroup") }, state.pets.filter((pet) => pet.source !== "petdex").map((pet) => /* @__PURE__ */ __dshReact.createElement("option", { key: pet.id, value: pet.id }, pet.name))), installedPets.length > 0 && /* @__PURE__ */ __dshReact.createElement("optgroup", { label: t("petdexGroup") }, installedPets.map((pet) => /* @__PURE__ */ __dshReact.createElement("option", { key: pet.id, value: pet.id }, pet.name)))))))), /* @__PURE__ */ __dshReact.createElement("section", { className: "pet-section", "aria-label": t("library") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-sectionHeader" }, /* @__PURE__ */ __dshReact.createElement("h3", null, t("library")), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: busy, onClick: () => {
-          void run(libraryOpen ? () => searchLibrary(query) : openLibrary);
-        } }, t(libraryOpen ? "refreshLibrary" : "browseLibrary"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-card" }, /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryIntro" }, t("libraryIntro")), libraryOpen && /* @__PURE__ */ __dshReact.createElement("form", { className: "pet-search", onSubmit: (event) => {
-          event.preventDefault();
-          void run(() => searchLibrary(query));
-        } }, /* @__PURE__ */ __dshReact.createElement("input", { type: "search", "aria-label": t("searchPets"), placeholder: t("searchPets"), value: query, disabled: busy, onChange: (event) => setQuery(event.target.value) }), /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", type: "submit", disabled: busy }, t("search"))), libraryOpen && /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-results" }, libraryResults, !library.loading && library.total > 0 && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc" }, t("libraryTotal", { total: library.total })), skippedPets > 0 && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc" }, t("skippedPets", { count: skippedPets }))))), /* @__PURE__ */ __dshReact.createElement("section", { className: "pet-section", "aria-label": t("desktop") }, /* @__PURE__ */ __dshReact.createElement("h3", null, t("desktop")), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-card" }, toggle("petEnabled"), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("petSize"), description: t("petSizeDesc") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "petSize", value: value.petSize, disabled: readonly || busy, change })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("bubbleWidth"), description: t("bubbleWidthDesc") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "bubbleWidth", value: value.bubbleWidth, disabled: readonly || busy, change })))), /* @__PURE__ */ __dshReact.createElement("section", { className: "pet-section", "aria-label": t("screenTop") }, /* @__PURE__ */ __dshReact.createElement("h3", null, t("screenTop")), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-card" }, toggle("islandEnabled"), toggle("islandIdle"), toggle("islandAllDisplays"), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-size" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-sectionHeader" }, /* @__PURE__ */ __dshReact.createElement("div", null, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, t("islandSize")), /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc" }, t("islandSizeDesc"))), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: readonly || busy || value.islandWidth === 100 && value.islandHeight === 100, onClick: () => run(async () => {
+          return /* @__PURE__ */ __dshReact.createElement("article", { className: "pet-tile", key: pet.slug }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-tileArt", role: "img", "aria-label": name, style: { backgroundImage: `url("${petPreviewUrl(pet.slug)}")` } }), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-tileCopy" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, name), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-desc" }, pet.slug)), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-tileFoot" }, installed ? /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-tileState" }, t("installed")), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: busy, onClick: () => void run(() => togglePet(pet, true)) }, t("uninstall"))) : /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button", disabled: busy, onClick: () => void run(() => togglePet(pet, false)) }, t("install"))));
+        };
+        const libraryBody = library.loading ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("searching")) : library.error ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-error", role: "alert" }, t("catalogFailed")) : library.pets.length === 0 ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("noResults")) : /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-grid" }, library.pets.map(tile));
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-page" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "pet-pageTitle" }, t("title")), /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-pageIntro" }, t("intro")), readonly && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-notice", role: "status" }, t("readOnly")), error && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-error", role: "alert" }, t("failed", { reason: error })), /* @__PURE__ */ __dshReact.createElement("section", { className: "pet-section", "aria-label": t("appearance") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-sectionHeader" }, /* @__PURE__ */ __dshReact.createElement("h3", null, t("appearance")), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: busy, onClick: () => void run(openLibrary) }, t("browseLibrary"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-card" }, /* @__PURE__ */ __dshReact.createElement(Row, { title: t("identity"), description: t("identityDesc") }, /* @__PURE__ */ __dshReact.createElement("select", { "aria-label": t("identity"), value: value.activePet, disabled: readonly || busy || !state.pets.length, onChange: (event) => change("activePet", event.target.value) }, !selected && /* @__PURE__ */ __dshReact.createElement("option", { value: value.activePet }, state.pets.length ? t("missingPet") : t("emptyPets")), state.pets.map((pet) => /* @__PURE__ */ __dshReact.createElement("option", { key: pet.id, value: pet.id }, pet.name)))))), /* @__PURE__ */ __dshReact.createElement("section", { className: "pet-section", "aria-label": t("desktop") }, /* @__PURE__ */ __dshReact.createElement("h3", null, t("desktop")), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-card" }, toggle("petEnabled"), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("petSize"), description: t("petSizeDesc") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "petSize", value: value.petSize, disabled: readonly || busy, change })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("bubbleWidth"), description: t("bubbleWidthDesc") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "bubbleWidth", value: value.bubbleWidth, disabled: readonly || busy, change })))), /* @__PURE__ */ __dshReact.createElement("section", { className: "pet-section", "aria-label": t("screenTop") }, /* @__PURE__ */ __dshReact.createElement("h3", null, t("screenTop")), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-card" }, toggle("islandEnabled"), toggle("islandIdle"), toggle("islandAllDisplays"), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-size" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-sectionHeader" }, /* @__PURE__ */ __dshReact.createElement("div", null, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, t("islandSize")), /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc" }, t("islandSizeDesc"))), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: readonly || busy || value.islandWidth === 100 && value.islandHeight === 100, onClick: () => run(async () => {
           await actions.write("islandWidth", DEFAULT_SETTINGS.islandWidth);
           await actions.write("islandHeight", DEFAULT_SETTINGS.islandHeight);
-        }) }, t("restore"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-previews" }, /* @__PURE__ */ __dshReact.createElement(Preview, { builtIn: true, width: value.islandWidth, height: value.islandHeight }), /* @__PURE__ */ __dshReact.createElement(Preview, { width: value.islandWidth, height: value.islandHeight })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("width") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "islandWidth", label: t("width"), value: value.islandWidth, disabled: readonly || busy, change })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("height") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "islandHeight", label: t("height"), value: value.islandHeight, disabled: readonly || busy, change }))))), /* @__PURE__ */ __dshReact.createElement("section", { className: "pet-section", "aria-label": t("runtime") }, /* @__PURE__ */ __dshReact.createElement("h3", null, t("runtime")), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-card" }, /* @__PURE__ */ __dshReact.createElement(Row, { title: t(runtimeText), description: runtime.error }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-runtimeActions" }, state.loaded && runtime.status === "error" ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busy, onClick: () => run(() => connection.action("retry")) }, t("retry")) : state.loaded && runtime.available === false && runtime.status !== "starting" ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busy, onClick: () => run(() => connection.action("prepare")) }, t("prepare")) : state.loaded && runtime.available === true && runtime.status === "stopped" && (value.petEnabled || value.islandEnabled) ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busy, onClick: () => run(() => connection.action("start")) }, t("start")) : null)), state.loaded && !state.connected && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc", role: "status" }, t("reconnecting")))));
+        }) }, t("restore"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-previews" }, /* @__PURE__ */ __dshReact.createElement(Preview, { builtIn: true, width: value.islandWidth, height: value.islandHeight }), /* @__PURE__ */ __dshReact.createElement(Preview, { width: value.islandWidth, height: value.islandHeight })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("width") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "islandWidth", label: t("width"), value: value.islandWidth, disabled: readonly || busy, change })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("height") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "islandHeight", label: t("height"), value: value.islandHeight, disabled: readonly || busy, change }))))), /* @__PURE__ */ __dshReact.createElement("section", { className: "pet-section", "aria-label": t("runtime") }, /* @__PURE__ */ __dshReact.createElement("h3", null, t("runtime")), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-card" }, /* @__PURE__ */ __dshReact.createElement(Row, { title: t(runtimeText), description: runtime.error }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-runtimeActions" }, state.loaded && runtime.status === "error" ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busy, onClick: () => run(() => connection.action("retry")) }, t("retry")) : state.loaded && runtime.available === false && runtime.status !== "starting" ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busy, onClick: () => run(() => connection.action("prepare")) }, t("prepare")) : state.loaded && runtime.available === true && runtime.status === "stopped" && (value.petEnabled || value.islandEnabled) ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busy, onClick: () => run(() => connection.action("start")) }, t("start")) : null)), state.loaded && !state.connected && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc", role: "status" }, t("reconnecting")))), /* @__PURE__ */ __dshReact.createElement(Modal, { open: library.open, onClose: closeLibrary, storageKey: "dsh-toolkit:pet-library-size", title: t("library"), closeLabel: t("close"), resizeLabel: t("resizeDialog"), description: t("libraryIntro"), footer: /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button", onClick: closeLibrary }, t("close")) }, /* @__PURE__ */ __dshReact.createElement("form", { className: "pet-search", onSubmit: (event) => {
+          event.preventDefault();
+          void run(() => searchLibrary(query, 0));
+        } }, /* @__PURE__ */ __dshReact.createElement("input", { type: "search", "aria-label": t("searchPets"), placeholder: t("searchPets"), value: query, disabled: busy, onChange: (event) => setQuery(event.target.value) }), /* @__PURE__ */ __dshReact.createElement("button", { type: "submit", className: "pet-button", disabled: busy }, t("search"))), libraryBody, !library.loading && !library.error && library.matched > 0 && /* @__PURE__ */ __dshReact.createElement(Pagination, { page: library.page, pages: library.pages, disabled: busy, onChange: (next) => void run(() => searchLibrary(query, next)), labels: { prev: t("prevPage"), next: t("nextPage"), label: t("pagination") } }), !library.loading && !library.error && library.matched > 0 && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("pageSummary", { page: library.page + 1, pages: library.pages, matched: library.matched })), skippedPets > 0 && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("skippedPets", { count: skippedPets }))));
       };
     }
 
     // src/client/settings-icon.jsx
-    var import_react = __toESM(require("react"), 1);
-    globalThis.__dshReact ??= import_react.default;
+    var import_react2 = __toESM(require("react"), 1);
+    globalThis.__dshReact ??= import_react2.default;
     var SHAPES = {
       rocket: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "6", r: "1.15" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 10.6 4.7 12.4M9.7 10.6l1.6 1.8M8 12.1v2.2" })),
       globe: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2 8h12" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "8", rx: "2.7", ry: "6" })),
@@ -580,7 +792,79 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/pet/client/style.css
-    var style_default = ".pet-page { box-sizing: border-box; color: var(--dsw-alias-label-primary); font-size: 13px; padding-bottom: 24px; max-width: 960px; }\n.pet-pageTitle { font-size: 18px; font-weight: 600; margin: 0; }\n.pet-pageIntro { font-size: 13px; color: var(--dsw-alias-label-secondary); margin: 12px 0 24px; line-height: 1.5; }\n.pet-section { margin-top: 24px; }\n.pet-section h3 { font-size: 14px; font-weight: 500; margin: 0 0 10px; }\n.pet-sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }\n.pet-sectionHeader h3 { margin: 0; }\n.pet-card { border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; padding: 0 16px; }\n.pet-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 0; border-bottom: 0.5px solid var(--dsw-alias-border-l2); }\n.pet-row:last-child { border-bottom: 0; }\n.pet-rowCopy { min-width: 0; flex: 1; }\n.pet-title { font-size: 14px; font-weight: 400; line-height: 20px; overflow-wrap: anywhere; }\n.pet-desc { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; margin: 4px 0 0; overflow-wrap: anywhere; }\n.pet-control { flex: none; max-width: 45%; }\n.pet-page button, .pet-page select, .pet-page input { font: inherit; }\n.pet-button, .pet-page select { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); padding: 6px 10px; cursor: pointer; max-width: 100%; }\n.pet-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }\n.pet-quietButton { font-size: 12px; white-space: nowrap; }\n.pet-button:disabled, .pet-switch:disabled, .pet-page input:disabled, .pet-page select:disabled { opacity: .45; cursor: default; }\n.pet-button:focus-visible, .pet-switch:focus-visible, .pet-page select:focus-visible, .pet-page input:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 3px; }\n.pet-switch { box-sizing: border-box; position: relative; flex: 0 0 auto; width: 36px; height: 20px; border: 0; border-radius: 999px; padding: 2px; background: var(--dsw-alias-border-l3); cursor: pointer; }\n.pet-switch span { display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--dsw-alias-label-primary-foreground); transition: transform .12s ease; }\n.pet-switch[aria-checked=false] span { background: var(--dsw-alias-switch-thumb); }\n.pet-switch[aria-checked=true] { background: var(--dsw-alias-brand-primary); }\n.pet-switch[aria-checked=true] span { transform: translateX(16px); }\n.pet-page .pet-switch:disabled { opacity: .5; }\n.pet-page .pet-switch:focus-visible { outline-offset: 2px; }\n.pet-slider { display: flex; align-items: center; gap: 10px; width: 200px; max-width: 100%; }\n.pet-slider input { width: 140px; min-width: 0; accent-color: var(--dsw-alias-state-business-primary, var(--dsw-alias-button-primary-fill)); }\n.pet-slider output { font-size: 12px; min-width: 42px; color: var(--dsw-alias-label-secondary); text-align: right; font-variant-numeric: tabular-nums; }\n.pet-size { padding-top: 16px; }\n.pet-size > .pet-sectionHeader { align-items: flex-start; }\n.pet-size .pet-desc { max-width: 440px; }\n.pet-previews { display: flex; justify-content: center; gap: 32px; padding: 16px 8px 8px; }\n.pet-preview { width: 180px; max-width: 45%; }\n.pet-screen { height: 100px; border: 1.5px solid var(--dsw-alias-border-l2); border-radius: 7px; position: relative; overflow: hidden; background: var(--dsw-alias-interactive-bg-hover); }\n.pet-island { display: flex; align-items: center; justify-content: space-between; position: absolute; top: 5px; left: 50%; transform: translateX(-50%); border-radius: 999px; background: #000; max-width: 95%; min-height: 12px; }\n.pet-screenNotch .pet-island { top: 0; min-width: 47%; min-height: 12px; border-radius: 0 0 7px 7px; }\n.pet-screenNotch:after { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); height: 10px; width: 35%; background: #000; border-radius: 0 0 5px 5px; }\n.pet-previewEyes { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 6px; color: #7de2b7; font-size: 8px; line-height: 1; }\n.pet-previewEyes span:last-child { color: #fff; font-size: 6px; }\n.pet-previewLabel { text-align: center; color: var(--dsw-alias-label-secondary); font-size: 12px; margin-top: 8px; }\n.pet-runtimeActions { display: flex; gap: 8px; }\n.pet-notice, .pet-error { font-size: 12px; line-height: 1.5; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 10px 12px; }\n.pet-error { color: var(--dsw-alias-state-error-primary); }\n@media (max-width: 620px) {\n  .pet-row { gap: 12px; }\n  .pet-control { max-width: 46%; }\n  .pet-slider { width: 160px; }\n  .pet-slider input { width: 100px; }\n  .pet-previews { gap: 16px; }\n  .pet-size > .pet-sectionHeader { flex-wrap: wrap; }\n}\n@media (prefers-reduced-motion: reduce) { .pet-switch span { transition: none; } }\n.pet-libraryIntro { margin-top: 12px; }\n.pet-search { display: flex; gap: 8px; padding: 4px 0 12px; }\n.pet-search input { box-sizing: border-box; flex: 1; min-width: 0; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); padding: 6px 10px; }\n.pet-results { padding-bottom: 12px; }\n.pet-results > .pet-desc:first-child { margin-top: 0; }\n.pet-libraryList { list-style: none; margin: 0; padding: 0; }\n.pet-libraryRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 0.5px solid var(--dsw-alias-border-l2); }\n.pet-libraryRow .pet-desc { margin-top: 2px; font-variant-numeric: tabular-nums; }\n\n/* 宠物预览：官方预览条是 idle 的 6 帧横排，容器只露第一格。 */\n.pet-identity { display: flex; align-items: center; gap: 10px; min-width: 0; }\n.pet-thumb { flex: none; width: 48px; height: 52px; border-radius: 8px; background-color: var(--dsw-alias-bg-layer-1); background-repeat: no-repeat; background-position: 0 0; background-size: 600% 100%; box-shadow: inset 0 0 0 0.5px var(--dsw-alias-border-l2); }\n.pet-libraryRow { gap: 12px; }\n.pet-control .pet-identity select { min-width: 0; }\n";
+    var style_default = `.pet-page { box-sizing: border-box; color: var(--dsw-alias-label-primary); font-size: 13px; padding-bottom: 24px; max-width: 960px; }
+    .pet-pageTitle { font-size: 18px; font-weight: 600; margin: 0; }
+    .pet-pageIntro { font-size: 13px; color: var(--dsw-alias-label-secondary); margin: 12px 0 24px; line-height: 1.5; }
+    .pet-section { margin-top: 24px; }
+    .pet-section h3 { font-size: 14px; font-weight: 500; margin: 0 0 10px; }
+    .pet-sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+    .pet-sectionHeader h3 { margin: 0; }
+    .pet-card { border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; padding: 0 16px; }
+    .pet-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 0; border-bottom: 0.5px solid var(--dsw-alias-border-l2); }
+    .pet-row:last-child { border-bottom: 0; }
+    .pet-rowCopy { min-width: 0; flex: 1; }
+    .pet-title { font-size: 14px; font-weight: 400; line-height: 20px; overflow-wrap: anywhere; }
+    .pet-desc { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; margin: 4px 0 0; overflow-wrap: anywhere; }
+    .pet-control { flex: none; max-width: 45%; }
+    .pet-page button, .pet-page select, .pet-page input { font: inherit; }
+    /* 形象下拉与启动动画、通知两个面板同款：去掉平台自带箭头（macOS 会把它紧贴右边框），
+     * 自绘 14px chevron 距右边缘 10px，三个设置面板的下拉外观因此一致。 */
+    .pet-page select { box-sizing: border-box; height: 30px; max-width: 100%; font: inherit; font-size: 13px; color: var(--dsw-alias-label-primary); background-color: var(--dsw-alias-bg-layer-1); border: .5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); appearance: none; -webkit-appearance: none; padding: 0 30px 0 10px; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; text-overflow: ellipsis; cursor: pointer; }
+    .pet-button { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); padding: 6px 10px; cursor: pointer; max-width: 100%; }
+    .pet-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
+    .pet-quietButton { font-size: 12px; white-space: nowrap; }
+    .pet-button:disabled, .pet-switch:disabled, .pet-page input:disabled, .pet-page select:disabled { opacity: .45; cursor: default; }
+    .pet-button:focus-visible, .pet-switch:focus-visible, .pet-page select:focus-visible, .pet-page input:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 3px; }
+    .pet-switch { box-sizing: border-box; position: relative; flex: 0 0 auto; width: 36px; height: 20px; border: 0; border-radius: 999px; padding: 2px; background: var(--dsw-alias-border-l3); cursor: pointer; }
+    .pet-switch span { display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--dsw-alias-label-primary-foreground); transition: transform .12s ease; }
+    .pet-switch[aria-checked=false] span { background: var(--dsw-alias-switch-thumb); }
+    .pet-switch[aria-checked=true] { background: var(--dsw-alias-brand-primary); }
+    .pet-switch[aria-checked=true] span { transform: translateX(16px); }
+    .pet-page .pet-switch:disabled { opacity: .5; }
+    .pet-page .pet-switch:focus-visible { outline-offset: 2px; }
+    .pet-slider { display: flex; align-items: center; gap: 10px; width: 200px; max-width: 100%; }
+    .pet-slider input { width: 140px; min-width: 0; accent-color: var(--dsw-alias-state-business-primary, var(--dsw-alias-button-primary-fill)); }
+    .pet-slider output { font-size: 12px; min-width: 42px; color: var(--dsw-alias-label-secondary); text-align: right; font-variant-numeric: tabular-nums; }
+    .pet-size { padding-top: 16px; }
+    .pet-size > .pet-sectionHeader { align-items: flex-start; }
+    .pet-size .pet-desc { max-width: 440px; }
+    .pet-previews { display: flex; justify-content: center; gap: 32px; padding: 16px 8px 8px; }
+    .pet-preview { width: 180px; max-width: 45%; }
+    .pet-screen { height: 100px; border: 1.5px solid var(--dsw-alias-border-l2); border-radius: 7px; position: relative; overflow: hidden; background: var(--dsw-alias-interactive-bg-hover); }
+    .pet-island { display: flex; align-items: center; justify-content: space-between; position: absolute; top: 5px; left: 50%; transform: translateX(-50%); border-radius: 999px; background: #000; max-width: 95%; min-height: 12px; }
+    .pet-screenNotch .pet-island { top: 0; min-width: 47%; min-height: 12px; border-radius: 0 0 7px 7px; }
+    .pet-screenNotch:after { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); height: 10px; width: 35%; background: #000; border-radius: 0 0 5px 5px; }
+    .pet-previewEyes { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 6px; color: #7de2b7; font-size: 8px; line-height: 1; }
+    .pet-previewEyes span:last-child { color: #fff; font-size: 6px; }
+    .pet-previewLabel { text-align: center; color: var(--dsw-alias-label-secondary); font-size: 12px; margin-top: 8px; }
+    .pet-runtimeActions { display: flex; gap: 8px; }
+    .pet-notice, .pet-error { font-size: 12px; line-height: 1.5; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 10px 12px; }
+    .pet-error { color: var(--dsw-alias-state-error-primary); }
+    @media (max-width: 620px) {
+      .pet-row { gap: 12px; }
+      .pet-control { max-width: 46%; }
+      .pet-slider { width: 160px; }
+      .pet-slider input { width: 100px; }
+      .pet-previews { gap: 16px; }
+      .pet-size > .pet-sectionHeader { flex-wrap: wrap; }
+    }
+    @media (prefers-reduced-motion: reduce) { .pet-switch span { transition: none; } }
+    .pet-search { display: flex; gap: 8px; padding: 4px 0 12px; }
+    .pet-search input { box-sizing: border-box; flex: 1; min-width: 0; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); padding: 6px 10px; }
+    .pet-libraryNote { margin-top: 10px; }
+
+    /* 宠物库弹窗：4 列宫格，每页 20 只；卡片=预览图 + 名称/ID + 右侧安装或已安装。 */
+    .pet-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .pet-grid .pet-tile { min-width: 0; }
+    .pet-tile { display: flex; flex-direction: column; min-width: 0; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 10px; overflow: hidden; background: var(--dsw-alias-bg-layer-1); }
+    .pet-tileArt { display: block; aspect-ratio: 192 / 208; background-color: var(--dsw-alias-bg-layer-1); background-repeat: no-repeat; background-position: 0 0; background-size: 600% 100%; }
+    .pet-tileCopy { padding: 8px 10px 0; min-width: 0; }
+    .pet-tileCopy .pet-title { font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pet-tileCopy .pet-desc { margin-top: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pet-tileFoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 10px 10px; }
+    .pet-tileState { flex: 1; min-width: 0; font-size: 12px; color: var(--dsw-alias-state-success-primary, var(--dsw-alias-label-secondary)); }
+    .pet-tileFoot .pet-button { font-size: 12px; padding: 4px 10px; }
+    `;
 
     // src/modules/pet/client/index.jsx
     function createPet(require2) {
@@ -628,7 +912,7 @@ window.__ModuleLoader__.load({
           })();
           const Panel = createPetPanel(React2, { t, settings, connection, actions, primitives });
           ctx.effect(() => ctx.locale?.register?.(PET_NS, PET_COPY), "toolkit-pet:dictionary");
-          ctx.effect(() => typeof document === "undefined" ? void 0 : installStylesheet(style_default, "toolkit-pet"), "toolkit-pet:stylesheet");
+          ctx.effect(() => typeof document === "undefined" ? void 0 : installStylesheet(style_default + paginationCss + resizableDialogCss, "toolkit-pet"), "toolkit-pet:stylesheet");
           ctx.effect(() => {
             const off = form ? form.subscribe?.(refresh) ?? form.store?.subscribe?.(refresh) : connection.subscribe(refresh);
             return () => {

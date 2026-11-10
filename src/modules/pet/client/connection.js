@@ -56,7 +56,8 @@ export function createPetConnection({ onNavigation, onNavigationError = () => {}
     return refresh()
   }
   // Petdex 宠物库：搜索只取一页，安装/卸载后 host 会重扫目录并广播新列表。
-  const catalog = (query = '') => request(`/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'catalog', query }) })
+  // 目录分页走服务端切片：query 决定匹配集，offset/limit 只搬当前这一页。
+  const catalog = (query = '', offset = 0, limit = 20) => request(`/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'catalog', query, offset, limit }) })
   const installPet = (slug) => action('install', { slug })
   const removePet = (slug) => action('remove', { slug })
   // 用户已经看到某个会话（主视图切过去）：告诉 host 标记已读，岛上的提醒随即消失。

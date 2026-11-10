@@ -113,16 +113,16 @@ export async function createPetService(ctx, initialConfig = {}) {
     }
     if (input.action === 'position') return { ok: true }
     if (input.action === 'catalog') {
-      // 目录有 5000+ 条，只回一页；query 为空时给热门开头那一段。
+      // 目录有 5000+ 条：页面按页取（offset/limit），一次只搬一页的元数据与预览图。
       const query = String(input.query || '').trim().toLowerCase()
-      // 每行都带一张预览图，一页 24 只既够翻也不至于一次拉太多图。
-      const limit = Math.min(200, Math.max(12, Number(input.limit) || 24))
+      const limit = Math.min(60, Math.max(4, Number(input.limit) || 20))
+      const offset = Math.max(0, Number(input.offset) || 0)
       const manifest = await catalog.list()
       const installed = new Set(pets.filter((pet) => pet.source === 'petdex').map((pet) => pet.id.slice(PETDEX_PREFIX.length)))
       const matches = query ? manifest.pets.filter((pet) => pet.slug.includes(query) || pet.displayName.toLowerCase().includes(query)) : manifest.pets
       return {
-        ok: true, total: matches.length,
-        pets: matches.slice(0, limit).map((pet) => ({ slug: pet.slug, displayName: pet.displayName, spriteVersionNumber: pet.spriteVersionNumber, installed: installed.has(pet.slug) })),
+        ok: true, total: manifest.pets.length, matched: matches.length, offset, limit,
+        pets: matches.slice(offset, offset + limit).map((pet) => ({ slug: pet.slug, displayName: pet.displayName, spriteVersionNumber: pet.spriteVersionNumber, installed: installed.has(pet.slug) })),
       }
     }
     if (input.action === 'install') {

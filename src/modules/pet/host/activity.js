@@ -273,6 +273,9 @@ export function createActivityFeed(ctx, onChange = () => {}, options = {}) {
   }
 }
 
+// 队列 / goal 顶替权威 running 的抗竞态窗口：跨回合只会差这么一瞬。
+const QUEUE_GRACE = 20 * 1000
+
 function headerFields(session) {
   return session ? { origin: session.header.origin, parentSessionId: session.header.parentSession } : {}
 }
@@ -280,20 +283,25 @@ function headerFields(session) {
 function facts(row, { liveIds = new Set(), eventLive = new Set(), now = Date.now(), freshMs = 10 * 60 * 1000 } = {}) {
   const inbox = row.values.inbox
   const goal = row.values.goal
-  // 队列里的输入可能「永远不会自己跑」：真机上见过被中断的会话留着一条 next-step，停了 3.4 小时
-  // 仍是 queue=1 / running=false。所以只有最近还有动静的会话才把队列当作「马上要执行」。
-  const queued = (inbox?.['next-turn']?.length ?? 0) + (inbox?.['next-step']?.length ?? 0) > 0
-    && now - row.updatedAt <= freshMs
+  // 队列里的输入不能单独证明「回合在跑」：真机上见过被中断的会话留着一条 next-step，
+  // 宿主明明 running=false / queue=1，压了 4 分钟岛上还显示「正在工作」。
+  // 所以队列与 goal 只允许在极短窗口内顶替权威 running（跨回合的那一瞬），
+  // 超过窗口还没跑起来，说明它只是压在那里等人处理。
+  const queueCount = (inbox?.['next-turn']?.length ?? 0) + (inbox?.['next-step']?.length ?? 0)
+  const queued = queueCount > 0
+  const quiet = now - row.updatedAt
+  const starting = queued && quiet <= QUEUE_GRACE
   const activeGoal = goal?.goal?.phase === 'active'
   const exhausted = activeGoal && goal.roundsStarted >= goal.goal.maxGoalRounds
-  const waiting = goal?.goal?.phase === 'paused' || goal?.goal?.phase === 'blocked' || exhausted && !row.running && !queued
+  // 「现在还在跑」= 本进程见过它的事件，或它确实是活会话且摘要刚刚更新过。
+  const live = row.verified === true || eventLive.has(row.sessionId) || liveIds.has(row.sessionId) && quiet <= freshMs
+  const runningNow = Boolean(row.running && live)
+  const goalStarting = activeGoal && !exhausted && now - Math.max(row.updatedAt, time(goal?.updatedAt)) <= QUEUE_GRACE
+  const stuckQueue = queued && !runningNow && !starting
   const pending = [...row.pending.values()].sort((a, b) => (a.kind === 'permission' ? 0 : 1) - (b.kind === 'permission' ? 0 : 1))[0]
     ?? (row.values.userQuestions?.active?.length ? { kind: 'question', detail: text(row.values.userQuestions.active[0].questions?.[0]?.question) || 'Answer requested' } : undefined)
-  // 「现在还在跑」= 本进程见过它的事件，或它确实是活会话且摘要刚刚更新过。
-  const live = row.verified === true || eventLive.has(row.sessionId) || liveIds.has(row.sessionId) && now - row.updatedAt <= freshMs
-  // 挂着的 goal 同理：只有回合真的在跑，或最近十分钟内动过，才算「正在进行」。
-  const goalLive = activeGoal && !exhausted && (row.running && live || now - Math.max(row.updatedAt, time(goal?.updatedAt)) <= freshMs)
-  return { running: Boolean(row.running && live || queued || goalLive), waiting, pending, error: row.error,
-    detail: waiting ? text(goal?.goal?.blockedReason?.message) || (exhausted ? 'Goal round limit reached' : 'Goal paused') : queued ? 'Input queued' : goalLive ? 'Goal in progress' : row.running && live ? 'Working' : 'Turn finished',
+  const waiting = goal?.goal?.phase === 'paused' || goal?.goal?.phase === 'blocked' || exhausted && !row.running && !queued || stuckQueue
+  return { running: Boolean(runningNow || starting || goalStarting), waiting, pending, error: row.error,
+    detail: waiting ? stuckQueue ? 'Input queued' : text(goal?.goal?.blockedReason?.message) || (exhausted ? 'Goal round limit reached' : 'Goal paused') : queued ? 'Input queued' : goalStarting ? 'Goal in progress' : runningNow ? 'Working' : 'Turn finished',
     updatedAt: Math.max(row.updatedAt, time(goal?.updatedAt)) }
 }

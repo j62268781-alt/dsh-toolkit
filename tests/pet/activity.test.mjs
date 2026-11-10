@@ -71,7 +71,7 @@ test('question waterfall rejection is preserved and removes transient pending st
 })
 
 test('queued input and active goals prevent false completion between turns', async () => {
-  const f = fixture([row('a')]); await f.feed.ready
+  const f = fixture([row('a', { updatedAt: Date.now() })]); await f.feed.ready
   f.project('a', 'inbox', { 'next-turn': [{}], 'next-step': [] })
   assert.equal(f.feed.snapshot()[0].status, 'running')
   f.project('a', 'inbox', { 'next-turn': [], 'next-step': [] }, 3)
@@ -94,7 +94,7 @@ test('queued input and active goals prevent false completion between turns', asy
 })
 
 test('deep descendants aggregate and malformed lineage cycles terminate', async () => {
-  const f = fixture([row('root'), row('child', { origin: 'subagent', parentSessionId: 'root' }), row('grandchild', { origin: 'subagent', parentSessionId: 'child', running: true }), row('cycle1', { origin: 'subagent', parentSessionId: 'cycle2' }), row('cycle2', { origin: 'subagent', parentSessionId: 'cycle1' })])
+  const f = fixture([row('root'), row('child', { origin: 'subagent', parentSessionId: 'root' }), row('grandchild', { origin: 'subagent', parentSessionId: 'child', running: true, updatedAt: Date.now() }), row('cycle1', { origin: 'subagent', parentSessionId: 'cycle2' }), row('cycle2', { origin: 'subagent', parentSessionId: 'cycle1' })])
   await f.feed.ready
   assert.equal(f.feed.snapshot().length, 1)
   assert.equal(f.feed.snapshot()[0].status, 'running')
@@ -157,7 +157,7 @@ test('baseline race retains adds, removals, status, pending, and newest projecti
 
 test('exact attached snapshots replace stale cached list hints', async () => {
   const f = fixture([row('a', {}, { title: 'Hint' })])
-  f.live('a', {}, { asOfSeq: 10, values: { title: 'Current', sessionListMetadata: { blank: false, lastPromptAt: 40 }, inbox: { 'next-turn': [{}], 'next-step': [] } } })
+  f.live('a', {}, { asOfSeq: 10, values: { title: 'Current', sessionListMetadata: { blank: false, lastPromptAt: Date.now() }, inbox: { 'next-turn': [{}], 'next-step': [] } } })
   await f.feed.ready
   assert.equal(f.feed.snapshot()[0].title, 'Current')
   assert.equal(f.feed.snapshot()[0].status, 'running')
@@ -200,6 +200,18 @@ test('a stuck subagent cannot keep its ancient parent session alive', async () =
     row('child', { origin: 'subagent', parentSessionId: 'parent', running: true, updatedAt: longAgo }),
   ]); await f.feed.ready
   assert.deepEqual(f.feed.snapshot(), [])
+  f.feed.dispose()
+})
+
+test('a queue the host is not running is waiting, not working', async () => {
+  // 真机现场：宿主 state 是 { running: false, queue: 1 }，队列里压着一条 next-step，
+  // 岛上却因为「有队列」显示「正在工作」。队列只能证明有东西排着，不能证明回合在跑。
+  const f = fixture([row('a', { running: false, updatedAt: Date.now() - 4 * 60_000 })]); await f.feed.ready
+  f.project('a', 'inbox', { 'next-turn': [], 'next-step': [{}] })
+  const [item] = f.feed.snapshot()
+  assert.equal(item.status, 'waiting')
+  assert.equal(item.detail, 'Input queued')
+  assert.equal(item.running, false)
   f.feed.dispose()
 })
 

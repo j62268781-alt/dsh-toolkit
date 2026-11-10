@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { build } from 'esbuild'
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -9,13 +10,19 @@ import { DEFAULT_SETTINGS } from '../../src/modules/pet/client/model.js'
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 async function clientModule() {
-  const result = await build({ entryPoints: ['src/modules/pet/client/index.jsx'], bundle: true, platform: 'node', format: 'esm', target: 'node20', jsxFactory: '__dshReact.createElement', jsxFragment: '__dshReact.Fragment', loader: { '.css': 'text' }, write: false, logLevel: 'silent' })
-  return import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`)
+  const result = await build({ entryPoints: ['src/modules/pet/client/index.jsx'], bundle: true, platform: 'node', format: 'esm', target: 'node20', external: ['react', 'react/*', 'react-dom', 'react-dom/*'], jsxFactory: '__dshReact.createElement', jsxFragment: '__dshReact.Fragment', loader: { '.css': 'text' }, write: false, logLevel: 'silent' })
+  // 共享组件（resizable-dialog/pagination）直接 import 'react'，写成文件再从 node_modules 解析，
+  // 才能与测试里的 React 是同一份实例（data: URL 解析不了裸模块名，会把 React 再打一份进去）。
+  await mkdir('node_modules/.cache', { recursive: true })
+  const out = 'node_modules/.cache/pet_client_settings.mjs'
+  await writeFile(out, result.outputFiles[0].text)
+  return import(`../../${out}?case=${Math.random()}`)
 }
 function network() {
   const requests = []
   const streams = []
   const old = globalThis.fetch
+  const catalog = Array.from({ length: 21 }, (_, index) => ({ slug: index === 0 ? 'boba' : `pet-${index + 1}`, displayName: index === 0 ? 'Boba' : `Pet ${index + 1}` }))
   globalThis.fetch = async (url, options = {}) => {
     requests.push({ url, options })
     if (url.endsWith('/events')) {
@@ -260,11 +267,12 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   const calls = []
   const installed = new Set()
   const pets = () => [{ id: 'qoduck-lab', name: 'Qoduck', source: 'builtin' }, ...(installed.has('boba') ? [{ id: 'petdex:boba', name: 'Boba', source: 'petdex' }] : [])]
+  const catalog = Array.from({ length: 21 }, (_, index) => ({ slug: index === 0 ? 'boba' : `pet-${index + 1}`, displayName: index === 0 ? 'Boba' : `Pet ${index + 1}` }))
   globalThis.fetch = async (url, options = {}) => {
     if (url.endsWith('/events')) { const body = new ReadableStream({ start() {} }); return { ok: true, body } }
     const action = options.body ? JSON.parse(options.body) : undefined
     if (action) calls.push(action)
-    if (action?.action === 'catalog') return new Response(JSON.stringify({ ok: true, total: 1, pets: [{ slug: 'boba', displayName: 'Boba', installed: installed.has('boba') }] }), { headers: { 'Content-Type': 'application/json' } })
+    if (action?.action === 'catalog') return new Response(JSON.stringify({ ok: true, total: catalog.length, matched: catalog.length, offset: action.offset, limit: action.limit, pets: catalog.slice(action.offset, action.offset + action.limit).map((pet) => ({ ...pet, installed: installed.has(pet.slug) })) }), { headers: { 'Content-Type': 'application/json' } })
     if (action?.action === 'install') installed.add(action.slug)
     if (action?.action === 'remove') installed.delete(action.slug)
     return new Response(JSON.stringify({ ok: true, settings: DEFAULT_SETTINGS, pets: pets(), runtime: { status: 'stopped', available: false }, navigation: { seq: 0 } }), { headers: { 'Content-Type': 'application/json' } })
@@ -277,23 +285,38 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   const root = createRoot(document.getElementById('root'))
   t.after(async () => { await act(async () => root.unmount()); runtime.dispose(); globalThis.fetch = old; for (const [key, value] of saved) { if (value) Object.defineProperty(globalThis, key, value); else delete globalThis[key] }; dom.window.close() })
   await act(async () => { root.render(React.createElement(Component)); await flush() })
-  assert.equal(document.querySelector('.pet-libraryRow'), null)
+  // 宠物库不再单独占一段：入口在「宠物形象」组右侧，点开是弹窗。
+  assert.equal(document.querySelector('.pet-tile'), null)
+  assert.deepEqual(document.querySelectorAll('select optgroup').length, 0, 'the native select is a flat list')
   const browse = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Browse library')
   await act(async () => { browse.click(); await flush() })
-  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '' })
-  const row = document.querySelector('.pet-libraryRow')
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 0, limit: 20 })
+  const dialogCard = document.querySelector('.tk-dialogCard')
+  assert.ok(dialogCard, 'the library opens in the shared resizable dialog')
+  assert.equal(dialogCard.style.width, '920px', 'the dialog keeps its own default width instead of filling the window')
+  assert.equal(dialogCard.style.height, '640px', 'the dialog keeps its own default height')
+  assert.equal(document.querySelector('.pet-modal'), null, 'the old full-bleed modal is gone')
+  const tiles = [...document.querySelectorAll('.pet-tile')]
+  assert.equal(tiles.length, 20, 'one page shows 20 pets')
+  const row = tiles[0]
   assert.match(row.textContent, /Boba/)
   // 预览图走插件自己的受认证路由，页面不直连 Petdex。
-  const thumb = row.querySelector('.pet-thumb')
-  assert.ok(thumb, 'each library row shows the pet artwork')
+  const thumb = row.querySelector('.pet-tileArt')
+  assert.ok(thumb, 'each tile shows the pet artwork')
   assert.match(thumb.getAttribute('style'), /\/api\/plugins\/dsh-toolkit\/pet\/asset\?slug=boba/)
   const install = [...row.querySelectorAll('button')].find((button) => button.textContent === 'Install')
   await act(async () => { install.click(); await flush() })
   assert.deepEqual(calls.filter((call) => call.action === 'install'), [{ action: 'install', slug: 'boba' }])
-  const uninstall = [...document.querySelectorAll('.pet-libraryRow button')].find((button) => button.textContent === 'Uninstall')
+  const uninstall = [...document.querySelectorAll('.pet-tile button')].find((button) => button.textContent === 'Uninstall')
   assert.ok(uninstall, 'an installed pet offers removal')
   await act(async () => { uninstall.click(); await flush() })
   assert.deepEqual(calls.filter((call) => call.action === 'remove'), [{ action: 'remove', slug: 'boba' }])
+  // 分页：第 2 页只请求剩下的 1 只。
+  const next = [...document.querySelectorAll('.tk-pagination button')].find((button) => button.textContent === 'Next')
+  assert.ok(next, 'the shared pagination control is rendered')
+  await act(async () => { next.click(); await flush() })
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 20, limit: 20 })
+  assert.equal(document.querySelectorAll('.pet-tile').length, 1)
   const options = [...document.querySelectorAll('select option')].map((option) => option.textContent)
   assert.ok(options.includes('Qoduck'))
 })

@@ -1,9 +1,15 @@
 import { DEFAULT_SETTINGS, LIMITS } from './model.js'
 import { petPreviewUrl } from './connection.js'
+import { Pagination } from '../../../client/ui/pagination.jsx'
+import { ResizableDialog } from '../../../client/ui/resizable-dialog.jsx'
+
+/** 宠物库一页 20 只，宫格每行 4 个。 */
+const PAGE_SIZE = 20
 
 export function createPetPanel(React, { t, settings, connection, actions, primitives }) {
   const { useEffect, useRef, useState, useSyncExternalStore } = React
   const Switch = primitives?.Switch
+  const Modal = ResizableDialog
   function Toggle({ field, value, disabled, change }) {
     if (Switch !== undefined) return <Switch checked={value} disabled={disabled} label={t(field)} onChange={(next) => change(field, next === true)} />
     return <button type="button" className="pet-switch" role="switch" aria-label={t(field)} aria-checked={value} disabled={disabled} onClick={() => change(field, !value)}><span /></button>
@@ -37,6 +43,8 @@ export function createPetPanel(React, { t, settings, connection, actions, primit
     const state = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot)
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState('')
+    const [query, setQuery] = useState('')
+    const [library, setLibrary] = useState({ open: false, loading: false, pets: [], error: '', page: 0, pages: 1, matched: 0 })
     const readonly = !actions.isWritable()
     useEffect(() => { let active = true; connection.refresh().catch((reason) => { if (active) setError(String(reason.message ?? reason)) }); return () => { active = false } }, [])
     const run = async (work) => {
@@ -44,42 +52,69 @@ export function createPetPanel(React, { t, settings, connection, actions, primit
       try { await work(); return true } catch (reason) { setError(String(reason.message ?? reason)); return false } finally { setBusy(false) }
     }
     const change = (field, next) => run(() => actions.write(field, next))
-    const searchLibrary = async (term) => {
-      setLibrary((current) => ({ ...current, loading: true, error: '' }))
+    // 服务端按 offset 切片：翻页只多拉一页的元数据，不用把 5000+ 条目录搬进页面。
+    const searchLibrary = async (term, page = 0) => {
+      const wanted = Number.isInteger(page) && page >= 0 ? page : 0
+      setLibrary((current) => ({ ...current, open: true, loading: true, error: '' }))
       try {
-        const result = await connection.catalog(term)
+        const result = await connection.catalog(term, wanted * PAGE_SIZE, PAGE_SIZE)
         const found = Array.isArray(result?.pets) ? result.pets.filter((pet) => typeof pet?.slug === 'string') : []
-        setLibrary({ loading: false, total: Number(result?.total) || found.length, pets: found, error: '' })
+        const matched = Number.isFinite(Number(result?.matched)) ? Number(result.matched) : found.length
+        const pages = Math.max(1, Math.ceil(matched / PAGE_SIZE))
+        setLibrary({ open: true, loading: false, pets: found, error: '', page: Math.min(wanted, pages - 1), pages, matched })
       } catch (reason) {
-        setLibrary({ loading: false, total: 0, pets: [], error: String(reason?.message ?? reason) })
+        setLibrary((current) => ({ ...current, open: true, loading: false, pets: [], error: String(reason?.message ?? reason) }))
       }
     }
-    const openLibrary = () => { setLibraryOpen(true); return searchLibrary(query) }
+    const openLibrary = () => { setLibrary((current) => ({ ...current, open: true })); return searchLibrary(query, 0) }
+    const closeLibrary = () => setLibrary((current) => ({ ...current, open: false }))
+    const togglePet = async (pet, installed) => {
+      if (installed) await connection.removePet(pet.slug)
+      else await connection.installPet(pet.slug)
+      await connection.refresh()
+      await searchLibrary(query, library.page)
+    }
     const toggle = (field) => <Row title={t(field)} description={t(`${field}Desc`)}><Toggle field={field} value={value[field]} disabled={readonly || busy} change={change} /></Row>
     const runtime = state.runtime ?? {}
     const runtimeText = !state.loaded ? 'runtimeUnknown' : runtime.status === 'error' ? 'runtimeError' : runtime.status === 'starting' ? 'runtimeStarting' : runtime.status === 'running' ? 'runtimeRunning' : runtime.available === false ? 'runtimeUnavailable' : 'runtimeStopped'
     const selected = state.pets.some((pet) => pet.id === value.activePet)
-    const installedPets = state.pets.filter((pet) => pet.source === 'petdex')
     const skippedPets = Array.isArray(state.petdex?.skipped) ? state.petdex.skipped.length : 0
-    const [libraryOpen, setLibraryOpen] = useState(false)
-    const [library, setLibrary] = useState({ loading: false, total: 0, pets: [], error: '' })
-    const [query, setQuery] = useState('')
     // 官方预览条是 idle 的前 6 帧横排（1152x208）：容器里只露第一格，就是这只宠物的样子。
-    const thumb = (slug) => <span className="pet-thumb" aria-hidden="true" style={{ backgroundImage: `url("${petPreviewUrl(slug)}")` }} />
-    const libraryRows = library.pets.map((pet) => {
+    const tile = (pet) => {
+      const name = pet.displayName || pet.slug
       const installed = pet.installed === true || state.pets.some((entry) => entry.id === `petdex:${pet.slug}`)
-      return <li className="pet-libraryRow" key={pet.slug}>{thumb(pet.slug)}<div className="pet-rowCopy"><div className="pet-title">{pet.displayName || pet.slug}</div><div className="pet-desc">{pet.slug}{installed ? ` · ${t('installed')}` : ''}</div></div><div className="pet-control"><button type="button" className="pet-button" disabled={busy} onClick={() => run(async () => { if (installed) await connection.removePet(pet.slug); else await connection.installPet(pet.slug); await searchLibrary(query) })}>{t(installed ? 'uninstall' : 'install')}</button></div></li>
-    })
-    const libraryResults = library.loading ? <p className="pet-desc">{t('searching')}</p> : library.error ? <p className="pet-desc">{t('catalogFailed')}</p> : libraryRows.length ? <ul className="pet-libraryList">{libraryRows}</ul> : <p className="pet-desc">{t('noResults')}</p>
+      return <article className="pet-tile" key={pet.slug}>
+        <span className="pet-tileArt" role="img" aria-label={name} style={{ backgroundImage: `url("${petPreviewUrl(pet.slug)}")` }} />
+        <div className="pet-tileCopy"><div className="pet-title">{name}</div><div className="pet-desc">{pet.slug}</div></div>
+        <div className="pet-tileFoot">
+          {installed
+            ? <><span className="pet-tileState">{t('installed')}</span><button type="button" className="pet-button pet-quietButton" disabled={busy} onClick={() => void run(() => togglePet(pet, true))}>{t('uninstall')}</button></>
+            : <button type="button" className="pet-button" disabled={busy} onClick={() => void run(() => togglePet(pet, false))}>{t('install')}</button>}
+        </div>
+      </article>
+    }
+    const libraryBody = library.loading
+      ? <p className="pet-desc pet-libraryNote">{t('searching')}</p>
+      : library.error
+        ? <p className="pet-error" role="alert">{t('catalogFailed')}</p>
+        : library.pets.length === 0
+          ? <p className="pet-desc pet-libraryNote">{t('noResults')}</p>
+          : <div className="pet-grid">{library.pets.map(tile)}</div>
     return <div className="pet-page">
       <h2 className="pet-pageTitle">{t('title')}</h2><p className="pet-pageIntro">{t('intro')}</p>
       {readonly && <p className="pet-notice" role="status">{t('readOnly')}</p>}
       {error && <p className="pet-error" role="alert">{t('failed', { reason: error })}</p>}
-      <section className="pet-section" aria-label={t('appearance')}><div className="pet-sectionHeader"><h3>{t('appearance')}</h3><button type="button" className="pet-button pet-quietButton" disabled={busy} onClick={() => run(connection.refresh)}>{t('refresh')}</button></div><div className="pet-card"><Row title={t('identity')} description={t('identityDesc')}><span className="pet-identity">{value.activePet.startsWith('petdex:') && thumb(value.activePet.slice('petdex:'.length))}<select aria-label={t('identity')} value={value.activePet} disabled={readonly || busy || !state.pets.length} onChange={(event) => change('activePet', event.target.value)}>{!selected && <option value={value.activePet}>{state.pets.length ? t('missingPet') : t('emptyPets')}</option>}<optgroup label={t('builtInGroup')}>{state.pets.filter((pet) => pet.source !== 'petdex').map((pet) => <option key={pet.id} value={pet.id}>{pet.name}</option>)}</optgroup>{installedPets.length > 0 && <optgroup label={t('petdexGroup')}>{installedPets.map((pet) => <option key={pet.id} value={pet.id}>{pet.name}</option>)}</optgroup>}</select></span></Row></div></section>
-      <section className="pet-section" aria-label={t('library')}><div className="pet-sectionHeader"><h3>{t('library')}</h3><button type="button" className="pet-button pet-quietButton" disabled={busy} onClick={() => { void run(libraryOpen ? () => searchLibrary(query) : openLibrary) }}>{t(libraryOpen ? 'refreshLibrary' : 'browseLibrary')}</button></div><div className="pet-card"><p className="pet-desc pet-libraryIntro">{t('libraryIntro')}</p>{libraryOpen && <form className="pet-search" onSubmit={(event) => { event.preventDefault(); void run(() => searchLibrary(query)) }}><input type="search" aria-label={t('searchPets')} placeholder={t('searchPets')} value={query} disabled={busy} onChange={(event) => setQuery(event.target.value)} /><button className="pet-button" type="submit" disabled={busy}>{t('search')}</button></form>}{libraryOpen && <div className="pet-results">{libraryResults}{!library.loading && library.total > 0 && <p className="pet-desc">{t('libraryTotal', { total: library.total })}</p>}{skippedPets > 0 && <p className="pet-desc">{t('skippedPets', { count: skippedPets })}</p>}</div>}</div></section>
+      <section className="pet-section" aria-label={t('appearance')}><div className="pet-sectionHeader"><h3>{t('appearance')}</h3><button type="button" className="pet-button pet-quietButton" disabled={busy} onClick={() => void run(openLibrary)}>{t('browseLibrary')}</button></div><div className="pet-card"><Row title={t('identity')} description={t('identityDesc')}><select aria-label={t('identity')} value={value.activePet} disabled={readonly || busy || !state.pets.length} onChange={(event) => change('activePet', event.target.value)}>{!selected && <option value={value.activePet}>{state.pets.length ? t('missingPet') : t('emptyPets')}</option>}{state.pets.map((pet) => <option key={pet.id} value={pet.id}>{pet.name}</option>)}</select></Row></div></section>
       <section className="pet-section" aria-label={t('desktop')}><h3>{t('desktop')}</h3><div className="pet-card">{toggle('petEnabled')}<Row title={t('petSize')} description={t('petSizeDesc')}><Slider field="petSize" value={value.petSize} disabled={readonly || busy} change={change} /></Row><Row title={t('bubbleWidth')} description={t('bubbleWidthDesc')}><Slider field="bubbleWidth" value={value.bubbleWidth} disabled={readonly || busy} change={change} /></Row></div></section>
       <section className="pet-section" aria-label={t('screenTop')}><h3>{t('screenTop')}</h3><div className="pet-card">{toggle('islandEnabled')}{toggle('islandIdle')}{toggle('islandAllDisplays')}<div className="pet-size"><div className="pet-sectionHeader"><div><div className="pet-title">{t('islandSize')}</div><p className="pet-desc">{t('islandSizeDesc')}</p></div><button type="button" className="pet-button pet-quietButton" disabled={readonly || busy || (value.islandWidth === 100 && value.islandHeight === 100)} onClick={() => run(async () => { await actions.write('islandWidth', DEFAULT_SETTINGS.islandWidth); await actions.write('islandHeight', DEFAULT_SETTINGS.islandHeight) })}>{t('restore')}</button></div><div className="pet-previews"><Preview builtIn width={value.islandWidth} height={value.islandHeight} /><Preview width={value.islandWidth} height={value.islandHeight} /></div><Row title={t('width')}><Slider field="islandWidth" label={t('width')} value={value.islandWidth} disabled={readonly || busy} change={change} /></Row><Row title={t('height')}><Slider field="islandHeight" label={t('height')} value={value.islandHeight} disabled={readonly || busy} change={change} /></Row></div></div></section>
       <section className="pet-section" aria-label={t('runtime')}><h3>{t('runtime')}</h3><div className="pet-card"><Row title={t(runtimeText)} description={runtime.error}><div className="pet-runtimeActions">{state.loaded && runtime.status === 'error' ? <button className="pet-button" disabled={busy} onClick={() => run(() => connection.action('retry'))}>{t('retry')}</button> : state.loaded && runtime.available === false && runtime.status !== 'starting' ? <button className="pet-button" disabled={busy} onClick={() => run(() => connection.action('prepare'))}>{t('prepare')}</button> : state.loaded && runtime.available === true && runtime.status === 'stopped' && (value.petEnabled || value.islandEnabled) ? <button className="pet-button" disabled={busy} onClick={() => run(() => connection.action('start'))}>{t('start')}</button> : null}</div></Row>{state.loaded && !state.connected && <p className="pet-desc" role="status">{t('reconnecting')}</p>}</div></section>
+      <Modal open={library.open} onClose={closeLibrary} storageKey="dsh-toolkit:pet-library-size" title={t('library')} closeLabel={t('close')} resizeLabel={t('resizeDialog')} description={t('libraryIntro')} footer={<button type="button" className="pet-button" onClick={closeLibrary}>{t('close')}</button>}>
+        <form className="pet-search" onSubmit={(event) => { event.preventDefault(); void run(() => searchLibrary(query, 0)) }}><input type="search" aria-label={t('searchPets')} placeholder={t('searchPets')} value={query} disabled={busy} onChange={(event) => setQuery(event.target.value)} /><button type="submit" className="pet-button" disabled={busy}>{t('search')}</button></form>
+        {libraryBody}
+        {!library.loading && !library.error && library.matched > 0 && <Pagination page={library.page} pages={library.pages} disabled={busy} onChange={(next) => void run(() => searchLibrary(query, next))} labels={{ prev: t('prevPage'), next: t('nextPage'), label: t('pagination') }} />}
+        {!library.loading && !library.error && library.matched > 0 && <p className="pet-desc pet-libraryNote">{t('pageSummary', { page: library.page + 1, pages: library.pages, matched: library.matched })}</p>}
+        {skippedPets > 0 && <p className="pet-desc pet-libraryNote">{t('skippedPets', { count: skippedPets })}</p>}
+      </Modal>
     </div>
   }
 }
