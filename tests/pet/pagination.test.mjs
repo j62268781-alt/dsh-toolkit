@@ -81,3 +81,24 @@ test('the pagination control hides itself for a single page and disables the edg
   assert.equal(last.at(-1).disabled, true, 'next is disabled on the last page')
   assert.ok(last.every((button) => button.disabled), 'disabled disables the whole control')
 })
+
+test('the summary shares one row with the page buttons, and shows even for a single page', async (t) => {
+  const { Pagination } = await paginationModule()
+  const { root } = mount(t)
+  await act(async () => {
+    root.render(React.createElement(Pagination, { page: 6, pages: 20, summary: '第 7 / 20 页 · 命中 5208 只' }))
+    await flush()
+  })
+  const nav = document.querySelector('nav.tk-pagination')
+  assert.ok(nav, 'the summary keeps the bar visible')
+  const summary = nav.querySelector('.tk-pageSummary')
+  assert.equal(summary.textContent, '第 7 / 20 页 · 命中 5208 只')
+  const buttons = nav.querySelector('.tk-pageButtons')
+  assert.ok(buttons, 'page buttons sit in their own group on the same row')
+  assert.equal(buttons.querySelector('[aria-current=page]').textContent, '7', 'summary does not disturb the pager')
+  assert.equal(nav.querySelectorAll('.tk-page').length, 9, 'the window still renders the same pages')
+
+  await act(async () => { root.render(React.createElement(Pagination, { page: 0, pages: 1, summary: '第 1 / 1 页' })); await flush() })
+  assert.equal(document.querySelector('.tk-pagination .tk-pageSummary').textContent, '第 1 / 1 页')
+  assert.equal(document.querySelector('.tk-pageButtons'), null, 'a single page drops the buttons but keeps the total')
+})

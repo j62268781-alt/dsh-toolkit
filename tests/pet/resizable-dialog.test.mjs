@@ -70,6 +70,10 @@ test('the dialog keeps its own size inside the viewport instead of filling it', 
   assert.ok(document.querySelector('.tk-dialogBody p'), 'children land in the body')
   assert.ok(document.querySelector('.tk-dialogFoot span'), 'footer lands in the footer')
   assert.ok(document.querySelector('.tk-dialogResize'), 'exposes the resize handle')
+  const close = document.querySelector('.tk-dialogClose')
+  assert.equal(close.getAttribute('aria-label'), 'Close')
+  assert.ok(close.querySelector('svg'), 'the close button uses the host close icon instead of a text ×')
+  assert.equal(close.querySelectorAll('svg path').length, 2, 'two 45° strokes like the host icon')
 
   await act(async () => { dialog.dispatchEvent(mouse(dom, 'mousedown', 5, 5)); await flush() })
   assert.deepEqual(closed, [1], 'clicking the overlay closes')

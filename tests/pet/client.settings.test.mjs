@@ -296,6 +296,17 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   assert.equal(dialogCard.style.width, '920px', 'the dialog keeps its own default width instead of filling the window')
   assert.equal(dialogCard.style.height, '640px', 'the dialog keeps its own default height')
   assert.equal(document.querySelector('.pet-modal'), null, 'the old full-bleed modal is gone')
+  // 搜索行固定在弹窗顶部（不跟列表滚动），列表区里不能再有搜索框。
+  const toolbar = document.querySelector('.tk-dialogToolbar')
+  assert.ok(toolbar && toolbar.querySelector('.pet-search'), 'the search stays pinned above the scrolling list')
+  assert.equal(document.querySelector('.tk-dialogBody .pet-search'), null, 'the search form is not part of the scrolling body')
+  // 底部只剩固定分页条：关闭入口是右上角的宿主图标，不再有「关闭」按钮。
+  const foot = document.querySelector('.tk-dialogFoot')
+  assert.ok(foot && foot.querySelector('.tk-pagination'), 'the pager is pinned to the dialog footer, not inside the scrolling list')
+  assert.equal([...foot.querySelectorAll('button')].some((button) => button.textContent === 'Close'), false, 'no close button in the footer')
+  assert.ok(document.querySelector('.tk-dialogClose svg'), 'closing happens through the host icon in the header')
+  assert.ok(document.querySelector('.tk-dialogFoot .tk-pageSummary'), 'the total sits on the same row as the page buttons')
+  assert.equal(document.querySelector('.tk-dialogBody .tk-pagination'), null, 'the pager is not part of the scrolling body')
   const tiles = [...document.querySelectorAll('.pet-tile')]
   assert.equal(tiles.length, 20, 'one page shows 20 pets')
   const row = tiles[0]
@@ -303,6 +314,8 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   // 预览图走插件自己的受认证路由，页面不直连 Petdex。
   const thumb = row.querySelector('.pet-tileArt')
   assert.ok(thumb, 'each tile shows the pet artwork')
+  assert.ok(row.querySelector('.pet-tileCopy .pet-desc'), 'the subtitle (pet id) is rendered under the title')
+  assert.ok(row.querySelector('.pet-tileActions button'), 'the install action sits in its own row under the copy')
   assert.match(thumb.getAttribute('style'), /\/api\/plugins\/dsh-toolkit\/pet\/asset\?slug=boba/)
   const install = [...row.querySelectorAll('button')].find((button) => button.textContent === 'Install')
   await act(async () => { install.click(); await flush() })

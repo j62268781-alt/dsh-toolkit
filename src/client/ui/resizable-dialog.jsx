@@ -76,6 +76,7 @@ export function ResizableDialog({
   onClose,
   title,
   description,
+  toolbar,
   children,
   footer,
   closeLabel = 'Close',
@@ -175,8 +176,14 @@ export function ResizableDialog({
             <h3 className="tk-dialogTitle">{title}</h3>
             {description && <p className="tk-dialogDesc">{description}</p>}
           </div>
-          <button type="button" className="tk-dialogClose" aria-label={closeLabel} onClick={onClose}>×</button>
+          <button type="button" className="tk-dialogClose" aria-label={closeLabel} onClick={onClose}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1" aria-hidden="true">
+              <path d="M2.5 2.5L13.5 13.5" />
+              <path d="M13.5 2.5L2.5 13.5" />
+            </svg>
+          </button>
         </div>
+        {toolbar && <div className="tk-dialogToolbar">{toolbar}</div>}
         <div className="tk-dialogBody">{children}</div>
         {footer && <div className="tk-dialogFoot">{footer}</div>}
         <button
@@ -199,8 +206,11 @@ export const resizableDialogCss = `
 .tk-dialogHeading { min-width: 0; }
 .tk-dialogTitle { margin: 0; font-size: 15px; line-height: 22px; font-weight: 600; }
 .tk-dialogDesc { margin: 4px 0 0; max-width: 60ch; }
-.tk-dialogClose { flex: none; width: 26px; height: 26px; padding: 0; font-size: 17px; line-height: 1; color: var(--dsw-alias-label-secondary); background: transparent; border: 0; border-radius: 7px; cursor: pointer; }
-.tk-dialogClose:hover { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-interactive-bg-hover); }
+/* 关闭按钮沿用宿主的 DSH 图标：16×16 两笔 45° 交叉线，28×28 的透明按钮。 */
+.tk-dialogClose { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; color: var(--dsw-alias-label-secondary); background: transparent; border: 0; border-radius: var(--dsw-radius-sm, 6px); cursor: pointer; }
+@media (hover: hover) { .tk-dialogClose:hover { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-interactive-bg-hover); } }
+.tk-dialogClose:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 1px; }
+.tk-dialogToolbar { flex: none; padding: 0 18px 10px; }
 .tk-dialogBody { flex: 1; min-height: 0; overflow: auto; padding: 2px 18px 16px; }
 .tk-dialogFoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 18px 14px; border-top: 0.5px solid var(--dsw-alias-border-l2); }
 .tk-dialogResize { position: absolute; right: 3px; bottom: 3px; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 5px; background: transparent; cursor: nwse-resize; }

@@ -55,18 +55,27 @@
   .pet-size > .pet-sectionHeader { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { .pet-switch span { transition: none; } }
-.pet-search { display: flex; gap: 8px; padding: 4px 0 12px; }
+.pet-search { display: flex; gap: 8px; padding: 0; }
 .pet-search input { box-sizing: border-box; flex: 1; min-width: 0; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); padding: 6px 10px; }
 .pet-libraryNote { margin-top: 10px; }
 
-/* 宠物库弹窗：4 列宫格，每页 20 只；卡片=预览图 + 名称/ID + 右侧安装或已安装。 */
-.pet-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+/* 宠物库弹窗：一行 6 个的紧凑宫格，每页 20 只；卡片=预览图 + 右侧名称/ID 与安装按钮。 */
+.pet-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .pet-grid .pet-tile { min-width: 0; }
-.pet-tile { display: flex; flex-direction: column; min-width: 0; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 10px; overflow: hidden; background: var(--dsw-alias-bg-layer-1); }
-.pet-tileArt { display: block; aspect-ratio: 192 / 208; background-color: var(--dsw-alias-bg-layer-1); background-repeat: no-repeat; background-position: 0 0; background-size: 600% 100%; }
-.pet-tileCopy { padding: 8px 10px 0; min-width: 0; }
-.pet-tileCopy .pet-title { font-size: 13px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pet-tileCopy .pet-desc { margin-top: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pet-tileFoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 10px 10px; }
-.pet-tileState { flex: 1; min-width: 0; font-size: 12px; color: var(--dsw-alias-state-success-primary, var(--dsw-alias-label-secondary)); }
-.pet-tileFoot .pet-button { font-size: 12px; padding: 4px 10px; }
+.pet-tile { display: flex; flex-direction: column; min-width: 0; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 10px; overflow: hidden; background: var(--dsw-alias-bg-layer-1); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease; }
+.pet-tile:hover, .pet-tile:focus-within { transform: translateY(-2px); border-color: var(--dsw-alias-border-l3); background: var(--dsw-alias-interactive-bg-hover); box-shadow: 0 8px 18px rgba(0, 0, 0, .16); }
+.pet-tileArt { display: block; aspect-ratio: 192 / 208; background-color: var(--dsw-alias-bg-layer-1); background-repeat: no-repeat; background-position: 0 0; background-size: 600% 100%; transition: transform .18s ease; }
+.pet-tile:hover .pet-tileArt { transform: scale(1.04); }
+.pet-tileCopy { padding: 8px 8px 0; min-width: 0; }
+.pet-tileCopy .pet-title { font-size: 12px; line-height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 副标题给满两行，第三行起省略；这样 6 列窄卡片里的名字与 ID 都能看到。 */
+.pet-tileCopy .pet-desc { margin-top: 2px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 11px; line-height: 15px; overflow-wrap: anywhere; }
+/* 动作做成卡片底部整宽的一条：平时极淡，鼠标移上来才点亮成主色，20 张卡片不至于满屏按钮。 */
+.pet-tileActions { padding: 0; margin-top: 8px; }
+.pet-tileButton { width: 100%; height: 28px; padding: 0 8px; font-size: 11.5px; background: transparent; border: 0; border-top: 0.5px solid var(--dsw-alias-border-l2); border-radius: 0; opacity: .8; transition: opacity .18s ease, background-color .18s ease, border-color .18s ease, color .18s ease; }
+.pet-tile:hover .pet-tileButton, .pet-tile:focus-within .pet-tileButton { opacity: 1; }
+.pet-tile:hover .pet-tileButton:not(.pet-quietButton), .pet-tile:focus-within .pet-tileButton:not(.pet-quietButton) { color: var(--dsw-alias-label-primary-foreground); background: var(--dsw-alias-state-business-primary); border-top-color: transparent; }
+.pet-tile:hover .pet-tileButton.pet-quietButton, .pet-tile:focus-within .pet-tileButton.pet-quietButton { background: var(--dsw-alias-interactive-bg-hover); border-top-color: var(--dsw-alias-border-l3); }
+/* 弹窗底部的分页条固定在卡片底部，列表滚动时始终可见。 */
+.tk-dialogFoot .tk-pagination { width: 100%; }
+@media (prefers-reduced-motion: reduce) { .pet-tile, .pet-tileArt, .pet-tileButton { transition: none; } .pet-tile:hover, .pet-tile:focus-within { transform: none; } .pet-tile:hover .pet-tileArt { transform: none; } }

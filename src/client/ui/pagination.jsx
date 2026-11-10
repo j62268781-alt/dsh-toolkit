@@ -19,27 +19,34 @@ export function paginationWindow(page, pages, span = 2) {
   return shown
 }
 
-export function Pagination({ page = 0, pages = 1, onChange, labels = {}, disabled = false }) {
-  const shown = paginationWindow(page, pages)
-  if (shown.length === 0 || pages <= 1) return null
+export function Pagination({ page = 0, pages = 1, onChange, labels = {}, disabled = false, summary }) {
+  const total = Number.isInteger(pages) && pages > 0 ? pages : 1
+  const shown = paginationWindow(page, total)
+  const paged = shown.length > 0 && total > 1
+  if (!paged && !summary) return null
   const go = (next) => {
     if (disabled) return
-    if (!Number.isInteger(next) || next < 0 || next >= pages || next === page) return
+    if (!Number.isInteger(next) || next < 0 || next >= total || next === page) return
     if (typeof onChange === 'function') onChange(next)
   }
   return (
     <nav className="tk-pagination" aria-label={labels.label ?? 'Pagination'}>
-      <button type="button" className="tk-page" disabled={disabled || page <= 0} onClick={() => go(page - 1)}>{labels.prev ?? 'Previous'}</button>
-      {shown.map((entry, index) => entry === null
-        ? <span className="tk-pageGap" key={`gap:${index}`} aria-hidden="true">…</span>
-        : <button type="button" key={entry} aria-current={entry === page ? 'page' : undefined} className={entry === page ? 'tk-page tk-pageCurrent' : 'tk-page'} disabled={disabled} onClick={() => go(entry)}>{entry + 1}</button>)}
-      <button type="button" className="tk-page" disabled={disabled || page >= pages - 1} onClick={() => go(page + 1)}>{labels.next ?? 'Next'}</button>
+      {summary ? <span className="tk-pageSummary">{summary}</span> : null}
+      {paged && <span className="tk-pageButtons">
+        <button type="button" className="tk-page" disabled={disabled || page <= 0} onClick={() => go(page - 1)}>{labels.prev ?? 'Previous'}</button>
+        {shown.map((entry, index) => entry === null
+          ? <span className="tk-pageGap" key={`gap:${index}`} aria-hidden="true">…</span>
+          : <button type="button" key={entry} aria-current={entry === page ? 'page' : undefined} className={entry === page ? 'tk-page tk-pageCurrent' : 'tk-page'} disabled={disabled} onClick={() => go(entry)}>{entry + 1}</button>)}
+        <button type="button" className="tk-page" disabled={disabled || page >= total - 1} onClick={() => go(page + 1)}>{labels.next ?? 'Next'}</button>
+      </span>}
     </nav>
   )
 }
 
 export const paginationCss = `
-.tk-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 14px; }
+.tk-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
+.tk-pageSummary { min-width: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk-pageButtons { display: flex; flex: none; align-items: center; gap: 6px; }
 .tk-pagination .tk-page { font: inherit; min-width: 30px; height: 30px; padding: 0 9px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); cursor: pointer; font-variant-numeric: tabular-nums; }
 .tk-pagination .tk-page:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
 .tk-pagination .tk-pageCurrent { background: var(--dsw-alias-label-primary); color: var(--dsw-alias-label-primary-foreground); border-color: transparent; }
