@@ -19,7 +19,8 @@ function publicState(state, kind, display) {
   const settings = state.settings || {}
   return {
     settings: { activePet: settings.activePet, petSize: settings.petSize, bubbleWidth: settings.bubbleWidth, islandWidth: settings.islandWidth, islandHeight: settings.islandHeight, language: settings.language === 'en' ? 'en' : 'zh' },
-    pets: (state.pets || []).filter(p => /^[a-z0-9_-]+$/i.test(p.id)).map(p => ({ id: p.id, name: p.name, spriteVersionNumber: p.manifest?.spriteVersionNumber === 2 ? 2 : 1, spritesheet: `pet-asset://pet/${encodeURIComponent(p.id)}/spritesheet.png` })),
+    // Petdex 安装的形象用 `petdex:<slug>` 作为 id，精灵表文件名也可能不是 spritesheet.png。
+    pets: (state.pets || []).filter(p => /^(?:petdex:)?[a-z0-9][a-z0-9._-]*$/i.test(p.id)).map(p => ({ id: p.id, name: p.name, spriteVersionNumber: p.manifest?.spriteVersionNumber === 2 ? 2 : 1, spritesheet: `pet-asset://pet/${encodeURIComponent(p.id)}/${encodeURIComponent(p.sheetFile || 'spritesheet.png')}` })),
     // updatedAt 只用于展开态的「刚刚 / N 分钟前」，不是绝对时间戳：渲染端只读差值。
     sessions: orderedSessions(state.sessions).map(s => ({ id: s.id, title: String(s.title || ''), detail: String(s.detail || ''), status: s.status, running: Boolean(s.running), updatedAt: Number(s.updatedAt) || 0, pendingKind: s.pendingKind })),
     revision: state.revision, kind,
@@ -65,13 +66,18 @@ function islandOffset(display, size, x, y) {
 }
 
 function assetPath(state, rawUrl) {
-  const url = new URL(rawUrl)
+  let url
+  try { url = new URL(rawUrl) } catch { return null }
   if (url.protocol !== 'pet-asset:' || url.hostname !== 'pet') return null
   const segments = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
-  if (segments.length !== 2 || segments[1] !== 'spritesheet.png') return null
-  const pet = (state.pets || []).find(p => p.id === segments[0])
+  if (segments.length !== 2) return null
+  const [id, file] = segments
+  // 只允许 png/webp、且必须与这只宠物登记的精灵表同名：路径不再由 URL 决定。
+  if (!/^[a-z0-9][a-z0-9._-]{0,127}\.(?:png|webp)$/i.test(file)) return null
+  const pet = (state.pets || []).find(p => p.id === id)
   if (!pet || !path.isAbsolute(pet.assetDir || '')) return null
-  return path.join(pet.assetDir, 'spritesheet.png')
+  if (file !== (pet.sheetFile || 'spritesheet.png')) return null
+  return path.join(pet.assetDir, file)
 }
 
 function validatedAction(value) {

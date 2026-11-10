@@ -9,11 +9,24 @@ import { readSettings } from './config.js'
 import { createHelperBridge, attachEvents, parseAction } from './bridge.js'
 import { HelperManager } from './helper.js'
 import { createActivityFeed } from './activity.js'
+import { createCatalog, installPet, listInstalled, removePet, resolveAssetUrl } from './petdex.js'
+import { createPreviewStore } from './preview.js'
 
 export const name = 'toolkit-pet'
 export const inject = ['webServer', 'connection', 'sessionController', 'sessionProjections', 'sessions', 'settings']
 export const API_PATH = '/api/plugins/dsh-toolkit/pet'
 const PET_IDS = ['qoduck-lab', 'kleidis-lab', 'neon-cat', 'retro-duck']
+const PETDEX_PREFIX = 'petdex:'
+
+/** 插件自己的数据目录：安装的宠物、已读记录、预览图缓存都在这下面。 */
+function petHome() {
+  return join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'toolkit', 'pet')
+}
+
+/** Petdex 安装目录：与内置形象物理隔离，卸载/损坏都不会碰到插件自带的四款。 */
+function petsRoot() {
+  return join(petHome(), 'pets')
+}
 
 // 「已经看过的会话」落盘：否则重启后半小时内已读的结果又会被当成「有新结果」弹出来。
 function seenFile() {
@@ -31,11 +44,16 @@ async function loadSeen() {
 }
 
 async function loadPets() {
-  return Promise.all(PET_IDS.map(async (id) => {
+  const builtin = await Promise.all(PET_IDS.map(async (id) => {
     const assetDir = fileURLToPath(new URL(`./runtime/pets/${id}/`, import.meta.url))
     const manifest = JSON.parse(await readFile(new URL(`./runtime/pets/${id}/pet.json`, import.meta.url), 'utf8'))
-    return { id, name: manifest.displayName || id, assetDir, manifest }
+    return { id, name: manifest.displayName || id, assetDir, manifest, source: 'builtin', sheetFile: 'spritesheet.png' }
   }))
+  const { pets: installed, skipped } = await listInstalled(petsRoot())
+  const custom = installed.map(({ slug, dir, manifest, sheetFile }) => ({
+    id: `${PETDEX_PREFIX}${slug}`, name: manifest.displayName || slug, assetDir: dir, manifest, source: 'petdex', sheetFile,
+  }))
+  return { pets: [...builtin, ...custom], skipped }
 }
 
 export async function createPetService(ctx, initialConfig = {}) {
@@ -59,12 +77,16 @@ export async function createPetService(ctx, initialConfig = {}) {
       .then(() => rename(temp, file))
       .catch(() => {})
   }
-  const pets = await loadPets()
+  let { pets, skipped: petdexSkipped } = await loadPets()
+  const catalog = createCatalog()
+  const previews = createPreviewStore({ root: petHome() })
+  let installing = false
   let manager, feed, bridge
   let clientDiag
   const snapshot = (privateState = false) => ({
     ok: true, settings,
-    pets: privateState ? pets : pets.map(({ id, name }) => ({ id, name })),
+    pets: privateState ? pets : pets.map(({ id, name, source }) => ({ id, name, source: source || 'builtin' })),
+    petdex: { skipped: petdexSkipped },
     runtime: manager?.state || { status: 'stopped', available: false },
     sessions: feed?.snapshot() || [], navigation,
     ...(privateState && clientDiag ? { client: clientDiag } : {}),
@@ -73,6 +95,13 @@ export async function createPetService(ctx, initialConfig = {}) {
     if (disposed) return
     for (const send of listeners) send()
     bridge?.publish()
+  }
+  // 安装/卸载后重扫目录：自定义形象与内置形象走同一条渲染链路，列表变了立刻广播。
+  const reloadPets = async () => {
+    const loaded = await loadPets()
+    pets = loaded.pets
+    petdexSkipped = loaded.skipped
+    if (pets.length && !pets.some((pet) => pet.id === settings.activePet)) settings = { ...settings, activePet: pets[0].id }
   }
   const action = async (input) => {
     if (disposed) throw new Error('Desktop pet has stopped')
@@ -83,6 +112,42 @@ export async function createPetService(ctx, initialConfig = {}) {
       return { ok: true }
     }
     if (input.action === 'position') return { ok: true }
+    if (input.action === 'catalog') {
+      // 目录有 5000+ 条，只回一页；query 为空时给热门开头那一段。
+      const query = String(input.query || '').trim().toLowerCase()
+      // 每行都带一张预览图，一页 24 只既够翻也不至于一次拉太多图。
+      const limit = Math.min(200, Math.max(12, Number(input.limit) || 24))
+      const manifest = await catalog.list()
+      const installed = new Set(pets.filter((pet) => pet.source === 'petdex').map((pet) => pet.id.slice(PETDEX_PREFIX.length)))
+      const matches = query ? manifest.pets.filter((pet) => pet.slug.includes(query) || pet.displayName.toLowerCase().includes(query)) : manifest.pets
+      return {
+        ok: true, total: matches.length,
+        pets: matches.slice(0, limit).map((pet) => ({ slug: pet.slug, displayName: pet.displayName, spriteVersionNumber: pet.spriteVersionNumber, installed: installed.has(pet.slug) })),
+      }
+    }
+    if (input.action === 'install') {
+      if (installing) throw new Error('Another pet is still installing')
+      installing = true
+      try {
+        const manifest = await catalog.list()
+        const entry = manifest.pets.find((pet) => pet.slug === input.slug)
+        if (!entry) throw new Error('This pet is not in the Petdex catalog')
+        const petUrl = resolveAssetUrl(manifest.assetBase, entry.petJson)
+        const sheetUrl = resolveAssetUrl(manifest.assetBase, entry.spritesheet)
+        if (!petUrl || !sheetUrl) throw new Error('The catalog returned an unsafe asset url')
+        const result = await installPet({ slug: entry.slug, petUrl, sheetUrl, root: petsRoot() })
+        if (!result.ok) throw new Error(result.reason)
+        await reloadPets()
+        publish()
+        return { ok: true, slug: entry.slug }
+      } finally { installing = false }
+    }
+    if (input.action === 'remove') {
+      if (!await removePet(petsRoot(), input.slug)) throw new Error('This pet is not installed')
+      await reloadPets()
+      publish()
+      return { ok: true }
+    }
     if (input.action === 'diag') {
       // 客户端半部自报「会话来源是否可用」；只进私有 /state，不进公开 API，也不落盘。
       clientDiag = input.payload && typeof input.payload === 'object' ? input.payload : {}
@@ -102,6 +167,24 @@ export async function createPetService(ctx, initialConfig = {}) {
           }
         }
         return { ok: true, runningSummary: items.filter((item) => item.running).length, total: items.length, states }
+      }
+      if (clientDiag.probe === 'inspect' && Array.isArray(clientDiag.ids)) {
+        // 诊断用：给出「为什么这条会话还显示在跑」的直接证据（宿主状态 + 投影里的队列/目标）。
+        const controller = new AbortController()
+        const report = []
+        for (const id of clientDiag.ids.slice(0, 12)) {
+          if (typeof id !== 'string' || !id) continue
+          const entry = { id, feed: feed?.inspect?.(id) }
+          try {
+            const state = await ctx.sessionController.state({ sessionId: id }, controller.signal)
+            entry.state = { active: state?.active, running: state?.running, queue: state?.queue?.length, pending: state?.pendingInput }
+          } catch (error) {
+            entry.error = String(error && error.message || error)
+          }
+          report.push(entry)
+        }
+        clientDiag = { probe: 'inspect', at: Date.now(), report }
+        return { ok: true, report }
       }
       return { ok: true }
     }
@@ -172,6 +255,21 @@ export async function createPetService(ctx, initialConfig = {}) {
       res.on('close', () => publicResponses.delete(res))
       return attachEvents(req, res, listeners, snapshot)
     },
+    /** 设置页的缩略图：只按 slug 返回官方预览条（webp），页面不直连外网。 */
+    async asset(req, res) {
+      if (disposed) return sendJson(res, 404, { ok: false, reason: 'not-found' })
+      let slug = ''
+      try { slug = new URL(req.url || '/', 'http://127.0.0.1').searchParams.get('slug') || '' } catch {}
+      const bytes = await previews.get(slug)
+      if (!bytes) return sendJson(res, 404, { ok: false, error: 'Pet preview unavailable' })
+      res.statusCode = 200
+      res.setHeader('content-type', 'image/webp')
+      res.setHeader('content-length', String(bytes.length))
+      // 预览图按 slug 命名，内容不会变；让浏览器一周内别再问。
+      res.setHeader('cache-control', 'public, max-age=604800, immutable')
+      res.setHeader('x-content-type-options', 'nosniff')
+      res.end(bytes)
+    },
     async dispose() {
       disposed = true
       if (typeof unlisten === 'function') unlisten()
@@ -189,7 +287,7 @@ export function apply(ctx, config) {
     const service = await createPetService(ctx, config)
     let active = true
     try {
-      for (const [suffix, method] of [['state', 'GET'], ['events', 'GET'], ['action', 'POST']]) {
+      for (const [suffix, method] of [['state', 'GET'], ['events', 'GET'], ['asset', 'GET'], ['action', 'POST']]) {
         registerAuthenticatedRoute(ctx, {
           kind: 'exact', path: `${API_PATH}/${suffix}`,
           async handler(req, res) {
@@ -198,6 +296,7 @@ export function apply(ctx, config) {
             try {
               if (suffix === 'state') return sendJson(res, 200, service.snapshot())
               if (suffix === 'events') return service.attach(req, res)
+              if (suffix === 'asset') return service.asset(req, res)
               return sendJson(res, 200, await service.action(await parseAction(req)))
             } catch (error) { sendJson(res, 400, { ok: false, error: error.message }) }
           },

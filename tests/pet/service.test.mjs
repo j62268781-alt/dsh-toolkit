@@ -41,14 +41,29 @@ async function fixture(t, initial = {}) {
 
 class Response extends EventEmitter {
   chunks = []
-  writeHead(status, headers) { this.status = status; this.headers = headers }
+  headers = {}
+  get statusCode() { return this.status }
+  set statusCode(value) { this.status = value }
+  setHeader(name, value) { this.headers[String(name).toLowerCase()] = value }
+  writeHead(status, headers) { this.status = status; this.headers = { ...this.headers, ...headers } }
   write(chunk) { this.chunks.push(chunk); return true }
-  end() { this.writableEnded = true; this.emit('close') }
+  end(chunk) { if (chunk !== undefined) this.chunks.push(Buffer.isBuffer(chunk) ? chunk.toString('utf8') : String(chunk)); this.writableEnded = true; this.emit('close') }
 }
 
 function currentEvent(response) {
   return JSON.parse(response.chunks.at(-1).replace(/^data: /, '').trim())
 }
+
+test('the preview route answers JSON 404 for ids it will not resolve, without touching the network', async (t) => {
+  const f = await fixture(t)
+  const asset = new Response()
+  const previous = globalThis.fetch
+  globalThis.fetch = async () => { throw new Error('the preview route must not fetch for an empty id') }
+  try { await f.service.asset({ url: '/api/plugins/dsh-toolkit/pet/asset?slug=' }, asset) } finally { globalThis.fetch = previous }
+  assert.equal(asset.status, 404)
+  assert.match(asset.chunks.join(''), /Pet preview unavailable/)
+  assert.equal(asset.headers['content-type'], 'application/json; charset=utf-8')
+})
 
 test('public service state and event streams omit helper-only asset paths, manifests, and executable configuration', async (t) => {
   const f = await fixture(t, { electronPath: '/private/electron', activePet: 'invalid-id' })
@@ -58,7 +73,7 @@ test('public service state and event streams omit helper-only asset paths, manif
   assert.equal(publicState.runtime.status, 'stopped')
   assert.equal(publicState.pets.length, 4)
   assert.ok(privateState.pets.every((pet) => pet.assetDir.startsWith('/') && pet.manifest.displayName))
-  assert.deepEqual(publicState.pets, privateState.pets.map(({ id, name }) => ({ id, name })))
+  assert.deepEqual(publicState.pets, privateState.pets.map(({ id, name, source }) => ({ id, name, source })))
   const serialized = JSON.stringify(publicState)
   for (const secret of ['assetDir', 'manifest', 'electronPath', '/private/electron', 'token', '127.0.0.1']) assert.ok(!serialized.includes(secret), secret)
   const response = new Response()

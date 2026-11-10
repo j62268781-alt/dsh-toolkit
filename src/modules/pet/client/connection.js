@@ -1,5 +1,10 @@
 const PREFIX = '/api/plugins/dsh-toolkit/pet'
 
+/** 宠物预览图走插件自己的受认证路由，页面因此不需要直连 Petdex。 */
+export function petPreviewUrl(slug) {
+  return `${PREFIX}/asset?slug=${encodeURIComponent(String(slug || ''))}`
+}
+
 async function request(path, options = {}) {
   const response = await fetch(`${PREFIX}${path}`, { credentials: 'same-origin', ...options })
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
@@ -46,10 +51,14 @@ export function createPetConnection({ onNavigation, onNavigationError = () => {}
     accept(value)
     return value
   }
-  const action = async (name) => {
-    await request('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: name }) })
+  const action = async (name, extra) => {
+    await request('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: name, ...(extra && typeof extra === 'object' ? extra : {}) }) })
     return refresh()
   }
+  // Petdex 宠物库：搜索只取一页，安装/卸载后 host 会重扫目录并广播新列表。
+  const catalog = (query = '') => request(`/action`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'catalog', query }) })
+  const installPet = (slug) => action('install', { slug })
+  const removePet = (slug) => action('remove', { slug })
   // 用户已经看到某个会话（主视图切过去）：告诉 host 标记已读，岛上的提醒随即消失。
   // 失败只丢一条诊断，不阻塞任何界面 —— 下一次活动事件仍会重新算状态。
   const seen = async (sessionId) => {
@@ -100,7 +109,7 @@ export function createPetConnection({ onNavigation, onNavigationError = () => {}
   return {
     getSnapshot: () => snapshot,
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener) },
-    refresh, action, seen, diag,
+    refresh, action, seen, diag, catalog, installPet, removePet,
     start() { void connect() },
     dispose() {
       disposed = true

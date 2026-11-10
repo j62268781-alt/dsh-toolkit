@@ -251,3 +251,49 @@ test('coming back to the foreground, or a finished turn on the island, marks the
   await act(async () => { dom.window.dispatchEvent(new dom.window.Event('focus')); await flush() })
   assert.equal(seen().length, 4)
 })
+
+test('the pet library searches Petdex and installs or removes a pet from the settings page', async (t) => {
+  const dom = new JSDOM('<html><head></head><body><div id="root"></div></body></html>', { url: 'https://dsh.test', pretendToBeVisual: true })
+  const saved = new Map()
+  for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, IS_REACT_ACT_ENVIRONMENT: true })) { saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key)); Object.defineProperty(globalThis, key, { configurable: true, writable: true, value }) }
+  const old = globalThis.fetch
+  const calls = []
+  const installed = new Set()
+  const pets = () => [{ id: 'qoduck-lab', name: 'Qoduck', source: 'builtin' }, ...(installed.has('boba') ? [{ id: 'petdex:boba', name: 'Boba', source: 'petdex' }] : [])]
+  globalThis.fetch = async (url, options = {}) => {
+    if (url.endsWith('/events')) { const body = new ReadableStream({ start() {} }); return { ok: true, body } }
+    const action = options.body ? JSON.parse(options.body) : undefined
+    if (action) calls.push(action)
+    if (action?.action === 'catalog') return new Response(JSON.stringify({ ok: true, total: 1, pets: [{ slug: 'boba', displayName: 'Boba', installed: installed.has('boba') }] }), { headers: { 'Content-Type': 'application/json' } })
+    if (action?.action === 'install') installed.add(action.slug)
+    if (action?.action === 'remove') installed.delete(action.slug)
+    return new Response(JSON.stringify({ ok: true, settings: DEFAULT_SETTINGS, pets: pets(), runtime: { status: 'stopped', available: false }, navigation: { seq: 0 } }), { headers: { 'Content-Type': 'application/json' } })
+  }
+  const runtime = context()
+  const module = await clientModule()
+  const client = module.default((name) => { if (name === 'react') return React; return {} })
+  client.apply(runtime.ctx)
+  const { Component } = runtime.sections[0]
+  const root = createRoot(document.getElementById('root'))
+  t.after(async () => { await act(async () => root.unmount()); runtime.dispose(); globalThis.fetch = old; for (const [key, value] of saved) { if (value) Object.defineProperty(globalThis, key, value); else delete globalThis[key] }; dom.window.close() })
+  await act(async () => { root.render(React.createElement(Component)); await flush() })
+  assert.equal(document.querySelector('.pet-libraryRow'), null)
+  const browse = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Browse library')
+  await act(async () => { browse.click(); await flush() })
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '' })
+  const row = document.querySelector('.pet-libraryRow')
+  assert.match(row.textContent, /Boba/)
+  // 预览图走插件自己的受认证路由，页面不直连 Petdex。
+  const thumb = row.querySelector('.pet-thumb')
+  assert.ok(thumb, 'each library row shows the pet artwork')
+  assert.match(thumb.getAttribute('style'), /\/api\/plugins\/dsh-toolkit\/pet\/asset\?slug=boba/)
+  const install = [...row.querySelectorAll('button')].find((button) => button.textContent === 'Install')
+  await act(async () => { install.click(); await flush() })
+  assert.deepEqual(calls.filter((call) => call.action === 'install'), [{ action: 'install', slug: 'boba' }])
+  const uninstall = [...document.querySelectorAll('.pet-libraryRow button')].find((button) => button.textContent === 'Uninstall')
+  assert.ok(uninstall, 'an installed pet offers removal')
+  await act(async () => { uninstall.click(); await flush() })
+  assert.deepEqual(calls.filter((call) => call.action === 'remove'), [{ action: 'remove', slug: 'boba' }])
+  const options = [...document.querySelectorAll('select option')].map((option) => option.textContent)
+  assert.ok(options.includes('Qoduck'))
+})

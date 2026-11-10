@@ -18,6 +18,8 @@ for (const group of ['browser', 'judgment', 'skills-mcp', 'notification', 'pet',
     if (name.endsWith('.test.mjs')) testFiles.push(`tests/${group}/${name}`)
   }
 }
+// 渲染端与 helper 内核的用例没有 .test 后缀（同目录还有需要真 Electron 的 smoke 脚本），显式加入。
+if (!testFiles.includes('tests/pet/runtime.mjs')) testFiles.push('tests/pet/runtime.mjs')
 
 await run(['--import', './scripts/jsx-register.mjs', '--test', '--test-reporter=spec', ...testFiles])
 

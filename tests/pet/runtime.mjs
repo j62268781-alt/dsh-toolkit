@@ -29,6 +29,16 @@ test('assets are bounded to one known pet spritesheet', () => {
   assert.equal(assetPath(state, 'pet-asset://pet/duck/spritesheet.png'), '/assets/duck/spritesheet.png')
   for (const url of ['pet-asset://pet/duck/../secret', 'pet-asset://pet/duck/%2fetc', 'pet-asset://pet/unknown/spritesheet.png', 'https://pet/duck/spritesheet.png']) assert.equal(assetPath(state,url), null)
 })
+test('a Petdex pet keeps its own id and webp sheet without exposing its directory', () => {
+  const state = { pets:[{ id:'petdex:boba', name:'Boba', assetDir:'/pets/boba', manifest:{ spriteVersionNumber:2, spritesheetPath:'spritesheet.webp' }, sheetFile:'spritesheet.webp', source:'petdex' }] }
+  const projected = publicState({ settings:{ activePet:'petdex:boba' }, pets: state.pets, sessions: [] }, 'island', { bounds:{ width:1440, height:900 } })
+  assert.equal(projected.pets[0].spritesheet, 'pet-asset://pet/petdex%3Aboba/spritesheet.webp')
+  assert.equal(projected.pets[0].spriteVersionNumber, 2)
+  assert.equal(JSON.stringify(projected).includes('/pets/boba'), false)
+  assert.equal(assetPath(state, projected.pets[0].spritesheet), '/pets/boba/spritesheet.webp')
+  // 只有登记过的那一个文件可读：换成 pet.json 或别的宠物都不行。
+  for (const url of ['pet-asset://pet/petdex%3Aboba/pet.json', 'pet-asset://pet/petdex%3Aboba/spritesheet.png', 'pet-asset://pet/qoduck-lab/spritesheet.webp']) assert.equal(assetPath(state, url), null)
+})
 test('actions exclude grants and reject malformed prompts and coordinates', () => {
   assert.throws(() => validatedAction({ action:'approve' }))
   assert.throws(() => validatedAction({ action:'cancel' }))

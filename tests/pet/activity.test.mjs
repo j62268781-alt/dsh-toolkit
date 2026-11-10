@@ -203,6 +203,19 @@ test('a stuck subagent cannot keep its ancient parent session alive', async () =
   f.feed.dispose()
 })
 
+test('a queue or goal left behind by an interrupted turn is not work', async () => {
+  const f = fixture([row('stale', { updatedAt: Date.now() - 4 * 60 * 60 * 1000 })]); await f.feed.ready
+  f.project('stale', 'inbox', { 'next-step': [{}] })
+  f.project('stale', 'goal', { goal: { phase: 'active', maxGoalRounds: 3 }, roundsStarted: 1, updatedAt: 100 })
+  // 既不算在跑、也不是新鲜结果 → 直接不再出现在列表里（用户看到的就是「没有旧任务」）。
+  assert.deepEqual(f.feed.snapshot(), [])
+  // 最近还在动的会话，同样一条队列仍然表示「马上要执行」。
+  f.project('stale', 'sessionListMetadata', { blank: false, lastPromptAt: Date.now() }, 3)
+  assert.equal(f.feed.snapshot()[0].status, 'running')
+  assert.equal(f.feed.snapshot()[0].detail, 'Input queued')
+  f.feed.dispose()
+})
+
 test('a persisted running flag on a Session that is no longer live is not work', async () => {
   // DSH 被强杀后：被杀那一回合的摘要仍带 running:true，但本进程里没有对应活会话。
   const f = fixture([row('zombie', { running: true, updatedAt: Date.now() - 2 * 60_000 })])
