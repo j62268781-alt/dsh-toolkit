@@ -46,6 +46,7 @@ async function harness(overrides = {}, ctxExtra = {}, options = {}) {
   const sent = []
   const calls = { process: [], cancel: 0, rotate: 0, switchTo: [] }
   let bound = 'bound' in options ? options.bound : 'weixin-clawbot-user-0123456789'
+  let capturedConversationOptions
   const store = createBridgeStore({ filePath: join(dir, 'state.json') })
   await store.load()
   const api = {
@@ -93,7 +94,11 @@ async function harness(overrides = {}, ctxExtra = {}, options = {}) {
     getCredential: async () => CREDENTIAL,
     createApi: () => api,
     createStore: () => store,
-    createConversationManager: () => conversations,
+    // 记下 createConversationManager 收到的 options：审批用例要拿 onApproval 模拟 Agent 发起的授权请求。
+    createConversationManager: (conversationOptions) => {
+      capturedConversationOptions = conversationOptions
+      return conversations
+    },
   })
   const message = (text, extra = {}) => ({
     message_type: 1,
@@ -110,6 +115,7 @@ async function harness(overrides = {}, ctxExtra = {}, options = {}) {
     store,
     message,
     boundOf: () => bound,
+    conversationOptions: () => capturedConversationOptions,
     async dispose() {
       await bridge.dispose()
       await rm(dir, { recursive: true, force: true })
@@ -303,6 +309,41 @@ test('斜杠命令：/status 回状态、/new 旋转会话、未知命令回帮�
     assert.equal(h.calls.cancel, 1)
 
     assert.equal(h.calls.process.length, 0)
+  } finally {
+    await h.dispose()
+  }
+})
+
+test('/new 只看命令本身，后面跟的文字既不新建两次也不当消息发出去', async () => {
+  const h = await harness({ bridgeAccessPolicy: 'open' })
+  try {
+    // 用户常写「/new 你好」想开个新会话接着问 —— 当前实现只认命令、不读参数，
+    // 这里把真实行为钉住：不报错、不重复新建、也不把「你好」丢给 Agent 跑一轮。
+    await h.bridge.handleMessage(h.message('/new 你好'))
+    assert.equal(h.calls.rotate, 1)
+    const text = h.sent.at(-1).text
+    assert.ok(text.includes('已开启新会话'))
+    assert.ok(!text.includes('你好'))
+    assert.equal(h.calls.process.length, 0)
+  } finally {
+    await h.dispose()
+  }
+})
+
+test('配置里写 open 也会被纠正成 allowlist：第一个说话的人被当成本人，陌生人被跳过', async () => {
+  // 「任何人可用」是被刻意去掉的策略：open 只留在 isAllowed 的兼容分支里，
+  // ensureReady 会把它改回 allowlist，并把第一个说话的人钉成本人。
+  const h = await harness({ bridgeAccessPolicy: 'open' })
+  try {
+    await h.bridge.handleMessage(h.message('我是本人', { from_user_id: 'user-aaaaaaaaaa', message_id: 'm-main-1' }))
+    assert.equal(h.calls.process.length, 1)
+    assert.equal(h.bridge.status().accessPolicy, 'allowlist')
+
+    await h.bridge.handleMessage(h.message('陌生人', { from_user_id: 'user-bbbbbbbbbb', message_id: 'm-stranger-9' }))
+    // 陌生人这条既不进 Agent，也不回消息，只记一次 skipped。
+    assert.equal(h.calls.process.length, 1)
+    assert.equal(h.bridge.status().skipped, 1)
+    assert.equal(h.bridge.status().accessPolicy, 'allowlist')
   } finally {
     await h.dispose()
   }
@@ -680,6 +721,110 @@ test('已绑定会话后，普通数字照常当消息发给 Agent', async () =>
     await h.bridge.handleMessage(h.message('2'))
     assert.equal(h.calls.process.length, 1)
     assert.ok(h.calls.process[0].content[0].text.includes('2'))
+  } finally {
+    await h.dispose()
+  }
+})
+
+// 审批链路的桥接层：approvals.js 自身有单测，但「Agent 发来 approval/request → 提示发到微信 →
+// 用户 /approve 或 /reject → 挂起解开」这条编排只在 bridge 里成立，必须在这里测。
+const APPROVAL_USER = 'user-0123456789'
+const APPROVAL_SESSION = 'weixin-clawbot-user-0123456789'
+
+/** 等审批提示走完一轮 notify（notify 内部是 await sendText）。 */
+function flush() {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0)
+  })
+}
+
+test('审批：Agent 请求授权时把提示发到微信，/approve 解开挂起', async () => {
+  const h = await harness({ bridgeAccessPolicy: 'open' })
+  try {
+    // 先跑一条命令，触发 ensureReady 并拿到 createConversationManager 的 options。
+    await h.bridge.handleMessage(h.message('/status'))
+    const onApproval = h.conversationOptions().onApproval
+    assert.equal(typeof onApproval, 'function')
+
+    const outcome = onApproval(APPROVAL_USER)(
+      { toolName: 'bash', reason: '要执行命令' },
+      () => 'fallback',
+    )
+    await flush()
+
+    const prompt = h.sent.at(-1).text
+    assert.match(prompt, new RegExp(`会话：${APPROVAL_SESSION}`))
+    assert.ok(prompt.includes('【需要授权】工具「bash」请求执行。'))
+    assert.ok(prompt.includes('原因：要执行命令'))
+    assert.ok(prompt.includes('回复 /approve 允许一次，回复 /reject 拒绝（120 秒内有效）。'))
+
+    await h.bridge.handleMessage(h.message('/approve'))
+    assert.equal(await outcome, 'allowed-once')
+    // 有待审批时 /approve 不能落到「当前没有待审批」那条分支。
+    assert.ok(!h.sent.some((item) => item.text.includes('当前没有待审批的请求。')))
+  } finally {
+    await h.dispose()
+  }
+})
+
+test('审批：待审批期间的普通消息只提醒、不进 Agent，/reject 结束等待', async () => {
+  const h = await harness({ bridgeAccessPolicy: 'open' })
+  try {
+    await h.bridge.handleMessage(h.message('/status'))
+    const onApproval = h.conversationOptions().onApproval
+    const outcome = onApproval(APPROVAL_USER)({ toolName: 'write' }, () => 'fallback')
+    await flush()
+
+    await h.bridge.handleMessage(h.message('我们在聊什么？'))
+    assert.ok(
+      h.sent.at(-1).text.includes(
+        `有工具调用正在等待审批（会话 ${APPROVAL_SESSION}）：回复 /approve 或 /reject。`,
+      ),
+    )
+    // 关键：这句话不能被当成正常消息丢给 Agent（否则会和挂起的工具调用抢同一个会话）。
+    assert.equal(h.calls.process.length, 0)
+
+    await h.bridge.handleMessage(h.message('/reject'))
+    assert.equal(await outcome, 'rejected')
+    assert.equal(h.calls.process.length, 0)
+  } finally {
+    await h.dispose()
+  }
+})
+
+test('审批：没有待审批时 /approve 与 /reject 都回「当前没有待审批的请求。」', async () => {
+  const h = await harness({ bridgeAccessPolicy: 'open' })
+  try {
+    await h.bridge.handleMessage(h.message('/approve'))
+    assert.equal(h.sent.at(-1).text, '当前没有待审批的请求。')
+
+    await h.bridge.handleMessage(h.message('/reject'))
+    assert.equal(h.sent.at(-1).text, '当前没有待审批的请求。')
+  } finally {
+    await h.dispose()
+  }
+})
+
+test('审批：同一用户第二个并发请求被自动拒绝，并把两条会话都点名', async () => {
+  const h = await harness({ bridgeAccessPolicy: 'open' })
+  try {
+    await h.bridge.handleMessage(h.message('/status'))
+    const onApproval = h.conversationOptions().onApproval
+
+    const first = onApproval(APPROVAL_USER)({ toolName: 'write' }, () => 'fallback')
+    await flush()
+    const second = onApproval(APPROVAL_USER)({ toolName: 'bash' }, () => 'fallback')
+
+    // 第二个请求立刻被拒，不能挂在那里等 120 秒。
+    assert.equal(await second, 'rejected')
+    await flush()
+    const conflict = h.sent.at(-1).text
+    assert.ok(conflict.includes('同一时间只支持一个待审批：已自动拒绝「bash」的请求'))
+    assert.ok(conflict.includes('仍在等待的是「write」'))
+    assert.ok(conflict.includes(APPROVAL_SESSION))
+
+    await h.bridge.handleMessage(h.message('/approve'))
+    assert.equal(await first, 'allowed-once')
   } finally {
     await h.dispose()
   }
