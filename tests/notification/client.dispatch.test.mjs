@@ -358,3 +358,105 @@ test('标题缺失时回落到「无标题会话」', () => {
   assert.equal(result.notified, true)
   assert.equal(calls.notifications[0].title, '无标题会话')
 })
+
+// 灵动岛（pet 模块）在线时会写 `document.documentElement.dataset.dshIsland='on'`，
+// 通知侧只读这个标记：岛在前台已经显示状态徽标，通知侧就不再把同一件事说第二遍。
+// 失焦/隐藏时岛可能不在视野里，横幅和提示音照旧；「总是提醒」是用户显式要求，不受抑制。
+
+test('灵动岛在线且窗口在前台：通知侧完全静默，岛徽标即反馈', () => {
+  const { deps, calls } = createDeps({ islandActive: () => true, hasFocus: () => true })
+  const result = new NotificationDispatcher(deps).dispatch(completed)
+  assert.deepEqual(result, {
+    notified: false, sounded: false, title: '修复登录', body: '已完成这一轮回复。', reason: 'island',
+  })
+  assert.deepEqual(calls.sounds, [])
+  assert.deepEqual(calls.notifications, [])
+  assert.deepEqual(calls.order, [])
+})
+
+test('灵动岛在线也不压制「总是提醒」：照常横幅 + 一声提示音', () => {
+  const { deps, calls } = createDeps({
+    settings: () => settings({ currentMode: 'always' }),
+    islandActive: () => true,
+    hasFocus: () => true,
+  })
+  const result = new NotificationDispatcher(deps).dispatch(completed)
+  assert.equal(result.notified, true)
+  assert.equal(result.sounded, true)
+  assert.equal(result.reason, undefined)
+  assert.deepEqual(calls.order, ['sound', 'notification'])
+  assert.equal(calls.sounds.length, 1)
+  assert.equal(calls.notifications.length, 1)
+})
+
+test('灵动岛在线但窗口失焦/隐藏：横幅 + 提示音照旧（岛可能不在视野里）', () => {
+  for (const overrides of [{ isHidden: () => true, hasFocus: () => true }, { hasFocus: () => false }]) {
+    const { deps, calls } = createDeps({ islandActive: () => true, ...overrides })
+    const result = new NotificationDispatcher(deps).dispatch(completed)
+    assert.equal(result.notified, true)
+    assert.equal(result.sounded, true)
+    assert.equal(calls.sounds.length, 1)
+    assert.equal(calls.notifications.length, 1)
+  }
+})
+
+test('灵动岛在线时前台原因优先记 island（即使正在看这个会话）', () => {
+  const { deps } = createDeps({ islandActive: () => true, hasFocus: () => true, isCurrent: () => true })
+  const result = new NotificationDispatcher(deps).dispatch(completed)
+  assert.equal(result.notified, false)
+  assert.equal(result.sounded, false)
+  assert.equal(result.reason, 'island')
+})
+
+test('读不到灵动岛标记（端口抛错）时按无岛处理：前台仍响提示音', () => {
+  const { deps, calls } = createDeps({
+    islandActive: () => { throw new Error('no document') },
+    hasFocus: () => true,
+  })
+  const result = new NotificationDispatcher(deps).dispatch(completed)
+  assert.equal(result.reason, 'foreground')
+  assert.equal(result.sounded, true)
+  assert.deepEqual(calls.sounds, [{ sound: 'system', volume: 1 }])
+  assert.deepEqual(calls.notifications, [])
+})
+
+test('灵动岛在线 + 提示音关闭：前台静默且不补弹通知', () => {
+  const { deps, calls } = createDeps({
+    settings: () => ({ ...settings(), soundEnabled: false }),
+    islandActive: () => true,
+    hasFocus: () => true,
+  })
+  const result = new NotificationDispatcher(deps).dispatch(completed)
+  assert.equal(result.notified, false)
+  assert.equal(result.sounded, false)
+  assert.equal(result.reason, 'island')
+  assert.deepEqual(calls.sounds, [])
+  assert.deepEqual(calls.notifications, [])
+})
+
+test('「从不」时机优先于灵动岛：静默且原因仍是 never', () => {
+  const { deps, calls } = createDeps({
+    settings: () => settings({ currentMode: 'never' }),
+    islandActive: () => true,
+    hasFocus: () => true,
+  })
+  assert.deepEqual(new NotificationDispatcher(deps).dispatch(completed), {
+    notified: false, sounded: false, reason: 'never',
+  })
+  assert.deepEqual(calls.sounds, [])
+  assert.deepEqual(calls.notifications, [])
+})
+
+test('灵动岛静默不消耗提示音去抖：随后失焦的事件仍然响', () => {
+  let now = 1_000
+  const { deps, calls } = createDeps({ now: () => now, islandActive: () => true, hasFocus: () => true })
+  const dispatcher = new NotificationDispatcher(deps)
+  dispatcher.dispatch(completed)
+  assert.deepEqual(calls.sounds, [], '岛在前台时不出声')
+  deps.hasFocus = () => false
+  now += 100 // 仍在 SOUND_WINDOW 内：静默没占用窗口，所以这次失焦事件应当响
+  const away = dispatcher.dispatch({ ...completed, sessionId: 's2' })
+  assert.equal(away.sounded, true)
+  assert.deepEqual(calls.sounds, [{ sound: 'system', volume: 1 }])
+  assert.equal(calls.notifications.length, 1)
+})

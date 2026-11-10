@@ -974,9 +974,17 @@ window.__ModuleLoader__.load({
         if (type?.enabled !== true) return { notified: false, sounded: false, reason: "kind-disabled" };
         const mode = settings.currentMode;
         if (mode === "never") return { notified: false, sounded: false, reason: "never" };
+        const away = this.deps.isHidden() === true || this.deps.hasFocus?.() === false;
+        let island = false;
+        try {
+          island = this.deps.islandActive?.() === true;
+        } catch {
+          island = false;
+        }
+        const islandCovers = island && !away && mode !== "always";
         let sounded = false;
         const sound = settings.sound ?? type.sound;
-        if (settings.soundEnabled === true && sound !== "none" && settings.volume !== 0) {
+        if (!islandCovers && settings.soundEnabled === true && sound !== "none" && settings.volume !== 0) {
           const now = this.now();
           if (now - this.lastSoundAt >= SOUND_WINDOW) {
             try {
@@ -987,11 +995,11 @@ window.__ModuleLoader__.load({
             if (sounded) this.lastSoundAt = now;
           }
         }
-        const away = this.deps.isHidden() === true || this.deps.hasFocus?.() === false;
         const system = away || mode === "always";
         const title = typeof event.title === "string" && event.title.trim() !== "" ? event.title.trim() : this.deps.t("untitled");
         const body = notificationBody(event, this.deps.t);
         if (!system) {
+          if (islandCovers) return { notified: false, sounded, title, body, reason: "island" };
           let viewing = false;
           try {
             viewing = this.deps.isCurrent?.(event.sessionId) === true;
@@ -1782,6 +1790,16 @@ window.__ModuleLoader__.load({
                 return typeof document === "undefined" || typeof document.hasFocus !== "function" ? true : document.hasFocus();
               } catch {
                 return true;
+              }
+            },
+            // 跨模块契约（只读）：pet 客户端在「灵动岛开启且桌面 helper 在跑」时把
+            // `document.documentElement.dataset.dshIsland` 写成 'on'，其余情况移除。
+            // 通知侧据此判断前台视觉提醒是否已经由灵动岛承担；读不到标记 = 没有灵动岛。
+            islandActive: () => {
+              try {
+                return typeof document !== "undefined" && document.documentElement?.dataset?.dshIsland === "on";
+              } catch {
+                return false;
               }
             }
           });

@@ -8,8 +8,8 @@ const animations = {
   idle: [0,[280,110,110,140,140,320]], runningRight:[1,[120,120,120,120,120,120,120,220]], runningLeft:[2,[120,120,120,120,120,120,120,220]], waving:[3,[140,140,140,280]], jumping:[4,[140,140,140,140,280]], failed:[5,[140,140,140,140,140,140,140,240]], waiting:[6,[150,150,150,150,150,260]], running:[7,[120,120,120,120,120,220]], review:[8,[150,150,150,150,150,280]],
 }
 const words = {
-  zh: { idle:'暂时没有会话活动', running:'会话执行中', waiting:'需要你处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。', greeting:'hi~' },
-  en: { idle:'No active sessions', running:'Session running', waiting:'Needs your attention', failed:'Turn failed', completed:'Turn complete', open:'Open session', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.', greeting:'hi~' },
+  zh: { idle:'暂时没有会话活动', running:'正在执行', waiting:'等待你的处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', later:'稍后', handle:'打开会话处理', todo:'待办', approval:'审批请求', question:'待回答的问题', hint:'打开会话即可批准或回答', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。', greeting:'hi~', live:'实时活动' },
+  en: { idle:'No active sessions', running:'Running', waiting:'Waiting for you', failed:'Turn failed', completed:'Turn complete', open:'Open session', later:'Later', handle:'Open to handle', todo:'Todo', approval:'Approval request', question:'Question', hint:'Open the session to approve or answer', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.', greeting:'hi~', live:'Live activity' },
 }
 // Qoder 的收起态只有「宠物 + 状态徽标」，状态靠短语 + 语义色表达，数量进 tooltip。
 const badges = {
@@ -75,6 +75,13 @@ function setExpanded(value) {
   clearTimeout(hoverTimer)
   layout()
 }
+// 用户点「稍后」时是明确的收起动作：不再等 hover/typing 守卫，并且马上把透明区域还给下面的 App。
+function dismiss() {
+  hovered = false
+  clearTimeout(hoverTimer)
+  setExpanded(false)
+  release()
+}
 function element(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node }
 async function action(value, button) {
   if (button) button.disabled = true
@@ -84,15 +91,124 @@ async function action(value, button) {
   layout()
   return result.ok
 }
-function renderSessions() {
-  const next = JSON.stringify([state.settings.language, state.sessions.slice(0, 2)])
-  if (signature === next) return
-  // Preserve a focused draft while streamed detail text changes.
-  const drafts = new Map([...$('sessions').querySelectorAll('form')].map(form => [form.dataset.session, form.querySelector('input').value]))
-  const focused = document.activeElement?.closest('form')?.dataset.session
-  signature = next
+
+// 展开态两形态互斥（对齐 Qoder 的内容模型）：
+// 列表形态 = 排在首位的会话正在执行，且整份列表没有任何待处理（审批 / 提问 / 等待）；
+// 其余情况都落到单会话详情形态，把注意力集中到那一个会话上。
+function formOf() {
+  const sessions = state?.sessions || []
+  if (!sessions.length) return 'empty'
+  return sessions[0].status === 'running' && !sessions.some(session => session.pendingKind) ? 'list' : 'detail'
+}
+function countLabel(total) {
+  return state?.settings.language === 'en' ? `${total} ${total === 1 ? 'session' : 'sessions'}` : `${total} 个会话`
+}
+function hueOf(text) { let hue = 0; for (const char of String(text)) hue = (hue * 31 + char.codePointAt(0)) % 360; return hue }
+function initialOf(session) { const text = String(session.title || '').trim(); return text ? [...text][0].toUpperCase() : '·' }
+// 头像没有真实图片源，用会话 id 派生的确定性色相 + 首字母，重绘时不会闪色。
+function avatarOf(session, large) {
+  const node = element('span', initialOf(session), large ? 'avatar avatar-large' : 'avatar')
+  node.setAttribute('aria-hidden', 'true')
+  node.style.setProperty('--avatar-hue', String(hueOf(session.id)))
+  return node
+}
+// Qoder 的相对时间：刚发生、分钟级、小时级、天级，更早退回日期。
+function stamp(value) {
+  const time = Number(value)
+  if (!Number.isFinite(time) || time <= 0) return ''
+  const en = state?.settings.language === 'en'
+  const minutes = Math.floor(Math.max(0, Date.now() - time) / 60000)
+  if (minutes < 1) return en ? 'now' : '刚刚'
+  if (minutes < 60) return en ? `${minutes} min ago` : `${minutes} 分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return en ? `${hours} h ago` : `${hours} 小时前`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return en ? `${days} d ago` : `${days} 天前`
+  return new Date(time).toLocaleDateString(en ? 'en' : 'zh-CN', { month: 'numeric', day: 'numeric' })
+}
+// 形态 A：≤3 行运行中列表。两行都是单行省略，没有 footer、没有输入框、不滚动。
+function runningRow(session) {
+  const row = element('div', '', 'session island-row')
+  row.dataset.session = session.id
+  const open = element('button', '', 'session-open row-open')
+  open.type = 'button'
+  open.title = session.title || t(session.status)
+  open.setAttribute('aria-label', `${session.title || t(session.status)} · ${t('open')}`)
+  open.append(avatarOf(session, false))
+  const lines = element('span', '', 'row-lines')
+  lines.append(element('strong', session.title || t(session.status), 'title'))
+  const detail = String(session.detail || '').trim(), phrase = t(session.status)
+  lines.append(element('small', detail && detail !== phrase ? `${phrase} · ${detail}` : phrase, 'note'))
+  open.append(lines)
+  open.onclick = () => action({ action: 'open', sessionId: session.id }, open)
+  row.append(open)
+  return row
+}
+function runningForm(sessions) {
+  const list = element('div', '', 'island-list')
+  for (const session of sessions.slice(0, 3)) list.append(runningRow(session))
+  return list
+}
+// 形态 B：单会话详情 = 38px 头像 + 标题/状态短语 + 三行说明 + 相对时间，待办内联在说明下面。
+function identityButton(session) {
+  const open = element('button', '', 'session-open island-identity')
+  open.type = 'button'
+  open.title = t('open')
+  open.setAttribute('aria-label', `${session.title || t(session.status)} · ${t('open')}`)
+  open.append(avatarOf(session, true))
+  const text = element('span', '', 'identity-text')
+  const head = element('span', '', 'identity-head')
+  head.append(element('strong', session.title || t(session.status), 'title'))
+  head.append(element('span', session.pendingKind ? t('waiting') : t(session.status), 'status-phrase'))
+  text.append(head)
+  text.append(element('span', session.detail || (session.pendingKind ? t('waiting') : t(session.status)), 'detail'))
+  open.append(text)
+  const when = stamp(session.updatedAt)
+  if (when) open.append(element('time', when, 'stamp'))
+  open.onclick = () => action({ action: 'open', sessionId: session.id }, open)
+  return open
+}
+function pendingBlock(session) {
+  const question = session.pendingKind === 'question'
+  const block = element('div', '', 'island-pending')
+  block.dataset.kind = question ? 'question' : 'permission'
+  const head = element('div', '', 'pending-head')
+  head.append(element('span', t('todo'), 'pending-tag'))
+  head.append(element('span', question ? t('question') : t('approval'), 'pending-kind'))
+  block.append(head)
+  const body = String(session.detail || '').trim()
+  if (body) block.append(element('p', body, 'pending-body'))
+  // 宿主没有公开的批准 / 回答接口（见 docs/pet/README.md）：这里的入口只负责把人带回原会话，
+  // 绝不伪造 allow/deny —— 审批必须由会话里的 answerer 决定。
+  block.append(element('p', t('hint'), 'pending-hint'))
+  return block
+}
+function footerBar(session) {
+  const bar = element('footer', '', 'island-footer')
+  const later = element('button', t('later'), 'island-button ghost')
+  later.type = 'button'
+  later.setAttribute('aria-label', t('later'))
+  later.onclick = () => dismiss()
+  const pending = Boolean(session.pendingKind)
+  const open = element('button', pending ? t('handle') : t('open'), pending ? 'island-button primary is-pending' : 'island-button primary')
+  open.type = 'button'
+  open.onclick = () => action({ action: 'open', sessionId: session.id }, open)
+  bar.append(later, open)
+  return bar
+}
+function detailForm(session) {
+  const card = element('article', '', 'session session-detail')
+  card.dataset.session = session.id
+  card.append(identityButton(session))
+  if (session.pendingKind) card.append(pendingBlock(session))
+  card.append(footerBar(session))
+  return card
+}
+function emptyForm() { return element('p', t('idle'), 'island-empty') }
+// 桌宠气泡仍是原来的卡片列表（可以在卡片下直接回复）；灵动岛展开态走上面的两形态。
+function petCards(sessions, drafts) {
   const list = []
-  for (const session of state.sessions.slice(0, 2)) {
+  for (const session of sessions.slice(0, 2)) {
     const card = element('article', '', 'session')
     const open = element('button', '', 'session-open'); open.type = 'button'
     open.title = t('open'); open.setAttribute('aria-label', `${session.title || t(session.status)} · ${t('open')}`)
@@ -113,10 +229,24 @@ function renderSessions() {
     }
     list.push(card)
   }
-  $('sessions').replaceChildren(...list)
-  if (focused) [...$('sessions').querySelectorAll('form')].find(form => form.dataset.session === focused)?.querySelector('input').focus()
-  $('activity-label').textContent = state.settings.language === 'en' ? 'LIVE ACTIVITY' : '实时活动'
-  $('session-count').textContent = state.sessions.length ? `${state.sessions.length} ${state.settings.language === 'en' ? 'sessions' : '个会话'}` : ''
+  return list
+}
+function renderActivity() {
+  const sessions = state.sessions
+  const mode = formOf()
+  const next = JSON.stringify([state.kind, state.settings.language, mode, mode === 'list' ? sessions.slice(0, 3) : mode === 'detail' ? sessions[0] : null])
+  if (signature === next) return
+  // Preserve a focused draft while streamed detail text changes（只有桌宠气泡有输入框）。
+  const drafts = new Map([...$('sessions').querySelectorAll('form')].map(form => [form.dataset.session, form.querySelector('input').value]))
+  const focused = document.activeElement?.closest('form')?.dataset.session
+  signature = next
+  if (state.kind === 'pet') $('sessions').replaceChildren(...petCards(sessions, drafts))
+  else if (mode === 'list') $('sessions').replaceChildren(runningForm(sessions))
+  else if (mode === 'detail') $('sessions').replaceChildren(detailForm(sessions[0]))
+  else $('sessions').replaceChildren(emptyForm())
+  if (focused) [...$('sessions').querySelectorAll('form')].find(form => form.dataset.session === focused)?.querySelector('input')?.focus()
+  $('activity-label').textContent = t('live')
+  $('session-count').textContent = sessions.length ? countLabel(sessions.length) : ''
 }
 function update(next) {
   state = next
@@ -127,6 +257,11 @@ function update(next) {
   const status = current?.status || 'idle'
   const count = state.sessions.length
   document.body.dataset.status = status
+  document.body.dataset.form = formOf()
+  const pending = state.sessions.find(session => session.pendingKind)?.pendingKind
+  // 待办配色按类型区分（审批橙 / 提问青），没有待办时不要留下空属性骗过 CSS。
+  if (pending) document.body.dataset.pending = pending
+  else delete document.body.dataset.pending
   $('badge-text').textContent = status === 'idle' ? t('greeting') : badgeWord(status)
   const hint = status === 'idle' ? t('idle') : `${t(status)}${count > 1 ? ` · ${count}` : ''}`
   cap.title = hint
@@ -135,7 +270,7 @@ function update(next) {
   if (pet && imageKey !== pet.spritesheet) {
     imageKey = pet.spritesheet; image = new Image(); image.onload = draw; image.onerror = () => { $('error').textContent = t('error') }; image.src = imageKey
   }
-  renderSessions(); layout(); animate()
+  renderActivity(); layout(); animate()
 }
 function currentMotion() {
   if (drag?.moved) return drag.direction < 0 ? 'runningLeft' : 'runningRight'
@@ -163,26 +298,51 @@ function animate() {
   timer = setTimeout(() => { frame = (frame + 1) % delays.length; animate() }, delays[frame])
 }
 cap.onclick = () => { if (drag?.moved || !state) return; if (state.kind === 'island' && !state.sessions.length) return; setExpanded(!expanded) }
-surface.onpointerenter = () => { hovered = true; padChecks = 0; clearTimeout(leaveTimer); bridge.interactive(true); layout(); animate(); if (state?.kind === 'island' && state.sessions.length) hoverTimer = setTimeout(() => setExpanded(true), 300) }
-function typing() { const active = document.activeElement; return Boolean(active && active !== cap && surface.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) }
-// 仿 Qoder：展开态的「命中区」比面板本身大一圈（左右各 12px、上沿 6px、向下到内容底部或 480px），
-// 指针刚滑出边缘时先不收起，避免展开/收起动画中途被抖动打断。
-function withinPad(x, y) {
-  const rect = surface.getBoundingClientRect()
-  if (!rect.width || !rect.height) return false
-  return x >= rect.left - 12 && x <= rect.right + 12 && y >= rect.top - 6 && y <= rect.top + Math.min(480, Math.max(rect.height, activity.scrollHeight))
+surface.onpointerenter = event => {
+  // 透明窗口的矩形远大于可见内容：只有指针真的落在胶囊/内容上才算「悬停」，
+  // 否则窗口不该接管鼠标（否则顶上那块透明区域会挡住别的 App 的按钮）。
+  const inside = withinPad(event.clientX ?? -1, event.clientY ?? -1)
+  hovered = inside
+  padChecks = 0
+  clearTimeout(leaveTimer)
+  bridge.interactive(inside)
+  layout()
+  animate()
+  if (inside && state?.kind === 'island' && state.sessions.length) hoverTimer = setTimeout(() => setExpanded(true), 300)
 }
+function typing() { const active = document.activeElement; return Boolean(active && active !== cap && surface.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) }
+// 命中区必须贴住真正画出来的东西：胶囊，展开时再加内容块，外扩 6px。
+// 透明窗口是整块矩形，命中区一旦算大，鼠标落在这块透明区域时窗口就会吃掉点击，
+// 底下别的 App 的按钮会集体失灵 —— 所以只认可见区域，宁可小不可大。
+function contentRect() {
+  const rects = [cap.getBoundingClientRect()]
+  if (expanded) rects.push(activity.getBoundingClientRect())
+  let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity
+  for (const rect of rects) {
+    if (!rect.width || !rect.height) continue
+    left = Math.min(left, rect.left); top = Math.min(top, rect.top)
+    right = Math.max(right, rect.right); bottom = Math.max(bottom, rect.bottom)
+  }
+  if (!Number.isFinite(left)) return null
+  return { left: left - 6, top: top - 6, right: right + 6, bottom: bottom + 6 }
+}
+function withinPad(x, y) {
+  const area = contentRect()
+  return Boolean(area) && x >= area.left && x <= area.right && y >= area.top && y <= area.bottom
+}
+function release() { if (!withinPad(lastPointer?.x ?? -1, lastPointer?.y ?? -1)) bridge.interactive(false) }
 function collapse() {
   if (hovered || typing()) return
   if (lastPointer && withinPad(lastPointer.x, lastPointer.y) && ++padChecks <= 5) { leaveTimer = setTimeout(collapse, 120); return }
   if (!drag) bridge.interactive(false)
   setExpanded(false)
+  // 收起后内容块消失，命中区立刻变小；指针如果还在原来的位置上，必须放掉鼠标。
+  release()
 }
 surface.onpointerleave = event => { hovered = false; clearTimeout(hoverTimer); lastPointer = { x: event.clientX, y: event.clientY }; layout(); animate(); leaveTimer = setTimeout(collapse, 100) }
 document.addEventListener('pointermove', event => {
   lastPointer = { x: event.clientX, y: event.clientY }
-  const target = document.elementFromPoint(event.clientX, event.clientY)
-  bridge.interactive(Boolean(drag || surface.contains(target) || withinPad(event.clientX, event.clientY)))
+  bridge.interactive(Boolean(drag || typing() || withinPad(event.clientX, event.clientY)))
   if (drag) {
     const dx = event.screenX - drag.x, dy = event.screenY - drag.y
     if (Math.hypot(dx, dy) >= 4) drag.moved = true

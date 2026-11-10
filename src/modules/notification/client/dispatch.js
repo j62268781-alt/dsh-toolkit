@@ -11,10 +11,16 @@
  *   1. 总开关关 → 什么都不做；
  *   2. 该类型关 → 什么都不做；
  *   3. 播放提示音（只要事件真的发生就响，不看窗口焦点——窗口在前台时横幅可能被系统
- *      忽略，但「这一轮结束了」的声音反馈仍然有意义，用声音代替被吞掉的横幅）；
+ *      忽略，但「这一轮结束了」的声音反馈仍然有意义，用声音代替被吞掉的横幅）。
+ *      例外：灵动岛（pet 模块）在线且窗口在前台时，岛上的徽标就是前台反馈，声音让位，
+ *      不重复提醒同一条信息；
  *   4. 按全局时机判断要不要弹系统通知：never 静默；unfocused 仅窗口隐藏或失焦时弹；
  *      always 总是弹；
  *   5. 需要则发系统通知。
+ *
+ * 灵动岛的在线状态由 pet 客户端写在根元素属性上（`dataset.dshIsland = 'on'`），
+ * 这里只读该标记、不 import pet 的任何代码：读不到（没有 pet 模块、没开岛、helper 没跑）
+ * 就按「没有灵动岛」处理，行为与引入该规则之前完全一致。
  */
 
 import { notificationBody, truncate } from './model.js'
@@ -29,6 +35,7 @@ import { notificationTag } from './browser-notify.js'
  * @property {(sessionId: string) => boolean} [isCurrent] 会话是否是用户正在看的那个（只用于诊断原因）。
  * @property {() => boolean} isHidden 文档是否在后台/最小化。
  * @property {() => boolean} [hasFocus] 文档是否获得焦点（缺省按「有焦点」处理）。
+ * @property {() => boolean} [islandActive] 灵动岛是否在线（pet 客户端写的 `dataset.dshIsland`，只读）。
  * @property {() => number} [now] 时钟（毫秒），缺省用 Date.now；测试注入以验证提示音去抖。
  */
 
@@ -83,11 +90,28 @@ export class NotificationDispatcher {
     const mode = settings.currentMode
     if (mode === 'never') return { notified: false, sounded: false, reason: 'never' }
 
+    // 前台 = 文档可见且有焦点；系统横幅此时基本不弹，弹了也点不回会话，所以只剩 always 要发。
+    const away = this.deps.isHidden() === true || this.deps.hasFocus?.() === false
+
+    // 灵动岛在线（islandEnabled 且桌面 helper 在跑）且窗口在前台：岛上的状态徽标就是
+    // 「谁在跑、谁跑完了、谁在等你」的实时反馈，通知侧再响一声就是把同一件事说第二遍。
+    // 只在前台让位——失焦/隐藏时用户可能根本没看岛，横幅和提示音照旧；
+    // 「总是提醒」是用户显式要求，岛在线也不抑制。
+    let island = false
+    try {
+      island = this.deps.islandActive?.() === true
+    } catch {
+      // 读不到标记（没有 DOM、pet 模块没装）都按「没有灵动岛」处理。
+      island = false
+    }
+    const islandCovers = island && !away && mode !== 'always'
+
     // 提示音：事件一发生就响，不看窗口焦点。窗口在前台时系统常常不给我们横幅，
     // 声音是唯一能确认「这一轮结束了」的反馈，所以不能跟着 system 一起被抑制。
+    // 唯一例外是 islandCovers：岛已经在前台显示这件事了，声音让位（不重复提醒）。
     let sounded = false
     const sound = settings.sound ?? type.sound
-    if (settings.soundEnabled === true && sound !== 'none' && settings.volume !== 0) {
+    if (!islandCovers && settings.soundEnabled === true && sound !== 'none' && settings.volume !== 0) {
       // 多个会话同一瞬间结束（并行子会话、批量重跑）时只响一次：连续触发没有更多信息量，
       // 叠在一起反而听不出是几声。窗口内的后续触发静默丢弃，窗口外照常响。
       const now = this.now()
@@ -102,8 +126,7 @@ export class NotificationDispatcher {
       }
     }
 
-    // 前台 = 文档可见且有焦点；系统横幅此时基本不弹，弹了也点不回会话，所以只剩 always 要发。
-    const away = this.deps.isHidden() === true || this.deps.hasFocus?.() === false
+    // 系统横幅只在窗口失焦/隐藏或用户选了 always 时发。
     const system = away || mode === 'always'
 
     const title = typeof event.title === 'string' && event.title.trim() !== ''
@@ -112,7 +135,8 @@ export class NotificationDispatcher {
     const body = notificationBody(event, this.deps.t)
 
     if (!system) {
-      // 窗口在前台且时机是「仅在失焦时」：什么都不弹。区分「你正看着它」便于诊断。
+      // 窗口在前台且时机是「仅在失焦时」：什么都不弹。区分「你正看着它」「岛在提醒」便于诊断。
+      if (islandCovers) return { notified: false, sounded, title, body, reason: 'island' }
       let viewing = false
       try {
         viewing = this.deps.isCurrent?.(event.sessionId) === true

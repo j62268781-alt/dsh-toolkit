@@ -554,6 +554,23 @@ window.__ModuleLoader__.load({
             connection.start();
             return () => connection.dispose();
           }, "toolkit-pet:connection");
+          ctx.effect(() => {
+            const root = typeof document === "undefined" ? void 0 : document.documentElement;
+            if (!root) return void 0;
+            const sync = () => {
+              const active = value.islandEnabled === true && connection.getSnapshot()?.runtime?.status === "running";
+              if (active) root.dataset.dshIsland = "on";
+              else delete root.dataset.dshIsland;
+            };
+            const off = connection.subscribe(sync);
+            listeners.add(sync);
+            sync();
+            return () => {
+              off?.();
+              listeners.delete(sync);
+              delete root.dataset.dshIsland;
+            };
+          }, "toolkit-pet:island-mark");
           ctx.effect(() => ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "desktop-pet", order: 25, label: () => t("nav"), locale: PET_NS }, Panel)), "toolkit-pet:section");
           ctx.effect(() => registerSettingsIcon(ctx, "desktop-pet", "paw"), "toolkit-pet:settings-icon");
         }

@@ -359,6 +359,17 @@ export default function createNotification(require) {
             return true
           }
         },
+        // 跨模块契约（只读）：pet 客户端在「灵动岛开启且桌面 helper 在跑」时把
+        // `document.documentElement.dataset.dshIsland` 写成 'on'，其余情况移除。
+        // 通知侧据此判断前台视觉提醒是否已经由灵动岛承担；读不到标记 = 没有灵动岛。
+        islandActive: () => {
+          try {
+            return typeof document !== 'undefined'
+              && document.documentElement?.dataset?.dshIsland === 'on'
+          } catch {
+            return false
+          }
+        },
       })
 
       const engine = new NotificationEngine({

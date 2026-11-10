@@ -15,8 +15,11 @@ test('helper only accepts authenticated loopback origin and valid host pid', () 
   assert.throws(() => readEnvironment({ ...env, DSH_TOOLKIT_PET_TOKEN:'' }))
 })
 test('renderer snapshot does not expose filesystem or Host secrets and ranks sessions', () => {
-  const result = publicState({ settings:{ token:'secret', electronPath:'/secret', language:'en' }, pets:[{ id:'duck', name:'Duck', assetDir:'/private', manifest:{ spriteVersionNumber:2 } }], sessions:[{ id:'done', status:'completed' }, { id:'wait', status:'waiting' }, { id:'run', status:'running' }], runtime:{ token:'secret' } }, 'pet', { bounds:{ width:1000,height:800 } })
+  const result = publicState({ settings:{ token:'secret', electronPath:'/secret', language:'en' }, pets:[{ id:'duck', name:'Duck', assetDir:'/private', manifest:{ spriteVersionNumber:2 } }], sessions:[{ id:'done', status:'completed' }, { id:'wait', status:'waiting' }, { id:'run', status:'running', updatedAt:4321 }], runtime:{ token:'secret' } }, 'pet', { bounds:{ width:1000,height:800 } })
   assert.deepEqual(result.sessions.map(s => s.id), ['wait','run','done'])
+  // 展开态只用 updatedAt 算「刚刚 / N 分钟前」，缺失时给 0 让渲染端走不显示分支。
+  assert.equal(result.sessions.find(s => s.id === 'run').updatedAt, 4321)
+  assert.equal(result.sessions.find(s => s.id === 'done').updatedAt, 0)
   assert.equal(result.pets[0].spritesheet, 'pet-asset://pet/duck/spritesheet.png')
   assert.equal(JSON.stringify(result).includes('/private'), false)
   assert.equal(JSON.stringify(result).includes('secret'), false)
@@ -69,35 +72,75 @@ test('SSE decoder handles fragmented UTF8, comments and CRLF', async () => {
   await consumeEvents(body, item => seen.push(item), new AbortController().signal)
   assert.deepEqual(seen,[{ title:'小鸭' },{ revision:2 }])
 })
-test('real renderer safely displays sessions, forwards actions, and directs pending reviews to session', async () => {
+test('real renderer focuses one session with an inline todo and only opens it instead of answering for the host', async () => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url),'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url),'utf8')
   const dom = new JSDOM(html,{ runScripts:'outside-only',url:'file:///renderer.html',pretendToBeVisual:true })
   const actions=[]
   let update
-  const state={ settings:{ language:'en', activePet:'duck' }, pets:[],kind:'island',sessions:[{ id:'a',title:'<img src=x onerror=alert(1)>',status:'running',running:true,detail:'Working' },{ id:'b',title:'Review',status:'waiting',pendingKind:'approval' }] }
+  const state={ settings:{ language:'en', activePet:'duck' }, pets:[],kind:'island',sessions:[{ id:'a',title:'<img src=x onerror=alert(1)>',status:'waiting',pendingKind:'approval',detail:'Run: rm -rf build',updatedAt:Date.now()-120000 },{ id:'b',title:'Review',status:'running' }] }
   dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect(){},drawImage(){} })
   dom.window.matchMedia = () => ({ matches:true,addEventListener(){} })
-  dom.window.pet={ initial:async()=>state, action:async value=>{ actions.push(value); return { ok:true } }, interactive(){},focus(){},expand(){},drag(){},onState(fn){update=fn},onExpanded(){},onCollapse(){} }
+  dom.window.pet={ initial:async()=>state, action:async value=>{ actions.push(value); return { ok:true } }, interactive(){},focus(){},drag(){},onState(fn){update=fn},onCollapse(){} }
   dom.window.eval(script)
   await new Promise(resolve=>setImmediate(resolve))
-  assert.equal(dom.window.document.querySelector('.session .title').textContent,state.sessions[0].title)
-  assert.equal(dom.window.document.querySelector('.session .title img'),null)
-  assert.equal(dom.window.document.querySelectorAll('form').length,1)
-  assert.equal(dom.window.document.getElementById('workbench'),null)
-  assert.equal(dom.window.document.querySelector('.actions'),null)
-  dom.window.document.querySelector('.session-open').click()
+  const doc = dom.window.document
+  // 有一条待审批时不允许进列表形态：改为单会话详情，把注意力锁在那一个会话上。
+  assert.equal(doc.body.dataset.form,'detail')
+  assert.equal(doc.body.dataset.pending,'approval')
+  assert.equal(doc.querySelector('.session .title').textContent,state.sessions[0].title)
+  assert.equal(doc.querySelector('.session .title img'),null)
+  assert.equal(doc.querySelector('.session .detail').textContent,'Run: rm -rf build')
+  assert.equal(doc.querySelector('.island-pending').dataset.kind,'permission')
+  assert.equal(doc.querySelector('.pending-body').textContent,'Run: rm -rf build')
+  assert.equal(doc.querySelector('.stamp').textContent,'2 min ago')
+  assert.equal(doc.querySelectorAll('form').length,0)
+  assert.deepEqual([...doc.querySelectorAll('.island-footer .island-button')].map(button=>button.textContent),['Later','Open to handle'])
+  assert.equal(doc.getElementById('workbench'),null)
+  assert.equal(doc.querySelector('.actions'),null)
+  doc.querySelector('.session-open').click()
   assert.deepEqual(JSON.parse(JSON.stringify(actions[0])),{ action:'open',sessionId:'a' })
-  const form=dom.window.document.querySelector('form')
-  form.querySelector('input').value='Continue carefully'
-  form.dispatchEvent(new dom.window.Event('submit',{ cancelable:true }))
-  await new Promise(resolve=>setImmediate(resolve))
-  assert.equal(actions[1].text,'Continue carefully')
+  // 宿主没有公开的批准 / 回答接口，主按钮同样只能把人带回会话，绝不伪造 allow / deny。
+  doc.querySelector('.island-button.primary').click()
+  assert.deepEqual(JSON.parse(JSON.stringify(actions[1])),{ action:'open',sessionId:'a' })
+  doc.getElementById('cap').click()
+  assert.equal(doc.body.classList.contains('expanded'),true)
+  doc.querySelector('.island-button.ghost').click()
+  assert.equal(doc.body.classList.contains('expanded'),false,'Later dismisses immediately')
   update({ ...state,sessions:[] })
-  assert.equal(dom.window.document.querySelectorAll('.session').length,0)
-  assert.equal(dom.window.document.querySelectorAll('.session-open').length,0)
+  assert.equal(doc.querySelectorAll('.session').length,0)
+  assert.equal(doc.querySelectorAll('.session-open').length,0)
+  assert.equal(doc.body.dataset.form,'empty')
   assert.equal(actions.length,2)
   dom.window.close()
+})
+
+test('running sessions expand as a three-row list with no footer, input or scrolling', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  const actions = []
+  const sessions = Array.from({ length: 5 }, (_, index) => ({ id: `s${index}`, title: `Session ${index}`, status: 'running', running: true, detail: `step ${index}`, updatedAt: Date.now() }))
+  const state = { settings: { language: 'zh', activePet: 'duck' }, pets: [], kind: 'island', sessions }
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+  dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+  dom.window.pet = { initial: async () => state, action: async value => { actions.push(value); return { ok: true } }, interactive() {}, focus() {}, drag() {}, onState() {}, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const doc = dom.window.document
+  assert.equal(doc.body.dataset.form, 'list')
+  assert.equal(doc.querySelectorAll('.island-row').length, 3, 'the list never grows past three rows')
+  assert.equal(doc.querySelectorAll('.session-open').length, 3)
+  assert.equal(doc.querySelector('.island-footer'), null)
+  assert.equal(doc.querySelectorAll('form').length, 0, 'the list form has no inline input')
+  assert.equal(doc.getElementById('session-count').textContent, '5 个会话')
+  const first = doc.querySelector('.island-row .session-open')
+  assert.equal(first.querySelector('.avatar').textContent, 'S')
+  assert.equal(first.querySelector('.title').textContent, 'Session 0')
+  assert.equal(first.querySelector('.note').textContent, '正在执行 · step 0')
+  first.click()
+  assert.deepEqual(JSON.parse(JSON.stringify(actions[0])), { action: 'open', sessionId: 's0' })
 })
 
 test('collapsed pill speaks Qoder: status badge on the right, greeting when idle, no idle expansion', async (t) => {
@@ -136,7 +179,17 @@ test('collapsed pill speaks Qoder: status badge on the right, greeting when idle
   assert.equal(body.classList.contains('expanded'), false)
 })
 
-test('clicking the island never pins it: leaving the view collapses unless a reply is being typed', async (t) => {
+test('the island panel keeps its own stacking context and never fades in', async () => {
+  const css = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.css', import.meta.url), 'utf8')
+  // #silhouette 是 position:absolute 的黑色剪影，会盖住未定位的 #activity —— 面板必须自己建层叠上下文，否则展开面板全黑。
+  assert.match(css, /#activity\{[^}]*position:relative/)
+  assert.match(css, /#activity\{[^}]*z-index:1/)
+  // 展开时内容不能有淡入：透明窗口里先模糊再变清楚会闪一下黑。
+  assert.match(css, /body\.island #activity\{opacity:1;filter:none;transition:none\}/)
+  assert.match(css, /body\.island:not\(\.expanded\) #activity\{visibility:hidden\}/)
+})
+
+test('clicking the island never pins it: leaving the view collapses it', async (t) => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
   const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
@@ -153,16 +206,45 @@ test('clicking the island never pins it: leaving the view collapses unless a rep
   const { document, Event } = dom.window
   const surface = document.getElementById('surface'), cap = document.getElementById('cap')
   const expanded = () => document.body.classList.contains('expanded')
+  // 灵动岛展开态没有输入框（两形态都不收字），所以「输入中保持展开」的守卫只属于桌宠气泡。
+  assert.equal(document.querySelectorAll('.session input').length, 0)
   cap.click(); cap.focus()
   assert.equal(document.activeElement, cap)
   assert.equal(expanded(), true)
   surface.dispatchEvent(new Event('pointerleave'))
   timers.get(100)()
   assert.equal(expanded(), false)
-  cap.click(); document.querySelector('input').focus()
-  surface.dispatchEvent(new Event('pointerleave'))
+})
+
+test('the desktop pet bubble still takes an inline reply and keeps itself open while typing', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  const timers = new Map()
+  dom.window.setTimeout = (fn, ms) => { timers.set(ms, fn); return ms }
+  dom.window.clearTimeout = id => timers.delete(id)
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+  dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+  const actions = []
+  const state = { settings: { language: 'en', activePet: 'duck' }, pets: [], kind: 'pet', sessions: [{ id: 'a', title: 'Build', status: 'running', running: true, detail: 'Working' }] }
+  dom.window.pet = { initial: async () => state, action: async value => { actions.push(value); return { ok: true } }, interactive() {}, focus() {}, drag() {}, onState() {}, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const { document } = dom.window
+  const form = document.querySelector('form')
+  assert.ok(form, 'the pet bubble keeps the inline reply box')
+  document.getElementById('cap').click()
+  assert.equal(document.body.classList.contains('expanded'), true)
+  const input = form.querySelector('input')
+  input.focus()
+  document.getElementById('surface').dispatchEvent(new dom.window.Event('pointerleave'))
   timers.get(100)()
-  assert.equal(expanded(), true)
+  assert.equal(document.body.classList.contains('expanded'), true, 'typing keeps the bubble open')
+  input.value = 'Continue carefully'
+  form.dispatchEvent(new dom.window.Event('submit', { cancelable: true }))
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual(JSON.parse(JSON.stringify(actions[0])), { action: 'prompt', sessionId: 'a', text: 'Continue carefully' })
 })
 
 test('dragging the island pill moves the window instead of expanding it', async (t) => {
@@ -203,6 +285,10 @@ test('island hover and collapse stay local when session updates reach both displ
     dom.window.clearTimeout = id => timers.delete(id)
     dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
     dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+    dom.window.Element.prototype.getBoundingClientRect = function () {
+      if (this.id === 'cap') return { x: 0, y: 0, left: 0, top: 0, right: 360, bottom: 38, width: 360, height: 38 }
+      return { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }
+    }
     let update, collapse
     dom.window.pet = { initial: async () => state, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState(fn) { update = fn }, onCollapse(fn) { collapse = fn } }
     dom.window.eval(script)
@@ -210,16 +296,73 @@ test('island hover and collapse stay local when session updates reach both displ
   })
   await new Promise(resolve => setImmediate(resolve))
   for (const [i, display] of displays.entries()) {
-    display.surface.dispatchEvent(new display.dom.window.Event('pointerenter'))
+    const pointer = (type, x, y) => { const event = new display.dom.window.Event(type); Object.assign(event, { clientX: x, clientY: y }); display.surface.dispatchEvent(event) }
+    pointer('pointerenter', 180, 20)
     display.timers.get(300)()
     assert.deepEqual(displays.map(item => item.expanded()), displays.map((_, index) => index === i))
     for (const item of displays) item.update({ ...state, sessions: [{ id: 'a', title: 'Updated session 2', status: 'running' }] })
     assert.deepEqual(displays.map(item => item.expanded()), displays.map((_, index) => index === i))
-    display.surface.dispatchEvent(new display.dom.window.Event('pointerleave'))
+    pointer('pointerleave', 180, 420)
     display.timers.get(100)()
     assert.deepEqual(displays.map(item => item.expanded()), [false, false])
   }
   for (const display of displays) display.dom.window.document.getElementById('cap').click()
   displays[0].collapse()
   assert.deepEqual(displays.map(item => item.expanded()), [false, true])
+})
+
+test('the transparent window only takes the mouse where it paints, so other apps keep their clicks', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  const interactive = []
+  const state = { settings: { language: 'en', activePet: 'duck' }, pets: [], kind: 'island', sessions: [{ id: 'a', title: 'A', status: 'running', running: true }] }
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+  dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+  // 424x500 的透明窗口里只有胶囊（360x38）与展开后的内容块真正可见，其余全是透明区域。
+  dom.window.Element.prototype.getBoundingClientRect = function () {
+    if (this.id === 'cap') return { x: 0, y: 0, left: 0, top: 0, right: 360, bottom: 38, width: 360, height: 38 }
+    if (this.id === 'activity') return { x: 0, y: 38, left: 0, top: 38, right: 390, bottom: 260, width: 390, height: 222 }
+    return { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }
+  }
+  dom.window.pet = { initial: async () => state, action: async () => ({ ok: true }), interactive: value => interactive.push(value), focus() {}, drag() {}, onState() {}, onExpanded() {}, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const move = (x, y) => { const event = new dom.window.Event('pointermove', { bubbles: true }); Object.assign(event, { clientX: x, clientY: y }); dom.window.document.dispatchEvent(event) }
+  move(180, 20)
+  assert.equal(interactive.at(-1), true, 'over the pill the window must take the mouse')
+  move(180, 400)
+  assert.equal(interactive.at(-1), false, 'the transparent area under the content must pass clicks through')
+  move(420, 20)
+  assert.equal(interactive.at(-1), false, 'the transparent area beside the pill must pass clicks through')
+})
+
+test('entering the transparent part of the window must not hold the mouse', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  const interactive = []
+  const timers = new Map()
+  dom.window.setTimeout = (fn, ms) => { timers.set(ms, fn); return ms }
+  dom.window.clearTimeout = id => timers.delete(id)
+  const state = { settings: { language: 'en', activePet: 'duck' }, pets: [], kind: 'island', sessions: [{ id: 'a', title: 'A', status: 'running', running: true }] }
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+  dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+  dom.window.Element.prototype.getBoundingClientRect = function () {
+    if (this.id === 'cap') return { x: 0, y: 0, left: 0, top: 0, right: 360, bottom: 38, width: 360, height: 38 }
+    return { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }
+  }
+  dom.window.pet = { initial: async () => state, action: async () => ({ ok: true }), interactive: value => interactive.push(value), focus() {}, drag() {}, onState() {}, onExpanded() {}, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const enter = (x, y) => { const event = new dom.window.Event('pointerenter'); Object.assign(event, { clientX: x, clientY: y }); dom.window.document.getElementById('surface').dispatchEvent(event) }
+  enter(180, 20)
+  assert.equal(interactive.at(-1), true)
+  assert.equal(timers.has(300), true, 'hovering the pill queues the expand after 300ms')
+  timers.clear()
+  enter(180, 420)
+  assert.equal(interactive.at(-1), false, 'transparent area must stay click-through')
+  assert.equal(timers.has(300), false, 'hovering empty space must not queue the expand animation')
 })

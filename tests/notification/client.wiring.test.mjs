@@ -412,3 +412,46 @@ test('没回到前台时不会误收提醒；卸载时摘掉事件监听', async
   app.page.document.dispatchEvent(new app.page.window.Event('visibilitychange'))
   assert.equal(app.stub.instances[0].closed, false, '卸载后监听必须被摘掉')
 })
+
+test('灵动岛在线时前台不再响提示音：标记消失后恢复', async (t) => {
+  // jsdom 没有 Web Audio：装一个最小实现，才能观察到「提示音到底有没有被接受」。
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'AudioContext')
+  class FakeAudioContext {
+    state = 'running'
+    destination = {}
+    async decodeAudioData() { return { duration: 0.1 } }
+    createGain() { return { gain: { value: 0 }, connect() {}, disconnect() {} } }
+    createBufferSource() { return { connect() {}, disconnect() {}, start() {}, stop() {} } }
+    async close() {}
+  }
+  Object.defineProperty(globalThis, 'AudioContext', { configurable: true, value: FakeAudioContext })
+  const app = await boot({
+    sessions: {
+      s1: { id: 's1', displayTitle: '岛在显示', running: true },
+      s2: { id: 's2', displayTitle: '岛不在', running: true },
+    },
+    chats: { s1: chatSnapshot({ reply: '完成一' }), s2: chatSnapshot({ reply: '完成二' }) },
+  })
+  t.after(async () => {
+    await app.dispose()
+    if (previous) Object.defineProperty(globalThis, 'AudioContext', previous)
+    else delete globalThis.AudioContext
+  })
+  app.page.document.hasFocus = () => true
+  Object.defineProperty(app.page.document, 'visibilityState', { configurable: true, get: () => 'visible' })
+  // pet 客户端在「岛开启 + helper 在跑」时写下的跨模块标记。
+  app.page.document.documentElement.dataset.dshIsland = 'on'
+
+  app.runtime.setRunning('s1', false)
+  await flush()
+  assert.equal(app.stub.instances.length, 0, '前台本来就不弹横幅')
+  assert.deepEqual(app.fetch.requests, [], '岛在前台时通知侧连提示音都不该响')
+
+  // 岛下线（helper 停了 / 用户关掉岛）：同一个标记消失，恢复「前台只有提示音」的旧行为。
+  delete app.page.document.documentElement.dataset.dshIsland
+  app.runtime.setRunning('s2', false)
+  await flush()
+  assert.equal(app.stub.instances.length, 0, '前台仍然不弹横幅')
+  const audio = app.fetch.requests.filter(({ url }) => url.pathname === '/api/plugins/dsh-toolkit/notification/sound')
+  assert.equal(audio.length, 1, '没有岛时前台回到提示音反馈')
+})

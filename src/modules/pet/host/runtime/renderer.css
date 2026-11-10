@@ -11,9 +11,50 @@ body[data-status=running] #surface{--badge-fg:#31cf76;--badge-bg:rgba(49,207,118
 body[data-status=running] #badge-icon{border:1.5px solid currentColor;border-top-color:transparent;animation:island-spin .9s linear infinite}body[data-status=waiting] #badge-icon::after{content:'!'}body[data-status=completed] #badge-icon::after{content:'\2713';font-size:11px}body[data-status=failed] #badge-icon::after{content:'\00d7';font-size:12px}body[data-status=idle] #badge-icon,body[data-status=idle] #badge{padding:0;font-weight:500;font-size:12px}
 
 
-#activity{padding:9px 22px 18px;max-height:438px;overflow:hidden;opacity:0;filter:blur(5px);transition:opacity 320ms,filter 320ms;pointer-events:none}body.expanded #activity{opacity:1;filter:none;pointer-events:auto}body.island:not(.expanded) #activity{visibility:hidden}
-#activity-heading{display:flex;justify-content:space-between;align-items:center;margin:2px 0 15px;color:var(--accent);font-size:10px;font-weight:650;letter-spacing:1.3px}#session-count{color:#737379;letter-spacing:0;font-weight:500}
-.session{padding:0 0 15px;margin:0 0 15px;border-bottom:1px solid #ffffff15}.session:last-child{margin-bottom:0;border-bottom:0}.session-open{display:block;width:100%;padding:0;background:transparent;text-align:left}.session-open .title{display:block;font-size:17px;line-height:1.4;letter-spacing:-.35px;margin:0 0 6px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.session-open:hover .title{color:#fff}.session-open:active{filter:brightness(.88)}.detail{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;color:#929299;font-size:12px;line-height:1.55;margin:0 0 14px;overflow:hidden;white-space:pre-wrap;word-break:break-word;user-select:text}
+#activity{position:relative;z-index:1;padding:9px 22px 18px;max-height:438px;overflow:hidden;opacity:0;filter:blur(5px);transition:opacity 320ms,filter 320ms;pointer-events:none}body.expanded #activity{opacity:1;filter:none;pointer-events:auto}body.island #activity{opacity:1;filter:none;transition:none}body.island:not(.expanded) #activity{visibility:hidden}
+#activity-heading{display:flex;justify-content:space-between;align-items:center;margin:2px 0 15px;color:var(--accent);font-size:10px;font-weight:650;letter-spacing:1.3px}#session-count{color:#737379;letter-spacing:0;font-weight:500}body.island[data-form=list] #activity-heading{margin-bottom:10px}body.island[data-form=detail] #activity-heading{display:none}
+
+/* 形态 A：运行中列表 —— ≤3 行，两行都单行省略，没有 footer、输入框和滚动条。 */
+.island-list{display:flex;flex-direction:column;gap:2px}
+.island-row{width:calc(100% + 16px);margin-inline:-8px}
+.row-open{display:grid;grid-template-columns:32px minmax(0,1fr);gap:8px;align-items:center;width:100%;min-height:44px;padding:6px 8px;border-radius:12px;background:transparent;text-align:left}
+.row-open:hover{background:rgba(255,255,255,.06)}.row-open:active{background:rgba(255,255,255,.1)}
+.row-lines{display:flex;flex-direction:column;min-width:0}
+.row-open .title{display:block;font-size:13px;font-weight:500;line-height:18px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-open .note{display:block;font-size:11.5px;line-height:16px;color:#979797;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.avatar{display:flex;align-items:center;justify-content:center;width:32px;height:32px;flex:none;border-radius:50%;font-size:13px;font-weight:650;color:hsl(var(--avatar-hue,220),62%,82%);background:hsl(var(--avatar-hue,220),32%,20%);box-shadow:inset 0 0 0 1px hsla(var(--avatar-hue,220),60%,60%,.3)}
+.avatar-large{width:38px;height:38px;font-size:15px}
+
+/* 形态 B：单会话详情 —— 身份行 + 说明 + 相对时间，待办内联，footer 里是唯一动作入口。 */
+.session-detail{display:flex;flex-direction:column}
+.island-identity{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;min-height:43px;padding:2px 0;border-radius:14px;background:transparent;text-align:left}
+.identity-text{display:flex;flex-direction:column;gap:4px;min-width:0}
+.identity-head{display:flex;align-items:baseline;gap:6px;min-width:0}
+.island-identity .title{max-width:26ch;font-size:15px;font-weight:600;line-height:20px;letter-spacing:-.2px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status-phrase{color:#dcdcdc;font-size:12px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.island-identity .detail{margin:0;font-size:12px;line-height:1.55;color:#979797}
+.stamp{color:#6a6a6a;font-size:11px;line-height:16px;white-space:nowrap;align-self:start;margin-top:3px}
+.island-pending{margin-top:12px;padding:10px 12px;border-radius:14px;background:rgba(255,148,18,.1);box-shadow:inset 0 0 0 1px rgba(255,148,18,.2)}
+.island-pending[data-kind=question]{background:rgba(107,199,217,.1);box-shadow:inset 0 0 0 1px rgba(107,199,217,.22)}
+.pending-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pending-tag{font-size:10px;font-weight:700;letter-spacing:.9px;color:#ff9412}
+.island-pending[data-kind=question] .pending-tag{color:#8bdee8}
+.pending-kind{font-size:11px;color:#dcdcdc}
+.pending-body{margin:0;font-size:11.5px;line-height:1.5;color:#dcdcdc;white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;user-select:text}
+.pending-hint{margin:8px 0 0;font-size:11px;color:#979797}
+.island-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1)}
+.island-button{display:inline-flex;align-items:center;justify-content:center;min-width:92px;height:32px;padding:0 14px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.island-button.ghost{color:#dcdcdc;background:rgba(255,255,255,.06)}.island-button.ghost:hover{background:rgba(255,255,255,.12)}
+.island-button.primary{color:#0b0b0c;background:#fff}.island-button.primary:hover{filter:brightness(.92)}
+.island-button.primary.is-pending{color:#160d00;background:#ff9412}body[data-pending=question] .island-button.primary.is-pending{color:#032027;background:#8bdee8}
+.island-empty{margin:6px 0 2px;font-size:12px;color:#979797}
+
+/* 桌宠气泡沿用原来的卡片布局（卡片下可以直接回复）。 */
+body.pet .session{padding:0 0 15px;margin:0 0 15px;border-bottom:1px solid #ffffff15}body.pet .session:last-child{margin-bottom:0;border-bottom:0}
+body.pet .session-open{display:block;width:100%;padding:0;background:transparent;text-align:left}
+body.pet .session-open .title{display:block;font-size:17px;line-height:1.4;letter-spacing:-.35px;margin:0 0 6px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.pet .session-open:hover .title{color:#fff}body.pet .session-open:active{filter:brightness(.88)}
+.detail{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;color:#929299;font-size:12px;line-height:1.55;margin:0;overflow:hidden;white-space:pre-wrap;word-break:break-word;user-select:text}body.pet .detail{margin:0 0 14px}
 form{display:flex;gap:8px;align-items:center;margin-top:12px}input{min-width:0;width:100%;background:#151517;border:1px solid #ffffff12;color:#fff;border-radius:13px;padding:10px 12px;user-select:text;font-size:12px}form button{white-space:nowrap;flex-shrink:0;width:34px;height:34px;border-radius:50%;padding:0;color:#000;background:var(--accent);font-size:18px;font-weight:550}form button:hover{filter:brightness(1.22)}#error{font-size:11px;color:#ffb6b6;margin:8px 0 0}#error:empty{display:none}
 body.island.expanded #surface,body.island.expanded #silhouette-body{border-radius:24px;transition-duration:420ms;transition-timing-function:cubic-bezier(.22,1,.36,1)}body.closing #surface,body.closing #silhouette-body{transition-duration:450ms;transition-delay:90ms;transition-timing-function:cubic-bezier(.33,1,.68,1)}
 body.notched #surface{border-radius:0 0 14px 14px}body.notched.expanded #surface{border-radius:0 0 24px 24px}body.notched #silhouette-body{left:6px;right:6px;border-radius:0 0 14px 14px;box-shadow:0 8px 24px #0003}body.notched.expanded #silhouette-body{left:19px;right:19px;border-radius:0 0 24px 24px}body.notched .shoulder{display:block}body.notched #cap{padding:0 12px;gap:0}body.notched #camera-space{display:block;position:absolute;left:50%;top:0;transform:translateX(-50%);width:var(--notch-width);height:var(--notch-height);pointer-events:none}body.notched #badge{margin-right:4px}body.notched #activity{padding-top:13px}
