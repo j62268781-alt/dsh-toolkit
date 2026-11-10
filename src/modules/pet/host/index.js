@@ -9,7 +9,7 @@ import { readSettings } from './config.js'
 import { createHelperBridge, attachEvents, parseAction } from './bridge.js'
 import { HelperManager } from './helper.js'
 import { createActivityFeed } from './activity.js'
-import { createCatalog, installPet, listInstalled, removePet, resolveAssetUrl } from './petdex.js'
+import { createCatalog, filterCatalog, installPet, listInstalled, removePet, resolveAssetUrl } from './petdex.js'
 import { createPreviewStore } from './preview.js'
 
 export const name = 'toolkit-pet'
@@ -81,12 +81,14 @@ export async function createPetService(ctx, initialConfig = {}) {
   const catalog = createCatalog()
   const previews = createPreviewStore({ root: petHome() })
   let installing = false
+  // 安装中的实时进度：随每次 percent 变化广播给客户端，安装结束（成功或失败）立刻清空。
+  let installProgress = null
   let manager, feed, bridge
   let clientDiag
   const snapshot = (privateState = false) => ({
     ok: true, settings,
     pets: privateState ? pets : pets.map(({ id, name, source }) => ({ id, name, source: source || 'builtin' })),
-    petdex: { skipped: petdexSkipped },
+    petdex: { skipped: petdexSkipped, progress: installProgress },
     runtime: manager?.state || { status: 'stopped', available: false },
     sessions: feed?.snapshot() || [], navigation,
     ...(privateState && clientDiag ? { client: clientDiag } : {}),
@@ -117,17 +119,23 @@ export async function createPetService(ctx, initialConfig = {}) {
       const query = String(input.query || '').trim().toLowerCase()
       const limit = Math.min(60, Math.max(4, Number(input.limit) || 20))
       const offset = Math.max(0, Number(input.offset) || 0)
+      // 已安装/未安装的筛选放在服务端做，matched 与分页因此仍然是「筛选后」的总数。
+      const filter = ['all', 'installed', 'missing'].includes(input.filter) ? input.filter : 'all'
       const manifest = await catalog.list()
       const installed = new Set(pets.filter((pet) => pet.source === 'petdex').map((pet) => pet.id.slice(PETDEX_PREFIX.length)))
-      const matches = query ? manifest.pets.filter((pet) => pet.slug.includes(query) || pet.displayName.toLowerCase().includes(query)) : manifest.pets
+      const searched = query ? manifest.pets.filter((pet) => pet.slug.includes(query) || pet.displayName.toLowerCase().includes(query)) : manifest.pets
+      const matches = filterCatalog(searched, installed, filter)
       return {
-        ok: true, total: manifest.pets.length, matched: matches.length, offset, limit,
+        ok: true, total: manifest.pets.length, matched: matches.length, offset, limit, filter,
         pets: matches.slice(offset, offset + limit).map((pet) => ({ slug: pet.slug, displayName: pet.displayName, spriteVersionNumber: pet.spriteVersionNumber, installed: installed.has(pet.slug) })),
       }
     }
     if (input.action === 'install') {
       if (installing) throw new Error('Another pet is still installing')
       installing = true
+      installProgress = { slug: input.slug, phase: 'queued', percent: 0 }
+      publish()
+      let last = ''
       try {
         const manifest = await catalog.list()
         const entry = manifest.pets.find((pet) => pet.slug === input.slug)
@@ -135,12 +143,25 @@ export async function createPetService(ctx, initialConfig = {}) {
         const petUrl = resolveAssetUrl(manifest.assetBase, entry.petJson)
         const sheetUrl = resolveAssetUrl(manifest.assetBase, entry.spritesheet)
         if (!petUrl || !sheetUrl) throw new Error('The catalog returned an unsafe asset url')
-        const result = await installPet({ slug: entry.slug, petUrl, sheetUrl, root: petsRoot() })
+        const result = await installPet({
+          slug: entry.slug, petUrl, sheetUrl, root: petsRoot(),
+          onProgress: (value) => {
+            const percent = Math.round(value.percent)
+            const key = `${value.phase}:${percent}`
+            if (key === last) return
+            last = key
+            installProgress = { slug: value.slug, phase: value.phase, percent }
+            publish()
+          },
+        })
         if (!result.ok) throw new Error(result.reason)
         await reloadPets()
-        publish()
         return { ok: true, slug: entry.slug }
-      } finally { installing = false }
+      } finally {
+        installing = false
+        installProgress = null
+        publish()
+      }
     }
     if (input.action === 'remove') {
       if (!await removePet(petsRoot(), input.slug)) throw new Error('This pet is not installed')

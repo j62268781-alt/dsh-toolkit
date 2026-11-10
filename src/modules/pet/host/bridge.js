@@ -21,6 +21,7 @@ export async function parseAction(req) {
   if (!['prepare', 'retry', 'start', 'open', 'seen', 'diag', 'cancel', 'prompt', 'position', 'catalog', 'install', 'remove'].includes(action)) throw new Error('Unknown pet action')
   if (['install', 'remove'].includes(action) && (typeof value.slug !== 'string' || !/^[a-z0-9][a-z0-9._-]{0,127}$/.test(value.slug))) throw new Error('Invalid pet package id')
   if (action === 'catalog' && value.query !== undefined && (typeof value.query !== 'string' || value.query.length > 64)) throw new Error('Invalid pet search query')
+  if (action === 'catalog' && value.filter !== undefined && !['all', 'installed', 'missing'].includes(value.filter)) throw new Error('Invalid pet filter')
   if (['open', 'seen', 'cancel', 'prompt'].includes(action) && (typeof value.sessionId !== 'string' || value.sessionId.length < 1 || value.sessionId.length > 256)) throw new Error('A session is required')
   if (action === 'prompt' && (typeof value.text !== 'string' || !value.text.trim() || value.text.length > 8000)) throw new Error('Reply must contain 1–8000 characters')
   if (action === 'position' && (!Number.isFinite(value.x) || !Number.isFinite(value.y))) throw new Error('Invalid pet position')

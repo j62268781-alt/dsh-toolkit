@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readdir, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createCatalog, installPet, isSlug, listInstalled, parseImageSize, parseManifest, removePet, resolveAssetUrl, validatePetJson } from '../../src/modules/pet/host/petdex.js'
+import { createCatalog, filterCatalog, installPet, isSlug, listInstalled, parseImageSize, parseManifest, removePet, resolveAssetUrl, validatePetJson } from '../../src/modules/pet/host/petdex.js'
 
 const png = (width, height) => {
   const bytes = Buffer.alloc(33)
@@ -45,7 +45,11 @@ test('image sizes come from the header only', () => {
 test('pet.json validation rejects unsafe or incomplete packages', () => {
   assert.equal(validatePetJson({ id: 'boba', displayName: 'Boba', spritesheetPath: 'spritesheet.webp' }, 'boba').ok, true)
   assert.equal(validatePetJson({ id: 'boba', displayName: 'Boba', spritesheetPath: 'spritesheet.webp', spriteVersionNumber: 2 }, 'boba').manifest.spriteVersionNumber, 2)
-  assert.equal(validatePetJson({ id: 'other', displayName: 'Boba', spritesheetPath: 'spritesheet.webp' }, 'boba').ok, false)
+  // Petdex 里「同图不同名」的包：id 与目录名不同也能用，身份是目录名。
+  assert.equal(validatePetJson({ id: 'other', displayName: 'Boba', spritesheetPath: 'spritesheet.webp' }, 'boba').ok, true, 'the folder name wins as the pet identity')
+  assert.equal(validatePetJson({ id: 'other', displayName: 'Boba', spritesheetPath: 'spritesheet.webp' }, 'boba').manifest.id, 'boba')
+  assert.equal(validatePetJson({ id: 'Not A Slug', displayName: 'Boba', spritesheetPath: 'spritesheet.webp' }, 'boba').ok, false, 'the id still has to look like a slug')
+  assert.equal(validatePetJson({ displayName: 'Boba', spritesheetPath: 'spritesheet.webp' }, 'boba').ok, true, 'a missing id is fine too')
   assert.equal(validatePetJson({ id: 'boba', displayName: '   ', spritesheetPath: 'spritesheet.webp' }, 'boba').ok, false)
   assert.equal(validatePetJson({ id: 'boba', displayName: 'Boba', spritesheetPath: '../secret.png' }, 'boba').ok, false)
   assert.equal(validatePetJson({ id: 'boba', displayName: 'Boba', spritesheetPath: 'spritesheet.jpg' }, 'boba').ok, false)
@@ -133,6 +137,51 @@ test('install writes a package atomically and rejects bad downloads', async () =
   assert.ok(badJson.reason.includes('not valid JSON'))
   // 失败不留半成品，也不留临时目录。
   assert.deepEqual((await readdir(root)).sort(), ['boba'])
+})
+
+test('catalog filters split installed from missing and fall back to everything', () => {
+  const pets = [{ slug: 'a' }, { slug: 'b' }, { slug: 'c' }]
+  const installed = new Set(['b'])
+  assert.deepEqual(filterCatalog(pets, installed, 'all').map(({ slug }) => slug), ['a', 'b', 'c'])
+  assert.deepEqual(filterCatalog(pets, installed, 'installed').map(({ slug }) => slug), ['b'])
+  assert.deepEqual(filterCatalog(pets, installed, 'missing').map(({ slug }) => slug), ['a', 'c'])
+  assert.deepEqual(filterCatalog(pets, installed, 'garbage').map(({ slug }) => slug), ['a', 'b', 'c'], 'an unknown filter degrades to all')
+})
+
+test('install streams the sheet and reports download progress', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'petdex-progress-'))
+  const sheet = webp(1536, 1872)
+  const seen = []
+  const fetchImpl = async (url) => {
+    if (url.endsWith('pet.json')) return reply(petJson('boba'))
+    // 分两块吐出，模拟真实下载：进度回调应当先到 50%，最后到 100%。
+    return {
+      ok: true,
+      headers: { get: (name) => (String(name).toLowerCase() === 'content-length' ? String(sheet.length) : null) },
+      body: new ReadableStream({
+        start(controller) {
+          const half = Math.floor(sheet.length / 2)
+          controller.enqueue(sheet.subarray(0, half))
+          controller.enqueue(sheet.subarray(half))
+          controller.close()
+        },
+      }),
+    }
+  }
+  const result = await installPet({
+    slug: 'boba',
+    petUrl: 'https://petdex.dev/pets/boba/pet.json',
+    sheetUrl: 'https://petdex.dev/pets/boba/spritesheet.webp',
+    root,
+    fetchImpl,
+    onProgress: (value) => seen.push(value),
+  })
+  assert.equal(result.ok, true)
+  const percents = seen.map(({ percent }) => percent)
+  assert.equal(percents.at(-1), 100, 'the last report closes the bar')
+  assert.ok(percents.every((value, index) => index === 0 || value >= percents[index - 1]), 'progress never goes backwards')
+  assert.ok(seen.some(({ phase, percent }) => phase === 'download' && percent === 50), 'the sheet download reports half way from content-length')
+  assert.ok(seen.every(({ slug }) => slug === 'boba'))
 })
 
 test('installed pets are listed and bad folders are reported, not fatal', async () => {

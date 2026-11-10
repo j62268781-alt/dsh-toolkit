@@ -63,7 +63,9 @@ export function resolveAssetUrl(base, relative) {
 export function validatePetJson(value, slug) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { ok: false, reason: 'pet.json is not an object' }
   if (!isSlug(slug)) return { ok: false, reason: 'Invalid pet id' }
-  if (value.id !== slug) return { ok: false, reason: 'pet.json id does not match its folder' }
+  // 身份以目录名（清单里的 slug）为准：Petdex 里有一批「同图不同名」的包，pet.json 的 id 仍是原始宠物的 slug。
+  // 只要求它本身是个合法 slug，不做相等校验，否则 boba-2 / boba-6 这类永远装不上。
+  if (value.id !== undefined && !isSlug(value.id)) return { ok: false, reason: 'pet.json id is invalid' }
   const displayName = typeof value.displayName === 'string' ? value.displayName.trim() : ''
   if (!displayName || displayName.length > 80) return { ok: false, reason: 'pet.json displayName is invalid' }
   const spritesheetPath = typeof value.spritesheetPath === 'string' ? value.spritesheetPath.trim() : ''
@@ -114,7 +116,7 @@ async function requestJson(fetchImpl, url, timeoutMs) {
   } finally { clearTimeout(timer) }
 }
 
-async function download(fetchImpl, url, { timeoutMs, maxBytes }) {
+async function download(fetchImpl, url, { timeoutMs, maxBytes, onProgress }) {
   const parsed = new URL(url)
   if (parsed.protocol !== 'https:') throw new Error('Petdex assets must use https')
   const controller = new AbortController()
@@ -124,8 +126,39 @@ async function download(fetchImpl, url, { timeoutMs, maxBytes }) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const declared = Number(response.headers.get('content-length'))
     if (Number.isFinite(declared) && declared > maxBytes) throw new Error('Asset is too large')
+    const total = Number.isFinite(declared) && declared > 0 ? declared : 0
+    // 精灵表约 2.4MB，按块读才能把「下到百分之几」报出去；拿不到 body 的环境（测试的 fetch stub）退回一次性读。
+    const stream = response.body
+    if (stream && typeof stream.getReader === 'function') {
+      const reader = stream.getReader()
+      const chunks = []
+      let loaded = 0
+      for (;;) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        const bytes = Buffer.from(chunk.value)
+        loaded += bytes.length
+        if (loaded > maxBytes) { await reader.cancel().catch(() => {}); throw new Error('Asset is too large') }
+        chunks.push(bytes)
+        onProgress?.(loaded, total)
+      }
+      return Buffer.concat(chunks)
+    }
+    if (stream && typeof stream[Symbol.asyncIterator] === 'function') {
+      const chunks = []
+      let loaded = 0
+      for await (const chunk of stream) {
+        const bytes = Buffer.from(chunk)
+        loaded += bytes.length
+        if (loaded > maxBytes) throw new Error('Asset is too large')
+        chunks.push(bytes)
+        onProgress?.(loaded, total)
+      }
+      return Buffer.concat(chunks)
+    }
     const bytes = Buffer.from(await response.arrayBuffer())
     if (bytes.length > maxBytes) throw new Error('Asset is too large')
+    onProgress?.(bytes.length, total || bytes.length)
     return bytes
   } finally { clearTimeout(timer) }
 }
@@ -156,29 +189,46 @@ export function createCatalog({ fetchImpl = globalThis.fetch, baseUrl = PETDEX_B
   }
 }
 
+/** 宠物库的「全部 / 已安装 / 未安装」筛选：纯函数，服务端按它切 matched 与分页。 */
+export function filterCatalog(pets, installed, filter = 'all') {
+  const mode = ['all', 'installed', 'missing'].includes(filter) ? filter : 'all'
+  if (mode === 'all' || !(installed instanceof Set)) return pets
+  return pets.filter((pet) => installed.has(pet.slug) === (mode === 'installed'))
+}
+
 /** 安装一只宠物：先下到临时目录、校验通过后再原子替换目标目录。 */
-export async function installPet({ slug, petUrl, sheetUrl, root, fetchImpl = globalThis.fetch, timeoutMs = 30000, maxSheetBytes = MAX_SHEET_BYTES } = {}) {
+export async function installPet({ slug, petUrl, sheetUrl, root, fetchImpl = globalThis.fetch, timeoutMs = 30000, maxSheetBytes = MAX_SHEET_BYTES, onProgress } = {}) {
   if (!isSlug(slug)) return { ok: false, reason: 'Invalid pet id' }
+  // 进度按「解析 8% / 下载精灵表 82% / 校验 4% / 落盘 6%」分配；回调异常不影响安装本身。
+  const report = (phase, percent) => {
+    try { onProgress?.({ slug, phase, percent: Math.max(0, Math.min(100, Math.round(percent))) }) } catch {}
+  }
   if (typeof root !== 'string' || !root) return { ok: false, reason: 'Missing install root' }
   const target = join(root, slug)
   const temp = join(root, `.tmp-${slug}-${randomUUID().slice(0, 8)}`)
   try {
     await mkdir(temp, { recursive: true })
-    const petBytes = await download(fetchImpl, petUrl, { timeoutMs, maxBytes: MAX_PET_JSON_BYTES })
+    report('manifest', 2)
+    const petBytes = await download(fetchImpl, petUrl, { timeoutMs, maxBytes: MAX_PET_JSON_BYTES, onProgress: (loaded, total) => report('manifest', total ? 2 + 6 * loaded / total : 5) })
+    report('manifest', 8)
     let raw
     try { raw = JSON.parse(petBytes.toString('utf8')) } catch { throw new Error('pet.json is not valid JSON') }
     const checked = validatePetJson(raw, slug)
     if (!checked.ok) throw new Error(checked.reason)
-    const sheetBytes = await download(fetchImpl, sheetUrl, { timeoutMs, maxBytes: maxSheetBytes })
+    report('download', 10)
+    const sheetBytes = await download(fetchImpl, sheetUrl, { timeoutMs, maxBytes: maxSheetBytes, onProgress: (loaded, total) => report('download', total ? 10 + 80 * loaded / total : 10) })
+    report('download', 90)
     const size = parseImageSize(sheetBytes)
     if (!size) throw new Error('spritesheet is not a PNG or WebP image')
     const rows = VERSIONS[checked.manifest.spriteVersionNumber]
     if (size.width % 8 !== 0 || size.width / 8 !== CELL.width || size.height !== CELL.height * rows) throw new Error(`spritesheet is ${size.width}x${size.height}; expected ${CELL.width * 8}x${CELL.height * rows}`)
+    report('install', 94)
     const sheetFile = checked.manifest.spritesheetPath
     await writeFile(join(temp, 'pet.json'), petBytes)
     await writeFile(join(temp, sheetFile), sheetBytes)
     await rm(target, { recursive: true, force: true })
     await rename(temp, target)
+    report('done', 100)
     return { ok: true, slug, dir: target, manifest: checked.manifest, sheetFile }
   } catch (error) {
     await rm(temp, { recursive: true, force: true }).catch(() => {})
