@@ -208,7 +208,8 @@ app.whenReady().then(async () => {
         other.win.webContents.send('pet:collapse')
       }
       await new Promise(resolve => setTimeout(resolve, 200))
-      const point = await entry.win.webContents.executeJavaScript("(() => { const r = document.getElementById('sprite').getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) } })()")
+      // 精灵表画布与 60 fps 片段图轮流显示，取共同容器 #brand 的中心，避免命中隐藏元素（尺寸为 0）。
+      const point = await entry.win.webContents.executeJavaScript("(() => { const r = document.getElementById('brand').getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) } })()")
       entry.win.webContents.sendInputEvent({ type: 'mouseMove', ...point })
       await new Promise(resolve => setTimeout(resolve, 450))
       const expanded = await Promise.all(islands.map(async ([id, other]) => ({ key: id, expanded: await other.win.webContents.executeJavaScript("document.body.classList.contains('expanded')") })))
@@ -237,6 +238,17 @@ app.whenReady().then(async () => {
           const buttons = [...document.querySelectorAll('.session .session-open')]
           const spriteBounds = document.getElementById('sprite').getBoundingClientRect(), badgeBounds = document.getElementById('badge').getBoundingClientRect()
           const badgeText = document.getElementById('badge-text').textContent
+          const film = document.getElementById('film')
+          const brand = document.getElementById('brand')
+          const brandStyle = getComputedStyle(brand)
+          const filmState = {
+            hidden: film.hidden,
+            src: film.getAttribute('src') || '',
+            decoded: film.naturalWidth,
+            clip: document.body.toggleAttribute ? document.body.hasAttribute('data-clips') : null,
+            animation: brandStyle.animationName,
+            bob: brandStyle.getPropertyValue('--bob').trim(),
+          }
           const camera = document.getElementById('camera-space').getBoundingClientRect()
           return {
             expanded: document.body.classList.contains('expanded'), opacity: Number(style.opacity), filter: style.filter,
@@ -251,8 +263,15 @@ app.whenReady().then(async () => {
             noScroll: Boolean(body) && body.scrollHeight <= body.clientHeight + 1 && body.scrollWidth <= body.clientWidth + 1,
             height: bounds.height,
             badgeText,
+            film: filmState,
           }
         })()`)
+        const clips = (state.pets || []).find(pet => pet.id === state.settings?.activePet)?.manifest?.animations
+        if (clips && Object.keys(clips).length) {
+          if (visible.film.hidden || !visible.film.decoded) throw new Error(`Island ${key} did not play its 60 fps clips: ${JSON.stringify(visible.film)}`)
+          // 呼吸位移由 CSS 合成动画负责，跑在屏幕刷新率上；片段里只留姿态。
+          if (visible.film.animation !== 'tk-bob' || !visible.film.bob) throw new Error(`Island ${key} does not run the CSS bob: ${JSON.stringify(visible.film)}`)
+        }
         if (!visible.expanded || !visible.visible || !visible.cameraExcluded || visible.opacity < .99 || visible.filter !== 'blur(0px)' && visible.filter !== 'none' || !visible.sessionCount || !['list', 'detail'].includes(visible.form) || visible.rows > 3 || !visible.buttonsVisible || !visible.noScroll || !visible.badgeText) throw new Error(`Island ${key} did not visibly expand: ${JSON.stringify(visible)}`)
         report.islands.push({ key, displayId: entry.display.id, screenBounds: entry.display.bounds, workArea: entry.display.workArea, windowBounds: entry.win.getBounds(), notch: entry.display.notch, ...visible })
         await captureSurface(entry, `${key}-surface.png`)

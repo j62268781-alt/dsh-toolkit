@@ -15,12 +15,23 @@ function orderedSessions(sessions = []) {
   return sessions.filter(s => s && typeof s.id === 'string').slice().sort((a, b) => (rank[a.status] ?? 4) - (rank[b.status] ?? 4) || (b.updatedAt || 0) - (a.updatedAt || 0))
 }
 
+// 内置形象额外带 60 fps 的动画 WebP（每个动作一个文件），宠物包在 manifest.animations
+// 里按动作名登记。渲染端优先播 WebP，没有登记的（第三方 Petdex 宠物）才回退精灵表。
+const CLIP_MOTIONS = ['idle', 'running', 'waiting', 'failed', 'review', 'waving', 'jumping', 'runningRight', 'runningLeft']
+
+// 只认 `motion/<动作名>.webp` 这一种形状，文件名由动作名推导，不允许宠物包自选路径。
+function clipFile(pet, motion) {
+  const declared = pet?.manifest?.animations
+  if (!declared || typeof declared !== 'object' || !CLIP_MOTIONS.includes(motion)) return null
+  return declared[motion] === `motion/${motion}.webp` ? `motion/${motion}.webp` : null
+}
+
 function publicState(state, kind, display) {
   const settings = state.settings || {}
   return {
     settings: { activePet: settings.activePet, petSize: settings.petSize, bubbleWidth: settings.bubbleWidth, islandWidth: settings.islandWidth, islandHeight: settings.islandHeight, language: settings.language === 'en' ? 'en' : 'zh' },
     // Petdex 安装的形象用 `petdex:<slug>` 作为 id，精灵表文件名也可能不是 spritesheet.png。
-    pets: (state.pets || []).filter(p => /^(?:petdex:)?[a-z0-9][a-z0-9._-]*$/i.test(p.id)).map(p => ({ id: p.id, name: p.name, spriteVersionNumber: p.manifest?.spriteVersionNumber === 2 ? 2 : 1, spritesheet: `pet-asset://pet/${encodeURIComponent(p.id)}/${encodeURIComponent(p.sheetFile || 'spritesheet.png')}` })),
+    pets: (state.pets || []).filter(p => /^(?:petdex:)?[a-z0-9][a-z0-9._-]*$/i.test(p.id)).map(p => ({ id: p.id, name: p.name, spriteVersionNumber: p.manifest?.spriteVersionNumber === 2 ? 2 : 1, spritesheet: `pet-asset://pet/${encodeURIComponent(p.id)}/${encodeURIComponent(p.sheetFile || 'spritesheet.png')}`, animations: Object.fromEntries(CLIP_MOTIONS.map(motion => [motion, clipFile(p, motion)]).filter(([, file]) => file).map(([motion, file]) => [motion, `pet-asset://pet/${encodeURIComponent(p.id)}/${file}`])) })),
     // updatedAt 只用于展开态的「刚刚 / N 分钟前」，不是绝对时间戳：渲染端只读差值。
     sessions: orderedSessions(state.sessions).map(s => ({ id: s.id, title: String(s.title || ''), detail: String(s.detail || ''), status: s.status, running: Boolean(s.running), updatedAt: Number(s.updatedAt) || 0, pendingKind: s.pendingKind })),
     revision: state.revision, kind,
@@ -66,16 +77,25 @@ function islandOffset(display, size, x, y) {
 }
 
 function assetPath(state, rawUrl) {
+  // URL 会把 `..` 规范化掉，正常渲染端也不会生成这种串 —— 直接拒绝原始路径里的点段。
+  if (typeof rawUrl !== 'string' || /\.\.|%2e%/i.test(rawUrl)) return null
   let url
   try { url = new URL(rawUrl) } catch { return null }
   if (url.protocol !== 'pet-asset:' || url.hostname !== 'pet') return null
   const segments = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
-  if (segments.length !== 2) return null
-  const [id, file] = segments
-  // 只允许 png/webp、且必须与这只宠物登记的精灵表同名：路径不再由 URL 决定。
-  if (!/^[a-z0-9][a-z0-9._-]{0,127}\.(?:png|webp)$/i.test(file)) return null
+  if (segments.length !== 2 && segments.length !== 3) return null
+  const id = segments[0], file = segments[segments.length - 1]
   const pet = (state.pets || []).find(p => p.id === id)
   if (!pet || !path.isAbsolute(pet.assetDir || '')) return null
+  if (segments.length === 3) {
+    // 动画 WebP 只允许 manifest 里登记过的动作，且文件名必须等于动作名。
+    if (segments[1] !== 'motion') return null
+    const motion = file.replace(/\.webp$/i, '')
+    const clip = /^[a-z][a-zA-Z]{0,31}\.webp$/.test(file) ? clipFile(pet, motion) : null
+    return clip ? path.join(pet.assetDir, clip) : null
+  }
+  // 只允许 png/webp、且必须与这只宠物登记的精灵表同名：路径不再由 URL 决定。
+  if (!/^[a-z0-9][a-z0-9._-]{0,127}\.(?:png|webp)$/i.test(file)) return null
   if (file !== (pet.sheetFile || 'spritesheet.png')) return null
   return path.join(pet.assetDir, file)
 }

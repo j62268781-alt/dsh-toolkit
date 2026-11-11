@@ -33,11 +33,36 @@ test('a Petdex pet keeps its own id and webp sheet without exposing its director
   const state = { pets:[{ id:'petdex:boba', name:'Boba', assetDir:'/pets/boba', manifest:{ spriteVersionNumber:2, spritesheetPath:'spritesheet.webp' }, sheetFile:'spritesheet.webp', source:'petdex' }] }
   const projected = publicState({ settings:{ activePet:'petdex:boba' }, pets: state.pets, sessions: [] }, 'island', { bounds:{ width:1440, height:900 } })
   assert.equal(projected.pets[0].spritesheet, 'pet-asset://pet/petdex%3Aboba/spritesheet.webp')
+  // 没有登记 animations 的宠物不带片段，渲染端只能走精灵表。
+  assert.deepEqual(projected.pets[0].animations, {})
   assert.equal(projected.pets[0].spriteVersionNumber, 2)
   assert.equal(JSON.stringify(projected).includes('/pets/boba'), false)
   assert.equal(assetPath(state, projected.pets[0].spritesheet), '/pets/boba/spritesheet.webp')
   // 只有登记过的那一个文件可读：换成 pet.json 或别的宠物都不行。
   for (const url of ['pet-asset://pet/petdex%3Aboba/pet.json', 'pet-asset://pet/petdex%3Aboba/spritesheet.png', 'pet-asset://pet/deepseek-whale/spritesheet.webp']) assert.equal(assetPath(state, url), null)
+})
+test('a pet may register 60 fps motion clips next to its sheet', () => {
+  const state = { pets:[{ id:'whale', name:'Whale', assetDir:'/assets/whale', sheetFile:'spritesheet.png', manifest:{ spriteVersionNumber:2, animations:{ idle:'motion/idle.webp', running:'motion/running.webp', jumping:'motion/jumping.webp' } } }] }
+  const projected = publicState({ settings:{ activePet:'whale' }, pets: state.pets, sessions: [] }, 'island', { bounds:{ width:1440, height:900 } })
+  assert.deepEqual(projected.pets[0].animations, {
+    idle: 'pet-asset://pet/whale/motion/idle.webp',
+    running: 'pet-asset://pet/whale/motion/running.webp',
+    jumping: 'pet-asset://pet/whale/motion/jumping.webp',
+  })
+  assert.equal(JSON.stringify(projected).includes('/assets/whale'), false)
+  assert.equal(assetPath(state, 'pet-asset://pet/whale/motion/idle.webp'), '/assets/whale/motion/idle.webp')
+  // 只认登记过的动作名，且路径必须和动作名一致：换文件、换目录、越界都不行。
+  for (const url of [
+    'pet-asset://pet/whale/motion/waving.webp',
+    'pet-asset://pet/whale/motion/idle.png',
+    'pet-asset://pet/whale/motion/../spritesheet.png',
+    'pet-asset://pet/whale/clip/idle.webp',
+    'pet-asset://pet/whale/motion/idle.webp/extra',
+  ]) assert.equal(assetPath(state, url), null)
+  // manifest 里写别的路径不生效：文件名必须等于动作名。
+  const odd = { pets:[{ id:'whale', assetDir:'/assets/whale', manifest:{ animations:{ idle:'motion/other.webp' } } }] }
+  assert.equal(assetPath(odd, 'pet-asset://pet/whale/motion/idle.webp'), null)
+  assert.deepEqual(publicState({ settings:{}, pets: odd.pets, sessions: [] }, 'island', { bounds:{ width:1440, height:900 } }).pets[0].animations, {})
 })
 test('actions exclude grants and reject malformed prompts and coordinates', () => {
   assert.throws(() => validatedAction({ action:'approve' }))
@@ -396,4 +421,69 @@ test('entering the transparent part of the window must not hold the mouse', asyn
   enter(180, 420)
   assert.equal(interactive.at(-1), false, 'transparent area must stay click-through')
   assert.equal(timers.has(300), false, 'hovering empty space must not queue the expand animation')
+})
+
+test('pet motions follow Qoder: greet, review on completion, and a quiet desktop glance', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  let clock = 1000
+  Object.defineProperty(dom.window.performance, 'now', { value: () => clock, configurable: true })
+  dom.window.Math.random = () => 0.5
+  const pet = { id: 'whale', name: 'Whale', spritesheet: 'pet-asset://pet/whale/spritesheet.png', spriteVersionNumber: 2 }
+  const base = { settings: { language: 'zh', activePet: 'whale' }, pets: [pet], kind: 'pet', sessions: [] }
+  let update
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+  dom.window.matchMedia = () => ({ matches: false, addEventListener() {} })
+  dom.window.pet = { initial: async () => base, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState(fn) { update = fn }, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const doc = dom.window.document
+  assert.equal(doc.body.dataset.motion, 'waving', 'a freshly launched pet waves hello for 2.6s')
+  clock = 5000
+  update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'completed' }] })
+  assert.equal(doc.body.dataset.motion, 'review', 'a finished turn uses the review row instead of falling back to idle')
+  update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'running' }] })
+  assert.equal(doc.body.dataset.motion, 'running')
+  update({ ...base, sessions: [] })
+  assert.equal(doc.body.dataset.motion, 'idle')
+  // 久坐：桌宠 8 秒没被打扰后放慢 idle，并偶尔用 v2 表第 9–10 行瞟一眼（鲸鱼只动瞳孔）。
+  clock = 15000
+  update({ ...base, sessions: [] })
+  assert.equal(doc.body.dataset.motion, 'look', 'an idle desktop pet glances around')
+  clock = 16000
+  update({ ...base, sessions: [] })
+  assert.equal(doc.body.dataset.motion, 'idle', 'the glance ends and the pet settles again')
+})
+
+test('a pet with motion clips plays the 60 fps WebP instead of redrawing the sheet', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  Object.defineProperty(dom.window.performance, 'now', { value: () => 5000, configurable: true })
+  // 宠物刚启动的 2.6 秒在挥手，先把 waving 也登记上，等窗口过去再看 running。
+  const clips = {
+    idle: 'pet-asset://pet/whale/motion/idle.webp',
+    running: 'pet-asset://pet/whale/motion/running.webp',
+    waving: 'pet-asset://pet/whale/motion/waving.webp',
+  }
+  const pet = { id: 'whale', name: 'Whale', spritesheet: 'pet-asset://pet/whale/spritesheet.png', spriteVersionNumber: 2, animations: clips }
+  const base = { settings: { language: 'zh', activePet: 'whale' }, pets: [pet], kind: 'pet', sessions: [{ id: 'a', title: 'A', status: 'running' }] }
+  let update
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+  dom.window.matchMedia = () => ({ matches: false, addEventListener() {} })
+  dom.window.pet = { initial: async () => base, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState(fn) { update = fn }, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const doc = dom.window.document
+  const film = doc.getElementById('film'), canvas = doc.getElementById('sprite')
+  assert.equal(film.hidden, false, 'the clip image takes over')
+  assert.equal(canvas.hidden, true, 'the sprite sheet canvas steps aside')
+  assert.equal(film.getAttribute('src'), clips.waving, 'the greeting clip is the one playing')
+  // 没有片段登记的动作（这里是 16 方向视线）必须回退到精灵表。
+  update({ ...base, pets: [{ ...pet, animations: {} }] })
+  assert.equal(film.hidden, true, 'a pet without clips falls back to the canvas')
+  assert.equal(canvas.hidden, false)
 })

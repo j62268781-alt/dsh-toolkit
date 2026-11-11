@@ -2,7 +2,7 @@
 'use strict'
 const bridge = window.pet
 const $ = id => document.getElementById(id)
-const surface = $('surface'), cap = $('cap'), activity = $('activity'), canvas = $('sprite')
+const surface = $('surface'), cap = $('cap'), activity = $('activity'), canvas = $('sprite'), film = $('film')
 const ctx = canvas.getContext('2d')
 const animations = {
   idle: [0,[280,110,110,140,140,320]], runningRight:[1,[120,120,120,120,120,120,120,220]], runningLeft:[2,[120,120,120,120,120,120,120,220]], waving:[3,[140,140,140,280]], jumping:[4,[140,140,140,140,280]], failed:[5,[140,140,140,140,140,140,140,240]], waiting:[6,[150,150,150,150,150,260]], running:[7,[120,120,120,120,120,220]], review:[8,[150,150,150,150,150,280]],
@@ -16,7 +16,10 @@ const badges = {
   zh: { running:'正在工作', waiting:'需要你处理', completed:'有新结果', failed:'失败' },
   en: { running:'Working', waiting:'Needs you', completed:'New result', failed:'Failed' },
 }
-let state, expanded = false, hovered = false, image, imageKey = '', frame = 0, motion = '', look = null, timer, hoverTimer, leaveTimer, waveUntil = performance.now() + 2600, drag = null, padChecks = 0, lastPointer = null, signature = ''
+let state, expanded = false, hovered = false, image, imageKey = '', frame = 0, motion = '', look = null, timer, hoverTimer, leaveTimer, waveUntil = performance.now() + 2600, drag = null, padChecks = 0, lastPointer = null, signature = '', clip = '', preloaded = ''
+// 久坐：桌宠长时间没被打扰就放慢 idle 并偶尔瞟一眼（复用 v2 精灵表第 9–10 行的视线帧）。
+const QUIET_AFTER = 8000, GAZE_HOLD = 900, GAZE_GAP_MIN = 3200, GAZE_GAP_SPAN = 2600
+let gaze = null, gazeUntil = 0, nextGaze = 0, lastInput = performance.now()
 const meter = document.createElement('canvas').getContext?.('2d') || null
 // JSDOM 里没有 canvas 量宽，退回按字宽估算（CJK 1em、ASCII 约 0.56em）。
 function measureText(text, size) {
@@ -248,6 +251,9 @@ function update(next) {
   cap.title = hint
   cap.setAttribute('aria-label', status === 'idle' ? t('idle') : `${badgeWord(status)}${count > 1 ? ` · ${count}` : ''}`)
   const pet = selectedPet()
+  // 有动画片段的宠物把上下浮动交给 CSS 合成动画，精灵表回退路径则沿用帧里烘焙的位移。
+  document.body.toggleAttribute('data-clips', Boolean(pet && Object.keys(pet.animations || {}).length))
+  preloadClips()
   if (pet && imageKey !== pet.spritesheet) {
     imageKey = pet.spritesheet; image = new Image(); image.onload = draw; image.onerror = () => { $('error').textContent = t('error') }; image.src = imageKey
   }
@@ -257,29 +263,77 @@ function currentMotion() {
   if (drag?.moved) return drag.direction < 0 ? 'runningLeft' : 'runningRight'
   if (hovered && state.kind === 'pet') return 'jumping'
   if (performance.now() < waveUntil) return 'waving'
-  if (look !== null && selectedPet()?.spriteVersionNumber === 2) return 'look'
-  return state.sessions[0]?.status || 'idle'
+  if ((look ?? gaze) !== null && selectedPet()?.spriteVersionNumber === 2) return 'look'
+  const status = state.sessions[0]?.status || 'idle'
+  // Qoder 岛内把「完成」映射到 review：回头看一遍，而不是落回 idle。
+  return status === 'completed' ? 'review' : status
+}
+// 60 fps 动画 WebP：宠物包在 manifest 里登记了动作片段就直接播片段（Qoder 内置宠同款做法），
+// 没登记的（第三方 Petdex 宠物）以及 reduced-motion 才回退到精灵表逐帧绘制。
+function clipFor(name) {
+  if (reduced.matches) return ''
+  const map = selectedPet()?.animations
+  return map && typeof map === 'object' ? map[name] || '' : ''
+}
+function preloadClips() {
+  const pet = selectedPet(), key = pet?.id || ''
+  if (preloaded === key) return
+  preloaded = key
+  for (const source of Object.values(pet?.animations || {})) { const warm = new Image(); warm.src = source }
+}
+function showFilm(source) {
+  if (clip !== source) { clip = source; film.src = source }
+  film.hidden = false
+  canvas.hidden = true
+}
+function showSheet() {
+  if (!clip) { canvas.hidden = false; return }
+  clip = ''; film.hidden = true; film.removeAttribute('src'); canvas.hidden = false
 }
 function draw() {
+  const playing = clipFor(motion)
+  if (playing) { showFilm(playing); return }
+  showSheet()
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   if (!image?.complete || !image.naturalWidth) return
   const rows = selectedPet()?.spriteVersionNumber === 2 ? 11 : 9
   const cw = image.naturalWidth / 8, ch = image.naturalHeight / rows
-  const cell = motion === 'look' ? [9 + Math.floor(look / 8), look % 8] : [animations[motion]?.[0] || 0, frame]
+  const dir = look ?? gaze ?? 0
+  const cell = motion === 'look' ? [9 + Math.floor(dir / 8), dir % 8] : [animations[motion]?.[0] || 0, frame]
   ctx.drawImage(image, cell[1] * cw, cell[0] * ch, cw, ch, 0, 0, canvas.width, canvas.height)
 }
 function animate() {
   clearTimeout(timer)
   if (!state || document.hidden) return
+  const now = performance.now()
+  // reduced-motion 下宠物保持静止，不做久坐张望。
+  const quiet = !reduced.matches && state.kind === 'pet' && !expanded && !hovered && !drag && now - lastInput > QUIET_AFTER
+  if (quiet && gaze === null && look === null && now >= nextGaze) {
+    gaze = Math.floor(Math.random() * 16)
+    gazeUntil = now + GAZE_HOLD
+    nextGaze = gazeUntil + GAZE_GAP_MIN + Math.random() * GAZE_GAP_SPAN
+  }
+  if (gaze !== null && now >= gazeUntil) gaze = null
   const next = currentMotion()
   if (motion !== next) { motion = next; frame = 0 }
+  // 和 Qoder 一样把当前动作写进 DOM，方便配 CSS 与排查。
+  document.body.dataset.motion = next
   draw()
-  if (reduced.matches || next === 'look') return
+  if (reduced.matches) return
+  // 片段自己会按 60 fps 播放，这里只需低频复核动作（悬停、拖拽、问候窗结束都会主动触发）。
+  if (clip) { timer = setTimeout(animate, 400); return }
+  if (next === 'look') {
+    // 视线帧是静止的：只有久坐张望才需要自己排一个定时器收尾。
+    if (gaze !== null) timer = setTimeout(animate, Math.max(50, gazeUntil - performance.now() + 1))
+    return
+  }
   const delays = (animations[next] || animations.idle)[1]
-  timer = setTimeout(() => { frame = (frame + 1) % delays.length; animate() }, delays[frame])
+  const wait = quiet && next === 'idle' ? Math.round(delays[frame] * 1.8) : delays[frame]
+  timer = setTimeout(() => { frame = (frame + 1) % delays.length; animate() }, wait)
 }
 cap.onclick = () => { if (drag?.moved || !state) return; if (state.kind === 'island' && !state.sessions.length) return; setExpanded(!expanded) }
 surface.onpointerenter = event => {
+  lastInput = performance.now()
   // 透明窗口的矩形远大于可见内容：只有指针真的落在胶囊/内容上才算「悬停」，
   // 否则窗口不该接管鼠标（否则顶上那块透明区域会挡住别的 App 的按钮）。
   const inside = withinPad(event.clientX ?? -1, event.clientY ?? -1)
@@ -322,6 +376,7 @@ function collapse() {
 }
 surface.onpointerleave = event => { hovered = false; clearTimeout(hoverTimer); lastPointer = { x: event.clientX, y: event.clientY }; layout(); animate(); leaveTimer = setTimeout(collapse, 100) }
 document.addEventListener('pointermove', event => {
+  lastInput = performance.now()
   lastPointer = { x: event.clientX, y: event.clientY }
   bridge.interactive(Boolean(drag || typing() || withinPad(event.clientX, event.clientY)))
   if (drag) {
