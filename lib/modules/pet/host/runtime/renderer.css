@@ -62,4 +62,6 @@ body[data-clips].pet #brand{--bob:calc(var(--pet-size,128px) * .025)}
 body[data-clips][data-motion="idle"] #brand,body[data-clips][data-motion="review"] #brand,body[data-clips][data-motion="waiting"] #brand,body[data-clips][data-motion="waving"] #brand,body[data-clips][data-motion="look"] #brand{animation:tk-bob 2s ease-in-out infinite}
 body[data-clips][data-motion="running"] #brand{animation:tk-bob 1.15s ease-in-out infinite}
 body[data-clips][data-motion="failed"] #brand{animation:tk-bob 1.8s ease-in-out infinite}
+body[data-clips][data-motion="approval"] #brand{animation:tk-bob 1.7s ease-in-out infinite}
+body[data-clips][data-motion="question"] #brand{animation:tk-bob 2.4s ease-in-out infinite}
 @keyframes tk-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(-1 * var(--bob)))}}

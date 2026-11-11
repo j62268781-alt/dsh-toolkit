@@ -17,7 +17,7 @@ function orderedSessions(sessions = []) {
 
 // 内置形象额外带 60 fps 的动画 WebP（每个动作一个文件），宠物包在 manifest.animations
 // 里按动作名登记。渲染端优先播 WebP，没有登记的（第三方 Petdex 宠物）才回退精灵表。
-const CLIP_MOTIONS = ['idle', 'running', 'waiting', 'failed', 'review', 'waving', 'jumping', 'runningRight', 'runningLeft']
+const CLIP_MOTIONS = ['idle', 'running', 'waiting', 'approval', 'question', 'failed', 'review', 'waving', 'jumping', 'runningRight', 'runningLeft']
 
 // 只认 `motion/<动作名>.webp` 这一种形状，文件名由动作名推导，不允许宠物包自选路径。
 function clipFile(pet, motion) {

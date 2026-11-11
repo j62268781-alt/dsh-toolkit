@@ -8,12 +8,31 @@ const { readEnvironment, publicState, islandGeometry, islandAnchor, islandPlacem
 const { notchForDisplay } = require('../../src/modules/pet/host/runtime/native.cjs')
 const env = { DSH_TOOLKIT_PET_URL:'http://127.0.0.1:1234', DSH_TOOLKIT_PET_TOKEN:'secret', DSH_TOOLKIT_HOST_PID:'123' }
 
+function webpFrameCount(buffer) {
+  if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WEBP') return 0
+  let count = 0
+  for (let offset = 12; offset + 8 <= buffer.length;) {
+    const size = buffer.readUInt32LE(offset + 4)
+    if (buffer.toString('ascii', offset, offset + 4) === 'ANMF') count++
+    offset += 8 + size + (size & 1)
+  }
+  return count
+}
+
 test('helper only accepts authenticated loopback origin and valid host pid', () => {
   assert.equal(readEnvironment(env).origin, env.DSH_TOOLKIT_PET_URL)
   for (const origin of ['https://127.0.0.1:1234', 'http://localhost:1234', 'http://example.com', 'http://user:pass@127.0.0.1:1234', 'http://127.0.0.1:1234/path']) assert.throws(() => readEnvironment({ ...env, DSH_TOOLKIT_PET_URL:origin }))
   assert.throws(() => readEnvironment({ ...env, DSH_TOOLKIT_HOST_PID:'NaN' }))
   assert.throws(() => readEnvironment({ ...env, DSH_TOOLKIT_PET_TOKEN:'' }))
 })
+test('built-in state motion clips keep enough encoded frames to stay visibly animated', async () => {
+  const root = new URL('../../src/modules/pet/host/runtime/pets/deepseek-whale/motion/', import.meta.url)
+  for (const [motion, minimum] of [['running', 12], ['waiting', 8], ['approval', 12], ['question', 4]]) {
+    const bytes = await readFile(new URL(`${motion}.webp`, root))
+    assert.ok(webpFrameCount(bytes) >= minimum, `${motion} must retain at least ${minimum} distinct frames`)
+  }
+})
+
 test('renderer snapshot does not expose filesystem or Host secrets and ranks sessions', () => {
   const result = publicState({ settings:{ token:'secret', electronPath:'/secret', language:'en' }, pets:[{ id:'duck', name:'Duck', assetDir:'/private', manifest:{ spriteVersionNumber:2 } }], sessions:[{ id:'done', status:'completed' }, { id:'wait', status:'waiting' }, { id:'run', status:'running', updatedAt:4321 }], runtime:{ token:'secret' } }, 'pet', { bounds:{ width:1000,height:800 } })
   assert.deepEqual(result.sessions.map(s => s.id), ['wait','run','done'])
@@ -42,12 +61,14 @@ test('a Petdex pet keeps its own id and webp sheet without exposing its director
   for (const url of ['pet-asset://pet/petdex%3Aboba/pet.json', 'pet-asset://pet/petdex%3Aboba/spritesheet.png', 'pet-asset://pet/deepseek-whale/spritesheet.webp']) assert.equal(assetPath(state, url), null)
 })
 test('a pet may register 60 fps motion clips next to its sheet', () => {
-  const state = { pets:[{ id:'whale', name:'Whale', assetDir:'/assets/whale', sheetFile:'spritesheet.png', manifest:{ spriteVersionNumber:2, animations:{ idle:'motion/idle.webp', running:'motion/running.webp', jumping:'motion/jumping.webp' } } }] }
+  const state = { pets:[{ id:'whale', name:'Whale', assetDir:'/assets/whale', sheetFile:'spritesheet.png', manifest:{ spriteVersionNumber:2, animations:{ idle:'motion/idle.webp', running:'motion/running.webp', jumping:'motion/jumping.webp', approval:'motion/approval.webp', question:'motion/question.webp' } } }] }
   const projected = publicState({ settings:{ activePet:'whale' }, pets: state.pets, sessions: [] }, 'island', { bounds:{ width:1440, height:900 } })
   assert.deepEqual(projected.pets[0].animations, {
     idle: 'pet-asset://pet/whale/motion/idle.webp',
     running: 'pet-asset://pet/whale/motion/running.webp',
     jumping: 'pet-asset://pet/whale/motion/jumping.webp',
+    approval: 'pet-asset://pet/whale/motion/approval.webp',
+    question: 'pet-asset://pet/whale/motion/question.webp',
   })
   assert.equal(JSON.stringify(projected).includes('/assets/whale'), false)
   assert.equal(assetPath(state, 'pet-asset://pet/whale/motion/idle.webp'), '/assets/whale/motion/idle.webp')
@@ -441,11 +462,17 @@ test('pet motions follow Qoder: greet, review on completion, and a quiet desktop
   await new Promise(resolve => setImmediate(resolve))
   const doc = dom.window.document
   assert.equal(doc.body.dataset.motion, 'waving', 'a freshly launched pet waves hello for 2.6s')
+  update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'waiting', pendingKind: 'permission' }] })
+  assert.equal(doc.body.dataset.motion, 'approval', 'approval must have its own motion, even during the launch greeting')
+  update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'waiting', pendingKind: 'question' }] })
+  assert.equal(doc.body.dataset.motion, 'question', 'questions must not reuse the approval or generic waiting motion')
+  update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'waiting' }] })
+  assert.equal(doc.body.dataset.motion, 'waiting')
+  update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'running' }] })
+  assert.equal(doc.body.dataset.motion, 'running', 'active work takes precedence over the launch greeting')
   clock = 5000
   update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'completed' }] })
   assert.equal(doc.body.dataset.motion, 'review', 'a finished turn uses the review row instead of falling back to idle')
-  update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'running' }] })
-  assert.equal(doc.body.dataset.motion, 'running')
   update({ ...base, sessions: [] })
   assert.equal(doc.body.dataset.motion, 'idle')
   // 久坐：桌宠 8 秒没被打扰后放慢 idle，并偶尔用 v2 表第 9–10 行瞟一眼（鲸鱼只动瞳孔）。
@@ -457,23 +484,50 @@ test('pet motions follow Qoder: greet, review on completion, and a quiet desktop
   assert.equal(doc.body.dataset.motion, 'idle', 'the glance ends and the pet settles again')
 })
 
+test('an old sprite sheet keeps the question fallback inside its nine rows', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  let sourceRect
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage(_image, ...args) { sourceRect = args.slice(0, 4) } })
+  dom.window.matchMedia = () => ({ matches: false, addEventListener() {} })
+  dom.window.Image = class {
+    set src(value) { this._src = value; this.complete = true; this.naturalWidth = 768; this.naturalHeight = 936; queueMicrotask(() => this.onload?.()) }
+    get src() { return this._src }
+  }
+  const pet = { id: 'legacy', name: 'Legacy', spritesheet: 'pet-asset://pet/legacy/spritesheet.png', spriteVersionNumber: 1, animations: {} }
+  const state = { settings: { language: 'en', activePet: 'legacy' }, pets: [pet], kind: 'pet', sessions: [{ id: 'a', title: 'A', status: 'waiting', pendingKind: 'question' }] }
+  dom.window.pet = { initial: async () => state, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState() {}, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(dom.window.document.body.dataset.motion, 'question')
+  assert.ok(sourceRect, 'the legacy sheet frame is drawn')
+  assert.equal(sourceRect[1], 6 * 104, 'question falls back to the shared waiting row')
+  assert.ok(sourceRect[1] + sourceRect[3] <= 936, 'the source frame remains within the nine-row sheet')
+})
+
 test('a pet with motion clips plays the 60 fps WebP instead of redrawing the sheet', async (t) => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
   const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
   t.after(() => dom.window.close())
-  Object.defineProperty(dom.window.performance, 'now', { value: () => 5000, configurable: true })
-  // 宠物刚启动的 2.6 秒在挥手，先把 waving 也登记上，等窗口过去再看 running。
+  Object.defineProperty(dom.window.performance, 'now', { value: () => 1000, configurable: true })
+  // Even during the startup greeting, the actual running state must remain visible.
   const clips = {
     idle: 'pet-asset://pet/whale/motion/idle.webp',
     running: 'pet-asset://pet/whale/motion/running.webp',
+    waiting: 'pet-asset://pet/whale/motion/waiting.webp',
+    approval: 'pet-asset://pet/whale/motion/approval.webp',
+    question: 'pet-asset://pet/whale/motion/question.webp',
     waving: 'pet-asset://pet/whale/motion/waving.webp',
   }
   const pet = { id: 'whale', name: 'Whale', spritesheet: 'pet-asset://pet/whale/spritesheet.png', spriteVersionNumber: 2, animations: clips }
   const base = { settings: { language: 'zh', activePet: 'whale' }, pets: [pet], kind: 'pet', sessions: [{ id: 'a', title: 'A', status: 'running' }] }
   let update
   dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
-  dom.window.matchMedia = () => ({ matches: false, addEventListener() {} })
+  let reducedMotion = false
+  dom.window.matchMedia = () => ({ get matches() { return reducedMotion }, addEventListener() {} })
   dom.window.pet = { initial: async () => base, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState(fn) { update = fn }, onCollapse() {} }
   dom.window.eval(script)
   await new Promise(resolve => setImmediate(resolve))
@@ -481,9 +535,19 @@ test('a pet with motion clips plays the 60 fps WebP instead of redrawing the she
   const film = doc.getElementById('film'), canvas = doc.getElementById('sprite')
   assert.equal(film.hidden, false, 'the clip image takes over')
   assert.equal(canvas.hidden, true, 'the sprite sheet canvas steps aside')
-  assert.equal(film.getAttribute('src'), clips.waving, 'the greeting clip is the one playing')
+  assert.equal(film.getAttribute('src'), clips.running, 'a live session must show work rather than a greeting')
+  update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'waiting', pendingKind: 'permission' }] })
+  assert.equal(film.getAttribute('src'), clips.approval, 'permission requests use the approval clip')
+  update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'waiting', pendingKind: 'question' }] })
+  assert.equal(film.getAttribute('src'), clips.question, 'questions use their own clip')
+  update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'waiting' }] })
+  assert.equal(film.getAttribute('src'), clips.waiting, 'generic waiting retains its own clip')
   // 没有片段登记的动作（这里是 16 方向视线）必须回退到精灵表。
   update({ ...base, pets: [{ ...pet, animations: {} }] })
   assert.equal(film.hidden, true, 'a pet without clips falls back to the canvas')
   assert.equal(canvas.hidden, false)
+  reducedMotion = true
+  update({ ...base, pets: [pet] })
+  assert.equal(film.hidden, true, 'reduced-motion users must not receive animated WebP clips')
+  assert.equal(canvas.hidden, false, 'reduced-motion falls back to the sprite sheet')
 })

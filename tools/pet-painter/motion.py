@@ -51,6 +51,7 @@ FPS = 60
 FRAME_MS = (16, 16, 17)
 # 这些动作的上下位移是动作本身（跳跃/跑动），留在帧里；其余正面动作的呼吸位移交给 CSS。
 BAKED_BOB = {'jumping', 'runningRight', 'runningLeft'}
+MIN_ENCODED_FRAMES = {'running': 12, 'waiting': 8, 'approval': 12, 'question': 4}
 
 
 def frames_for(milliseconds):
@@ -72,11 +73,16 @@ def _quantise(bob):
 
 def _clip(images, path):
     path.parent.mkdir(parents=True, exist_ok=True)
-    # 像素画只有很少的颜色，无损压缩比有损小得多（整套 9 个动作约 110 KB）。
+    # 像素画只有很少的颜色，无损压缩比有损小得多（整套 11 个动作约 95 KB）。
     durations = [FRAME_MS[index % len(FRAME_MS)] for index in range(len(images))]
     images[0].save(path, save_all=True, append_images=images[1:], duration=durations,
                    loop=0, lossless=True, method=6)
     return path
+
+
+def _encoded_frame_count(path):
+    with Image.open(path) as image:
+        return getattr(image, 'n_frames', 1)
 
 
 def idle(count=frames_for(2000)):
@@ -91,20 +97,59 @@ def idle(count=frames_for(2000)):
 
 def running(count=frames_for(2000)):
     eyes, subs = [], []
+    stroke = max(4, frames_for(800))
+    half = stroke // 2
     for i in range(count):
-        phase = 2 * math.pi * i / count
-        whole, sub = 0, 0
-        eyes.append(front.front_frame(bob=whole, flap=round(2 + 2 * math.sin(phase * 2))))
-        subs.append(sub)
+        phase = (i % half) / half
+        lift = round(9 * math.sin(math.pi * phase))
+        flap = (lift, 0) if (i // half) % 2 == 0 else (0, lift)
+        spout_stage = 1 if (i % stroke) < 3 else None
+        eyes.append(front.front_frame(flap=flap, spout_stage=spout_stage))
+        subs.append(0)
     return eyes, subs
 
 
 def waiting(count=frames_for(2000)):
     eyes, subs = [], []
+    directions = (12, 14, 0, 2, 4, 2, 0, 14)
+    segment = max(1, count // len(directions))
+    blink_at = max(0, count // 2 - frames_for(40))
     for i in range(count):
-        whole, sub = 0, 0
-        eyes.append(front.front_frame(bob=whole, eye_mode='look-up'))
-        subs.append(sub)
+        gaze = directions[min(len(directions) - 1, i // segment)]
+        blink = blink_at <= i < blink_at + frames_for(80)
+        eyes.append(front.front_frame(gaze=gaze, eye_mode='closed' if blink else 'open'))
+        subs.append(0)
+    return eyes, subs
+
+
+def approval(count=frames_for(2000)):
+    eyes, subs = [], []
+    cycle = max(4, frames_for(1000))
+    half = cycle // 2
+    for i in range(count):
+        offset = i % cycle
+        phase = (offset % half) / half
+        lift = round(9 * math.sin(math.pi * phase))
+        flap = (lift, 0) if offset < half else (0, lift)
+        stage = min(3, lift // 3)
+        eyes.append(front.front_frame(eye_mode='look-up', flap=flap, spout_stage=stage))
+        subs.append(0)
+    return eyes, subs
+
+
+def question(count=frames_for(2000)):
+    eyes, subs = [], []
+    directions = (12, 0, 4, 0)  # left, up, right, up
+    segment = max(1, count // len(directions))
+    glyph_cycle = max(4, frames_for(1600))
+    for i in range(count):
+        gaze = directions[min(len(directions) - 1, i // segment)]
+        phase = i % glyph_cycle
+        show_glyph = phase < frames_for(500) or frames_for(800) <= phase < frames_for(1250)
+        puff = 3 if phase % frames_for(800) < frames_for(180) else None
+        flap = (2, 0) if (i // frames_for(600)) % 2 == 0 else (0, 2)
+        eyes.append(front.front_frame(gaze=gaze, flap=flap, spout_stage=puff, question=show_glyph))
+        subs.append(0)
     return eyes, subs
 
 
@@ -159,6 +204,8 @@ CLIPS = {
     'idle': idle,
     'running': running,
     'waiting': waiting,
+    'approval': approval,
+    'question': question,
     'failed': failed,
     'review': review,
     'waving': waving,
@@ -178,9 +225,13 @@ def main():
     total = 0
     for name, factory in CLIPS.items():
         path = _clip(render(name, factory), out / f'{name}.webp')
+        frames = _encoded_frame_count(path)
+        minimum = MIN_ENCODED_FRAMES.get(name, 1)
+        if frames < minimum:
+            raise RuntimeError(f'{name} clip has {frames} encoded frames; expected at least {minimum}')
         size = path.stat().st_size
         total += size
-        print(f'{name:13s} {size:7d} B  {path}')
+        print(f'{name:13s} {size:7d} B  {frames:3d} frames  {path}')
     print(f'total        {total:7d} B  at {W * SCALE}x{H * SCALE + SCALE - 1}, {FPS} fps, baked bob: {sorted(BAKED_BOB)}')
     return 0
 

@@ -246,6 +246,7 @@ app.whenReady().then(async () => {
             src: film.getAttribute('src') || '',
             decoded: film.naturalWidth,
             clip: document.body.toggleAttribute ? document.body.hasAttribute('data-clips') : null,
+            motion: document.body.dataset.motion || '',
             animation: brandStyle.animationName,
             bob: brandStyle.getPropertyValue('--bob').trim(),
           }
@@ -269,6 +270,7 @@ app.whenReady().then(async () => {
         const clips = (state.pets || []).find(pet => pet.id === state.settings?.activePet)?.manifest?.animations
         if (clips && Object.keys(clips).length) {
           if (visible.film.hidden || !visible.film.decoded) throw new Error(`Island ${key} did not play its 60 fps clips: ${JSON.stringify(visible.film)}`)
+          if (visible.film.motion !== 'running' || !visible.film.src.endsWith('/running.webp')) throw new Error(`Island ${key} did not show the active swimming motion: ${JSON.stringify(visible.film)}`)
           // 呼吸位移由 CSS 合成动画负责，跑在屏幕刷新率上；片段里只留姿态。
           if (visible.film.animation !== 'tk-bob' || !visible.film.bob) throw new Error(`Island ${key} does not run the CSS bob: ${JSON.stringify(visible.film)}`)
         }

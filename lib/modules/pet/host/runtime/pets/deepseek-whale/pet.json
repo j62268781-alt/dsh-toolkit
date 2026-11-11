@@ -5,7 +5,7 @@
   "author": "dsh-toolkit",
   "license": "CC0-1.0",
   "generatedBy": "dsh-toolkit procedural painter",
-  "description": "DeepSeek blue whale pet: front-facing by default, side views while moving, 16-direction gaze tracking, 60 fps lossless WebP clips, drawn procedurally by the repo painter.",
+  "description": "DeepSeek blue whale pet: front-facing by default, side views while moving, 16-direction gaze tracking, distinct swimming, approval and question motions, 60 fps lossless WebP clips, drawn procedurally by the repo painter.",
   "slug": "deepseek-whale",
   "tags": [
     "whale",
@@ -19,6 +19,8 @@
     "idle": "motion/idle.webp",
     "running": "motion/running.webp",
     "waiting": "motion/waiting.webp",
+    "approval": "motion/approval.webp",
+    "question": "motion/question.webp",
     "failed": "motion/failed.webp",
     "review": "motion/review.webp",
     "waving": "motion/waving.webp",

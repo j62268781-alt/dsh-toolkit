@@ -33,7 +33,7 @@ SPOUT_SOFT = whale.SPOUT_SOFT
 CX = 48.0
 YC = 62.0
 # 瞳孔在眼白内的最大偏移（眼白半宽 8.6、瞳孔半宽 4.0，留出余量）。
-GAZE_RADIUS = 3.0
+GAZE_RADIUS = 4.0
 
 
 def body_mask(yc=YC):
@@ -44,14 +44,16 @@ def body_mask(yc=YC):
 
 
 def flipper_masks(yc=YC, flap=0):
-    """两侧胸鳍：贴着身体外缘的小三角，flap 越大越往上扬。"""
+    """两侧胸鳍可独立抬起；标量仍支持同时拍鳍。"""
+    left_flap, right_flap = flap if isinstance(flap, tuple) else (flap, flap)
+
     def left(d):
-        d.polygon([(CX - 33, yc + 6 - flap), (CX - 43, yc + 18 - flap * 2),
-                   (CX - 24, yc + 24 - flap)], fill=255)
+        d.polygon([(CX - 33, yc + 6 - left_flap), (CX - 43, yc + 18 - left_flap * 2),
+                   (CX - 24, yc + 24 - left_flap)], fill=255)
 
     def right(d):
-        d.polygon([(CX + 33, yc + 6 - flap), (CX + 43, yc + 18 - flap * 2),
-                   (CX + 24, yc + 24 - flap)], fill=255)
+        d.polygon([(CX + 33, yc + 6 - right_flap), (CX + 43, yc + 18 - right_flap * 2),
+                   (CX + 24, yc + 24 - right_flap)], fill=255)
     return whale.mask_from_draw(left) | whale.mask_from_draw(right)
 
 
@@ -89,8 +91,16 @@ def shadow(img, cx, cy, rx=24, ry=4):
     whale.shadow(img, cx, cy, rx, ry)
 
 
+def question_mark(img, x=65, y=23):
+    """Tiny punctuation sprite that stays legible beside the whale at desktop size."""
+    points = ((1, 0), (2, 0), (3, 1), (3, 2), (2, 3), (2, 4), (2, 6), (2, 7))
+    for dx, dy in points:
+        img[y + dy, x + dx] = SPOUT
+    img[y + 10, x + 2] = SPOUT
+
+
 def front_frame(*, bob=0, eye_mode='open', spout_stage=None, flap=0,
-                dim=False, flip=False, mouth_sad=False, gaze=None):
+                dim=False, flip=False, mouth_sad=False, gaze=None, question=False):
     img = np.zeros((H, W, 4), dtype=np.uint8)
     yc = YC + bob
     shadow(img, CX, 99)
@@ -108,6 +118,8 @@ def front_frame(*, bob=0, eye_mode='open', spout_stage=None, flap=0,
     smile(img, CX - 2, yc - 4, mouth_sad)
     if spout_stage is not None:
         spout(img, CX, yc - 34, spout_stage)
+    if question:
+        question_mark(img)
     if dim:
         img[:, :, 3] = (img[:, :, 3].astype(np.float32) * 0.92).astype(np.uint8)
     if flip:
