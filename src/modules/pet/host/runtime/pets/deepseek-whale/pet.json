@@ -1,16 +1,29 @@
 {
   "schemaVersion": 1,
   "displayName": "DeepSeek Whale",
-  "spriteVersionNumber": 1,
+  "spriteVersionNumber": 2,
   "author": "dsh-toolkit",
   "license": "CC0-1.0",
   "generatedBy": "dsh-toolkit procedural painter",
-  "description": "DeepSeek blue whale pet: front-facing by default, side views while moving, drawn procedurally by the repo painter.",
+  "description": "DeepSeek blue whale pet: front-facing by default, side views while moving, 16-direction gaze tracking, 60 fps lossless WebP clips, drawn procedurally by the repo painter.",
   "slug": "deepseek-whale",
   "tags": [
     "whale",
     "deepseek",
     "front-view",
-    "v1"
-  ]
+    "gaze-tracking",
+    "v2",
+    "motion-webp"
+  ],
+  "animations": {
+    "idle": "motion/idle.webp",
+    "running": "motion/running.webp",
+    "waiting": "motion/waiting.webp",
+    "failed": "motion/failed.webp",
+    "review": "motion/review.webp",
+    "waving": "motion/waving.webp",
+    "jumping": "motion/jumping.webp",
+    "runningRight": "motion/runningRight.webp",
+    "runningLeft": "motion/runningLeft.webp"
+  }
 }

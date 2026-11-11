@@ -1,4 +1,4 @@
-"""Compose the DeepSeek whale sprite sheet (8 columns x 9 rows, 96x104 cells)."""
+"""Compose the DeepSeek whale sprite sheet (8 columns x 11 rows, 96x104 cells)."""
 import importlib.util
 import pathlib
 import sys
@@ -41,6 +41,10 @@ ROWS = [
     # review
     [front.front_frame(bob=b, eye_mode='look-up', spout_stage=st) for b, st in
      ((0, 0), (0, 1), (1, 0), (0, 1), (0, 0), (1, 1))],
+    # look（v2 视线追踪）：第 9–10 行共 16 帧，方向 0 = 正上，顺时针每 22.5° 一档。
+    # 渲染端按 row = 9 + floor(dir / 8)、col = dir % 8 取帧。
+    [front.front_frame(gaze=g) for g in range(0, 8)],
+    [front.front_frame(gaze=g) for g in range(8, 16)],
 ]
 
 sheet = np.zeros((H * len(ROWS), W * 8, 4), dtype=np.uint8)
