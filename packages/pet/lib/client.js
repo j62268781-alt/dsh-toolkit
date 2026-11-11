@@ -457,7 +457,7 @@ window.__ModuleLoader__.load({
 
     // src/modules/pet/client/model.js
     var CONFIG_NS = "pet";
-    var DEFAULT_SETTINGS = Object.freeze({ activePet: "qoduck-lab", petEnabled: false, petSize: 100, bubbleWidth: 280, islandEnabled: false, islandIdle: true, islandAllDisplays: true, islandWidth: 100, islandHeight: 100 });
+    var DEFAULT_SETTINGS = Object.freeze({ activePet: "deepseek-whale", petEnabled: false, petSize: 100, bubbleWidth: 280, islandEnabled: false, islandIdle: true, islandAllDisplays: true, islandWidth: 100, islandHeight: 100 });
     var LIMITS = Object.freeze({ petSize: [50, 100, 10], bubbleWidth: [240, 480, 20], islandWidth: [75, 150, 1], islandHeight: [75, 150, 1] });
     function readSettings(snapshot) {
       const value = snapshot?.value ?? snapshot ?? {};

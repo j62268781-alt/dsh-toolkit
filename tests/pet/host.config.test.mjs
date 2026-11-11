@@ -5,13 +5,13 @@ import { readElectronPath, readField, readSettings } from '../../src/modules/pet
 /** Mirrors the frozen reference DSH hands to `apply()` for a `.volatile()` field. */
 const reference = (value) => ({ get: () => value })
 const defaults = {
-  activePet: 'qoduck-lab', petEnabled: false, petSize: 100, bubbleWidth: 280,
+  activePet: 'deepseek-whale', petEnabled: false, petSize: 100, bubbleWidth: 280,
   islandEnabled: false, islandIdle: true, islandAllDisplays: true, islandWidth: 100, islandHeight: 100,
 }
 
 test('volatile references are unwrapped while plain values pass through untouched', () => {
   const config = {
-    activePet: reference('neon-cat'),
+    activePet: reference('deepseek-whale'),
     petEnabled: reference(true),
     islandEnabled: reference(false),
     islandWidth: reference(150),
@@ -19,7 +19,7 @@ test('volatile references are unwrapped while plain values pass through untouche
   }
   assert.equal(readField(config, 'petEnabled'), true)
   assert.equal(readField(config, 'petSize'), 80)
-  assert.deepEqual(readSettings(config), { ...defaults, activePet: 'neon-cat', petEnabled: true, petSize: 80, islandWidth: 150 })
+  assert.deepEqual(readSettings(config), { ...defaults, activePet: 'deepseek-whale', petEnabled: true, petSize: 80, islandWidth: 150 })
   assert.deepEqual(readSettings({}), defaults)
   assert.deepEqual(readSettings(), defaults)
 })

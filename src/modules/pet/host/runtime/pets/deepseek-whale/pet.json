@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "displayName": "DeepSeek Whale",
+  "spriteVersionNumber": 1,
+  "author": "dsh-toolkit",
+  "license": "CC0-1.0",
+  "generatedBy": "dsh-toolkit procedural painter",
+  "description": "DeepSeek blue whale pet: front-facing by default, side views while moving, drawn procedurally by the repo painter.",
+  "slug": "deepseek-whale",
+  "tags": [
+    "whale",
+    "deepseek",
+    "front-view",
+    "v1"
+  ]
+}

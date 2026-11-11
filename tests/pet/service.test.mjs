@@ -69,9 +69,9 @@ test('public service state and event streams omit helper-only asset paths, manif
   const f = await fixture(t, { electronPath: '/private/electron', activePet: 'invalid-id' })
   const publicState = f.service.snapshot()
   const privateState = f.service.snapshot(true)
-  assert.equal(publicState.settings.activePet, 'qoduck-lab')
+  assert.equal(publicState.settings.activePet, 'deepseek-whale')
   assert.equal(publicState.runtime.status, 'stopped')
-  assert.equal(publicState.pets.length, 4)
+  assert.equal(publicState.pets.length, 1)
   assert.ok(privateState.pets.every((pet) => pet.assetDir.startsWith('/') && pet.manifest.displayName))
   assert.deepEqual(publicState.pets, privateState.pets.map(({ id, name, source }) => ({ id, name, source })))
   const serialized = JSON.stringify(publicState)
@@ -150,12 +150,12 @@ test('disposal prevents an in-flight config read from changing or restarting the
 test('live standalone and legacy config events resolve profile entry IDs and nested pet values', async (t) => {
   const f = await fixture(t)
   for (const [index, ns] of ['dsh-toolkit-pet', 'dsh-toolkit', 'shell-kit', 'dsh-shell-kit'].entries()) {
-    const config = { petSize: 50 + index * 10, bubbleWidth: 300 + index * 20, activePet: 'neon-cat' }
+    const config = { petSize: 50 + index * 10, bubbleWidth: 300 + index * 20, activePet: 'deepseek-whale' }
     f.setDescriptors([{ ns, value: ns === 'dsh-toolkit-pet' ? config : { pet: config, unrelated: 'keep' } }])
     await f.emit('settings/document-updated', ns, index + 1)
     assert.equal(f.service.snapshot().settings.petSize, config.petSize, ns)
     assert.equal(f.service.snapshot().settings.bubbleWidth, config.bubbleWidth, ns)
-    assert.equal(f.service.snapshot().settings.activePet, 'neon-cat')
+    assert.equal(f.service.snapshot().settings.activePet, 'deepseek-whale')
   }
   assert.deepEqual(f.descriptions, Array.from({ length: 4 }, () => ({ redactSecrets: false })))
   await f.emit('settings/document-updated', 'dsh-toolkit-notification', 1)
@@ -170,20 +170,20 @@ test('the host volatile references are read into live settings, including later 
   const volatile = (value) => ({ get: () => value })
   const f = await fixture(t, {
     petEnabled: volatile(false), islandEnabled: volatile(false),
-    petSize: volatile(80), islandWidth: volatile(150), activePet: volatile('neon-cat'),
+    petSize: volatile(80), islandWidth: volatile(150), activePet: volatile('deepseek-whale'),
   })
   const initial = f.service.snapshot().settings
-  assert.equal(initial.activePet, 'neon-cat')
+  assert.equal(initial.activePet, 'deepseek-whale')
   assert.equal(initial.petSize, 80)
   assert.equal(initial.islandWidth, 150)
   assert.equal(initial.petEnabled, false)
   assert.equal(initial.islandEnabled, false)
   assert.equal(f.service.snapshot().runtime.status, 'stopped', 'a disabled pet must not prepare the runtime')
 
-  f.setDescriptors([{ ns: 'dsh-toolkit-pet', value: { petSize: volatile(75), activePet: volatile('retro-duck') } }])
+  f.setDescriptors([{ ns: 'dsh-toolkit-pet', value: { petSize: volatile(75), activePet: volatile('deepseek-whale') } }])
   await f.emit('settings/document-updated', 'dsh-toolkit-pet', 2)
   assert.equal(f.service.snapshot().settings.petSize, 75)
-  assert.equal(f.service.snapshot().settings.activePet, 'retro-duck')
+  assert.equal(f.service.snapshot().settings.activePet, 'deepseek-whale')
 })
 
 test('a seen action clears an already-seen result without navigating or requiring a live Session', async (t) => {

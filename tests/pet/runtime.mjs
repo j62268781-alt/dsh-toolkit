@@ -37,7 +37,7 @@ test('a Petdex pet keeps its own id and webp sheet without exposing its director
   assert.equal(JSON.stringify(projected).includes('/pets/boba'), false)
   assert.equal(assetPath(state, projected.pets[0].spritesheet), '/pets/boba/spritesheet.webp')
   // 只有登记过的那一个文件可读：换成 pet.json 或别的宠物都不行。
-  for (const url of ['pet-asset://pet/petdex%3Aboba/pet.json', 'pet-asset://pet/petdex%3Aboba/spritesheet.png', 'pet-asset://pet/qoduck-lab/spritesheet.webp']) assert.equal(assetPath(state, url), null)
+  for (const url of ['pet-asset://pet/petdex%3Aboba/pet.json', 'pet-asset://pet/petdex%3Aboba/spritesheet.png', 'pet-asset://pet/deepseek-whale/spritesheet.webp']) assert.equal(assetPath(state, url), null)
 })
 test('actions exclude grants and reject malformed prompts and coordinates', () => {
   assert.throws(() => validatedAction({ action:'approve' }))

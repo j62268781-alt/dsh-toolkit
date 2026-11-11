@@ -15,7 +15,7 @@ import { createPreviewStore } from './preview.js'
 export const name = 'toolkit-pet'
 export const inject = ['webServer', 'connection', 'sessionController', 'sessionProjections', 'sessions', 'settings']
 export const API_PATH = '/api/plugins/dsh-toolkit/pet'
-const PET_IDS = ['qoduck-lab', 'kleidis-lab', 'neon-cat', 'retro-duck']
+const PET_IDS = ['deepseek-whale']
 const PETDEX_PREFIX = 'petdex:'
 
 /** 插件自己的数据目录：安装的宠物、已读记录、预览图缓存都在这下面。 */

@@ -1,7 +1,7 @@
 import s from '@deepseek-ai/schemastery'
 
 export const Config = s.object({
-  activePet: s.string().default('qoduck-lab').volatile(),
+  activePet: s.string().default('deepseek-whale').volatile(),
   petEnabled: s.boolean().default(false).volatile(),
   petSize: s.number().min(50).max(100).default(100).volatile(),
   bubbleWidth: s.number().min(240).max(480).default(280).volatile(),
@@ -47,7 +47,7 @@ export function readSettings(config = {}) {
     return typeof value === 'boolean' ? value : fallback
   }
   return {
-    activePet: text('activePet', 'qoduck-lab'),
+    activePet: text('activePet', 'deepseek-whale'),
     petEnabled: bool('petEnabled', false),
     petSize: number('petSize', 100, 50, 100),
     bubbleWidth: number('bubbleWidth', 280, 240, 480),

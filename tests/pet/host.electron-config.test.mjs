@@ -76,13 +76,13 @@ test('helper environment removes Node mode without mutating caller state', () =>
 })
 
 test('settings default to disabled desktop surfaces and exclude the private executable setting', () => {
-  assert.deepEqual(readSettings(), { activePet: 'qoduck-lab', petEnabled: false, petSize: 100, bubbleWidth: 280, islandEnabled: false, islandIdle: true, islandAllDisplays: true, islandWidth: 100, islandHeight: 100 })
+  assert.deepEqual(readSettings(), { activePet: 'deepseek-whale', petEnabled: false, petSize: 100, bubbleWidth: 280, islandEnabled: false, islandIdle: true, islandAllDisplays: true, islandWidth: 100, islandHeight: 100 })
   assert.equal('electronPath' in readSettings({ electronPath: '/private/runtime' }), false)
 })
 
 test('settings clamp finite dimensions and reject coercion and nonfinite numbers', () => {
   assert.deepEqual(readSettings({ activePet: 123, petEnabled: 'true', islandEnabled: 1, petSize: -1, bubbleWidth: 900, islandWidth: 200, islandHeight: 2, islandIdle: false, islandAllDisplays: false }), {
-    activePet: 'qoduck-lab', petEnabled: false, petSize: 50, bubbleWidth: 480, islandEnabled: false, islandIdle: false, islandAllDisplays: false, islandWidth: 150, islandHeight: 75,
+    activePet: 'deepseek-whale', petEnabled: false, petSize: 50, bubbleWidth: 480, islandEnabled: false, islandIdle: false, islandAllDisplays: false, islandWidth: 150, islandHeight: 75,
   })
   for (const invalid of [NaN, Infinity, -Infinity, '80', null]) {
     const settings = readSettings({ petSize: invalid, bubbleWidth: invalid, islandWidth: invalid, islandHeight: invalid })
