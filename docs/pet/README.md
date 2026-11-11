@@ -22,7 +22,7 @@ macOS 上，有刘海的屏幕通过 `NSScreen.safeAreaInsets` 和刘海两侧�
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `activePet` | `qoduck-lab` | 两种窗口共用的形象 ID |
+| `activePet` | `deepseek-whale` | 两种窗口共用的形象 ID |
 | `petEnabled` | `false` | 显示桌面悬浮宠物 |
 | `petSize` | `100` | 宠物大小百分比，50–100 |
 | `bubbleWidth` | `280` | 会话气泡宽度，240–480 像素 |
@@ -43,7 +43,7 @@ Host 模块订阅会话状态，汇总活动并向设置页和辅助进程推送
 
 ## 资源与范围
 
-内置 `qoduck-lab`、`kleidis-lab`、`neon-cat` 和 `retro-duck` 四套精灵资源，来自本地演示项目的原创程序绘制素材，各资源清单声明为 CC0-1.0。插件代码采用仓库 MIT 许可。未使用 Qoder 官方宠物美术或 `dsh-pet` 的受限素材。
+内置 `deepseek-whale` 一套精灵资源（DeepSeek 蓝色鲸鱼正面形象，移动时切换为侧视，由仓库内的程序画笔 `whale.py`/`front.py`/`sheet.py` 生成），资源清单声明为 CC0-1.0。插件代码采用仓库 MIT 许可。未使用 Qoder 官方宠物美术或 `dsh-pet` 的受限素材。
 
 当前版本支持内置形象与 Petdex 在线安装，不含语音输入或触觉反馈。安装的宠物素材由各 Petdex 作者提供，按包清单声明使用。macOS 使用 AppKit 的真实安全区域数据识别刘海；其他平台和无刘海显示器使用独立胶囊布局。平台对窗口置顶、全屏空间和多显示器的处理可能不同，需在对应桌面系统上实测。
 
