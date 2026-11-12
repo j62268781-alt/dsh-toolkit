@@ -365,11 +365,17 @@ test('a wide browser tab gets the Codex shell, a narrow one keeps the host layou
   await flush()
   assert.equal(root.hasAttribute('data-sk-codex-shell'), false)
   assertNative()
-  // The desktop app keeps the shell at any width.
+  // The desktop app measures its own title band, but the shell still needs the
+  // host's expanded sidebar column, so the same 1024px gate applies there.
   root.setAttribute('data-platform', 'darwin')
+  resize(1280)
   await flush()
   assert.equal(root.hasAttribute('data-sk-desktop'), true)
   assertShell('50px')
+  resize(900)
+  await flush()
+  assert.equal(root.hasAttribute('data-sk-codex-shell'), false)
+  assertNative()
   root.removeAttribute('data-platform')
   await flush()
   assertNative()
@@ -434,4 +440,17 @@ test('the empty sidebar footer slot hands its row back to the workspace tree', a
     assert.match(rule[0], /:not\(\[class\*="_collapsed"\]\)/)
     assert.match(rule[0], /:not\(\[data-sk-rail-only\]\)/)
   }
+})
+
+test('the rc.2 scroll wrapper is flattened back into the rail grid', async () => {
+  // DSH 0.2.2-rc.2 put `_panelList` and `_regionArea` inside
+  // `_scrollRegion > _scrollArea`. Both carry the shell's grid areas, so the
+  // wrappers have to leave the flow or the rail and the tree lose their cells.
+  const css = await readFile(new URL('../../src/modules/theme/client/styles/sidebar.css', import.meta.url), 'utf8')
+  const flatten = css.match(
+    /html\[data-sk-palette="codex"\]\[data-sk-codex-shell\][^{]*_scrollRegion[^{]*\{\s*display:\s*contents;/
+  )
+  assert.ok(flatten, 'the scroll region dissolves into the root grid')
+  assert.match(css, /_scrollArea[^{]*\{\s*display:\s*contents;/, 'the scroll area dissolves too')
+  assert.match(css, /_scrollFade[^{]*\{\s*display:\s*none;/, 'the native fade strip is dropped')
 })

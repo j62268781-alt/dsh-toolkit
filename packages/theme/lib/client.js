@@ -368,7 +368,7 @@ window.__ModuleLoader__.load({
 
     html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_logoRow"],
     html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_newSession"],
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_regionArea"],
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] [class*="_regionArea"],
     html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_footArea"] > [class*="_footerActions"] {
       display: none;
     }
@@ -461,7 +461,22 @@ window.__ModuleLoader__.load({
       margin: 0 8px 4px;
     }
 
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] {
+    /* rc.2 wraps the panel list and the workspace tree in a scrolling region:
+       \`_scrollRegion\` > \`_scrollArea\` > (\`_panelList\`, \`_regionArea\`). The wrap makes
+       both areas grid items of nothing, so the rail and the tree would be auto-placed
+       into whichever cell is free. Flatten the wrappers back into the grid (they carry
+       no layout of their own here: the rail and the tree each keep their own overflow)
+       and drop the fade strip, which belongs to the native grey sidebar. */
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_scrollRegion"],
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_scrollRegion"] > [class*="_scrollArea"] {
+      display: contents;
+    }
+
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_scrollFade"] {
+      display: none;
+    }
+
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] {
       grid-area: nav;
       align-self: start;
       margin: 6px 0 0;
@@ -469,12 +484,12 @@ window.__ModuleLoader__.load({
       gap: 2px;
     }
 
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelGlyph"] svg {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] [class*="_panelGlyph"] svg {
       width: 18px;
       height: 18px;
     }
 
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] [class*="_panelRow"] {
       width: 36px;
       height: 36px;
       min-height: 36px;
@@ -485,22 +500,22 @@ window.__ModuleLoader__.load({
       gap: 0;
     }
 
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > *:has([class*="_panelRow"]) {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] > *:has([class*="_panelRow"]) {
       display: flex;
       justify-content: center;
       width: 100%;
       min-width: 0;
     }
 
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"]:hover {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] [class*="_panelRow"]:hover {
       background: var(--cx-rail-item-hover);
     }
 
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"][class*="_panelActive"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] [class*="_panelRow"]:is([class*="_panelActive"], [class*="_panelEntryActive"]) {
       background: var(--cx-rail-item-active);
     }
 
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] > .sk-home {
       box-sizing: border-box;
       display: flex;
       flex: none;
@@ -518,12 +533,12 @@ window.__ModuleLoader__.load({
       cursor: pointer;
     }
 
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home:hover {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] > .sk-home:hover {
       background: var(--cx-rail-item-hover);
       color: var(--dsw-alias-label-primary);
     }
 
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home[data-active="true"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] > .sk-home[data-active="true"] {
       background: var(--cx-rail-item-active);
       color: var(--dsw-alias-label-primary);
     }
@@ -539,7 +554,7 @@ window.__ModuleLoader__.load({
       height: 18px;
     }
 
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelTitle"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] [class*="_panelTitle"] {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -548,7 +563,7 @@ window.__ModuleLoader__.load({
       white-space: nowrap;
     }
 
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_regionArea"] {
       grid-area: region;
       min-height: 0;
 
@@ -566,13 +581,13 @@ window.__ModuleLoader__.load({
        but here the tree sits on the white panel card, so that grey ramp reads as a
        stray strip with a shadow at the bottom of the card. Fade into the card colour
        instead: the scroll hint stays, the seam goes. */
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] [class*="_fade"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_regionArea"] [class*="_fade"] {
       background: linear-gradient(to bottom, transparent, var(--dsw-alias-bg-base));
     }
 
     /* Keep the section toolbar on the same 32px rhythm as its session rows.
        The new-session row owns the 4px gap above; do not add the native 2px again. */
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] [class*="_sectionHeader"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_regionArea"] [class*="_sectionHeader"] {
       height: 32px;
       margin: 0 0 4px;
     }
@@ -623,7 +638,7 @@ window.__ModuleLoader__.load({
     }
 
     /* The tree now ends at the card edge instead of one gutter above it. */
-    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only]):not(:has(> [class*="_footArea"] > [class*="_footerActions"] :not(:empty))) > [class*="_regionArea"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only]):not(:has(> [class*="_footArea"] > [class*="_footerActions"] :not(:empty))) [class*="_regionArea"] {
       padding-bottom: var(--cx-gap, 4px);
     }
 
@@ -2761,11 +2776,8 @@ window.__ModuleLoader__.load({
       const root = document.documentElement;
       return isDarwinDesktop() || root.hasAttribute("data-windows-titlebar");
     }
-    function isWideWindow() {
-      return (window.innerWidth || 0) >= SHELL_MIN_WIDTH;
-    }
     function isCodexShell() {
-      return isDesktopShell() || isWideWindow();
+      return (window.innerWidth || 0) >= SHELL_MIN_WIDTH;
     }
     var toggle = (root, name, on) => {
       if (on) {
@@ -2777,9 +2789,8 @@ window.__ModuleLoader__.load({
     function installShellMarkers() {
       const root = document.documentElement;
       const sync = () => {
-        const desktop = isDesktopShell();
-        toggle(root, DESKTOP_MARK, desktop);
-        toggle(root, SHELL_MARK, desktop || isWideWindow());
+        toggle(root, DESKTOP_MARK, isDesktopShell());
+        toggle(root, SHELL_MARK, isCodexShell());
       };
       const observer = new MutationObserver(sync);
       observer.observe(root, {

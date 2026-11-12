@@ -24,12 +24,8 @@ export function isDesktopShell() {
   return isDarwinDesktop() || root.hasAttribute("data-windows-titlebar");
 }
 
-export function isWideWindow() {
-  return (window.innerWidth || 0) >= SHELL_MIN_WIDTH;
-}
-
 export function isCodexShell() {
-  return isDesktopShell() || isWideWindow();
+  return (window.innerWidth || 0) >= SHELL_MIN_WIDTH;
 }
 
 const toggle = (root, name, on) => {
@@ -43,9 +39,8 @@ const toggle = (root, name, on) => {
 export function installShellMarkers() {
   const root = document.documentElement;
   const sync = () => {
-    const desktop = isDesktopShell();
-    toggle(root, DESKTOP_MARK, desktop);
-    toggle(root, SHELL_MARK, desktop || isWideWindow());
+    toggle(root, DESKTOP_MARK, isDesktopShell());
+    toggle(root, SHELL_MARK, isCodexShell());
   };
   const observer = new MutationObserver(sync);
   observer.observe(root, {
