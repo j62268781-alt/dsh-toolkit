@@ -387,6 +387,8 @@ window.__ModuleLoader__.load({
         pairServerEdit: "修改",
         pairServerSave: "保存",
         pairError: "配对请求失败（{code}）：{reason}",
+        pairConflictHint: "这台设备在该服务器上还绑着旧账号。解绑后即可重新配对。",
+        pairUnbind: "解绑并重试",
         failed: "操作失败：{reason}",
         loading: "正在读取状态…",
         close: "关闭",
@@ -480,6 +482,8 @@ window.__ModuleLoader__.load({
         pairServerEdit: "Change",
         pairServerSave: "Save",
         pairError: "Pairing request failed ({code}): {reason}",
+        pairConflictHint: "This device is still bound to another account on that server. Unbind it, then pair again.",
+        pairUnbind: "Unbind and retry",
         failed: "Action failed: {reason}",
         loading: "Reading state…",
         close: "Close",
@@ -907,12 +911,17 @@ window.__ModuleLoader__.load({
       return view !== void 0 && view !== null && ACTIVE_STATES.has(view.state);
     }
     var PairingError = class extends Error {
-      constructor(code, message) {
+      constructor(code, message, details = void 0) {
         super(message);
         this.name = "PairingError";
         this.code = code;
+        this.details = details;
       }
     };
+    function isAccountConflict(error) {
+      const remoteCode = error?.details?.remoteCode;
+      return remoteCode === "PAIRING_ACCOUNT_CONFLICT" || /cannot replace the current account/i.test(String(error?.message ?? ""));
+    }
     function newRpcId() {
       const crypto = globalThis.crypto;
       if (typeof crypto?.randomUUID === "function") return crypto.randomUUID();
@@ -955,7 +964,7 @@ window.__ModuleLoader__.load({
       if (result?.ok === true) return result.value;
       const code = typeof result?.error?.code === "string" ? result.error.code : "PAIRING_FAILED";
       const message = typeof result?.error?.message === "string" ? result.error.message : "pairing request failed.";
-      throw new PairingError(code, message);
+      throw new PairingError(code, message, result?.error?.details);
     }
     function createPairing() {
       let value = {
@@ -963,7 +972,9 @@ window.__ModuleLoader__.load({
         busy: false,
         view: void 0,
         error: void 0,
-        serverUrl: void 0
+        serverUrl: void 0,
+        /** 致命错误时停掉自动轮询：否则每 2.5 秒重试一次，错误行会不停闪。 */
+        halted: false
       };
       const listeners = /* @__PURE__ */ new Set();
       const emit = () => {
@@ -975,9 +986,11 @@ window.__ModuleLoader__.load({
       };
       const fail = (error) => ({
         code: typeof error?.code === "string" ? error.code : "PAIRING_FAILED",
-        message: String(error?.message ?? error)
+        message: String(error?.message ?? error),
+        conflict: isAccountConflict(error)
       });
       async function refresh() {
+        if (value.halted) return void 0;
         set({ loading: value.view === void 0, error: void 0 });
         try {
           const view = await control("host.pairing.status");
@@ -1000,9 +1013,12 @@ window.__ModuleLoader__.load({
       async function run(work) {
         set({ busy: true, error: void 0 });
         try {
-          return await work();
+          const result = await work();
+          set({ halted: false });
+          return result;
         } catch (error) {
-          set({ error: fail(error) });
+          const detail = fail(error);
+          set({ error: detail, halted: detail.conflict === true });
           return void 0;
         } finally {
           set({ busy: false });
@@ -1047,6 +1063,26 @@ window.__ModuleLoader__.load({
             const next = await control("host.pairing.cancel", { sessionId: view.sessionId });
             set({ view: next });
             return next;
+          });
+        },
+        /**
+         * 解绑当前服务器上的账号并重试：
+         * `settings.logout` 会清掉 host/client 两侧的凭据存储，之后重新读取会话状态，
+         * 若手机上已经确认过（服务器侧 completed），adopt 就能落盘并完成配对。
+         */
+        async unbind() {
+          return run(async () => {
+            try {
+              await control("settings.logout");
+            } catch {
+            }
+            set({ view: void 0, halted: false });
+            await settings();
+            const next = await refresh();
+            if (next !== void 0 || value.error !== void 0) return next;
+            const view = await control("host.pairing.start");
+            set({ view });
+            return view;
           });
         },
         /** 改配对服务器地址（写入 ds-harness-remote 的 settings）。 */
@@ -1366,13 +1402,13 @@ window.__ModuleLoader__.load({
           if (state === "claimed") codeRef.current?.focus();
         }, [state]);
         useEffect(() => {
-          if (!active || !isPairingActive(view)) return void 0;
+          if (!active || value.halted || !isPairingActive(view)) return void 0;
           const timer = setInterval(() => {
             if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
             void pairing.refresh();
           }, PAIRING_POLL_MS);
           return () => clearInterval(timer);
-        }, [active, state]);
+        }, [active, state, value.halted]);
         const expired = state === "created" && seconds === 0;
         const terminal = state === "failed" || state === "cancelled" || state === "expired" || expired;
         const labelKey = state === "claimed" ? "pairStateClaimed" : state === "approved" ? "pairStateApproved" : state === "completed" ? "pairStateCompleted" : state === "cancelled" ? "pairStateCancelled" : expired || state === "expired" ? "pairStateExpired" : "pairStateFailed";
@@ -1514,10 +1550,25 @@ window.__ModuleLoader__.load({
           "div",
           { className: "wc-tabview" },
           body,
-          value.error === void 0 ? null : h("div", { className: "wc-error" }, t("pairError", {
-            code: value.error.code,
-            reason: value.error.message
-          }))
+          value.error === void 0 ? null : h(
+            "div",
+            { className: "wc-body" },
+            h("div", { className: "wc-error" }, t("pairError", {
+              code: value.error.code,
+              reason: value.error.message
+            })),
+            value.error.conflict === true ? h("div", { className: "wc-hint" }, t("pairConflictHint")) : null,
+            value.error.conflict === true ? h(
+              "div",
+              { className: "wc-actions" },
+              h("button", {
+                type: "button",
+                className: "wc-button wc-button--primary",
+                disabled: busy,
+                onClick: () => void pairing.unbind()
+              }, t("pairUnbind"))
+            ) : null
+          )
         );
       }
       function Popover({ anchor, closing, onClose }) {

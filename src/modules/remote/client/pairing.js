@@ -34,11 +34,23 @@ export function isPairingActive(view) {
 
 /** 配对链路的错误：`code` 来自控制路由或远端服务器，`message` 是服务端原文。 */
 export class PairingError extends Error {
-  constructor(code, message) {
+  constructor(code, message, details = undefined) {
     super(message)
     this.name = 'PairingError'
     this.code = code
+    this.details = details
   }
+}
+
+/**
+ * 账号冲突：服务器上已经有这件设备绑定的旧账号，而本次配对发的是新账号。
+ * ds-harness-remote 的 adoptPairing 会拒绝替换（PAIRING_ACCOUNT_CONFLICT），
+ * 控制路由把它包成 `{code:'internal', details:{remoteCode}}`，所以两边都要认。
+ */
+export function isAccountConflict(error) {
+  const remoteCode = error?.details?.remoteCode
+  return remoteCode === 'PAIRING_ACCOUNT_CONFLICT'
+    || /cannot replace the current account/i.test(String(error?.message ?? ''))
 }
 
 function newRpcId() {
@@ -89,7 +101,7 @@ async function control(endpoint, payload = {}) {
   if (result?.ok === true) return result.value
   const code = typeof result?.error?.code === 'string' ? result.error.code : 'PAIRING_FAILED'
   const message = typeof result?.error?.message === 'string' ? result.error.message : 'pairing request failed.'
-  throw new PairingError(code, message)
+  throw new PairingError(code, message, result?.error?.details)
 }
 
 /**
@@ -103,6 +115,8 @@ export function createPairing() {
     view: undefined,
     error: undefined,
     serverUrl: undefined,
+    /** 致命错误时停掉自动轮询：否则每 2.5 秒重试一次，错误行会不停闪。 */
+    halted: false,
   }
   const listeners = new Set()
 
@@ -116,9 +130,12 @@ export function createPairing() {
   const fail = (error) => ({
     code: typeof error?.code === 'string' ? error.code : 'PAIRING_FAILED',
     message: String(error?.message ?? error),
+    conflict: isAccountConflict(error),
   })
 
   async function refresh() {
+    // 账号冲突这类致命错误不自动重试：证据已经摆在面板上，等用户点「解绑并重试」。
+    if (value.halted) return undefined
     set({ loading: value.view === undefined, error: undefined })
     try {
       const view = await control('host.pairing.status')
@@ -144,9 +161,12 @@ export function createPairing() {
   async function run(work) {
     set({ busy: true, error: undefined })
     try {
-      return await work()
+      const result = await work()
+      set({ halted: false })
+      return result
     } catch (error) {
-      set({ error: fail(error) })
+      const detail = fail(error)
+      set({ error: detail, halted: detail.conflict === true })
       return undefined
     } finally {
       set({ busy: false })
@@ -197,6 +217,31 @@ export function createPairing() {
         const next = await control('host.pairing.cancel', { sessionId: view.sessionId })
         set({ view: next })
         return next
+      })
+    },
+
+    /**
+     * 解绑当前服务器上的账号并重试：
+     * `settings.logout` 会清掉 host/client 两侧的凭据存储，之后重新读取会话状态，
+     * 若手机上已经确认过（服务器侧 completed），adopt 就能落盘并完成配对。
+     */
+    async unbind() {
+      return run(async () => {
+        // 先解绑本地凭据；远端注销失败（旧 token 已失效时常见）不影响本地清理，
+        // 否则会在解绑成功后误报一个 AUTH_INVALID。
+        try {
+          await control('settings.logout')
+        } catch {
+          // 凭据已被清空，继续重读配对状态。
+        }
+        set({ view: undefined, halted: false })
+        await settings()
+        const next = await refresh()
+        if (next !== undefined || value.error !== undefined) return next
+        // 解绑会连会话一起清掉，这时直接开一张新二维码，省得用户再点一次。
+        const view = await control('host.pairing.start')
+        set({ view })
+        return view
       })
     },
 

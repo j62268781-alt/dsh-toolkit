@@ -97,6 +97,8 @@ export const WC_COPY = {
     pairServerEdit: '修改',
     pairServerSave: '保存',
     pairError: '配对请求失败（{code}）：{reason}',
+    pairConflictHint: '这台设备在该服务器上还绑着旧账号。解绑后即可重新配对。',
+    pairUnbind: '解绑并重试',
 
     failed: '操作失败：{reason}',
     loading: '正在读取状态…',
@@ -197,6 +199,8 @@ export const WC_COPY = {
     pairServerEdit: 'Change',
     pairServerSave: 'Save',
     pairError: 'Pairing request failed ({code}): {reason}',
+    pairConflictHint: 'This device is still bound to another account on that server. Unbind it, then pair again.',
+    pairUnbind: 'Unbind and retry',
 
     failed: 'Action failed: {reason}',
     loading: 'Reading state…',

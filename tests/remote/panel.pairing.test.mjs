@@ -98,13 +98,17 @@ function fakeControl(replies) {
       return new Response('not found', { status: 404 })
     }
     const value = typeof reply === 'function' ? reply(body) : reply
+    // `__error` 用来编排控制路由的失败分支（例如账号冲突）。
+    const result = value?.__error === undefined
+      ? { ok: true, value }
+      : { ok: false, error: value.__error }
     return new Response(JSON.stringify({
       type: 'server-response',
       rpcId: body?.rpcId ?? 'rpc',
-      result: { ok: true, value },
+      result,
     }), { status: 200, headers: { 'content-type': 'application/json' } })
   }
-  return { calls, fetch }
+  return { calls, fetch, replies }
 }
 
 const CREATED = {
@@ -310,6 +314,53 @@ test('配对：控制路由不存在时给出可读错误', async () => {
     const error = popover.querySelector('.wc-error')
     assert.ok(error !== null, '404 时应显示错误行')
     assert.match(error.textContent, /CONTROL_MISSING/)
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('配对：账号冲突时给出「解绑并重试」，解绑后完成配对', async () => {
+  const panel = await mount({
+    'settings.get': { config: { serverUrl: SERVER } },
+    'host.pairing.status': CLAIMED,
+    'host.pairing.confirm': {
+      __error: {
+        code: 'internal',
+        message: 'Pairing cannot replace the current account.',
+        details: { remoteCode: 'PAIRING_ACCOUNT_CONFLICT' },
+      },
+    },
+    'settings.logout': { config: { serverUrl: SERVER } },
+  })
+  try {
+    const popover = panel.popover()
+    const input = popover.querySelector('.wc-code__input')
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(panel.dom.window.HTMLInputElement.prototype, 'value').set
+      setter.call(input, '00123456')
+      input.dispatchEvent(new panel.dom.window.Event('input', { bubbles: true }))
+    })
+    const bind = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairBind')
+    await panel.click(bind)
+    await panel.flush()
+
+    const error = popover.querySelector('.wc-error')
+    assert.ok(error !== null, '冲突要显示错误行')
+    assert.match(error.textContent, /pairError/)
+    assert.match(popover.textContent, /pairConflictHint/, '冲突要解释原因')
+
+    const unbind = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairUnbind')
+    assert.ok(unbind !== undefined, '冲突时要给出解绑按钮')
+
+    // 解绑后重读状态：服务器侧已经确认过，直接进入已连接。
+    panel.control.replies['host.pairing.status'] = COMPLETED
+    await panel.click(unbind)
+    await panel.flush()
+
+    const logout = panel.control.calls.find((call) => call.endpoint === 'settings.logout')
+    assert.ok(logout !== undefined, '解绑要走 settings.logout')
+    assert.ok(popover.textContent.includes('pairStateCompleted'), '解绑后应完成配对')
+    assert.equal(popover.querySelector('.wc-error'), null, '成功后错误行消失')
   } finally {
     await panel.unmount()
   }

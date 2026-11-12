@@ -335,13 +335,14 @@ export function createPanel(React, { t, connection, portal }) {
 
     // 活动会话才轮询：手机扫码/确认都发生在远端，只能靠短轮询感知。
     useEffect(() => {
-      if (!active || !isPairingActive(view)) return undefined
+      // `halted` 是致命错误（如账号冲突）：停掉轮询，否则错误行每 2.5 秒闪一次。
+      if (!active || value.halted || !isPairingActive(view)) return undefined
       const timer = setInterval(() => {
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
         void pairing.refresh()
       }, PAIRING_POLL_MS)
       return () => clearInterval(timer)
-    }, [active, state])
+    }, [active, state, value.halted])
 
     // 本地倒计时归零等价于「这张二维码已经不能用了」，状态文案要立刻改口。
     const expired = state === 'created' && seconds === 0
@@ -463,10 +464,23 @@ export function createPanel(React, { t, connection, portal }) {
       body,
       value.error === undefined
         ? null
-        : h('div', { className: 'wc-error' }, t('pairError', {
-          code: value.error.code,
-          reason: value.error.message,
-        })))
+        : h('div', { className: 'wc-body' },
+          h('div', { className: 'wc-error' }, t('pairError', {
+            code: value.error.code,
+            reason: value.error.message,
+          })),
+          value.error.conflict === true
+            ? h('div', { className: 'wc-hint' }, t('pairConflictHint'))
+            : null,
+          value.error.conflict === true
+            ? h('div', { className: 'wc-actions' },
+              h('button', {
+                type: 'button',
+                className: 'wc-button wc-button--primary',
+                disabled: busy,
+                onClick: () => void pairing.unbind(),
+              }, t('pairUnbind')))
+            : null))
   }
 
   /**
