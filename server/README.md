@@ -149,6 +149,18 @@ docker compose up -d --build server
 - Put an HTTPS reverse proxy in front in production; never expose the Node port directly. `DSH_SERVER_PUBLIC_URL` must match the browser origin exactly (scheme and port included) or static assets and origin checks fail.
 - After editing `.env`, apply it with `docker compose up -d --force-recreate server`; `docker compose restart` does not reload environment variables.
 
+## Production deployment (systemd + reverse proxy)
+
+Docker is only one option. `deploy/` ships templates for a bare-metal/VM install: systemd unit, environment file, Caddy or Nginx reverse proxy, and an optional coturn config for WebRTC.
+
+- Step-by-step guide (Chinese): [`deploy/DEPLOY.zh.md`](deploy/DEPLOY.zh.md)
+- [`deploy/dsh-server.service`](deploy/dsh-server.service) — systemd unit (non-root, `ProtectSystem=strict`, `Restart=always`)
+- [`deploy/env.example`](deploy/env.example) — `/etc/dsh-toolkit-server.env`
+- [`deploy/Caddyfile`](deploy/Caddyfile), [`deploy/nginx.conf`](deploy/nginx.conf) — reverse proxies with WebSocket upgrade and a single-value `X-Forwarded-For` (Caddy does this by default; Nginx template sets it explicitly)
+- [`deploy/coturn.conf`](deploy/coturn.conf) — optional TURN/STUN
+
+Key points: keep the Server on `127.0.0.1:8080` and expose only the proxy's 443; `DSH_SERVER_PUBLIC_URL` must match the exact origin phones use; when the proxy runs on the same host, set `DSH_SERVER_TRUSTED_PROXY_IPS=127.0.0.1`.
+
 ## Tests
 
 ```bash
@@ -190,6 +202,7 @@ server/
 │   └── protocol/      # vendored from upstream packages/protocol
 ├── tests/             # vitest: server / pairing / pairing-compat / refresh-recovery
 ├── Dockerfile, compose.yaml, .env.example
+├── deploy/            # systemd unit, env file, Caddy/Nginx, coturn, DEPLOY.zh.md
 ├── LICENSE            # upstream MIT
 └── README.md / README.zh.md
 ```

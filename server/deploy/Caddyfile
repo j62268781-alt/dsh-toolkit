@@ -1,0 +1,27 @@
+# Caddy v2 反代示例：server 监听 127.0.0.1:8080，Caddy 负责 443 与证书。
+#
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo sed -i 's/remote\.example\.com/你的域名/' /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# 要点：
+#   - Caddy 默认就转发 WebSocket 的 Upgrade/Connection 头，不需要额外配置；
+#   - Caddy 默认把 X-Forwarded-For 设为单个客户端 IP、X-Forwarded-Proto 设为对外协议，
+#     正好满足 trusted proxy 的「恰好一个 IP」要求，所以这里无需手动 header_up；
+#   - 不要在这里加 basic_auth 之类的人为门槛：手机/桌面走配对 proof 鉴权，额外 401 会让配对失败。
+
+remote.example.com {
+	encode zstd gzip
+
+	# 请求体上限：Server 对 >8192B 的帧直接 413，这里留一点余量。
+	request_body {
+		max_size 16KB
+	}
+
+	reverse_proxy 127.0.0.1:8080
+
+	log {
+		output file /var/log/caddy/dsh-server.log
+		format json
+	}
+}

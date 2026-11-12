@@ -149,6 +149,20 @@ docker compose up -d --build server
 - 生产环境请用 HTTPS 反向代理，不要把 Node 端口直接暴露到公网；`DSH_SERVER_PUBLIC_URL` 必须与浏览器实际 origin 完全一致（含 scheme 与端口），否则静态资源与 origin 校验会失败。
 - 改了 `.env` 之后要 `docker compose up -d --force-recreate server`，`docker compose restart` 不会重新读取环境变量。
 
+## 生产部署（systemd + 反向代理）
+
+Docker 只是其中一种方式。裸机/云主机上用 systemd 常驻、Caddy 或 Nginx 提供 HTTPS，并可选接 coturn 做 WebRTC 打洞，模板都在 [`deploy/`](deploy/)：
+
+| 文件 | 用途 |
+| --- | --- |
+| [`deploy/DEPLOY.zh.md`](deploy/DEPLOY.zh.md) | 完整步骤：用户/目录、构建、环境变量、systemd、Caddy/Nginx、TURN、升级回滚、故障排查 |
+| [`deploy/dsh-server.service`](deploy/dsh-server.service) | systemd 单元（非 root、ProtectSystem=strict、Restart=always） |
+| [`deploy/env.example`](deploy/env.example) | `/etc/dsh-toolkit-server.env` 示例 |
+| [`deploy/Caddyfile`](deploy/Caddyfile) / [`deploy/nginx.conf`](deploy/nginx.conf) | 反代模板（WebSocket 升级齐备，`X-Forwarded-For` 保持单值） |
+| [`deploy/coturn.conf`](deploy/coturn.conf) | 可选 TURN/STUN 配置 |
+
+要点：Server 只监听 `127.0.0.1:8080`，公网只开反代的 443；`DSH_SERVER_PUBLIC_URL` 必须与手机实际访问的 origin 完全一致；反代与 Server 同机时 `DSH_SERVER_TRUSTED_PROXY_IPS=127.0.0.1`。
+
 ## 测试
 
 ```bash
@@ -195,6 +209,7 @@ server/
 │   └── protocol/      # vendored 自上游 packages/protocol
 ├── tests/             # vitest：server / pairing / pairing-compat / refresh-recovery
 ├── Dockerfile, compose.yaml, .env.example
+├── deploy/            # systemd 单元、env 文件、Caddy/Nginx、coturn、DEPLOY.zh.md
 ├── LICENSE            # 上游 MIT
 └── README.md / README.zh.md
 ```

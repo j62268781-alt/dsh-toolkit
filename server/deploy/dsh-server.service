@@ -1,0 +1,45 @@
+# dsh-toolkit-server systemd 单元
+#
+# 安装（详见 DEPLOY.zh.md）：
+#   sudo cp deploy/dsh-server.service /etc/systemd/system/
+#   sudo install -m 0600 deploy/env.example /etc/dsh-toolkit-server.env   # 再按需修改
+#   sudo systemctl daemon-reload && sudo systemctl enable --now dsh-server
+#
+# 前提：代码在 /opt/dsh-toolkit-server（已 npm ci && npm run build && npm prune --omit=dev），
+# 系统用户 dsh 存在，状态目录 /var/lib/dsh-toolkit-server 归 dsh 所有。
+
+[Unit]
+Description=DSH Toolkit pairing server (dsh-toolkit-server)
+Documentation=https://github.com/j62268781-alt/dsh-toolkit/tree/main/server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dsh
+Group=dsh
+WorkingDirectory=/opt/dsh-toolkit-server
+EnvironmentFile=/etc/dsh-toolkit-server.env
+ExecStart=/usr/bin/node /opt/dsh-toolkit-server/dist/main.js
+# 保存状态文件（DSH_SERVER_DATA_FILE）的目录，必须与 EnvironmentFile 中的路径一致。
+ReadWritePaths=/var/lib/dsh-toolkit-server
+
+Restart=always
+RestartSec=3
+TimeoutStopSec=15
+
+# 收紧权限：服务只需要清单、dist、node_modules 与状态目录。
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+LimitNOFILE=65535
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
