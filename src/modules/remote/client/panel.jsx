@@ -348,6 +348,12 @@ export function createPanel(React, { t, connection, portal }) {
     }
 
     const body = (() => {
+      // 首次状态还没读回来：先占住位置转圈。
+      // 否则面板会先画「生成配对二维码」（未绑定态），再被真实的「手机已连接」替换，闪一下很难看。
+      if (value.loaded !== true && view === undefined) {
+        return h('div', { className: 'wc-body wc-pending', 'aria-busy': 'true' },
+          h('div', { className: 'wc-spinner', 'aria-hidden': 'true' }))
+      }
       if (state === 'completed') {
         return h('div', { className: 'wc-body' },
           h('div', { className: 'wc-info' },
@@ -484,10 +490,17 @@ export function createPanel(React, { t, connection, portal }) {
     // 两个入口：手机配对（默认，新能力）与原有微信 ClawBot。
     const [tab, setTab] = useState('pair')
 
-    // 打开时读一次状态；关闭时停止本地状态机。
+    // 打开时读一次状态；读完之前只转圈，避免先闪「连接微信」再翻成已连接。
+    const [ready, setReady] = useState(false)
     useEffect(() => {
-      void connection.open()
-      return () => connection.close()
+      let alive = true
+      void connection.open().finally(() => {
+        if (alive) setReady(true)
+      })
+      return () => {
+        alive = false
+        connection.close()
+      }
     }, [])
 
     // 轮询：只在需要时走，间隔随状态变化；页面隐藏时跳过。
@@ -562,6 +575,10 @@ export function createPanel(React, { t, connection, portal }) {
     const error = localError ?? value.error ?? value.credentialError
 
     const clawBody = (() => {
+      if (!ready) {
+        return h('div', { className: 'wc-body wc-pending', 'aria-busy': 'true' },
+          h('div', { className: 'wc-spinner', 'aria-hidden': 'true' }))
+      }
       if (connected) {
         return h(Connected, {
           value,

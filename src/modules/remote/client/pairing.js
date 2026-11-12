@@ -110,6 +110,8 @@ async function control(endpoint, payload = {}) {
  */
 export function createPairing() {
   let value = {
+    /** 首次状态读取是否已完成：用来避免面板先亮出「生成二维码」再翻成已连接。 */
+    loaded: false,
     loading: false,
     busy: false,
     view: undefined,
@@ -139,10 +141,10 @@ export function createPairing() {
     set({ loading: value.view === undefined, error: undefined })
     try {
       const view = await control('host.pairing.status')
-      set({ view: view ?? undefined, loading: false })
+      set({ view: view ?? undefined, loading: false, loaded: true })
       return view
     } catch (error) {
-      set({ error: fail(error), loading: false })
+      set({ error: fail(error), loading: false, loaded: true })
       return undefined
     }
   }
@@ -182,8 +184,14 @@ export function createPairing() {
 
     /** 打开配对 tab：先读一次服务器地址，再读会话状态。 */
     async open() {
-      if (value.serverUrl === undefined) await settings()
-      return refresh()
+      // 整段都算「读取中」：先读服务器地址、再读会话状态，读完才允许面板画生成按钮。
+      set({ loading: true })
+      try {
+        if (value.serverUrl === undefined) await settings()
+        return await refresh()
+      } finally {
+        set({ loading: false })
+      }
     },
 
     refresh,

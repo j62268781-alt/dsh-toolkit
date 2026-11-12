@@ -311,6 +311,27 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   max-width: 260px;
 }
 
+/* 首次读取状态时的占位：撑住高度，只放一个转圈。 */
+.wc-pending {
+  min-height: 118px;
+  justify-content: center;
+}
+
+.wc-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--dsw-alias-border-l3);
+  border-top-color: var(--dsw-alias-label-secondary);
+  animation: wc-spin 0.8s linear infinite;
+}
+
+@keyframes wc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .wc-hintblock {
   display: flex;
   flex-direction: column;
@@ -662,6 +683,10 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
 
   .wc-popover,
   .wc-popover--closing {
+    animation: none;
+  }
+
+  .wc-spinner {
     animation: none;
   }
 }

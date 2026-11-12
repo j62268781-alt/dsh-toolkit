@@ -97,7 +97,7 @@ function fakeControl(replies) {
     if (reply === undefined) {
       return new Response('not found', { status: 404 })
     }
-    const value = typeof reply === 'function' ? reply(body) : reply
+    const value = typeof reply === 'function' ? await reply(body) : reply
     // `__error` 用来编排控制路由的失败分支（例如账号冲突）。
     const result = value?.__error === undefined
       ? { ok: true, value }
@@ -256,6 +256,33 @@ test('配对：生成二维码走 host.pairing.start，并渲染二维码', asyn
     assert.ok(popover.querySelector('.wc-qr') !== null, '生成后要画二维码')
     assert.match(popover.textContent, /pairCountdown/)
     assert.equal(popover.textContent.includes('pairStateScan'), false, '二维码本身就代表等待扫码，不再写状态行')
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('配对：首次状态读取完成前只转圈，不先画「生成配对二维码」', async () => {
+  let release
+  const gate = new Promise((resolve) => { release = resolve })
+  const panel = await mount({
+    'settings.get': { config: { serverUrl: SERVER } },
+    'host.pairing.status': async () => {
+      await gate
+      return undefined
+    },
+  })
+  try {
+    const popover = panel.popover()
+    // 读状态还没回来：只能看到占位转圈，不能先亮出「生成二维码」再被真状态替换。
+    assert.ok(popover.querySelector('.wc-spinner') !== null, '读取中要显示占位')
+    assert.equal(popover.textContent.includes('pairGenerate'), false, '读取完成前不能画生成按钮')
+    assert.equal(popover.textContent.includes('pairIdleHint'), false, '读取完成前不能画未绑定说明')
+
+    release()
+    await panel.flush()
+
+    assert.equal(popover.querySelector('.wc-spinner'), null, '读完状态后占位消失')
+    assert.ok(popover.textContent.includes('pairGenerate'), '读完确实没有会话才显示生成按钮')
   } finally {
     await panel.unmount()
   }
