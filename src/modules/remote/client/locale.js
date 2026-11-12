@@ -8,7 +8,6 @@ export const WC_COPY = {
     title: '远程连接',
     subtitle: '手机扫码连接本机 DSH，或绑定微信 ClawBot',
 
-    stateIdle: '未连接',
     stateRequesting: '正在申请二维码…',
     stateWaiting: '等待扫码',
     stateScanned: '已扫码，请在微信中确认',
@@ -116,7 +115,6 @@ export const WC_COPY = {
     title: 'Remote connection',
     subtitle: 'Scan to connect your phone to this DSH, or bind WeChat ClawBot',
 
-    stateIdle: 'Not connected',
     stateRequesting: 'Requesting a QR code…',
     stateWaiting: 'Waiting for scan',
     stateScanned: 'Scanned — confirm in WeChat',

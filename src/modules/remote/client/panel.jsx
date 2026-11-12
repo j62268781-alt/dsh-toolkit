@@ -39,7 +39,6 @@ export function createPanel(React, { t, connection, portal }) {
   const pairing = createPairing()
 
   const STATE_LABEL = {
-    idle: 'stateIdle',
     requesting: 'stateRequesting',
     waiting_qr: 'stateWaiting',
     scanned: 'stateScanned',
@@ -98,10 +97,15 @@ export function createPanel(React, { t, connection, portal }) {
     h('path', { d: 'M13.5 2.5L2.5 13.5' }))
   }
 
-  /** 未连接：一个主动作按钮。 */
+  /**
+   * 未连接：只有一个主动作按钮。
+   *
+   * 不再单独写一行「未连接」——卡片里有「连接微信」按钮时，状态本身就是不言自明的，
+   * 多一行灰字读起来像两个互相矛盾的信息（B 阶段实测：用户第一反应就是「都让我连了，
+   * 干嘛还告诉我没连」）。真正的连接状态由入口按钮右上角的小圆点表达。
+   */
   function Disconnected({ busy, onConnect }) {
     return h('div', { className: 'wc-body' },
-      h(StatusRow, null, t(STATE_LABEL.idle)),
       h('div', { className: 'wc-actions' },
         h('button', {
           type: 'button',

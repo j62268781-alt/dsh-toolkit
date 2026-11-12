@@ -263,14 +263,16 @@ test('Waiting: 已过期保留过期二维码 + 蒙版，点蒙版强制换新�
   }
 })
 
-test('Disconnected: 未连接只有一个主按钮，点它就去申请二维码', async () => {
+test('Disconnected: 未连接只剩一个主按钮，不再重复写「未连接」', async () => {
   const panel = await mountPanel({ initial: { state: 'idle', connected: false } })
   try {
     const popover = panel.popover()
     assert.ok(popover !== null, '卡片应已展开')
-    // 未连接不该出现二维码/输入框/连接信息，只留状态行 + 一个主按钮。
+    // 未连接不该出现二维码/输入框/连接信息，也不该有「未连接」状态行 —— 只留一个主按钮。
     assert.equal(popover.querySelector('.wc-qr'), null)
     assert.equal(popover.querySelector('input'), null)
+    assert.equal(popover.querySelector('.wc-status'), null, '未连接态不再显示状态行')
+    assert.doesNotMatch(popover.textContent, /stateIdle/, '「连接微信」按钮已说明状态，不再写「未连接」')
     const buttons = [...popover.querySelectorAll('button')].filter((button) => !button.classList.contains('wc-icon'))
     const primary = buttons.find((button) => button.textContent.trim() === 'connect')
     assert.ok(primary !== undefined, `未连接要有「连接微信」主按钮，实际按钮：${buttons.map((b) => b.textContent).join('|')}`)

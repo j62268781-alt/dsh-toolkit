@@ -303,7 +303,6 @@ window.__ModuleLoader__.load({
         entryTitle: "远程连接",
         title: "远程连接",
         subtitle: "手机扫码连接本机 DSH，或绑定微信 ClawBot",
-        stateIdle: "未连接",
         stateRequesting: "正在申请二维码…",
         stateWaiting: "等待扫码",
         stateScanned: "已扫码，请在微信中确认",
@@ -404,7 +403,6 @@ window.__ModuleLoader__.load({
         entryTitle: "Remote connection",
         title: "Remote connection",
         subtitle: "Scan to connect your phone to this DSH, or bind WeChat ClawBot",
-        stateIdle: "Not connected",
         stateRequesting: "Requesting a QR code…",
         stateWaiting: "Waiting for scan",
         stateScanned: "Scanned — confirm in WeChat",
@@ -1093,7 +1091,6 @@ window.__ModuleLoader__.load({
       const QrCode = createQrCode(React2);
       const pairing = createPairing();
       const STATE_LABEL = {
-        idle: "stateIdle",
         requesting: "stateRequesting",
         waiting_qr: "stateWaiting",
         scanned: "stateScanned",
@@ -1150,7 +1147,6 @@ window.__ModuleLoader__.load({
         return h(
           "div",
           { className: "wc-body" },
-          h(StatusRow, null, t(STATE_LABEL.idle)),
           h(
             "div",
             { className: "wc-actions" },
