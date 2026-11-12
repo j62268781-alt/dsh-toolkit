@@ -251,6 +251,7 @@ test('配对：生成二维码走 host.pairing.start，并渲染二维码', asyn
 
     assert.ok(popover.querySelector('.wc-qr') !== null, '生成后要画二维码')
     assert.match(popover.textContent, /pairCountdown/)
+    assert.equal(popover.textContent.includes('pairStateScan'), false, '二维码本身就代表等待扫码，不再写状态行')
   } finally {
     await panel.unmount()
   }

@@ -223,6 +223,8 @@ test('Waiting: 等待扫码只画二维码，不加蒙层', async () => {
     assert.ok(popover !== null, '卡片应已展开')
     assert.ok(popover.querySelector('.wc-qr') !== null, '等待扫码要展示二维码')
     assert.equal(popover.querySelector('.wc-qr-mask'), null, '等待扫码不该有蒙层')
+    // 二维码 + 倒计时已经表达「等扫码」，不再叠一行状态文字。
+    assert.equal(popover.querySelector('.wc-status'), null, '等待扫码不显示状态行')
     // 倒计时用「秒后过期」那条文案，读数来自服务端 expiresAt。
     assert.match(popover.textContent, /qrCountdown/)
   } finally {

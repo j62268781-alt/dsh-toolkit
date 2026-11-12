@@ -9,15 +9,12 @@ export const WC_COPY = {
     subtitle: '手机扫码连接本机 DSH，或绑定微信 ClawBot',
 
     stateRequesting: '正在申请二维码…',
-    stateWaiting: '等待扫码',
-    stateScanned: '已扫码，请在微信中确认',
     stateNeedCode: '需要输入微信显示的数字',
     stateConnected: '已连接',
     stateReconnecting: '正在重连…',
     stateInvalid: '连接已失效',
     stateFailed: '出现错误',
     stateClosed: '已关闭',
-    stateExpired: '二维码已过期',
 
     connect: '连接微信',
     reconnect: '重新登录',
@@ -74,8 +71,6 @@ export const WC_COPY = {
     tabPair: '手机连接',
     tabClaw: 'ClawBot',
 
-    pairStateIdle: '未连接手机',
-    pairStateScan: '等待扫码',
     pairStateClaimed: '手机已扫码',
     pairStateApproved: '正在完成绑定…',
     pairStateCompleted: '手机已连接',
@@ -115,15 +110,12 @@ export const WC_COPY = {
     subtitle: 'Scan to connect your phone to this DSH, or bind WeChat ClawBot',
 
     stateRequesting: 'Requesting a QR code…',
-    stateWaiting: 'Waiting for scan',
-    stateScanned: 'Scanned — confirm in WeChat',
     stateNeedCode: 'Enter the number shown in WeChat',
     stateConnected: 'Connected',
     stateReconnecting: 'Reconnecting…',
     stateInvalid: 'Connection lost',
     stateFailed: 'Something went wrong',
     stateClosed: 'Closed',
-    stateExpired: 'QR code expired',
 
     connect: 'Connect WeChat',
     reconnect: 'Sign in again',
@@ -179,8 +171,6 @@ export const WC_COPY = {
     tabPair: 'Phone',
     tabClaw: 'ClawBot',
 
-    pairStateIdle: 'No phone paired',
-    pairStateScan: 'Waiting for scan',
     pairStateClaimed: 'Phone scanned',
     pairStateApproved: 'Finishing pairing…',
     pairStateCompleted: 'Phone connected',

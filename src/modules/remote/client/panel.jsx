@@ -41,18 +41,6 @@ export function createPanel(React, { t, connection, portal }) {
   // 手机配对的会话状态与微信连接彼此独立：一个 store 给 tab 与子视图共享。
   const pairing = createPairing()
 
-  const STATE_LABEL = {
-    requesting: 'stateRequesting',
-    waiting_qr: 'stateWaiting',
-    scanned: 'stateScanned',
-    need_code: 'stateNeedCode',
-    connected: 'stateConnected',
-    confirmed: 'stateConnected',
-    reconnecting: 'stateReconnecting',
-    failed: 'stateFailed',
-    expired: 'stateExpired',
-  }
-
   /** 剩余秒数；没有 expiresAt 时返回 undefined。hook 本身无条件调用。 */
   function useCountdown(expiresAt) {
     const [now, setNow] = useState(() => Date.now())
@@ -117,9 +105,7 @@ export function createPanel(React, { t, connection, portal }) {
     // 过期有两个信号：服务端已经判死（state==='expired'），或本地倒计时归零。
     const expired = value.state === 'expired' || seconds === 0
     const scanned = value.state === 'scanned'
-    const label = expired
-      ? t(STATE_LABEL.expired)
-      : (scanned ? t('stateScanned') : t('stateWaiting'))
+    // 不写「等待扫码 / 已扫码 / 已过期」状态行：二维码本身、蒙层和倒计时已经把话说完了。
     // 蒙层内容包一层衬底：二维码本身是黑白高对比，白字直接压上去几乎看不清。
     const maskPanel = (title, action) => h('span', { className: 'wc-qr-mask__panel' },
       h('span', { className: 'wc-qr-mask__title' }, title),
@@ -135,7 +121,6 @@ export function createPanel(React, { t, connection, portal }) {
         ? h('div', { className: 'wc-qr-mask' }, maskPanel(t('qrConnecting')))
         : null)
     return h('div', { className: 'wc-body' },
-      h(StatusRow, null, label),
       value.qr === undefined
         ? h('div', { className: 'wc-hint' }, t('stateRequesting'))
         : h('div', { className: 'wc-qr-wrap' },
@@ -162,7 +147,7 @@ export function createPanel(React, { t, connection, portal }) {
       if (value !== '') onSubmit(value)
     }
     return h('div', { className: 'wc-body' },
-      h(StatusRow, null, t('stateNeedCode')),
+      // 状态行与提示是同一句话，只保留提示，避免上下两行重复。
       h('div', { className: 'wc-hint' }, t('stateNeedCode')),
       h('div', { className: 'wc-code' },
         h('input', {
@@ -361,21 +346,19 @@ export function createPanel(React, { t, connection, portal }) {
     // 本地倒计时归零等价于「这张二维码已经不能用了」，状态文案要立刻改口。
     const expired = state === 'created' && seconds === 0
     const terminal = state === 'failed' || state === 'cancelled' || state === 'expired' || expired
-    const labelKey = state === undefined || state === 'idle'
-      ? 'pairStateIdle'
-      : expired || state === 'expired'
-        ? 'pairStateExpired'
-        : state === 'created'
-          ? 'pairStateScan'
-          : state === 'claimed'
-            ? 'pairStateClaimed'
-            : state === 'approved'
-              ? 'pairStateApproved'
-              : state === 'completed'
-                ? 'pairStateCompleted'
-                : state === 'cancelled'
-                  ? 'pairStateCancelled'
-                  : 'pairStateFailed'
+    // 只有 claimed / approved / completed 与终态需要状态行：
+    // created 由二维码表达、idle 由主按钮表达，都不再写一行字。
+    const labelKey = state === 'claimed'
+      ? 'pairStateClaimed'
+      : state === 'approved'
+        ? 'pairStateApproved'
+        : state === 'completed'
+          ? 'pairStateCompleted'
+          : state === 'cancelled'
+            ? 'pairStateCancelled'
+            : expired || state === 'expired'
+              ? 'pairStateExpired'
+              : 'pairStateFailed'
 
     const start = () => void pairing.start()
     const cancel = () => void pairing.cancel()
@@ -443,8 +426,8 @@ export function createPanel(React, { t, connection, portal }) {
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: cancel }, t('cancel'))))
       }
       if (state === 'created' && !expired) {
+        // 二维码 + 倒计时已经说明「等手机扫」，不再重复一行「等待扫码」。
         return h('div', { className: 'wc-body' },
-          h(StatusRow, null, t(labelKey)),
           h('div', { className: 'wc-qr-wrap' },
             h(QrCode, { url: view.qrPayload, size: 176, label: t('tabPair') })),
           h('div', { className: 'wc-hint' }, t('pairScanHint')),
