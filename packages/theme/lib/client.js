@@ -2965,9 +2965,11 @@ window.__ModuleLoader__.load({
     var ENTRY = '[data-slot="sidebar"] > [class*="_root"] [class*="_panelEntry"]';
     var UNPIN = '[class*="_panelUnpin"]';
     var TITLE = '[class*="_panelTitle"]';
+    var ROW = '[class*="_panelRow"]';
     var MARK = "data-sk-unpinnable";
     var HINT = "双击取消固定";
     var TIP_DELAY_MS = 450;
+    var CLICK_DELAY_MS = 300;
     var entryOf = (node) => node instanceof Element ? node.closest(`[${MARK}]`) : null;
     function createTip() {
       const tip = document.createElement("div");
@@ -3006,6 +3008,9 @@ window.__ModuleLoader__.load({
       let tip = null;
       let tipTimer = 0;
       let tipEntry = null;
+      let heldClick = 0;
+      let replaying = false;
+      let lastDoubleClick = 0;
       const pass = () => {
         queued = 0;
         for (const entry of document.querySelectorAll(ENTRY)) {
@@ -3050,13 +3055,43 @@ window.__ModuleLoader__.load({
         if (event.relatedTarget instanceof Node && entry.contains(event.relatedTarget)) return;
         hide();
       };
-      const onClick = (event) => {
+      const onPress = (event) => {
         if (entryOf(event.target)) hide();
+      };
+      const onClick = (event) => {
+        if (replaying) return;
+        const entry = entryOf(event.target);
+        if (!entry || !(event.target instanceof Element)) return;
+        const row = event.target.closest(ROW);
+        if (!row) return;
+        if (event.detail === 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (heldClick) {
+          clearTimeout(heldClick);
+          heldClick = 0;
+        }
+        if (Date.now() - lastDoubleClick < 600) return;
+        heldClick = setTimeout(() => {
+          heldClick = 0;
+          replaying = true;
+          const view = row.ownerDocument?.defaultView ?? window;
+          try {
+            row.dispatchEvent(new view.MouseEvent("click", { bubbles: true, cancelable: true, detail: 1, view }));
+          } finally {
+            replaying = false;
+          }
+        }, CLICK_DELAY_MS);
       };
       const onDoubleClick = (event) => {
         const entry = entryOf(event.target);
         const unpin = entry?.querySelector(UNPIN);
         if (!unpin) return;
+        lastDoubleClick = Date.now();
+        if (heldClick) {
+          clearTimeout(heldClick);
+          heldClick = 0;
+        }
         hide();
         unpin.click();
         event.preventDefault();
@@ -3067,7 +3102,8 @@ window.__ModuleLoader__.load({
       observer.observe(document.body, { childList: true, subtree: true });
       document.addEventListener("pointerover", onOver, true);
       document.addEventListener("pointerout", onOut, true);
-      document.addEventListener("pointerdown", onClick, true);
+      document.addEventListener("pointerdown", onPress, true);
+      document.addEventListener("click", onClick, true);
       document.addEventListener("dblclick", onDoubleClick, true);
       window.addEventListener("scroll", hide, true);
       window.addEventListener("resize", hide);
@@ -3077,7 +3113,9 @@ window.__ModuleLoader__.load({
         if (queued) cancelAnimationFrame(queued);
         document.removeEventListener("pointerover", onOver, true);
         document.removeEventListener("pointerout", onOut, true);
-        document.removeEventListener("pointerdown", onClick, true);
+        document.removeEventListener("pointerdown", onPress, true);
+        document.removeEventListener("click", onClick, true);
+        if (heldClick) clearTimeout(heldClick);
         document.removeEventListener("dblclick", onDoubleClick, true);
         window.removeEventListener("scroll", hide, true);
         window.removeEventListener("resize", hide);

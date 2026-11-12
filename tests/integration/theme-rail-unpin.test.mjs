@@ -83,12 +83,30 @@ test('hovering a pinnable entry shows the dark hint after a short delay', async 
   assert.equal(tip.hidden, true, 'leaving the entry hides the hint')
 })
 
-test('a double click forwards to the hidden unpin button', async (t) => {
+test('a single click still opens the panel, one double-click beat later', async (t) => {
+  const { dom, pinnable } = page(t)
+  await settle()
+  let opened = 0
+  pinnable.addEventListener('click', () => { opened += 1 })
+  pinnable.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }))
+  assert.equal(opened, 0, 'the activation click is held')
+  await new Promise((resolve) => setTimeout(resolve, 340))
+  assert.equal(opened, 1, 'the held click is replayed')
+})
+
+test('a double click unpins without opening the panel first', async (t) => {
   const { dom, document, pinnable } = page(t)
   await settle()
   const unpin = document.querySelector('._panelUnpin_test')
-  let clicks = 0
-  unpin.addEventListener('click', () => { clicks += 1 })
+  let opened = 0
+  let unpins = 0
+  pinnable.addEventListener('click', () => { opened += 1 })
+  unpin.addEventListener('click', () => { unpins += 1 })
+  const click = (detail) => new dom.window.MouseEvent('click', { bubbles: true, cancelable: true, detail })
+  pinnable.dispatchEvent(click(1))
+  pinnable.dispatchEvent(click(2))
   pinnable.dispatchEvent(new dom.window.MouseEvent('dblclick', { bubbles: true }))
-  assert.equal(clicks, 1)
+  await new Promise((resolve) => setTimeout(resolve, 340))
+  assert.equal(opened, 0, 'the held click never reaches the row')
+  assert.equal(unpins, 1)
 })
