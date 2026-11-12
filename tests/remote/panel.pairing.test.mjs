@@ -288,6 +288,30 @@ test('配对：首次状态读取完成前只转圈，不先画「生成配对�
   }
 })
 
+test('配对：终态按 failureReason 说清原因，不再四种情况一个样', async () => {
+  const cases = [
+    [{ state: 'failed', failureReason: 'verification_failed' }, 'pairEndCodeWrong'],
+    [{ state: 'cancelled' }, 'pairEndCancelled'],
+    [{ state: 'expired' }, 'pairEndExpired'],
+    [{ state: 'failed', failureReason: 'PAIRING_DEVICE_CONFLICT' }, 'pairEndDeviceConflict'],
+    [{ state: 'failed', failureReason: 'STORE_WRITE_FAILED' }, 'pairEndFailed'],
+  ]
+  for (const [patch, key] of cases) {
+    const panel = await mount({
+      'settings.get': { config: { serverUrl: SERVER } },
+      'host.pairing.status': { ...CREATED, ...patch },
+    })
+    try {
+      await panel.flush()
+      const popover = panel.popover()
+      assert.ok(popover.textContent.includes(key), `${patch.state}/${patch.failureReason ?? '-'} 应显示 ${key}`)
+      assert.equal(popover.textContent.includes('pairTerminalHint'), false, '有具体原因时不再用通用文案')
+    } finally {
+      await panel.unmount()
+    }
+  }
+})
+
 test('配对：手机 claim 后输入 8 位码，确认时带上 sessionId 与验证码', async () => {
   const panel = await mount({
     'settings.get': { config: { serverUrl: SERVER } },

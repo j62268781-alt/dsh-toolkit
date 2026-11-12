@@ -300,6 +300,24 @@ export function createPanel(React, { t, connection, portal }) {
   }
 
   /**
+   * 终态文案：同样是「本次配对结束」，原因却完全不同（超时/取消/验证码错/设备冲突/登记失败）。
+   * 服务端的 status 响应带 `failureReason`，按它分开说，才能让用户知道下一步该做什么。
+   */
+  function terminalHintKey(state, failureReason, expired) {
+    if (expired === true || state === 'expired') return 'pairEndExpired'
+    if (state === 'cancelled') return 'pairEndCancelled'
+    if (state === 'failed') {
+      switch (failureReason) {
+        case 'verification_failed': return 'pairEndCodeWrong'
+        case 'PAIRING_NOT_CLAIMED': return 'pairEndNotClaimed'
+        case 'PAIRING_DEVICE_CONFLICT': return 'pairEndDeviceConflict'
+        default: return 'pairEndFailed'
+      }
+    }
+    return 'pairTerminalHint'
+  }
+
+  /**
    * 手机配对 tab：对齐 ds-harness-remote 的配对状态机
    * created(二维码) → claimed(手机显示 8 位码，这里输入) → approved → completed。
    *
@@ -339,6 +357,10 @@ export function createPanel(React, { t, connection, portal }) {
     // 本地倒计时归零等价于「这张二维码已经不能用了」，状态文案要立刻改口。
     const expired = state === 'created' && seconds === 0
     const terminal = state === 'failed' || state === 'cancelled' || state === 'expired' || expired
+    const failureReason = typeof view?.failureReason === 'string' && view.failureReason !== ''
+      ? view.failureReason
+      : undefined
+    const terminalHint = terminalHintKey(state, failureReason, expired)
 
     const start = () => void pairing.start()
     const cancel = () => void pairing.cancel()
@@ -429,7 +451,9 @@ export function createPanel(React, { t, connection, portal }) {
       }
       // 两个 tab 都不再写状态行：二维码、蒙层、倒计时、信息行和主按钮已经把状态说完了。
       return h('div', { className: 'wc-body' },
-        h('div', { className: 'wc-hint' }, terminal ? t('pairTerminalHint') : t('pairIdleHint')),
+        h('div', { className: 'wc-hint' }, terminal
+          ? t(terminalHint, { reason: failureReason ?? '—' })
+          : t('pairIdleHint')),
         h('div', { className: 'wc-actions' },
           h('button', {
             type: 'button',
