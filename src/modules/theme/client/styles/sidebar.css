@@ -193,6 +193,9 @@ html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [clas
 }
 
 html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] [class*="_panelRow"] {
+  /* rc.2 makes the row the first child of the entry wrapper and gives it
+     `flex: 1`; without `none` the 36px square stretches to the wrapper width. */
+  flex: none;
   width: 36px;
   height: 36px;
   min-height: 36px;
@@ -208,6 +211,27 @@ html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [clas
   justify-content: center;
   width: 100%;
   min-width: 0;
+}
+
+/* rc.2 wraps every panel row in `_panelEntry`, adds 3px inline borders for the
+   native inset and lets the row fill the wrapper. In the 52px rail that pushes
+   the icon a few pixels off the column centre and stretches the hover pill past
+   the card edge. Drop the wrapper chrome so an entry is the same 36px square as
+   the home button, and keep the active paint on the row itself. */
+html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] > [class*="_panelEntry"] {
+  border: 0;
+  background: transparent;
+}
+
+html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] > [class*="_panelEntry"]:is([class*="_panelEntryActive"], [class*="_panelActive"]) > [class*="_panelRow"] {
+  background: var(--cx-rail-item-active);
+}
+
+/* The unpin button is a 28px plate inside the 36px tile with no room to sit
+   beside the glyph. The rail hides it and `rail-unpin` turns a double-click on
+   the tile into its click, with the hint on hover. */
+html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] [class*="_panelUnpin"] {
+  display: none;
 }
 
 html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) [class*="_panelList"] [class*="_panelRow"]:hover {
@@ -637,4 +661,27 @@ html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"]
    collapsed title inset instead, keeping the group's own depth indent. */
 html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] [class*="_sessionOverflowButton"] {
   padding-inline-start: calc(8px + var(--dsh-workspace-indent, 0px));
+}
+
+/* Dark hint for the rail's double-click-to-unpin affordance (`rail-unpin.js`).
+   It clones the host tooltip: same plate, 6px radius, 13/20 label, and the second
+   line steps down to 12/18 so the hint reads as a caption, not a second title. */
+html[data-sk-palette="codex"][data-sk-codex-shell] .sk-tip {
+  position: fixed;
+  z-index: 1100;
+  pointer-events: none;
+  max-width: 220px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--dsw-alias-tooltip-bg, rgb(44, 44, 46));
+  color: #fff;
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+html[data-sk-palette="codex"][data-sk-codex-shell] .sk-tip__hint {
+  font-size: 12px;
+  line-height: 18px;
+  color: color-mix(in srgb, #fff 70%, transparent);
 }

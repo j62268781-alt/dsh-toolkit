@@ -4,6 +4,7 @@ import { installStylesheet } from "../../../client/ui/stylesheet.js";
 import { findScopedForm } from "../../../client/config.js";
 import { installShellMarkers } from "./platform.js";
 import { installRailTitles, installHomeRail } from "./rail.js";
+import { installRailUnpin } from "./rail-unpin.js";
 import { installBandHeight } from "./band.js";
 import { installSidebarWidth, installWorkspaceCollapse } from "./sidebar.js";
 import { installUpdateTile } from "./update-tile.js";
@@ -60,6 +61,7 @@ export function apply(ctx) {
   ctx.effect(() => installPalette(ctx), "toolkit-theme:palette");
   ctx.effect(() => installCodexShell(ctx, [
     installRailTitles,
+    installRailUnpin,
     installHomeRail,
     installBandHeight,
     installSidebarWidth,

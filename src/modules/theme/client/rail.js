@@ -10,6 +10,12 @@ export function installRailTitles() {
   const pass = () => {
     queued = 0;
     for (const row of document.querySelectorAll(RAIL_ROW)) {
+      // A pinnable entry owns its hint (see rail-unpin): the native bubble would
+      // pop up underneath the dark one, so leave those rows without a `title`.
+      if (row.closest("[data-sk-unpinnable]")) {
+        if (row.hasAttribute("title")) row.removeAttribute("title");
+        continue;
+      }
       const label = row.querySelector('[class*="_panelTitle"]');
       const text = label?.textContent?.trim();
       if (text && row.getAttribute("title") !== text) {
