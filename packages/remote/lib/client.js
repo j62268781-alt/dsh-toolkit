@@ -1515,7 +1515,7 @@ window.__ModuleLoader__.load({
           return h(
             "div",
             { className: "wc-body" },
-            h(StatusRow, null, t(labelKey)),
+            state === void 0 || state === "idle" ? null : h(StatusRow, null, t(labelKey)),
             h("div", { className: "wc-hint" }, terminal ? t("pairTerminalHint") : t("pairIdleHint")),
             h(
               "div",

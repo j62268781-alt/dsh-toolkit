@@ -455,9 +455,10 @@ export function createPanel(React, { t, connection, portal }) {
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('refresh')),
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: cancel }, t('cancel'))))
       }
-      // idle / failed / cancelled / expired：一句状态 + 一个重新生成的主按钮。
+      // idle 不显示状态行：下面的主按钮已经足够表达「还没连」，多一行反而啰嗦。
+      // failed / cancelled / expired 仍保留状态行，用户需要知道上一次为什么结束。
       return h('div', { className: 'wc-body' },
-        h(StatusRow, null, t(labelKey)),
+        state === undefined || state === 'idle' ? null : h(StatusRow, null, t(labelKey)),
         h('div', { className: 'wc-hint' }, terminal ? t('pairTerminalHint') : t('pairIdleHint')),
         h('div', { className: 'wc-actions' },
           h('button', {

@@ -233,6 +233,7 @@ test('配对：生成二维码走 host.pairing.start，并渲染二维码', asyn
   })
   try {
     const popover = panel.popover()
+    assert.equal(popover.textContent.includes('pairStateIdle'), false, '未连接时不显示状态行，主按钮已经够表达')
     // 打开面板时读过一次状态（没有会话 → undefined）。
     assert.ok(panel.control.calls.some((call) => call.endpoint === 'host.pairing.status'))
 
