@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 
 const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'))
-const modules = ['boot', 'theme', 'archived', 'browser', 'judgment', 'mobile', 'skills-mcp', 'notification', 'pet', 'weixin-clawbot']
+const modules = ['boot', 'theme', 'archived', 'browser', 'judgment', 'mobile', 'skills-mcp', 'notification', 'pet', 'remote']
 
 test('the plugin consumes DSH runtime packages without installing another core copy', () => {
   const runtime = Object.keys(manifest.devDependencies).filter((name) => name.startsWith('@deepseek-ai/'))

@@ -13,7 +13,7 @@ const run = (args, env = process.env) => new Promise((resolve, reject) => {
 })
 
 const testFiles = []
-for (const group of ['browser', 'judgment', 'skills-mcp', 'notification', 'pet', 'weixin-clawbot', 'integration']) {
+for (const group of ['browser', 'judgment', 'skills-mcp', 'notification', 'pet', 'remote', 'integration']) {
   for (const name of (await readdir(join(root, 'tests', group))).sort()) {
     if (name.endsWith('.test.mjs')) testFiles.push(`tests/${group}/${name}`)
   }

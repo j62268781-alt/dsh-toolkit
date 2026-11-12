@@ -1,0 +1,13 @@
+**
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/
+!src/**
+!LICENSE
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/tests
+**/data

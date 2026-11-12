@@ -1,6 +1,6 @@
 # dsh-toolkit
 
-**给 DSH 配上一套工具箱——外观、自动化、设备、通知和桌宠，一次安装，九个模块分别开关。**
+**给 DSH 配上一套工具箱——外观、自动化、设备、通知和桌宠，一次安装，十个模块分别开关。**
 
 ---
 
@@ -13,6 +13,7 @@ DSH 插件集合：把常用的界面定制与工具管理放进 **设置面板*
 - 📱 **移动设备**：设备发现、实时画面和控制面板，在 DSH 右侧栏查看与操作手机。
 - 🔌 **Skills & MCP**：管理技能文件与 MCP 服务，查看连接状态、导入配置，并按服务器筛选工具。
 - 🔔 **会话通知**：完成、失败、等待回答或需要授权时提醒，分别配置声音，点击通知返回对应会话。
+- 🔗 **远程连接**：手机端用 DSH-Go 扫描桌面端二维码、输入 8 位认证码即可连上本机 DSH；同一张卡片的第二个 tab 保留微信 ClawBot（扫码登录、双向对话、审批转发）。
 - 🐾 **桌面宠物与灵动岛**：内置程序绘制的 DeepSeek 鲸鱼（正面 + 侧视、眼睛跟随鼠标），可在设置页从 Petdex 社区直接搜索安装更多宠物（无需 CLI）；悬浮宠物与屏幕顶部灵动岛分别开启，查看真实会话进展、发送消息、点卡片返回对应会话。
 
 **目录**：[界面预览](#界面预览) · [安装](#安装) · [使用](#使用) · [工作原理](#工作原理) · [已知边界](#已知边界) · [开发与验证](#开发与验证) · [更多文档](#更多文档) · [License](#license)
@@ -31,7 +32,7 @@ DSH 插件集合：把常用的界面定制与工具管理放进 **设置面板*
 
 ## 安装
 
-当前支持从本地仓库构建后安装。以下步骤不要求将九个模块分别安装，也不依赖尚未发布的 npm 包。
+当前支持从本地仓库构建后安装。以下步骤不要求将十个模块分别安装，也不依赖尚未发布的 npm 包。
 
 ### 从源码准备
 
@@ -44,7 +45,7 @@ pnpm install
 pnpm build
 ```
 
-构建会为聚合包的九个模块生成 Host、Client 和运行资源。请保留整个仓库目录；本地安装会使用这里的工作区依赖。
+构建会为聚合包的十个模块生成 Host、Client 和运行资源。请保留整个仓库目录；本地安装会使用这里的工作区依赖。
 
 ### DSH 桌面端
 
@@ -52,7 +53,7 @@ pnpm build
 
 > 请把 `/absolute/path/to/dsh-toolkit` 安装为当前 DSH profile 的插件包，并启用聚合包。
 
-安装完成后，在插件管理中可以看到 **DSH 工具箱**及九个组件的独立开关。只开启需要的功能即可；桌面宠物与灵动岛还需要在自己的设置页中分别开启，初始均关闭。
+安装完成后，在插件管理中可以看到 **DSH 工具箱**及十个组件的独立开关。只开启需要的功能即可；桌面宠物与灵动岛还需要在自己的设置页中分别开启，初始均关闭。
 
 Host 代码更新后需重启 DSH，再刷新页面加载 Client。桌面端 profile 由桌面应用管理，不使用 `dsh plugin --profile desktop` 命令修改。
 
@@ -68,9 +69,9 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 
 只需要单个模块时，也可将已构建的 `packages/<module>` 目录作为独立 bundle 安装，包名见下表。
 
-### 已经安装了九个独立模块？
+### 已经安装了十个独立模块？
 
-先备份目标 profile 的清单、锁文件和配置，再让 DSH 助手完成切换：**安装暂不启用的聚合包 → 移除九个独立 bundle 安装项 → 启用聚合包**。聚合包保留相同的模块条目 ID，已有配置与组件开关继续生效。这条本地切换路径已经验证。
+先备份目标 profile 的清单、锁文件和配置，再让 DSH 助手完成切换：**安装暂不启用的聚合包 → 移除十个独立 bundle 安装项 → 启用聚合包**。聚合包保留相同的模块条目 ID，已有配置与组件开关继续生效。这条本地切换路径已经验证。
 
 避免同时启用聚合包和同名模块的独立 bundle，以免重复声明。若升级来源是更早的 `shell-kit` 单体配置，请使用下文的[旧配置迁移](#旧配置迁移)。
 
@@ -120,21 +121,33 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 
 ## 工作原理
 
-一个仓库提供一个聚合 bundle 和九个模块包：
+一个仓库提供一个聚合 bundle 和十个模块包：
 
 ```text
 src/modules/<module>/   模块源码
 src/host/               公共 Host 逻辑
 src/client/             公共 Client 逻辑与样式
 packages/<module>/      各模块包的入口、清单与构建产物
-cordis.patch.yml        聚合包声明九个模块条目
+cordis.patch.yml        聚合包声明十个模块条目 + 一个外部配对 Host 条目
+server/                 手机配对的配对服务器（可独立部署，非 DSH 插件）
 ```
 
 **Host** 在 Harness 进程中运行，负责工具、配置与鉴权路由；**Client** 运行在 DSH 页面里，注册设置页、侧栏和交互。组件开关同时管理该模块的 Host 与 Client。
 
-根目录的 `pnpm build` 会把模块所需的 Host 依赖、Client bundle 和资源生成到各包的 `lib` 中。源码集中维护，无需拆成九个 Git 仓库；不要直接编辑这些构建产物。
+根目录的 `pnpm build` 会把模块所需的 Host 依赖、Client bundle 和资源生成到各包的 `lib` 中。源码集中维护，无需拆成十个 Git 仓库；不要直接编辑这些构建产物。
 
 **依赖由用途区分**：DSH 核心包以可选 peer 声明，由宿主提供；Skills/MCP 使用运行依赖 `yaml`，桌宠使用 `@electron/get` 与 `extract-zip` 准备 Electron。浏览器与设备控制使用外部 CLI，安装工具箱不会替你安装所有外部工具。
+
+**手机配对是「桌面插件 + 配对服务器」两段式**：桌面端的 `remote` 模块只画二维码和确认界面，
+配对会话由外部插件 `ds-harness-remote` 的 host 端创建（聚合包已插入并默认启用），认证走它暴露的
+`/ds-harness-remote/host.pairing.*` 控制通道；手机端（DSH-Go）通过 `server/` 里的配对服务器完成握手。
+`server/` 可以单独部署——只部署桌面端时，手机连不上，但两个 tab 与微信桥接照常工作。
+
+外部 Host 通过根目录的 [remote-host.js](remote-host.js) 挂载，而不是让 Loader 直接指向 npm 包：
+客户端模块系统会为每个 Loader 行读取 `dsh.client` 声明，直接指向 `ds-harness-remote` 会连带加载它
+自带的侧栏入口和设置页。经这个没有 `dsh.client` 的 shim 挂载，侧栏只保留本聚合包的「远程连接」一个
+入口，而 Host 侧的配对会话、settings 绑定与 `/ds-harness-remote` 控制通道照常工作。自部署步骤见
+[server/README.zh.md](server/README.zh.md)。
 
 **桌宠运行在独立的 Electron 辅助进程中**，通过本机回环连接接收 Host 状态，由辅助进程创建透明置顶窗口。它随插件退出，不修改 DSH 安装文件，也不依赖 DSH 私有 Electron IPC。
 
@@ -147,6 +160,8 @@ cordis.patch.yml        聚合包声明九个模块条目
 | Skills / MCP | 需要目标运行时、技能目录权限及宿主 Loader / MCP 服务；第三方服务器的连接和授权仍受其自身条件影响。 |
 | 系统通知 | 需要系统授权和连接着的 DSH 页面；操作系统可能限制通知弹出、声音和点击后的窗口激活。 |
 | 桌面宠物 | Host 必须运行在有图形桌面的本机；远程或无图形 Host 无法把窗口显示到浏览器所在的电脑。 |
+| 手机连接 | 需要手机装 [DSH-Go](https://github.com/ccch1mneyyy/dsh-Go)，且手机能访问配对服务器（默认 `https://dsh.r2049.cn`，可在卡片里改成自部署地址）。认证码只在手机端显示。 |
+| 微信 ClawBot | 需要微信账号与腾讯 iLink 通道；同一微信号同时只能有一个消费者，不能和别的微信插件同时开监听。 |
 
 桌宠首次准备运行时需要联网，也可配置 `electronPath` 或 `DSH_TOOLKIT_ELECTRON_PATH` 使用已有 Electron。macOS 通过 AppKit 的真实安全区域数据识别刘海并定位灵动岛；其他平台和无刘海显示器使用独立的屏幕顶部胶囊布局。平台对置顶、全屏空间和多显示器的处理可能不同，需按实际系统验证。
 
@@ -163,7 +178,7 @@ pnpm verify
 
 | 命令 | 用途 |
 | --- | --- |
-| `pnpm build` | 构建 Host、Client 与九个模块包 |
+| `pnpm build` | 构建 Host、Client 与十个模块包 |
 | `pnpm typecheck` | TypeScript 检查 |
 | `pnpm test` | 运行测试 |
 | `pnpm check` | 检查模块与包的契约 |
@@ -186,9 +201,9 @@ pnpm migrate:config /absolute/path/to/profile/cordis.patch.yml
 pnpm migrate:config /absolute/path/to/profile/cordis.patch.yml --write
 ```
 
-命令不会自动选择当前 profile。写入前会创建带时间戳和 UUID 的备份；已有模块配置优先，旧总开关状态会分别保留到九个模块。冲突别名或不安全的 YAML 结构会拒绝自动迁移。
+命令不会自动选择当前 profile。写入前会创建带时间戳和 UUID 的备份；已有模块配置优先，旧总开关状态会分别保留到十个模块。冲突别名或不安全的 YAML 结构会拒绝自动迁移。
 
-旧 root 覆盖会保留并设为禁用；由于新 bundle 不再插入旧 `shell-kit` 行，宿主可能对这条遗留覆盖提示 `entry not found`，不影响新模块行。从九个独立 bundle 切换到聚合安装不需要运行此迁移。
+旧 root 覆盖会保留并设为禁用；由于新 bundle 不再插入旧 `shell-kit` 行，宿主可能对这条遗留覆盖提示 `entry not found`，不影响新模块行。从十个独立 bundle 切换到聚合安装不需要运行此迁移。
 
 ## 更多文档
 
@@ -197,7 +212,8 @@ pnpm migrate:config /absolute/path/to/profile/cordis.patch.yml --write
 | [启动动画说明](docs/boot/README.md) | 三款动画、设计来源、时长与减少动态效果 |
 | [通知模块说明](docs/notification/README.md) | 提醒行为、权限、声音与接口契约 |
 | [桌面宠物说明](docs/pet/README.md) | 配置字段、辅助进程、桌面环境与素材许可 |
-| [模块包目录](packages/) | 九个独立包的清单与入口 |
+| [自部署配对服务器](server/README.zh.md) | 环境变量、Docker 部署、配对端点与兼容性说明 |
+| [模块包目录](packages/) | 十个独立包的清单与入口 |
 | [Judgment 类型契约](src/modules/judgment/host/contract/index.ts) | `dsh-toolkit-judgment/contract` 导出的类型与服务契约 |
 
 ## License

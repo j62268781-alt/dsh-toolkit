@@ -1,4 +1,6 @@
-# One bundle, ten independently managed component package identities.
+# One bundle, ten independently managed component package identities,
+# plus the external ds-harness-remote host, mounted through ./remote-host.js so its
+# own browser UI stays off and the bundle keeps a single unified entry.
 - insert:
     - id: dsh-toolkit-boot
       name: dsh-toolkit-boot
@@ -18,5 +20,13 @@
       name: dsh-toolkit-notification
     - id: dsh-toolkit-pet
       name: dsh-toolkit-pet
-    - id: dsh-toolkit-weixin-clawbot
-      name: dsh-toolkit-weixin-clawbot
+    - id: dsh-toolkit-remote
+      name: dsh-toolkit-remote
+    - id: ds-harness-remote
+      name: dsh-toolkit/remote-host
+      inject:
+        - webServer
+      config:
+        enabled: true
+        role: host
+        serverUrl: https://dsh.r2049.cn

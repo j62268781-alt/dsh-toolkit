@@ -20,7 +20,7 @@ export const Config = s.object({
  * 而不是普通值：设置面板改写时宿主原地更新引用里的值，插件必须用的时候再取值。
  * 直接当普通值用会拿到 `{}` —— 例如 `path.isAbsolute(config.electronPath)` 会抛
  * `The "path" argument must be of type string. Received an instance of Object`。
- * `boot` / `weixin-clawbot` 两个模块的 `readConfig` 用的是同一套写法。
+ * `boot` / `remote` 两个模块的 `readConfig` 用的是同一套写法。
  */
 export function readField(config, key) {
   const field = config?.[key]

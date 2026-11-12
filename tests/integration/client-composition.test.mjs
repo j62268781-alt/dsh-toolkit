@@ -15,7 +15,7 @@ const EXPECTED_INJECT = {
   'toolkit-notification-client': ['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces'],
   'toolkit-boot-client': ['slots', 'configForms'],
   'toolkit-pet-client': ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces', 'sessions'],
-  'toolkit-weixin-clawbot-client': ['locale'],
+  'toolkit-remote-client': ['locale'],
 }
 const ALL_SERVICES = new Set([
   ...Object.values(EXPECTED_INJECT).flat(), 'sidebarRight', 'shortcuts', 'uiSession', 'uiConversation', 'uiWorkspace',
@@ -342,7 +342,7 @@ test('nested Remote dependencies block only the client that declares them', asyn
 test('missing settings forms or mobile tab services do not suspend unrelated children', async () => {
   const withoutForms = await boot({ missing: ['configForms'] })
   assert.deepEqual(withoutForms.pending, ['toolkit-theme-client', 'toolkit-skills-mcp-client', 'toolkit-judgment-client', 'toolkit-browser-client', 'toolkit-notification-client', 'toolkit-boot-client', 'toolkit-pet-client'])
-  assert.deepEqual(withoutForms.active.sort(), ['toolkit-archived-client', 'toolkit-mobile-client', 'toolkit-weixin-clawbot-client'])
+  assert.deepEqual(withoutForms.active.sort(), ['toolkit-archived-client', 'toolkit-mobile-client', 'toolkit-remote-client'])
   assert.equal(withoutForms.tabTypes.length, 1)
 
   const withoutTabs = await boot({ missing: ['sidebarRightTabs'] })

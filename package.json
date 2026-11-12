@@ -10,7 +10,8 @@
     "./contract": "./contract.js",
     "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json",
-    "./icon": "./icon.svg"
+    "./icon": "./icon.svg",
+    "./remote-host": "./remote-host.js"
   },
   "engines": {
     "node": ">=20"
@@ -36,6 +37,7 @@
   "files": [
     "index.js",
     "contract.js",
+    "remote-host.js",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
@@ -85,7 +87,8 @@
     "dsh-toolkit-pet": "workspace:^",
     "dsh-toolkit-skills-mcp": "workspace:^",
     "dsh-toolkit-theme": "workspace:^",
-    "dsh-toolkit-weixin-clawbot": "workspace:^"
+    "dsh-toolkit-remote": "workspace:^",
+    "ds-harness-remote": "0.6.4"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.5",
