@@ -3,6 +3,7 @@ import { pollInterval, toneOf } from './model.js'
 import { placePopover } from './position.js'
 import {
   PAIRING_CODE_LENGTH,
+  PAIRING_IDLE_POLL_MS,
   PAIRING_POLL_MS,
   createPairing,
   isPairingActive,
@@ -354,6 +355,16 @@ export function createPanel(React, { t, connection, portal }) {
       return () => clearInterval(timer)
     }, [active, state, value.halted])
 
+    // 已绑定但没有活动会话：慢轮询宿主连接状态，手机连上来/断掉能自己更新。
+    useEffect(() => {
+      if (!active || value.halted || state !== undefined || value.binding !== true) return undefined
+      const timer = setInterval(() => {
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+        void pairing.hostStatus()
+      }, PAIRING_IDLE_POLL_MS)
+      return () => clearInterval(timer)
+    }, [active, state, value.halted, value.binding])
+
     // 本地倒计时归零等价于「这张二维码已经不能用了」，状态文案要立刻改口。
     const expired = state === 'created' && seconds === 0
     const terminal = state === 'failed' || state === 'cancelled' || state === 'expired' || expired
@@ -448,6 +459,26 @@ export function createPanel(React, { t, connection, portal }) {
           h('div', { className: 'wc-actions' },
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('refresh')),
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: cancel }, t('cancel'))))
+      }
+      // 没有活动会话，但本机已经和这台服务器绑过：配对记录被回收不代表掉线。
+      // 这里必须画「已绑定」，否则每次 DSH 重启后都会假装没连过，诱导用户重复配对。
+      if (state === undefined && value.binding === true) {
+        const phone = Array.isArray(value.clients)
+          ? value.clients.find((client) => typeof client?.name === 'string' && client.name.trim() !== '')
+          : undefined
+        return h('div', { className: 'wc-body' },
+          h('div', { className: 'wc-info' },
+            h('div', { className: 'wc-info__row' },
+              h('span', { className: 'wc-info__key' }, t('pairPhone')),
+              h('span', { className: 'wc-info__value' }, phone?.name ?? t('pairPhoneFallback')))),
+          h('div', { className: 'wc-hint' }, t(value.clients.length > 0 ? 'pairBoundOnline' : 'pairBoundOffline')),
+          h('div', { className: 'wc-actions' },
+            h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('pairAgain'))),
+          h(ServerRow, {
+            serverUrl: value.serverUrl,
+            busy,
+            onSave: (next) => pairing.setServer(next),
+          }))
       }
       // 两个 tab 都不再写状态行：二维码、蒙层、倒计时、信息行和主按钮已经把状态说完了。
       return h('div', { className: 'wc-body' },

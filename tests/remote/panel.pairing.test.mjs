@@ -288,6 +288,52 @@ test('配对：首次状态读取完成前只转圈，不先画「生成配对�
   }
 })
 
+test('配对：会话记录被回收后仍认「已绑定」，不退回「生成二维码」', async () => {
+  // 配对记录在过期后不久会被宿主回收（host.pairing.status → undefined），
+  // 但落盘的 host 凭据还在：这时必须展示已绑定，否则用户会以为掉线并重复配对。
+  const baseReplies = {
+    'settings.get': {
+      config: { serverUrl: SERVER },
+      associations: { host: { method: 'device-pairing', account: 'dsh-device:abc' } },
+    },
+    'host.pairing.status': undefined,
+  }
+
+  const panel = await mount({
+    ...baseReplies,
+    status: {
+      mode: 'local',
+      host: { online: true, connectedClients: [{ deviceId: 'phone-1', name: 'Pixel 9', mode: 'remote' }] },
+    },
+  })
+  try {
+    await panel.flush()
+    const popover = panel.popover()
+    assert.equal(popover.textContent.includes('pairGenerate'), false, '已绑定就不能再画「生成配对二维码」')
+    assert.ok(popover.textContent.includes('pairBoundOnline'), '手机在线时说明手机已连接')
+    assert.ok(popover.textContent.includes('Pixel 9'), '展示在线手机的名字')
+    assert.ok(popover.textContent.includes('pairAgain'), '仍允许主动重新配对')
+    assert.ok(popover.textContent.includes(SERVER), '显示当前配对服务器')
+  } finally {
+    await panel.unmount()
+  }
+
+  // 手机离线（没有 connectedClients）时仍算已绑定，只是换成「打开 DSH-Go 即可连接」。
+  const offline = await mount({
+    ...baseReplies,
+    status: { mode: 'local', host: { online: true, connectedClients: [] } },
+  })
+  try {
+    await offline.flush()
+    const view = offline.popover()
+    assert.ok(view.textContent.includes('pairBoundOffline'), '离线时提示已绑定、等待手机连接')
+    assert.ok(view.textContent.includes('pairPhoneFallback'), '没有在线设备名时用兜底称呼')
+    assert.equal(view.textContent.includes('pairGenerate'), false)
+  } finally {
+    await offline.unmount()
+  }
+})
+
 test('配对：终态按 failureReason 说清原因，不再四种情况一个样', async () => {
   const cases = [
     [{ state: 'failed', failureReason: 'verification_failed' }, 'pairEndCodeWrong'],

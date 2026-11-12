@@ -22,6 +22,9 @@ export const PAIRING_PREFIX = '/ds-harness-remote'
 /** 配对会话轮询间隔：服务器侧状态变化（扫码/确认）通常在 1 秒内落库。 */
 export const PAIRING_POLL_MS = 2500
 
+/** 已绑定、没有活动会话时的慢轮询：只为了知道手机是不是刚连上来。 */
+export const PAIRING_IDLE_POLL_MS = 5000
+
 /** 手机上进码固定 8 位（服务器只接受 /^[0-9]{8}$/）。 */
 export const PAIRING_CODE_LENGTH = 8
 
@@ -117,6 +120,15 @@ export function createPairing() {
     view: undefined,
     error: undefined,
     serverUrl: undefined,
+    /**
+     * 本机是否已经和当前服务器绑过：来自 settings.get 的 associations.host（落盘的 host 凭据）。
+     * 配对会话记录只活到过期后 5 分钟，之后 host.pairing.status 返回 undefined；
+     * 但「已绑定」这件事不会因为会话记录被回收而消失，所以不能只靠 status 判断。
+     * undefined = 还没读到（老版本宿主可能没有 associations 字段）。
+     */
+    binding: undefined,
+    /** 当前连着本机的设备（status.host.connectedClients），用于展示手机是否在线。 */
+    clients: [],
     /** 致命错误时停掉自动轮询：否则每 2.5 秒重试一次，错误行会不停闪。 */
     halted: false,
   }
@@ -152,10 +164,35 @@ export function createPairing() {
   async function settings() {
     try {
       const view = await control('settings.get')
-      set({ serverUrl: view?.config?.serverUrl ?? value.serverUrl })
+      const associations = view?.associations
+      const host = associations?.host
+      set({
+        serverUrl: view?.config?.serverUrl ?? value.serverUrl,
+        // 宿主没给 associations 时保持 undefined（未知），不要误判成「未绑定」。
+        ...associations === undefined || associations === null
+          ? {}
+          : { binding: host !== undefined && host !== null },
+      })
       return view
     } catch {
       // 设置服务不可用时（例如极简宿主）不阻塞配对，只是不显示服务器地址。
+      return undefined
+    }
+  }
+
+  /**
+   * 读宿主连接状态：`status.host` 里有 online / connectedClients。
+   * 失败不影响配对（老版本宿主或极简宿主可能没有这个端点）。
+   */
+  async function hostStatus() {
+    try {
+      const status = await control('status')
+      const host = status?.host
+      if (host === undefined || host === null) return undefined
+      const clients = Array.isArray(host.connectedClients) ? host.connectedClients : []
+      set({ clients })
+      return host
+    } catch {
       return undefined
     }
   }
@@ -187,8 +224,11 @@ export function createPairing() {
       // 整段都算「读取中」：先读服务器地址、再读会话状态，读完才允许面板画生成按钮。
       set({ loading: true })
       try {
-        if (value.serverUrl === undefined) await settings()
-        return await refresh()
+        // 每次都重读：绑定状态可能在另一个窗口里变过。
+        await settings()
+        const view = await refresh()
+        await hostStatus()
+        return view
       } finally {
         set({ loading: false })
       }
