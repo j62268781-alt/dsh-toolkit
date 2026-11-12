@@ -256,6 +256,8 @@ export function createPanel(React, { t, connection, portal }) {
    * 用两段式：容器只做底色与内边距，按钮自己画选中块，这样切换时不会整条重排。
    */
   function TabBar({ tab, onTab }) {
+    const items = [['pair', t('tabPair')], ['claw', t('tabClaw')]]
+    const index = Math.max(0, items.findIndex(([key]) => key === tab))
     const item = (key, label) => h('button', {
       type: 'button',
       role: 'tab',
@@ -265,9 +267,14 @@ export function createPanel(React, { t, connection, portal }) {
       'aria-controls': 'wc-tabpanel',
       onClick: () => onTab(key),
     }, label)
+    // 白色指示块由 CSS 画，位置靠 transform 平移；按钮自己保持透明。
     return h('div', { className: 'wc-tabs', role: 'tablist', 'aria-label': t('tabsLabel') },
-      item('pair', t('tabPair')),
-      item('claw', t('tabClaw')))
+      h('div', {
+        className: 'wc-tab-indicator',
+        'aria-hidden': 'true',
+        style: { transform: `translateX(${index * 100}%)` },
+      }),
+      ...items.map(([key, label]) => item(key, label)))
   }
 
   /** 服务器地址一行：默认展示，点「修改」变成输入框（自部署 server 时要用）。 */

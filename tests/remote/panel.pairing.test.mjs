@@ -210,9 +210,16 @@ test('tab：默认开在「手机连接」，两个 tab 的选中态互斥', asy
     assert.equal(tabs[1].getAttribute('aria-selected'), 'false')
     assert.ok(popover.querySelector('.wc-tabpanel') !== null, 'tab 内容应在 tabpanel 里')
 
+    // 分段控件的白色指示块：唯一一个、不参与 tab 语义、位置靠 transform 平移。
+    const indicators = popover.querySelectorAll('.wc-tab-indicator')
+    assert.equal(indicators.length, 1)
+    assert.equal(indicators[0].getAttribute('aria-hidden'), 'true')
+    assert.equal(indicators[0].style.transform, 'translateX(0%)')
+
     await panel.click(tabs[1])
     assert.equal(tabs[1].getAttribute('aria-selected'), 'true')
     assert.equal(tabs[0].getAttribute('aria-selected'), 'false')
+    assert.equal(indicators[0].style.transform, 'translateX(100%)', '切换后指示块应滑到第二格')
   } finally {
     await panel.unmount()
   }
