@@ -311,6 +311,13 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   max-width: 260px;
 }
 
+.wc-hintblock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
 .wc-countdown {
   font-variant-numeric: tabular-nums;
   color: var(--dsw-alias-label-secondary);
@@ -635,6 +642,10 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   color: var(--dsw-alias-label-primary);
   font: inherit;
   font-size: 13px;
+}
+
+.wc-code__input--block {
+  align-self: stretch;
 }
 
 .wc-code__input:focus-visible {

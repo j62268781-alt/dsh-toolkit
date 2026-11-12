@@ -278,6 +278,20 @@ test('配对：手机 claim 后输入 8 位码，确认时带上 sessionId 与�
     assert.ok(input !== null, '已扫码后要出现验证码输入框')
     assert.equal(input.getAttribute('maxlength'), '8')
 
+    // 布局契约：说明 + 倒计时一组，输入框独占一行，按钮行在输入框下面（绑定在左、取消在右）。
+    const hintblock = popover.querySelector('.wc-hintblock')
+    assert.ok(hintblock !== null, '说明与倒计时要归到一组')
+    assert.ok(hintblock.querySelector('.wc-hint') !== null, '组内要有说明文案')
+    assert.ok(hintblock.querySelector('.wc-countdown') !== null, '组内要有倒计时')
+    assert.equal(input.parentElement, hintblock.parentElement, '输入框与说明组同属卡片主体')
+    assert.equal(hintblock.nextElementSibling, input, '输入框应紧跟在说明组之后')
+    const actions = input.nextElementSibling
+    assert.ok(actions.classList.contains('wc-actions'), '输入框下面要有按钮行')
+    assert.equal(actions.firstElementChild.textContent, 'pairBind', '按钮行第一个是确认绑定')
+    assert.equal(actions.lastElementChild.textContent, 'cancel', '按钮行第二个是取消')
+    assert.ok(actions.firstElementChild.classList.contains('wc-button--half'), '两个按钮各占一半')
+    assert.ok(actions.lastElementChild.classList.contains('wc-button--half'), '两个按钮各占一半')
+
     // React 受控输入用内部 value tracker 去重，必须走原型 setter 才能让它看见变化。
     await act(async () => {
       const setter = Object.getOwnPropertyDescriptor(panel.dom.window.HTMLInputElement.prototype, 'value').set

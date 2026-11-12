@@ -365,36 +365,42 @@ export function createPanel(React, { t, connection, portal }) {
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('pairAgain'))))
       }
       if (state === 'claimed') {
+        // 说明和倒计时归一组，输入框独占一行，按钮再占一行：视线路径是「读说明 → 填码 → 提交」。
         return h('div', { className: 'wc-body' },
-          h('div', { className: 'wc-hint' }, view.mobile?.name === undefined
-            ? t('pairClaimedHint')
-            : t('pairClaimedHintNamed', { name: view.mobile.name })),
-          h('div', { className: 'wc-code' },
-            h('input', {
-              ref: codeRef,
-              className: 'wc-code__input',
-              inputMode: 'numeric',
-              pattern: '[0-9]*',
-              maxLength: PAIRING_CODE_LENGTH,
-              placeholder: t('pairCodePlaceholder'),
-              value: code,
-              disabled: busy,
-              onChange: (event) => setCode(event.target.value.replace(/\D/g, '').slice(0, PAIRING_CODE_LENGTH)),
-              onKeyDown: (event) => {
-                if (event.key === 'Enter' && code.length === PAIRING_CODE_LENGTH && !busy) void submit()
-              },
-            }),
+          h('div', { className: 'wc-hintblock' },
+            h('div', { className: 'wc-hint' }, view.mobile?.name === undefined
+              ? t('pairClaimedHint')
+              : t('pairClaimedHintNamed', { name: view.mobile.name })),
+            seconds === undefined
+              ? null
+              : h('div', { className: 'wc-countdown' }, t('pairCountdown', { s: seconds }))),
+          h('input', {
+            ref: codeRef,
+            className: 'wc-code__input wc-code__input--block',
+            inputMode: 'numeric',
+            pattern: '[0-9]*',
+            maxLength: PAIRING_CODE_LENGTH,
+            placeholder: t('pairCodePlaceholder'),
+            value: code,
+            disabled: busy,
+            onChange: (event) => setCode(event.target.value.replace(/\D/g, '').slice(0, PAIRING_CODE_LENGTH)),
+            onKeyDown: (event) => {
+              if (event.key === 'Enter' && code.length === PAIRING_CODE_LENGTH && !busy) void submit()
+            },
+          }),
+          h('div', { className: 'wc-actions wc-actions--full' },
             h('button', {
               type: 'button',
-              className: 'wc-button wc-button--primary',
+              className: 'wc-button wc-button--primary wc-button--half',
               disabled: busy || code.length !== PAIRING_CODE_LENGTH,
               onClick: () => void submit(),
-            }, t('pairBind'))),
-          seconds === undefined
-            ? null
-            : h('div', { className: 'wc-countdown' }, t('pairCountdown', { s: seconds })),
-          h('div', { className: 'wc-actions' },
-            h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: cancel }, t('cancel'))))
+            }, t('pairBind')),
+            h('button', {
+              type: 'button',
+              className: 'wc-button wc-button--half',
+              disabled: busy,
+              onClick: cancel,
+            }, t('cancel'))))
       }
       if (state === 'approved') {
         return h('div', { className: 'wc-body' },
