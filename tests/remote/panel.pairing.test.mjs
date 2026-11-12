@@ -297,7 +297,8 @@ test('配对：手机 claim 后输入 8 位码，确认时带上 sessionId 与�
       verificationCode: '00123456',
     })
 
-    assert.ok(popover.textContent.includes('pairStateCompleted'), '完成后状态要变成已连接')
+    assert.equal(popover.querySelector('.wc-status'), null, '完成后不再显示状态行')
+    assert.match(popover.textContent, /pairCompletedHint/, '完成后要给出「可以打开 DSH-Go」的说明')
     assert.ok(popover.textContent.includes('Pixel 9'), '完成后要显示手机名称')
   } finally {
     await panel.unmount()
@@ -359,7 +360,7 @@ test('配对：账号冲突时给出「解绑并重试」，解绑后完成配�
 
     const logout = panel.control.calls.find((call) => call.endpoint === 'settings.logout')
     assert.ok(logout !== undefined, '解绑要走 settings.logout')
-    assert.ok(popover.textContent.includes('pairStateCompleted'), '解绑后应完成配对')
+    assert.match(popover.textContent, /pairCompletedHint/, '解绑后应完成配对')
     assert.equal(popover.querySelector('.wc-error'), null, '成功后错误行消失')
   } finally {
     await panel.unmount()

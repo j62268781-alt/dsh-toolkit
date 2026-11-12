@@ -54,12 +54,6 @@ export function createPanel(React, { t, connection, portal }) {
     return Math.max(0, Math.ceil((expiresAt - now) / 1000))
   }
 
-  function StatusRow({ children }) {
-    // 这里刻意不放状态圆点：圆点只属于入口按钮（见 styles.css 里 .wc-dot 的绝对定位）。
-    // 之前复用同一个类名，而 .wc-status 不是定位祖先，圆点就跑到卡片右上角去了。
-    return h('div', { className: 'wc-status' }, h('span', null, children))
-  }
-
   /** 宿主 primitives 的 IconCloseOutlineRegular：16×16、两笔 45° 交叉线。 */
   function CloseIcon() {
     return h('svg', {
@@ -184,7 +178,6 @@ export function createPanel(React, { t, connection, portal }) {
     const message = value.lastMessage
     const bridge = value.bridge
     // 断线（服务端拒了 token）时「消息监听」这一行改成说人话的错误，而不是继续显示「监听中 · 收 N」。
-    const invalid = degraded === true && value.monitor?.phase === 'invalid'
     const traffic = degraded === true
       ? (value.monitor?.lastError ?? t('stateReconnecting'))
       : t(value.monitor.running ? 'monitorTraffic' : 'monitorIdle', {
@@ -192,7 +185,6 @@ export function createPanel(React, { t, connection, portal }) {
         s: bridge.replied,
       })
     return h('div', { className: 'wc-body' },
-      h(StatusRow, null, t(invalid === true ? 'stateInvalid' : degraded === true ? 'stateReconnecting' : 'stateConnected')),
       h('div', { className: 'wc-info' },
         h('div', { className: 'wc-info__row' },
           h('span', { className: 'wc-info__key' }, t('account')),
@@ -347,19 +339,6 @@ export function createPanel(React, { t, connection, portal }) {
     // 本地倒计时归零等价于「这张二维码已经不能用了」，状态文案要立刻改口。
     const expired = state === 'created' && seconds === 0
     const terminal = state === 'failed' || state === 'cancelled' || state === 'expired' || expired
-    // 只有 claimed / approved / completed 与终态需要状态行：
-    // created 由二维码表达、idle 由主按钮表达，都不再写一行字。
-    const labelKey = state === 'claimed'
-      ? 'pairStateClaimed'
-      : state === 'approved'
-        ? 'pairStateApproved'
-        : state === 'completed'
-          ? 'pairStateCompleted'
-          : state === 'cancelled'
-            ? 'pairStateCancelled'
-            : expired || state === 'expired'
-              ? 'pairStateExpired'
-              : 'pairStateFailed'
 
     const start = () => void pairing.start()
     const cancel = () => void pairing.cancel()
@@ -371,7 +350,6 @@ export function createPanel(React, { t, connection, portal }) {
     const body = (() => {
       if (state === 'completed') {
         return h('div', { className: 'wc-body' },
-          h(StatusRow, null, t(labelKey)),
           h('div', { className: 'wc-info' },
             h('div', { className: 'wc-info__row' },
               h('span', { className: 'wc-info__key' }, t('pairPhone')),
@@ -388,7 +366,6 @@ export function createPanel(React, { t, connection, portal }) {
       }
       if (state === 'claimed') {
         return h('div', { className: 'wc-body' },
-          h(StatusRow, null, t(labelKey)),
           h('div', { className: 'wc-hint' }, view.mobile?.name === undefined
             ? t('pairClaimedHint')
             : t('pairClaimedHintNamed', { name: view.mobile.name })),
@@ -421,7 +398,6 @@ export function createPanel(React, { t, connection, portal }) {
       }
       if (state === 'approved') {
         return h('div', { className: 'wc-body' },
-          h(StatusRow, null, t(labelKey)),
           h('div', { className: 'wc-hint' }, t('pairApprovedHint')),
           h('div', { className: 'wc-actions' },
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: cancel }, t('cancel'))))
@@ -439,10 +415,8 @@ export function createPanel(React, { t, connection, portal }) {
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('refresh')),
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: cancel }, t('cancel'))))
       }
-      // idle 不显示状态行：下面的主按钮已经足够表达「还没连」，多一行反而啰嗦。
-      // failed / cancelled / expired 仍保留状态行，用户需要知道上一次为什么结束。
+      // 两个 tab 都不再写状态行：二维码、蒙层、倒计时、信息行和主按钮已经把状态说完了。
       return h('div', { className: 'wc-body' },
-        state === undefined || state === 'idle' ? null : h(StatusRow, null, t(labelKey)),
         h('div', { className: 'wc-hint' }, terminal ? t('pairTerminalHint') : t('pairIdleHint')),
         h('div', { className: 'wc-actions' },
           h('button', {

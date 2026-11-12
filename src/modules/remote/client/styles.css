@@ -225,15 +225,6 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   gap: 10px;
 }
 
-.wc-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
-  font-size: 12px;
-  color: var(--dsw-alias-label-secondary);
-}
-
 /* 二维码容器：蒙层要绝对定位压在码上，所以这里给一个定位祖先，并锁死二维码尺寸，
    换态（等待扫码 → 已扫码 → 已过期）时卡片高度不跳动。 */
 .wc-qr-wrap {

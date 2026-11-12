@@ -415,8 +415,8 @@ test('被顶号断开：文案从「正在重连」升级到「连接已失效�
   // 真实场景：另一台电脑扫码后旧 token 被服务端作废，getUpdates 只回 -14。
   // 老实现只记一条「稍后自动重试」，面板还是「已连接」，用户根本不知道消息已经断了。
   const cases = [
-    { phase: 'stale', label: 'stateReconnecting', lastError: '微信连接已断开，正在重连…' },
-    { phase: 'invalid', label: 'stateInvalid', lastError: '微信连接已失效（可能在其他设备重新登录），请点「重新登录」' },
+    { phase: 'stale', lastError: '微信连接已断开，正在重连…' },
+    { phase: 'invalid', lastError: '微信连接已失效（可能在其他设备重新登录），请点「重新登录」' },
   ]
   for (const item of cases) {
     const panel = await mountPanel({
@@ -448,7 +448,7 @@ test('被顶号断开：文案从「正在重连」升级到「连接已失效�
     try {
       const popover = panel.popover()
       const text = popover.textContent
-      assert.ok(text.includes(item.label), `${item.phase} 状态下应渲染 ${item.label}`)
+      assert.equal(popover.querySelector('.wc-status'), null, '状态行已移除，原因写在监听行里')
       assert.ok(text.includes(item.lastError), '监听行要把断线原因说出来')
       assert.ok(!text.includes('monitorTraffic'), '断线时不能再显示「监听中 · 收 N 回 M」')
       const buttons = [...popover.querySelectorAll('button')]

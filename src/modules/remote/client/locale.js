@@ -10,9 +10,7 @@ export const WC_COPY = {
 
     stateRequesting: '正在申请二维码…',
     stateNeedCode: '需要输入微信显示的数字',
-    stateConnected: '已连接',
     stateReconnecting: '正在重连…',
-    stateInvalid: '连接已失效',
     stateFailed: '出现错误',
     stateClosed: '已关闭',
 
@@ -71,12 +69,6 @@ export const WC_COPY = {
     tabPair: '手机连接',
     tabClaw: 'ClawBot',
 
-    pairStateClaimed: '手机已扫码',
-    pairStateApproved: '正在完成绑定…',
-    pairStateCompleted: '手机已连接',
-    pairStateCancelled: '配对已取消',
-    pairStateExpired: '二维码已过期',
-    pairStateFailed: '配对失败',
 
     pairIdleHint: '生成二维码后用 DSH-Go 扫描，手机确认后会显示 8 位验证码。',
     pairScanHint: '用手机上的 DSH-Go 扫描二维码，扫码后在手机上确认连接。',
@@ -113,9 +105,7 @@ export const WC_COPY = {
 
     stateRequesting: 'Requesting a QR code…',
     stateNeedCode: 'Enter the number shown in WeChat',
-    stateConnected: 'Connected',
     stateReconnecting: 'Reconnecting…',
-    stateInvalid: 'Connection lost',
     stateFailed: 'Something went wrong',
     stateClosed: 'Closed',
 
@@ -173,12 +163,6 @@ export const WC_COPY = {
     tabPair: 'Phone',
     tabClaw: 'ClawBot',
 
-    pairStateClaimed: 'Phone scanned',
-    pairStateApproved: 'Finishing pairing…',
-    pairStateCompleted: 'Phone connected',
-    pairStateCancelled: 'Pairing cancelled',
-    pairStateExpired: 'QR code expired',
-    pairStateFailed: 'Pairing failed',
 
     pairIdleHint: 'Generate a QR code, scan it with DSH-Go, then confirm on the phone.',
     pairScanHint: 'Scan the QR code with DSH-Go on your phone, then confirm the connection.',
