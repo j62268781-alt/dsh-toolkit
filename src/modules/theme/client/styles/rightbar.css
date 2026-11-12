@@ -1,4 +1,4 @@
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [class*="_rightbarCol"]
   [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
   [data-dockkit-pane] {
@@ -9,7 +9,7 @@ html[data-sk-palette="codex"][data-sk-desktop]
   border-left: 0;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [class*="_rightbarCol"]
   [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
   [data-dockkit-pane]::before {
@@ -25,7 +25,7 @@ html[data-sk-palette="codex"][data-sk-desktop]
   pointer-events: none;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [class*="_rightbarCol"]
   [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
   [data-dockkit-pane]
@@ -38,7 +38,7 @@ html[data-sk-palette="codex"][data-sk-desktop]
   overflow-y: auto;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [class*="_rightbarCol"]
   [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
   [data-dockkit-pane]

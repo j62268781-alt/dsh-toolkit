@@ -1,4 +1,4 @@
-import { isDesktopShell } from "./platform.js";
+import { isCodexShell } from "./platform.js";
 
 // Keep the workspace width independent of the rail → hidden collapse cycle.
 const RAIL_WIDTH = 52;
@@ -58,7 +58,7 @@ export function installSidebarWidth(ctx, options = {}) {
     if (queued) cancelAnimationFrame(queued);
     queued = 0;
 
-    if (!isDesktopShell()) return;
+    if (!isCodexShell()) return;
     const frame = findFrame();
     if (!frame) return;
     const cols = frame.style.gridTemplateColumns;
@@ -150,7 +150,7 @@ export function installSidebarWidth(ctx, options = {}) {
     workspaceWidth = Math.min(maxWidth, Math.max(minWidth, Math.round(width)));
   };
   const sidebarHandle = (event) => {
-    if (!isDesktopShell() || !(event.target instanceof Element)) return null;
+    if (!isCodexShell() || !(event.target instanceof Element)) return null;
     const handle = event.target.closest('[data-side="sidebar"]');
     const frame = findFrame();
     const expanded = frame && (native
@@ -228,7 +228,7 @@ export function installSidebarWidth(ctx, options = {}) {
   const platformObserver = new MutationObserver(schedule);
   platformObserver.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["data-platform", "data-windows-titlebar"],
+    attributeFilter: ["data-platform", "data-windows-titlebar", "data-sk-codex-shell"],
   });
   window.addEventListener("resize", schedule);
 

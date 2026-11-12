@@ -1,6 +1,6 @@
-html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_sidebarCol"],
-html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_centerCol"],
-html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_rightbarCol"] {
+html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_sidebarCol"],
+html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_centerCol"],
+html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_rightbarCol"] {
   background-color: var(--cx-rail);
   background-image: none;
   border-left: none;
@@ -8,23 +8,23 @@ html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_rig
   border-radius: 0;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] {
+html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] {
   --cx-center-left-radius: var(--cx-card-radius);
   --cx-center-right-radius: var(--cx-card-radius);
   --cx-center-right-gap: var(--cx-gap);
 }
 
-html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"][data-sk-workspace-expanded] {
+html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"][data-sk-workspace-expanded] {
   --cx-center-left-radius: 0px;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [class*="_frame"]:not([data-rightbar-collapsed]):not([data-rightbar-fullscreen]) {
   --cx-center-right-radius: 0px;
   --cx-center-right-gap: 0px;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-slot]) {
+html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="main"] > :not([data-slot]) {
 
   margin: var(--cx-band-h) var(--cx-center-right-gap) var(--cx-gap) 0;
 
@@ -40,7 +40,7 @@ html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-s
    main slot anchor is `display:contents` and has no box), and a scroll
    container already clips its children to the rounded padding box — so keep
    `auto`. `clip` here turned the card into a paint box that could not scroll. */
-html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > [data-plugin-panel] {
+html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="main"] > [data-plugin-panel] {
   height: calc(100% - var(--cx-band-h) - var(--cx-gap));
   min-height: 0;
   margin-right: var(--cx-gap);
@@ -49,24 +49,24 @@ html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > [data-plugin
   overflow: auto;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-slot]) [class*="pagehead" i] {
+html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="main"] > :not([data-slot]) [class*="pagehead" i] {
   padding-top: var(--cx-page-head-pad, 28px);
 }
 
-html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_handle"] {
+html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_handle"] {
   display: block;
   top: var(--cx-band-h);
   bottom: var(--cx-gap);
   width: 8px;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [class*="_frame"]:not([data-sk-workspace-expanded])
   > [class*="_handle"][data-side="sidebar"] {
   display: none;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_handle"]::after {
+html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_handle"]::after {
   content: "";
   position: absolute;
   inset: 0 auto 0 50%;
@@ -75,17 +75,17 @@ html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_han
   pointer-events: none;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_handle"]:hover::after {
+html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_handle"]:hover::after {
   background: color-mix(in srgb, var(--dsw-alias-label-primary) 30%, var(--cx-line));
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [data-slot="main.conversation"]
   [class*="_header"]:has([class*="_titleRow"]) {
   padding-top: 0;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [data-slot="main.conversation"]
   [class*="_header"]:has([class*="_titleRow"]):not([class*="_headerBlank"])
   [class*="_crumbCurrent"]::before {
@@ -106,7 +106,7 @@ html[data-sk-palette="codex"][data-sk-desktop]
   mask-repeat: no-repeat;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [data-slot="main.conversation"]
   [class*="_header"]:has([class*="_titleRow"])
   [class*="_titleRow"] {
@@ -115,7 +115,7 @@ html[data-sk-palette="codex"][data-sk-desktop]
   box-sizing: content-box;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"] {
+html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="main.conversation"] > [class*="_root"] {
   position: relative;
   isolation: isolate;
   margin-right: var(--cx-center-right-gap);
@@ -126,7 +126,7 @@ html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main.conversation"] >
   background: none;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"]::before {
+html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="main.conversation"] > [class*="_root"]::before {
   content: "";
   position: absolute;
   top: var(--cx-band-h);
@@ -140,19 +140,19 @@ html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main.conversation"] >
   pointer-events: none;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [data-slot="main.conversation"]
   [class*="_header"]:has([class*="_titleRow"]) {
   padding-left: 0;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [data-slot="main.conversation"]
   [class*="_header"]:has([class*="_titleRow"]):has([data-conversation-tabs]) {
   border-bottom-width: 1px;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [data-slot="main.conversation"]
   [class*="_header"]:has([class*="_titleRow"])
   [class*="_tabs"] {
@@ -163,7 +163,7 @@ html[data-sk-palette="codex"][data-sk-desktop]
   padding-left: 20px;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [data-slot="main.conversation"]
   [class*="_header"]:has([class*="_titleRow"])
   [class*="_tab"][role="tab"] {
@@ -174,7 +174,7 @@ html[data-sk-palette="codex"][data-sk-desktop]
   align-items: center;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop]
+html[data-sk-palette="codex"][data-sk-codex-shell]
   [data-slot="main.conversation"]
   [class*="_header"]:has([class*="_titleRow"])
   [class*="_viewsMore"] {

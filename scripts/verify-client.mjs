@@ -31,9 +31,9 @@ const check = (name, ok, detail = "") => results.push({ name, ok, detail });
 const oldGate = ':is(html[data-platform="darwin"], html:has([class*="_topStrip"]))';
 check("旧的双条件门禁已清零", !css.includes(oldGate), `仍有 ${css.split(oldGate).length - 1} 处`);
 check(
-  '统一门禁 html[data-sk-palette="codex"][data-sk-desktop] 存在',
-  css.includes('html[data-sk-palette="codex"][data-sk-desktop]'),
-  `${css.split('html[data-sk-palette="codex"][data-sk-desktop]').length - 1} 处`,
+  '统一门禁 html[data-sk-palette="codex"][data-sk-codex-shell] 存在',
+  css.includes('html[data-sk-palette="codex"][data-sk-codex-shell]'),
+  `${css.split('html[data-sk-palette="codex"][data-sk-codex-shell]').length - 1} 处`,
 );
 
 /* ── 2) 平台变量组与层叠顺序 ─────────────────────────────────────────── */
@@ -96,8 +96,10 @@ check(
 /* ── 6) JS 侧谓词 ────────────────────────────────────────────────────── */
 check("产物含 isDesktopShell()", built.includes("function isDesktopShell()"));
 check("产物含 isDarwinDesktop()", built.includes("function isDarwinDesktop()"));
-check("产物含 installDesktopMarker()", built.includes("function installDesktopMarker()"));
+check("产物含 installShellMarkers()", built.includes("function installShellMarkers()"));
 check('产物含标记常量 "data-sk-desktop"', built.includes('"data-sk-desktop"'));
+check('产物含标记常量 "data-sk-codex-shell"', built.includes('"data-sk-codex-shell"'));
+check("产物含宽屏阈值 SHELL_MIN_WIDTH = 1024", /SHELL_MIN_WIDTH = 1024/.test(built));
 check(
   "产物没有残留「只认 darwin」的提前 return",
   !built.includes('getAttribute("data-platform") !== "darwin") return'),

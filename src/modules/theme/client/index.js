@@ -2,7 +2,7 @@ import css from "./styles.css";
 import "./react.js";
 import { installStylesheet } from "../../../client/ui/stylesheet.js";
 import { findScopedForm } from "../../../client/config.js";
-import { installDesktopMarker } from "./platform.js";
+import { installShellMarkers } from "./platform.js";
 import { installRailTitles, installHomeRail } from "./rail.js";
 import { installBandHeight } from "./band.js";
 import { installSidebarWidth, installWorkspaceCollapse } from "./sidebar.js";
@@ -53,7 +53,7 @@ function installThemeCenter(ctx) {
 export function apply(ctx) {
   ctx.effect(registerScenes, "toolkit-theme:scene-builders");
   ctx.effect(() => installSceneClock(updateHopeSceneTime), "toolkit-theme:scene-clock");
-  ctx.effect(installDesktopMarker, "toolkit-theme:desktop-marker");
+  ctx.effect(installShellMarkers, "toolkit-theme:shell-markers");
   // Global by definition: the palette rewrites the host shell itself (sidebar, right bar,
   // settings chrome) through `[class*="_xxx"]` host-hash selectors, so no panel subtree owns it.
   ctx.effect(() => installStylesheet(css, "toolkit-theme"), "toolkit-theme:stylesheet");

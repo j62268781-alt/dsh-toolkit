@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises'
 import vm from 'node:vm'
 import { readArchived } from '../../src/modules/archived/client/model.js'
 import { ARCH_COPY } from '../../src/modules/archived/client/locale.js'
-import { installDesktopMarker } from '../../src/modules/theme/client/platform.js'
+import { installShellMarkers } from '../../src/modules/theme/client/platform.js'
 import { installSidebarWidth, installWorkspaceCollapse } from '../../src/modules/theme/client/sidebar.js'
 
 function page(t, html) {
@@ -55,7 +55,7 @@ function page(t, html) {
 test('theme follows late platform attributes and tears down its marker', async (t) => {
   const { document, flush } = page(t, '<html><body></body></html>')
   const root = document.documentElement
-  const dispose = installDesktopMarker()
+  const dispose = installShellMarkers()
   assert.equal(root.hasAttribute('data-sk-desktop'), false)
   root.setAttribute('data-platform', 'darwin')
   await flush()

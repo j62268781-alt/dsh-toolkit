@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { build } from 'esbuild'
 import { JSDOM } from 'jsdom'
 import { installCodexShell } from '../../src/modules/theme/client/shell.js'
+import { installShellMarkers } from '../../src/modules/theme/client/platform.js'
 import { installBandHeight } from '../../src/modules/theme/client/band.js'
 import { installSidebarWidth, installWorkspaceCollapse } from '../../src/modules/theme/client/sidebar.js'
 
@@ -13,7 +14,7 @@ const railBundle = await build({
 })
 const { installHomeRail, installRailTitles } = await import(`data:text/javascript;base64,${Buffer.from(railBundle.outputFiles[0].text).toString('base64')}`)
 
-function page(t, palette = 'native') {
+function page(t, palette = 'native', width = 1280) {
   const dom = new JSDOM(`<!doctype html><html data-platform="darwin" data-sk-palette="${palette}"><body>
     <div class="_frame_test" style="grid-template-columns:296px minmax(0, 1fr) 0px">
       <aside data-slot="sidebar"><div class="_root_test">
@@ -23,6 +24,7 @@ function page(t, palette = 'native') {
       <main data-slot="main.conversation"><div class="_titleRow_test"></div></main>
       <div class="_handle_test" data-side="sidebar" style="left:296px" role="presentation"></div>
     </div></body></html>`)
+  Object.defineProperty(dom.window, 'innerWidth', { configurable: true, writable: true, value: width })
   const previous = new Map()
   const frames = new Map()
   const cleanups = []
@@ -49,6 +51,10 @@ function page(t, palette = 'native') {
   })
   return {
     document, frames, cleanup: (fn) => cleanups.push(fn),
+    resize(next) {
+      dom.window.innerWidth = next
+      dom.window.dispatchEvent(new dom.window.Event('resize'))
+    },
     async flush() {
       for (let turn = 0; turn < 12; turn++) {
         await Promise.resolve()
@@ -316,7 +322,65 @@ test('the Windows content radius is switched off for every palette, not just Cod
   assert.match(imports, /@import "\.\/styles\/corners\.css"/, 'corners.css must be bundled with the theme')
 })
 
+test('a wide browser tab gets the Codex shell, a narrow one keeps the host layout', async (t) => {
+  // The host serves this same client into a browser, where `data-platform` is never
+  // set and the sidebar becomes a drawer below 768px. A wide tab still has a real
+  // sidebar column to draw the rail in, so the shell applies there; narrower tabs
+  // keep the host layout instead of having the shell grafted onto a drawer.
+  const { document, flush, cleanup, resize } = page(t, 'codex', 1000)
+  const ctx = context(document)
+  const root = document.documentElement
+  const frame = document.querySelector('._frame_test')
+  root.removeAttribute('data-platform')
+  cleanup(installShellMarkers())
+  cleanup(installCodexShell(ctx, installers))
+  await flush()
+  const assertNative = () => {
+    assert.match(frame.style.gridTemplateColumns, /^296px/)
+    assert.equal(frame.hasAttribute('data-sk-workspace-expanded'), false)
+    assert.equal(document.querySelector('.sk-home'), null)
+    assert.equal(document.querySelector('.sk-collapse-hit'), null)
+    assert.equal(document.body.style.getPropertyValue('--cx-band-h'), '')
+    assert.equal(ctx.listeners.size, 0)
+  }
+  const assertShell = (band = '') => {
+    assert.match(frame.style.gridTemplateColumns, /^302px/)
+    assert.equal(document.querySelectorAll('.sk-home').length, 1)
+    assert.equal(document.querySelectorAll('.sk-collapse-hit').length, 1)
+    // The band is measured from the host title row on macOS; a browser tab has no
+    // title row, so the 50px comes from the token floor in tokens.css instead.
+    assert.equal(document.body.style.getPropertyValue('--cx-band-h'), band)
+  }
+  assertNative()
+  assert.equal(root.hasAttribute('data-sk-codex-shell'), false)
+  // Growing past the host's own auto-collapse breakpoint applies the shell
+  // without a reload.
+  resize(1280)
+  await flush()
+  assert.equal(root.hasAttribute('data-sk-codex-shell'), true)
+  assert.equal(root.hasAttribute('data-sk-desktop'), false)
+  assertShell()
+  // Back below the breakpoint the host layout returns.
+  resize(1023)
+  await flush()
+  assert.equal(root.hasAttribute('data-sk-codex-shell'), false)
+  assertNative()
+  // The desktop app keeps the shell at any width.
+  root.setAttribute('data-platform', 'darwin')
+  await flush()
+  assert.equal(root.hasAttribute('data-sk-desktop'), true)
+  assertShell('50px')
+  root.removeAttribute('data-platform')
+  await flush()
+  assertNative()
+})
+
 test('every shell, sidebar, rightbar and radius selector requires the Codex palette', async () => {
+  // The three shell files also need a shell marker (`data-sk-codex-shell` or a platform
+  // attribute): the shell needs a sidebar column to draw the rail in, and the host
+  // hands the sidebar to its drawer in narrow windows, where a grafted shell pushes
+  // the default buttons out of alignment.
+  const structural = new Set(['layout.css', 'sidebar.css', 'rightbar.css'])
   for (const file of ['tokens.css', 'layout.css', 'sidebar.css', 'rightbar.css']) {
     const css = await readFile(new URL(`../../src/modules/theme/client/styles/${file}`, import.meta.url), 'utf8')
     const dom = new JSDOM('<!doctype html><head></head><body></body>')
@@ -334,6 +398,12 @@ test('every shell, sidebar, rightbar and radius selector requires the Codex pale
       assert.ok(rule.selectorText, 'shell styles should remain plain scoped rules')
       for (const selector of selectorList(rule.selectorText)) {
         assert.ok(selector.startsWith('html[data-sk-palette="codex"]'), `${file}: ${selector}`)
+        if (!structural.has(file)) continue
+        assert.match(
+          selector,
+          /\[data-sk-codex-shell\]|\[data-platform="darwin"\]|\[data-windows-titlebar\]/,
+          `${file}: a shell selector must also require a desktop marker: ${selector}`,
+        )
       }
     }
     dom.window.close()

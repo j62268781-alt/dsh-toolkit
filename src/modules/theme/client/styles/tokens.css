@@ -19,7 +19,7 @@ html[data-sk-palette="codex"]:root {
   --dsw-radius-panel: 20px;
 }
 
-html[data-sk-palette="codex"][data-sk-desktop] body {
+html[data-sk-palette="codex"][data-sk-codex-shell] body {
 
   --cx-rail-w: 52px;
   --cx-panel-w: 250px;

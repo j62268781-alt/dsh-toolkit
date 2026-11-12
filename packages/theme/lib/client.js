@@ -61,7 +61,7 @@ window.__ModuleLoader__.load({
       --dsw-radius-panel: 20px;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] body {
+    html[data-sk-palette="codex"][data-sk-codex-shell] body {
 
       --cx-rail-w: 52px;
       --cx-panel-w: 250px;
@@ -112,9 +112,9 @@ window.__ModuleLoader__.load({
       --dsh-windows-content-radius: 0px;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_sidebarCol"],
-    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_centerCol"],
-    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_rightbarCol"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_sidebarCol"],
+    html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_centerCol"],
+    html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_rightbarCol"] {
       background-color: var(--cx-rail);
       background-image: none;
       border-left: none;
@@ -122,23 +122,23 @@ window.__ModuleLoader__.load({
       border-radius: 0;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] {
       --cx-center-left-radius: var(--cx-card-radius);
       --cx-center-right-radius: var(--cx-card-radius);
       --cx-center-right-gap: var(--cx-gap);
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"][data-sk-workspace-expanded] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"][data-sk-workspace-expanded] {
       --cx-center-left-radius: 0px;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [class*="_frame"]:not([data-rightbar-collapsed]):not([data-rightbar-fullscreen]) {
       --cx-center-right-radius: 0px;
       --cx-center-right-gap: 0px;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-slot]) {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="main"] > :not([data-slot]) {
 
       margin: var(--cx-band-h) var(--cx-center-right-gap) var(--cx-gap) 0;
 
@@ -154,7 +154,7 @@ window.__ModuleLoader__.load({
        main slot anchor is \`display:contents\` and has no box), and a scroll
        container already clips its children to the rounded padding box — so keep
        \`auto\`. \`clip\` here turned the card into a paint box that could not scroll. */
-    html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > [data-plugin-panel] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="main"] > [data-plugin-panel] {
       height: calc(100% - var(--cx-band-h) - var(--cx-gap));
       min-height: 0;
       margin-right: var(--cx-gap);
@@ -163,24 +163,24 @@ window.__ModuleLoader__.load({
       overflow: auto;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main"] > :not([data-slot]) [class*="pagehead" i] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="main"] > :not([data-slot]) [class*="pagehead" i] {
       padding-top: var(--cx-page-head-pad, 28px);
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_handle"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_handle"] {
       display: block;
       top: var(--cx-band-h);
       bottom: var(--cx-gap);
       width: 8px;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [class*="_frame"]:not([data-sk-workspace-expanded])
       > [class*="_handle"][data-side="sidebar"] {
       display: none;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_handle"]::after {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_handle"]::after {
       content: "";
       position: absolute;
       inset: 0 auto 0 50%;
@@ -189,17 +189,17 @@ window.__ModuleLoader__.load({
       pointer-events: none;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] [class*="_frame"] > [class*="_handle"]:hover::after {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [class*="_frame"] > [class*="_handle"]:hover::after {
       background: color-mix(in srgb, var(--dsw-alias-label-primary) 30%, var(--cx-line));
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"]) {
       padding-top: 0;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"]):not([class*="_headerBlank"])
       [class*="_crumbCurrent"]::before {
@@ -220,7 +220,7 @@ window.__ModuleLoader__.load({
       mask-repeat: no-repeat;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"])
       [class*="_titleRow"] {
@@ -229,7 +229,7 @@ window.__ModuleLoader__.load({
       box-sizing: content-box;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="main.conversation"] > [class*="_root"] {
       position: relative;
       isolation: isolate;
       margin-right: var(--cx-center-right-gap);
@@ -240,7 +240,7 @@ window.__ModuleLoader__.load({
       background: none;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main.conversation"] > [class*="_root"]::before {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="main.conversation"] > [class*="_root"]::before {
       content: "";
       position: absolute;
       top: var(--cx-band-h);
@@ -254,19 +254,19 @@ window.__ModuleLoader__.load({
       pointer-events: none;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"]) {
       padding-left: 0;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"]):has([data-conversation-tabs]) {
       border-bottom-width: 1px;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"])
       [class*="_tabs"] {
@@ -277,7 +277,7 @@ window.__ModuleLoader__.load({
       padding-left: 20px;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"])
       [class*="_tab"][role="tab"] {
@@ -288,14 +288,14 @@ window.__ModuleLoader__.load({
       align-items: center;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"])
       [class*="_viewsMore"] {
       margin-top: 0;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) {
 
       --dsh-sidebar-inline-padding: 0px;
       display: grid;
@@ -316,13 +316,13 @@ window.__ModuleLoader__.load({
       );
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) {
       width: 100% !important;
 
       isolation: isolate;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only])::after {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only])::after {
       content: "";
       position: absolute;
       top: var(--cx-band-h);
@@ -335,7 +335,7 @@ window.__ModuleLoader__.load({
       pointer-events: none;
     }
 
-    html[data-sk-palette="codex"] .sk-collapse-hit {
+    html[data-sk-palette="codex"][data-sk-codex-shell] .sk-collapse-hit {
       position: fixed;
       left: var(--cx-toggle-x);
       top: calc((var(--cx-band-h) - 28px) / 2);
@@ -349,31 +349,31 @@ window.__ModuleLoader__.load({
       z-index: 40;
       display: none;
     }
-    html[data-sk-palette="codex"] .sk-collapse-hit[data-show] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] .sk-collapse-hit[data-show] {
       display: block;
     }
-    html[data-sk-palette="codex"] .sk-collapse-hit:hover {
+    html[data-sk-palette="codex"][data-sk-codex-shell] .sk-collapse-hit:hover {
       background: var(--dsw-alias-interactive-bg-hover);
     }
-    html[data-sk-palette="codex"] .sk-collapse-hit:focus-visible {
+    html[data-sk-palette="codex"][data-sk-codex-shell] .sk-collapse-hit:focus-visible {
       outline: 2px solid var(--dsw-alias-label-primary);
       outline-offset: -2px;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] {
       grid-template-columns: var(--cx-rail-w);
       grid-template-rows: minmax(0, 1fr) auto;
       grid-template-areas: "nav" "account";
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_logoRow"],
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_newSession"],
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_regionArea"],
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_footArea"] > [class*="_footerActions"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_logoRow"],
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_newSession"],
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_regionArea"],
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"][data-sk-rail-only] > [class*="_footArea"] > [class*="_footerActions"] {
       display: none;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"])[data-sk-rail-only] > [class*="_topStrip"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"])[data-sk-rail-only] > [class*="_topStrip"] {
       position: fixed;
       top: calc((var(--cx-band-h) - 28px) / 2);
       left: var(--cx-toggle-x);
@@ -381,12 +381,12 @@ window.__ModuleLoader__.load({
     }
 
     /* Rail-only hides New Session: reserve the remaining 28px toggle and its gap. */
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [class*="_frame"]:has([data-sk-rail-only]) {
       --dsh-frame-leading-clearance: calc(var(--cx-title-clear) - 28px - 8px);
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [class*="_frame"][data-sidebar-collapsed]
       [data-slot="main.conversation"]
       [class*="_titleRow"] {
@@ -396,11 +396,11 @@ window.__ModuleLoader__.load({
       );
     }
 
-    html[data-sk-palette="codex"][data-fullscreen] [class*="_frame"]:has([data-sk-rail-only]) {
+    html[data-sk-palette="codex"][data-sk-codex-shell][data-fullscreen] [class*="_frame"]:has([data-sk-rail-only]) {
       --dsh-frame-leading-clearance: calc(var(--cx-title-clear-full) - 28px - 8px);
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [class*="_frame"]:has([data-sk-rail-only])
       [data-slot="main.conversation"]
       [class*="_titleRow"] {
@@ -412,17 +412,17 @@ window.__ModuleLoader__.load({
       );
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [data-slot="main.conversation"]
       [class*="_header"]:has([class*="_titleRow"]) {
       margin-right: 0;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop] [data-slot="main.conversation"] [class*="_composerSeat"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="main.conversation"] [class*="_composerSeat"] {
       bottom: 0;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_topStrip"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_topStrip"] {
       position: absolute;
       top: calc((var(--cx-band-h) - 28px) / 2);
       left: var(--cx-toggle-x);
@@ -434,12 +434,12 @@ window.__ModuleLoader__.load({
       justify-content: flex-start;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_topStrip"] [class*="_iconButton"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_topStrip"] [class*="_iconButton"] {
       width: 28px;
       height: 28px;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_logoRow"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_logoRow"] {
       grid-area: brand;
       height: 46px;
       margin: 0;
@@ -447,13 +447,13 @@ window.__ModuleLoader__.load({
       justify-content: flex-start;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_logoRow"] [class*="_brandName"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_logoRow"] [class*="_brandName"] {
       font-size: 15px;
       font-weight: 600;
       letter-spacing: 0.01em;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_newSession"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_newSession"] {
       grid-area: new;
       /* The panel column starts at the rail edge, so an asymmetric pair here reads
          as a button pushed against the left. Keep the native 8px on the right and
@@ -461,7 +461,7 @@ window.__ModuleLoader__.load({
       margin: 0 8px 4px;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] {
       grid-area: nav;
       align-self: start;
       margin: 6px 0 0;
@@ -469,12 +469,12 @@ window.__ModuleLoader__.load({
       gap: 2px;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelGlyph"] svg {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelGlyph"] svg {
       width: 18px;
       height: 18px;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"] {
       width: 36px;
       height: 36px;
       min-height: 36px;
@@ -485,22 +485,22 @@ window.__ModuleLoader__.load({
       gap: 0;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > *:has([class*="_panelRow"]) {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > *:has([class*="_panelRow"]) {
       display: flex;
       justify-content: center;
       width: 100%;
       min-width: 0;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"]:hover {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"]:hover {
       background: var(--cx-rail-item-hover);
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"][class*="_panelActive"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelRow"][class*="_panelActive"] {
       background: var(--cx-rail-item-active);
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home {
       box-sizing: border-box;
       display: flex;
       flex: none;
@@ -518,28 +518,28 @@ window.__ModuleLoader__.load({
       cursor: pointer;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home:hover {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home:hover {
       background: var(--cx-rail-item-hover);
       color: var(--dsw-alias-label-primary);
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home[data-active="true"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] > .sk-home[data-active="true"] {
       background: var(--cx-rail-item-active);
       color: var(--dsw-alias-label-primary);
     }
 
-    html[data-sk-palette="codex"] .sk-home__glyph {
+    html[data-sk-palette="codex"][data-sk-codex-shell] .sk-home__glyph {
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
 
-    html[data-sk-palette="codex"] .sk-home__glyph svg {
+    html[data-sk-palette="codex"][data-sk-codex-shell] .sk-home__glyph svg {
       width: 18px;
       height: 18px;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelTitle"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_panelList"] [class*="_panelTitle"] {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -548,7 +548,7 @@ window.__ModuleLoader__.load({
       white-space: nowrap;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] {
       grid-area: region;
       min-height: 0;
 
@@ -566,18 +566,18 @@ window.__ModuleLoader__.load({
        but here the tree sits on the white panel card, so that grey ramp reads as a
        stray strip with a shadow at the bottom of the card. Fade into the card colour
        instead: the scroll hint stays, the seam goes. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] [class*="_fade"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] [class*="_fade"] {
       background: linear-gradient(to bottom, transparent, var(--dsw-alias-bg-base));
     }
 
     /* Keep the section toolbar on the same 32px rhythm as its session rows.
        The new-session row owns the 4px gap above; do not add the native 2px again. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] [class*="_sectionHeader"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_regionArea"] [class*="_sectionHeader"] {
       height: 32px;
       margin: 0 0 4px;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] [class*="_sectionHeader"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] [class*="_sectionHeader"] {
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.06em;
@@ -585,11 +585,11 @@ window.__ModuleLoader__.load({
       color: var(--dsw-alias-label-tertiary);
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] {
       display: contents;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_footerActions"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_footerActions"] {
       grid-area: foot;
       box-sizing: border-box;
       padding: 0 8px 8px;
@@ -602,7 +602,7 @@ window.__ModuleLoader__.load({
        under the workspace tree and the tree clips mid-row right above that band.
        When the slot holds no content the tree takes the row back; a host that fills
        the slot keeps the layout untouched. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only]):not(:has(> [class*="_footArea"] > [class*="_footerActions"] :not(:empty))) {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only]):not(:has(> [class*="_footArea"] > [class*="_footerActions"] :not(:empty))) {
       grid-template-areas:
         "nav     brand"
         "nav     new"
@@ -613,7 +613,7 @@ window.__ModuleLoader__.load({
     /* Take the empty slot out of the grid so the removed \`foot\` row cannot reflow it,
        but leave it rendered: an action the emptiness probe cannot see would still
        show above the account button instead of disappearing. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only]):not(:has(> [class*="_footArea"] > [class*="_footerActions"] :not(:empty))) > [class*="_footArea"] > [class*="_footerActions"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only]):not(:has(> [class*="_footArea"] > [class*="_footerActions"] :not(:empty))) > [class*="_footArea"] > [class*="_footerActions"] {
       position: absolute;
       grid-area: auto;
       left: var(--cx-rail-w);
@@ -623,11 +623,11 @@ window.__ModuleLoader__.load({
     }
 
     /* The tree now ends at the card edge instead of one gutter above it. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only]):not(:has(> [class*="_footArea"] > [class*="_footerActions"] :not(:empty))) > [class*="_regionArea"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]):not([data-sk-rail-only]):not(:has(> [class*="_footArea"] > [class*="_footerActions"] :not(:empty))) > [class*="_regionArea"] {
       padding-bottom: var(--cx-gap, 4px);
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] {
       grid-area: account;
       align-self: end;
       padding: 0 0 8px;
@@ -636,7 +636,7 @@ window.__ModuleLoader__.load({
       align-items: center;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] {
       width: 100%;
       margin: 0;
 
@@ -648,7 +648,7 @@ window.__ModuleLoader__.load({
       justify-content: center;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_trigger"]:not([class*="_triggerRow"]) {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_trigger"]:not([class*="_triggerRow"]) {
       flex: none;
       width: 36px;
       height: 36px;
@@ -657,11 +657,11 @@ window.__ModuleLoader__.load({
       gap: 0;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_anchor"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_anchor"] {
       justify-content: center;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_label"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_label"] {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -675,7 +675,7 @@ window.__ModuleLoader__.load({
        trigger (inline, not portaled), so the \`_label\` span inside the bubble lived
        in the same subtree and collapsed to 1×1 — the dark bubble showed up empty.
        Restore every label that belongs to a tooltip. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [role="tooltip"] [class*="_label"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [role="tooltip"] [class*="_label"] {
       position: static;
       width: auto;
       height: auto;
@@ -692,7 +692,7 @@ window.__ModuleLoader__.load({
        this block draws the phase (download glyph, progress ring, install glyph, retry).
        Everything else — aria-label, aria-disabled, the tooltip and the click handler —
        stays with the native component, so the built-in dialogs still own the flow. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled] {
       box-sizing: border-box;
       position: relative;
       display: grid;
@@ -709,7 +709,7 @@ window.__ModuleLoader__.load({
       color: var(--dsw-alias-label-secondary);
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled] > span {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled] > span {
       display: none;
     }
 
@@ -717,12 +717,12 @@ window.__ModuleLoader__.load({
        which turns every \`border-radius:50%\` into a squircle — the progress ring and the
        spinner arc read as a rounded square. Only the drawn circles opt back out; the tile's
        own 8px hover shape keeps the host squircle so it matches the rail rows above. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]::before,
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]::after {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]::before,
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]::after {
       corner-shape: round;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]::before {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]::before {
       content: "";
       width: 18px;
       height: 18px;
@@ -731,48 +731,48 @@ window.__ModuleLoader__.load({
       mask: var(--cx-update-glyph) center / 18px 18px no-repeat;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled][aria-disabled="true"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled][aria-disabled="true"] {
       cursor: default;
     }
 
     /* A new version waits in the tray: the rail icons above the avatar are 18px glyphs
        on a transparent 36×36 button, so the tile stays frame-less — only the colour
        marks it as actionable. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="available"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="available"] {
       --cx-update-glyph: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2.6v6.1'/%3E%3Cpath d='m5.2 6.1 2.8 2.8 2.8-2.8'/%3E%3Cpath d='M3.4 12.6h9.2'/%3E%3C/svg%3E");
       color: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
     }
 
     /* Downloaded and waiting for the restart: the arrow is inside the tray. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="ready"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="ready"] {
       --cx-update-glyph: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2.4v5.3'/%3E%3Cpath d='m5.4 5.2 2.6 2.6 2.6-2.6'/%3E%3Cpath d='M3.4 9.9v2.4a1.3 1.3 0 0 0 1.3 1.3h6.6a1.3 1.3 0 0 0 1.3-1.3V9.9'/%3E%3C/svg%3E");
       color: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
     }
 
     /* A retry is the only action left after a failure. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="error"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="error"] {
       --cx-update-glyph: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.7 8a4.7 4.7 0 1 1-1.5-3.4'/%3E%3Cpath d='M13.1 2.7v2.6H10.5'/%3E%3C/svg%3E");
       color: var(--dsw-alias-state-error-primary, #c4453f);
     }
 
     /* No bridge data (unexpected shell): fall back to the plain download glyph. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="unknown"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="unknown"] {
       --cx-update-glyph: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2.6v6.1'/%3E%3Cpath d='m5.2 6.1 2.8 2.8 2.8-2.8'/%3E%3Cpath d='M3.4 12.6h9.2'/%3E%3C/svg%3E");
     }
 
     /* Same hover the rail rows above use, in every phase — including the busy ones, so
        the whole rail reacts the same way to the pointer. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]:hover {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]:hover {
       background: var(--cx-rail-item-hover);
     }
 
     /* Downloading: a conic ring scaled by \`--cx-update-pct\` (set inline by
        update-tile.js) with the rounded percentage in the middle. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="downloading"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="downloading"] {
       color: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="downloading"]::before {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="downloading"]::before {
       width: 22px;
       height: 22px;
       border-radius: 50%;
@@ -782,7 +782,7 @@ window.__ModuleLoader__.load({
       mask: radial-gradient(farthest-side, #0000 calc(100% - 2px), #000 calc(100% - 2px));
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="downloading"]::after {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="downloading"]::after {
       content: attr(data-cx-progress) "%";
       position: absolute;
       inset: 0;
@@ -797,13 +797,13 @@ window.__ModuleLoader__.load({
 
     /* Verifying and installing report no percentage: a full 22px ring (so it still reads
        as a circle) with a rounded blue arc spinning inside it. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="verifying"],
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="installing"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="verifying"],
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="installing"] {
       color: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="verifying"]::before,
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="installing"]::before {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="verifying"]::before,
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="installing"]::before {
       box-sizing: border-box;
       width: 22px;
       height: 22px;
@@ -814,8 +814,8 @@ window.__ModuleLoader__.load({
       mask: none;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="verifying"]::after,
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="installing"]::after {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="verifying"]::after,
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="installing"]::after {
       content: "";
       position: absolute;
       inset: 0;
@@ -829,7 +829,7 @@ window.__ModuleLoader__.load({
       animation: cx-update-spin 0.75s linear infinite;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="error"]::after {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"]:not([class*="_collapsed"]) > [class*="_footArea"] > [class*="_settingsArea"] [class*="_triggerRow"] > [class*="_indicator"][data-cx-update="error"]::after {
       content: "";
       position: absolute;
       top: 6px;
@@ -852,17 +852,17 @@ window.__ModuleLoader__.load({
        inner root, so the rows stopped 2px short of the right inset while sitting
        flush on the left — the hover highlight read as off-centre. Declare them on
        every \`_root\` under the slot; the values only ever subtract space. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] [class*="_root"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] [class*="_root"] {
       --dsh-session-list-scrollbar-width: 0px;
       --dsh-session-list-scrollbar-offset: 0px;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"] [class*="_list"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"] [class*="_list"] {
       scrollbar-width: none;
       scrollbar-gutter: auto;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"] > [class*="_root"] [class*="_list"]::-webkit-scrollbar {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] > [class*="_root"] [class*="_list"]::-webkit-scrollbar {
       width: 0;
       height: 0;
       display: none;
@@ -893,19 +893,19 @@ window.__ModuleLoader__.load({
        \`display: contents\` wrapper, so the cell itself never reads as \`:empty\`.
        Collapse it in both shapes and let the title hug the row's inset; a status dot
        or a registered decoration makes it non-empty again and the cell returns. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"]
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"]
       [class*="_sessionRow"]
       > [class*="_slot"]:empty,
-    html[data-sk-palette="codex"] [data-slot="sidebar"]
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"]
       [class*="_sessionRow"]
       > [class*="_slot"]:has(> [data-slot="sidebar.session.row.leading"]:empty) {
       display: none;
     }
 
-    html[data-sk-palette="codex"] [data-slot="sidebar"]
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"]
       [class*="_sessionRow"]:has(> [class*="_slot"]:empty)
       > [class*="_title"],
-    html[data-sk-palette="codex"] [data-slot="sidebar"]
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"]
       [class*="_sessionRow"]:has(
         > [class*="_slot"] > [data-slot="sidebar.session.row.leading"]:empty
       )
@@ -917,11 +917,11 @@ window.__ModuleLoader__.load({
        session row owns (8px row inset + 16px cell + 4px title margin = 28px), so it
        drifts 20px right of the titles it follows once that cell collapses. Match the
        collapsed title inset instead, keeping the group's own depth indent. */
-    html[data-sk-palette="codex"] [data-slot="sidebar"] [class*="_sessionOverflowButton"] {
+    html[data-sk-palette="codex"][data-sk-codex-shell] [data-slot="sidebar"] [class*="_sessionOverflowButton"] {
       padding-inline-start: calc(8px + var(--dsh-workspace-indent, 0px));
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [class*="_rightbarCol"]
       [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
       [data-dockkit-pane] {
@@ -932,7 +932,7 @@ window.__ModuleLoader__.load({
       border-left: 0;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [class*="_rightbarCol"]
       [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
       [data-dockkit-pane]::before {
@@ -948,7 +948,7 @@ window.__ModuleLoader__.load({
       pointer-events: none;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [class*="_rightbarCol"]
       [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
       [data-dockkit-pane]
@@ -961,7 +961,7 @@ window.__ModuleLoader__.load({
       overflow-y: auto;
     }
 
-    html[data-sk-palette="codex"][data-sk-desktop]
+    html[data-sk-palette="codex"][data-sk-codex-shell]
       [class*="_rightbarCol"]
       [class*="_panel"]:not([data-sidebar-right-panel="fullscreen"])
       [data-dockkit-pane]
@@ -2740,6 +2740,8 @@ window.__ModuleLoader__.load({
 
     // src/modules/theme/client/platform.js
     var DESKTOP_MARK = "data-sk-desktop";
+    var SHELL_MARK = "data-sk-codex-shell";
+    var SHELL_MIN_WIDTH = 1024;
     function isDarwinDesktop() {
       return document.documentElement.getAttribute("data-platform") === "darwin";
     }
@@ -2747,24 +2749,38 @@ window.__ModuleLoader__.load({
       const root = document.documentElement;
       return isDarwinDesktop() || root.hasAttribute("data-windows-titlebar");
     }
-    function installDesktopMarker() {
+    function isWideWindow() {
+      return (window.innerWidth || 0) >= SHELL_MIN_WIDTH;
+    }
+    function isCodexShell() {
+      return isDesktopShell() || isWideWindow();
+    }
+    var toggle = (root, name, on) => {
+      if (on) {
+        if (!root.hasAttribute(name)) root.setAttribute(name, "");
+      } else if (root.hasAttribute(name)) {
+        root.removeAttribute(name);
+      }
+    };
+    function installShellMarkers() {
       const root = document.documentElement;
       const sync = () => {
-        if (isDesktopShell()) {
-          if (!root.hasAttribute(DESKTOP_MARK)) root.setAttribute(DESKTOP_MARK, "");
-        } else if (root.hasAttribute(DESKTOP_MARK)) {
-          root.removeAttribute(DESKTOP_MARK);
-        }
+        const desktop = isDesktopShell();
+        toggle(root, DESKTOP_MARK, desktop);
+        toggle(root, SHELL_MARK, desktop || isWideWindow());
       };
       const observer = new MutationObserver(sync);
       observer.observe(root, {
         attributes: true,
         attributeFilter: ["data-platform", "data-windows-titlebar"]
       });
+      window.addEventListener("resize", sync);
       sync();
       return () => {
         observer.disconnect();
+        window.removeEventListener("resize", sync);
         root.removeAttribute(DESKTOP_MARK);
+        root.removeAttribute(SHELL_MARK);
       };
     }
 
@@ -2952,7 +2968,7 @@ window.__ModuleLoader__.load({
       const pass = () => {
         if (queued) cancelAnimationFrame(queued);
         queued = 0;
-        if (!isDesktopShell()) return;
+        if (!isCodexShell()) return;
         const frame = findFrame();
         if (!frame) return;
         const cols = frame.style.gridTemplateColumns;
@@ -3027,7 +3043,7 @@ window.__ModuleLoader__.load({
         workspaceWidth = Math.min(maxWidth, Math.max(minWidth, Math.round(width)));
       };
       const sidebarHandle = (event) => {
-        if (!isDesktopShell() || !(event.target instanceof Element)) return null;
+        if (!isCodexShell() || !(event.target instanceof Element)) return null;
         const handle = event.target.closest('[data-side="sidebar"]');
         const frame = findFrame();
         const expanded = frame && (native ? !frame.hasAttribute("data-sidebar-collapsed") : frame.hasAttribute("data-sk-workspace-expanded"));
@@ -3096,7 +3112,7 @@ window.__ModuleLoader__.load({
       const platformObserver = new MutationObserver(schedule);
       platformObserver.observe(document.documentElement, {
         attributes: true,
-        attributeFilter: ["data-platform", "data-windows-titlebar"]
+        attributeFilter: ["data-platform", "data-windows-titlebar", "data-sk-codex-shell"]
       });
       window.addEventListener("resize", schedule);
       const info = ctx.layout?.panelInfo;
@@ -3309,6 +3325,7 @@ window.__ModuleLoader__.load({
     function installCodexShell(ctx, installers, options = {}) {
       const root = options.root ?? document.documentElement;
       const Observer = options.MutationObserver ?? MutationObserver;
+      const isShell = options.isCodexShell ?? isCodexShell;
       let disposers = null;
       let codex = null;
       let active = true;
@@ -3319,7 +3336,7 @@ window.__ModuleLoader__.load({
       };
       const sync = () => {
         if (!active) return;
-        const nextCodex = root.getAttribute("data-sk-palette") === "codex";
+        const nextCodex = root.getAttribute("data-sk-palette") === "codex" && isShell();
         if (nextCodex === codex) return;
         clear();
         codex = nextCodex;
@@ -3327,7 +3344,7 @@ window.__ModuleLoader__.load({
         disposers = selected.map((install) => install(ctx));
       };
       const observer = new Observer(sync);
-      observer.observe(root, { attributes: true, attributeFilter: ["data-sk-palette"] });
+      observer.observe(root, { attributes: true, attributeFilter: ["data-sk-palette", "data-sk-codex-shell", "data-sk-desktop", "data-platform", "data-windows-titlebar"] });
       sync();
       return () => {
         active = false;
@@ -4708,7 +4725,7 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       ctx.effect(registerScenes, "toolkit-theme:scene-builders");
       ctx.effect(() => installSceneClock(updateHopeSceneTime), "toolkit-theme:scene-clock");
-      ctx.effect(installDesktopMarker, "toolkit-theme:desktop-marker");
+      ctx.effect(installShellMarkers, "toolkit-theme:shell-markers");
       ctx.effect(() => installStylesheet(styles_default, "toolkit-theme"), "toolkit-theme:stylesheet");
       ctx.effect(() => installPalette(ctx), "toolkit-theme:palette");
       ctx.effect(() => installCodexShell(ctx, [
