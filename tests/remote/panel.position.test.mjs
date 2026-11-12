@@ -133,7 +133,7 @@ const rect = (left, top, width, height) => ({
 })
 
 /**
- * 接线断言：hover 打开后，卡片必须自己量尺寸并长在按钮上方。
+ * 接线断言：点击打开后，卡片必须自己量尺寸并长在按钮上方。
  *
  * jsdom 没有布局，`getBoundingClientRect()` 一律返回 0，所以按类名打桩：
  * 按钮给 32×32 的真实盒子，卡片给 350×187（`box-sizing: border-box` 之后的实测值）。
@@ -189,6 +189,25 @@ test('Popover: 打开后按卡片实测高度定位，卡片长在按钮上方',
     assert.equal(top, ANCHOR.top - POPOVER_GAP - 187, '卡片应长在按钮上方')
     assert.equal(top + 187, ANCHOR.top - POPOVER_GAP)
     assert.equal(popover.style.maxHeight, `${VIEWPORT.height - POPOVER_MARGIN * 2}px`)
+
+    // 新交互：按钮只由点击开关，并在打开期间保持选中底色。
+    assert.equal(trigger.classList.contains('wc-icon--active'), true, '打开时按钮应有选中底色')
+    assert.equal(trigger.getAttribute('aria-expanded'), 'true')
+
+    // 再点一次 → 先挂 closing 播退出动画，动画结束后才卸载。
+    await act(async () => {
+      trigger.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+    })
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false', '收起时 aria-expanded 立即为 false')
+    assert.ok(
+      dom.window.document.querySelector('.wc-popover')?.classList.contains('wc-popover--closing'),
+      '收起时卡片应带退出动画类',
+    )
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 220))
+    })
+    assert.equal(dom.window.document.querySelector('.wc-popover'), null, '退出动画结束后卡片卸载')
+    assert.equal(trigger.classList.contains('wc-icon--active'), false, '收起后按钮恢复常态')
   } finally {
     // 不还原全局 window/document：React 调度器在 unmount 之后还会跑一小段异步逻辑。
     await act(async () => {
@@ -200,7 +219,7 @@ test('Popover: 打开后按卡片实测高度定位，卡片长在按钮上方',
 /**
  * 「连接微信」是唯一会申请二维码的入口；刷新走 force。
  *
- * 这条钉的是用户明确提过的问题：指针停在按钮上不该触发二维码申请，否则一 hover
+ * 这条钉的是用户明确提过的问题：打开面板本身不该触发二维码申请，否则每开一次卡片
  * 就是一次网络往返，手机上还没扫的码也会被顶掉。
  */
 test('Popover: 打开面板不申请二维码，点「连接微信」才 startLogin', async () => {
@@ -238,7 +257,7 @@ test('Popover: 打开面板不申请二维码，点「连接微信」才 startLo
     })
 
     await act(async () => {
-      // 打开面板（hover 与 click 走的是同一个 openNow）。
+      // 打开面板（点击入口按钮）。
       dom.window.document.querySelector('.wc-icon').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
     })
     await act(async () => {

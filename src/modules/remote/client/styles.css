@@ -36,6 +36,11 @@
   color: var(--dsw-alias-label-primary);
 }
 
+.wc-icon--active {
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+}
+
 .wc-icon:focus-visible {
   outline: 2px solid var(--dsw-alias-brand-primary);
   outline-offset: 2px;
@@ -63,6 +68,11 @@ html[data-sk-palette="codex"] .wc-icon {
 
 html[data-sk-palette="codex"] .wc-icon:hover {
   background: var(--cx-rail-item-hover);
+}
+
+/* codex 皮肤的 rail 有自己的选中底色；打开面板时按钮保持这个底色。 */
+html[data-sk-palette="codex"] .wc-icon--active {
+  background: var(--cx-rail-item-active, var(--cx-rail-item-hover));
 }
 
 html[data-sk-palette="codex"] .wc-icon__glyph svg {
@@ -126,6 +136,37 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
      JS 侧会算出同样的上限（placePopover 的 maxHeight），这里保证无 JS 时也不错。 */
   max-height: calc(100vh - 16px);
   overflow-y: auto;
+  /* 从按钮方向长出来：缩放原点放在左下角（卡片默认在按钮上方、右侧对齐）。 */
+  transform-origin: left bottom;
+  animation: wc-popover-in 160ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.wc-popover--closing {
+  animation: wc-popover-out 150ms ease-in both;
+}
+
+@keyframes wc-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes wc-popover-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(.98);
+  }
 }
 
 .wc-popover > * {
@@ -610,77 +651,14 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   outline-offset: 1px;
 }
 
-/* ── 底部开关 ──────────────────────────────────────────────── */
-
-.wc-footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-top: 10px;
-  border-top: 1px solid var(--dsw-alias-border-l1);
-  font-size: 12px;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.wc-footer__label {
-  flex: 1;
-  min-width: 0;
-}
-
-/* DSH General Settings Switch: 36×20 track, 16px thumb, native state tokens.
-   与 src/modules/boot/client/styles.css 的同名复刻保持一致；插件拿不到宿主 primitives，
-   只能按这套尺寸/令牌复刻，改一处就要同步另一处。 */
-.wc-switch {
-  box-sizing: border-box;
-  position: relative;
-  flex: 0 0 auto;
-  width: 36px;
-  height: 20px;
-  padding: 2px;
-  border: 0;
-  border-radius: 999px;
-  corner-shape: round;
-  background: var(--dsw-alias-border-l3);
-  cursor: pointer;
-}
-
-.wc-switch[aria-checked="true"] {
-  background: var(--dsw-alias-brand-primary);
-}
-
-.wc-switch:disabled {
-  cursor: default;
-  opacity: .5;
-}
-
-.wc-switch:focus-visible {
-  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
-  outline-offset: 2px;
-}
-
-.wc-switch__knob {
-  display: block;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  corner-shape: round;
-  background: var(--dsw-alias-label-primary-foreground);
-  transition: transform .12s ease;
-}
-
-.wc-switch[aria-checked="false"] .wc-switch__knob {
-  background: var(--dsw-alias-switch-thumb);
-}
-
-.wc-switch[aria-checked="true"] .wc-switch__knob {
-  transform: translate(16px);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .wc-icon,
-  .wc-button,
-  .wc-switch,
-  .wc-switch__knob {
+  .wc-button {
     transition: none;
+  }
+
+  .wc-popover,
+  .wc-popover--closing {
+    animation: none;
   }
 }

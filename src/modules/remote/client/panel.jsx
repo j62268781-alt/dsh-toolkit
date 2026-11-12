@@ -20,13 +20,16 @@ function readViewport() {
   return { width: window.innerWidth, height: window.innerHeight }
 }
 
+/** 收起动画时长；与 styles.css 里 `.wc-popover--closing` 的 animation-duration 保持一致。 */
+const PANEL_CLOSE_MS = 150
+
 /**
- * 面板：hover 触发，鼠标离开关闭；面板内的开关可以让它保持展开。
+ * 面板：点击入口按钮开关，卡片带进出动画。
  *
- * 交互细节（按设计稿）：
- *   - 侧栏底部一个入口按钮，带状态圆点；
- *   - 悬停弹出卡片，停在按钮上或卡片上都不会关；指针离开「按钮 + 卡片」整体才关；
- *   - 卡片底部一行「鼠标离开后保持展开」开关（对应设计稿的 toggle）；
+ * 交互细节（按用户反馈定稿）：
+ *   - 侧栏底部一个入口按钮，带状态圆点，打开时按钮保持选中底色；
+ *   - 只由点击切换（不再跟随 hover），两个 tab 内容高度不同也不会因为指针移出而闪关；
+ *   - 点卡片外面或 Esc 收起，收起时播一段短动画再卸载；
  *   - 卡片通过 portal 挂到 body，避免被侧栏的 overflow 裁掉。
  *
  * 组件都定义在工厂闭包里、只创建一次，避免每次渲染重建组件类型导致 hooks 状态丢失。
@@ -61,19 +64,6 @@ export function createPanel(React, { t, connection, portal }) {
     }, [active, expiresAt])
     if (!active) return undefined
     return Math.max(0, Math.ceil((expiresAt - now) / 1000))
-  }
-
-  function Switch({ checked, onChange, label, disabled }) {
-    return h('button', {
-      type: 'button',
-      className: 'wc-switch',
-      role: 'switch',
-      'aria-checked': checked,
-      'aria-label': label,
-      title: label,
-      disabled,
-      onClick: () => onChange(!checked),
-    }, h('span', { className: 'wc-switch__knob', 'aria-hidden': true }))
   }
 
   function StatusRow({ children }) {
@@ -503,11 +493,10 @@ export function createPanel(React, { t, connection, portal }) {
    * 用估计值定位必然在某个状态下错位。所以先渲染、再用 `useLayoutEffect` 量回来重排，
    * 并在打开期间用 ResizeObserver 跟随内容高度变化。
    *
-   * `onEnter` / `onLeave` 交出指针进出卡片的事件：卡片是 portal 到 body 的，外层容器听不到
-   * 它的 pointer 事件。指针从按钮挪到卡片上会先让容器收到 mouseleave（卡片在容器外面），
-   * 所以必须由卡片自己报告「我接住了指针」，把待关闭的定时器取消掉。
+   * 开关完全由入口按钮的点击决定（不再跟随 hover）：两个 tab 的内容高度不同，
+   * 指针在卡片外一移动就收起会很别扭。`closing` 只负责退出动画期间的渲染。
    */
-  function Popover({ anchor, pinned, onPin, onClose, onEnter, onLeave }) {
+  function Popover({ anchor, closing, onClose }) {
     const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot)
     const [busy, setBusy] = useState(false)
     const [localError, setLocalError] = useState(undefined)
@@ -632,17 +621,10 @@ export function createPanel(React, { t, connection, portal }) {
 
     return h('div', {
       ref: nodeRef,
-      className: 'wc-popover',
+      className: closing ? 'wc-popover wc-popover--closing' : 'wc-popover',
       style,
       role: 'dialog',
       'aria-label': t('title'),
-      onMouseEnter: () => {
-        // 指针从按钮挪过来时会先触发容器的 mouseleave；这里把待关闭的定时器取消，
-        // 只要指针停在卡片上就一直开着。顺手拉一次最新状态（纯读，不申请二维码）。
-        onEnter()
-        if (!pinned) connection.refresh()
-      },
-      onMouseLeave: () => onLeave(),
     }, h('div', { className: 'wc-head' },
       h('div', { className: 'wc-head__text' },
         h('div', { className: 'wc-title' }, t('title')),
@@ -664,24 +646,20 @@ export function createPanel(React, { t, connection, portal }) {
       id: 'wc-tabpanel',
       role: 'tabpanel',
       'aria-labelledby': `wc-tab-${tab}`,
-    }, tab === 'pair' ? h(PairingTab, { active: true }) : clawBody),
-    h('div', { className: 'wc-footer' },
-      h('span', { className: 'wc-footer__label' }, t('keepOpen')),
-      h(Switch, { checked: pinned, onChange: onPin, label: t('keepOpen') })))
+    }, tab === 'pair' ? h(PairingTab, { active: true }) : clawBody))
   }
 
   /**
    * 账户行里的入口：只有一个图标按钮，状态用右上角小圆点表示。
-   * hover / focus 打开，移出关闭（除非被钉住）。
+   * 点击开关卡片（和宿主侧栏按钮一样），打开期间按钮保持选中底色；
+   * 卡片飞出/收起各有一段短动画。
    */
   function RemoteEntry() {
     const [open, setOpen] = useState(false)
-    const [pinned, setPinned] = useState(false)
+    const [closing, setClosing] = useState(false)
     const [anchor, setAnchor] = useState(undefined)
     const triggerRef = useRef(null)
     const closeTimer = useRef(undefined)
-    const pinnedRef = useRef(false)
-    pinnedRef.current = pinned
 
     const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot)
     // 失败/重连态优先：这两种情况下凭据还在（connected 仍为 true），若让 connected 先决，
@@ -708,6 +686,7 @@ export function createPanel(React, { t, connection, portal }) {
     const openNow = useCallback(() => {
       clearTimeout(closeTimer.current)
       closeTimer.current = undefined
+      setClosing(false)
       sampleAnchor()
       setOpen(true)
     }, [sampleAnchor])
@@ -726,55 +705,40 @@ export function createPanel(React, { t, connection, portal }) {
       }
     }, [open, sampleAnchor])
 
-    const closeSoon = useCallback(() => {
-      if (pinnedRef.current) return
-      clearTimeout(closeTimer.current)
-      // 留一点时间让指针从按钮移到卡片上（卡片在按钮上方，中间只隔 2px，见 position.js）。
-      closeTimer.current = setTimeout(() => setOpen(false), 160)
-    }, [])
-
-    // 指针进到卡片上：取消待关闭的定时器。卡片是 portal 到 body 的，容器的
-    // mouseleave 已经先触发了 closeSoon，必须在这里补回来，否则移到卡片上就闪关。
-    const keepOpen = useCallback(() => {
-      clearTimeout(closeTimer.current)
-      closeTimer.current = undefined
-      setOpen(true)
-    }, [])
-
+    // 收起：先挂上 closing 播退出动画，等动画结束再真正卸载。
+    // 动画期间再次点击按钮会走 openNow()，清掉定时器后回到展开态。
     const closeNow = useCallback(() => {
       clearTimeout(closeTimer.current)
-      closeTimer.current = undefined
-      setOpen(false)
-      setPinned(false)
+      setClosing(true)
+      closeTimer.current = setTimeout(() => {
+        closeTimer.current = undefined
+        setOpen(false)
+        setClosing(false)
+      }, PANEL_CLOSE_MS)
     }, [])
 
-    // 点击卡片外部（且未钉住）时关闭。
+    // 点击卡片外部或入口按钮以外的地方时关闭。
     useEffect(() => {
-      if (!open || pinned) return undefined
+      if (!open || closing) return undefined
       const onDown = (event) => {
         const target = event.target
         if (!(target instanceof Node)) return
         if (triggerRef.current?.contains(target)) return
         if (target instanceof Element && target.closest('.wc-popover') !== null) return
-        setOpen(false)
+        closeNow()
       }
       document.addEventListener('pointerdown', onDown, true)
       return () => document.removeEventListener('pointerdown', onDown, true)
-    }, [open, pinned])
+    }, [open, closing, closeNow])
 
     const trigger = h('button', {
       ref: triggerRef,
       type: 'button',
-      className: 'wc-icon',
+      className: open ? 'wc-icon wc-icon--active' : 'wc-icon',
       'aria-haspopup': 'dialog',
-      'aria-expanded': open,
+      'aria-expanded': open && !closing,
       'aria-label': t('entryTitle'),
       title: t('entryTitle'),
-      onMouseEnter: openNow,
-      onFocus: openNow,
-      // 只在按钮自己身上挂 mouseleave：容器上的 mouseleave 会在指针移向卡片时误触发
-      // （卡片是 portal 到 body 的，不在容器子树里），那正是「一闪就关」的来源。
-      onMouseLeave: closeSoon,
       onClick: () => (open ? closeNow() : openNow()),
     },
     // 「显示器 + 手机」轮廓：扫码登录是在浏览器里操作，手机与屏幕的关系就是这个交互的形状。
@@ -796,25 +760,15 @@ export function createPanel(React, { t, connection, portal }) {
       h('rect', { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 }))),
     h('span', { className: 'wc-dot', 'data-state': tone, 'aria-hidden': true }))
 
-    // 关键：卡片自己负责「移出去就关」，而不是由外层容器的 mouseleave 决定——
-    // 卡片是 portal 到 body 的，外层容器收不到它的 pointer 事件。
+    // 卡片是 portal 到 body 的，所以状态与关闭逻辑都挂在入口这一层。
     const popover = open
       ? portal(h(Popover, {
         anchor,
-        pinned,
-        onEnter: keepOpen,
-        onLeave: closeSoon,
-        onPin: (next) => {
-          setPinned(next)
-          if (!next) closeSoon()
-        },
+        closing,
         onClose: closeNow,
       }), document.body)
       : null
 
-    // 容器不再挂 onMouseLeave：指针从按钮移向卡片时容器会先收到 mouseleave，
-    // 而卡片在 portal 里、不在容器子树内，那一刻其实指针还在「按钮→卡片」的路上。
-    // 关闭时机改由按钮自己的 mouseleave（closeSoon）与卡片的上报共同决定。
     return h('div', { className: 'wc-entry' }, trigger, popover)
   }
 

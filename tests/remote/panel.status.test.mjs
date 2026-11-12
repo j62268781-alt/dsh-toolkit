@@ -155,6 +155,12 @@ async function mountPanel({ initial, open = true, tab = 'claw' } = {}) {
         node.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
       })
     },
+    // 收起动画 150ms，等它跑完再断言卸载。
+    settle: async (ms = 200) => {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, ms))
+      })
+    },
     // 不还原全局 window/document：React 调度器在 unmount 之后还会跑一小段异步逻辑。
     unmount: async () => {
       await act(async () => {
@@ -338,25 +344,9 @@ test('卡片标题栏：关闭按钮是宿主同款 svg 图标，不是文字 ×
     assert.deepEqual(paths, ['M2.5 2.5L13.5 13.5', 'M13.5 2.5L2.5 13.5'], '应是宿主 IconCloseOutlineRegular 的两笔交叉线')
 
     await panel.click(close)
-    assert.equal(panel.popover(), null, '点关闭应收起卡片')
-  } finally {
-    await panel.unmount()
-  }
-})
-
-test('底部开关：宿主尺寸语义（role=switch + aria-checked + 独立 knob）', async () => {
-  const panel = await mountPanel({ initial: { state: 'idle' } })
-  try {
-    const toggle = panel.popover().querySelector('.wc-switch')
-    assert.ok(toggle !== null, '底部应有开关')
-    assert.equal(toggle.getAttribute('role'), 'switch')
-    assert.equal(toggle.getAttribute('aria-checked'), 'false')
-    const knob = toggle.querySelector('.wc-switch__knob')
-    assert.ok(knob !== null, '开关要有独立 knob 元素')
-    assert.equal(knob.getAttribute('aria-hidden'), 'true')
-
-    await panel.click(toggle)
-    assert.equal(toggle.getAttribute('aria-checked'), 'true', '点一下应切到开')
+    assert.ok(panel.popover().classList.contains('wc-popover--closing'), '点关闭先播退出动画')
+    await panel.settle()
+    assert.equal(panel.popover(), null, '动画结束后卡片应卸载')
   } finally {
     await panel.unmount()
   }
