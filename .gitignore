@@ -8,3 +8,6 @@ AGENTS.md
 
 __pycache__/
 *.pyc
+
+# 本地联调用的 DSH_HOME（repro profile 指向本仓库），不入库
+.tmp-web/
