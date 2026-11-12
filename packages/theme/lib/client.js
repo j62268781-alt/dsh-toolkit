@@ -1897,6 +1897,18 @@ window.__ModuleLoader__.load({
 
     .sk-theme-status[data-tone="error"] { color: var(--dsw-alias-state-error-primary); }
 
+    /* The Codex shell needs the desktop window; browsers keep the host layout. */
+
+    .sk-theme-note {
+      margin: 0;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--dsw-alias-bg-layer-2);
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--dsw-alias-label-secondary);
+    }
+
     /* Actual main-conversation hero: the scene sits behind native hero content. */
 
     .sk-theme-scene {
@@ -4621,7 +4633,7 @@ window.__ModuleLoader__.load({
           onClick: () => pickPalette(card.id)
         },
         ["native", "codex"].includes(card.id) ? /* @__PURE__ */ __dshReact.createElement(ThemeEmblem, { palette: card.id }) : /* @__PURE__ */ __dshReact.createElement(SceneBox, { palette: card.id, compact: true })
-      )))), !writable || error || busy ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-status", role: "status", "data-tone": error ? "error" : "idle" }, error || (busy ? "正在保存…" : "当前配置为只读，主题风格暂不可修改。")) : null);
+      )))), palette === "codex" && !isCodexShell() ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-note", role: "note" }, "窗口较窄时 Codex 会收起标题带与工作区外壳，改用 DSH 原生布局；桌面应用与宽窗口保持完整外观。") : null, !writable || error || busy ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-status", role: "status", "data-tone": error ? "error" : "idle" }, error || (busy ? "正在保存…" : "当前配置为只读，主题风格暂不可修改。")) : null);
     }
     var themeCenterMeta = Object.freeze({
       name: "settings.section",

@@ -4,6 +4,7 @@ import { acceptConfigWrite } from '../../../client/config-write.js'
 import { DSH_DESKTOP_LOGO } from '../../../client/ui/dsh-logo.js'
 import { HERO_FISH_PATH, HERO_ICONS, SEND_PATH } from './hero-art.js'
 import { createPaletteScene, readPalette } from './palette.js'
+import { isCodexShell } from './platform.js'
 
 const MODE_CARDS = [
   { id: 'light', label: '浅色', hint: '明亮界面' },
@@ -274,6 +275,12 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
           ))}
         </div>
       </div>
+
+      {palette === 'codex' && !isCodexShell() ? (
+        <p className="sk-theme-note" role="note">
+          窗口较窄时 Codex 会收起标题带与工作区外壳，改用 DSH 原生布局；桌面应用与宽窗口保持完整外观。
+        </p>
+      ) : null}
 
       {!writable || error || busy ? (
         <p className="sk-theme-status" role="status" data-tone={error ? 'error' : 'idle'}>
