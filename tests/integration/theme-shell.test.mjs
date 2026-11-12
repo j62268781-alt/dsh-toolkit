@@ -454,3 +454,17 @@ test('the rc.2 scroll wrapper is flattened back into the rail grid', async () =>
   assert.match(css, /_scrollArea[^{]*\{\s*display:\s*contents;/, 'the scroll area dissolves too')
   assert.match(css, /_scrollFade[^{]*\{\s*display:\s*none;/, 'the native fade strip is dropped')
 })
+
+test('the rc.2 conversation tabs sit on the toolbar baseline', async () => {
+  // rc.2 gives the tab a -10px top margin so its hit area reaches into the title
+  // row. The shell turns the tab row into a 37px toolbar, so that margin lifts the
+  // label off the "…" button and leaves the 2px underline floating above the
+  // header's bottom border. Clearing it puts both back on the toolbar baseline.
+  const css = await readFile(new URL('../../src/modules/theme/client/styles/layout.css', import.meta.url), 'utf8')
+  const tab = css.match(/[^{]*_tab"\]\[role="tab"\][^{]*\{([^}]*)\}/)
+  assert.ok(tab, 'the tab rule is present')
+  assert.match(tab[1], /min-height:\s*37px;/, 'the tab fills the toolbar row')
+  assert.match(tab[1], /margin-top:\s*0;/, 'the host hit-area margin is dropped')
+  assert.match(tab[1], /align-items:\s*center;/, 'the label centres in the row')
+  assert.match(css, /_tabs"[^{]*\{[^}]*align-items:\s*center;/, 'the tab row centres its items')
+})

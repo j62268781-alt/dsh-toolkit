@@ -283,6 +283,10 @@ window.__ModuleLoader__.load({
       [class*="_tab"][role="tab"] {
       box-sizing: border-box;
       min-height: 37px;
+      /* rc.2 pulls the tab up by 10px to widen its hit area; without that margin the
+         37px tab fills the toolbar row, so the label centres with the “…” button and
+         the 2px underline lands on the header's bottom border instead of floating above it. */
+      margin-top: 0;
       padding-block: 0;
       display: inline-flex;
       align-items: center;
