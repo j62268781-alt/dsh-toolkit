@@ -180,7 +180,7 @@ test('解绑：远端注销报 AUTH_INVALID 时仍然继续重读状态', async 
   }
 })
 
-test('解绑：会话被一起清掉时直接生成新二维码', async () => {
+test('解除绑定：只注销旧设备，不替用户生成新二维码', async () => {
   const originalFetch = globalThis.fetch
   const calls = stubFetch({
     'settings.logout': () => ok({ config: { serverUrl: SERVER } }),
@@ -195,11 +195,35 @@ test('解绑：会话被一起清掉时直接生成新二维码', async () => {
       'settings.logout',
       'settings.get',
       'host.pairing.status',
+    ])
+    assert.equal(view, undefined, '解除绑定后停在未绑定态')
+    assert.equal(pairing.getSnapshot().view, undefined)
+    assert.equal(pairing.getSnapshot().error, undefined)
+  } finally {
+    pairing.dispose()
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('更换手机：注销旧设备后立刻生成新二维码', async () => {
+  const originalFetch = globalThis.fetch
+  const calls = stubFetch({
+    'settings.logout': () => ok({ config: { serverUrl: SERVER } }),
+    'settings.get': () => ok({ config: { serverUrl: SERVER } }),
+    'host.pairing.status': () => ok(undefined),
+    'host.pairing.start': () => ok(CREATED),
+  })
+  const pairing = createPairing()
+  try {
+    const view = await pairing.unbind({ restart: true })
+    assert.deepEqual(calls.map((call) => call.endpoint), [
+      'settings.logout',
+      'settings.get',
+      'host.pairing.status',
       'host.pairing.start',
     ])
-    assert.equal(view.state, 'created', '解绑后应给出新的扫码会话')
+    assert.equal(view.state, 'created', '更换手机后应给出新的扫码会话')
     assert.equal(pairing.getSnapshot().view.state, 'created')
-    assert.equal(pairing.getSnapshot().error, undefined)
   } finally {
     pairing.dispose()
     globalThis.fetch = originalFetch

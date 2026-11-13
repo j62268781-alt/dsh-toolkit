@@ -275,7 +275,11 @@ export function createPairing() {
       })
       return view
     } catch (error) {
-      set({ error: fail(error), loading: false })
+      const detail = fail(error)
+      // 已绑定的机器上，账号冲突只说明「屏幕上这张会话记录过期了」，绑定本身有效。
+      // 画成红字会和上面的已绑定卡自相矛盾（用户报过「上面显示成功、下面显示失败」）。
+      const ignored = detail.conflict === true && value.binding === true
+      set({ error: ignored ? undefined : detail, loading: false, ...ignored ? { halted: true } : {} })
       return undefined
     }
   }
@@ -333,7 +337,11 @@ export function createPairing() {
       return result
     } catch (error) {
       const detail = fail(error)
-      set({ error: detail, halted: detail.conflict === true })
+      // 账号冲突只对「还没绑定」的机器有意义（本地存着别的账号、adopt 落不下来）。
+      // 已经绑好的机器上，这类冲突来自一张过期的会话记录，绑定本身是好的——
+      // 把它画成红字会变成「上面说已绑定、下面说配对失败」的自相矛盾画面。
+      const ignored = detail.conflict === true && value.binding === true
+      set({ error: ignored ? undefined : detail, halted: detail.conflict === true })
       return undefined
     } finally {
       set({ busy: false })
@@ -409,11 +417,11 @@ export function createPairing() {
     },
 
     /**
-     * 解绑当前服务器上的账号并重试：
-     * `settings.logout` 会清掉 host/client 两侧的凭据存储，之后重新读取会话状态，
-     * 若手机上已经确认过（服务器侧 completed），adopt 就能落盘并完成配对。
+     * 解绑当前服务器上的账号。
+     * `settings.logout` 会清掉 host/client 两侧的凭据存储（服务器据此撤销两侧设备）。
+     * `restart: true` 表示「更换手机」：解绑后立刻开一张新二维码，省得用户再点一次。
      */
-    async unbind() {
+    async unbind({ restart = false } = {}) {
       return run(async () => {
         // 先解绑本地凭据；远端注销失败（旧 token 已失效时常见）不影响本地清理，
         // 否则会在解绑成功后误报一个 AUTH_INVALID。
@@ -429,10 +437,10 @@ export function createPairing() {
         set({ lastPaired: undefined, peers: [] })
         await settings()
         const next = await refresh()
-        // refresh() 在没有会话时返回 null：那是「确认已经解绑」，继续开新二维码。
         if (next !== undefined && next !== null) return next
         if (value.error !== undefined) return undefined
-        // 解绑会连会话一起清掉，这时直接开一张新二维码，省得用户再点一次。
+        if (!restart) return undefined
+        // 「更换手机」：解绑会连会话一起清掉，直接开一张新二维码给下一台手机。
         const view = await control('host.pairing.start')
         set({ view })
         return view

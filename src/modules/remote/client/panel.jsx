@@ -429,18 +429,19 @@ export function createPanel(React, { t, connection, portal }) {
     }, [state, value.binding])
 
     const unbind = () => void pairing.unbind()
+    const changePhone = () => void pairing.unbind({ restart: true })
     /**
-     * 已绑定卡片的动作行：重新配对 + 解除绑定。
-     * 两者都要真的撤销服务器上的旧设备：上游的 re-pair 会拿新账号去 adopt 旧凭据，
-     * 直接撞 PAIRING_ACCOUNT_CONFLICT，所以「重新配对」= 先注销旧的、再生成新二维码
-     * （pairing.unbind() 内部就是 settings.logout → settings → refresh → host.pairing.start）。
-     * 「解除绑定」不保留任何旧设备，否则手机以为自己还连着——用户报过的那个 bug。
+     * 已绑定卡片的两个动作，区别只在终点：
+     *   - 更换手机：撤销服务器上的旧设备，紧接着开一张新二维码（目标就是马上换一台）；
+     *   - 解除绑定：撤销旧设备后停在未绑定状态，不替用户决定「现在就要配新手机」。
+     * 两者都必须真的注销旧设备：上游 re-pair 会拿新账号去 adopt 旧凭据，
+     * 直接撞 PAIRING_ACCOUNT_CONFLICT（用户报过的「重新配对就报错」）。
      */
     const confirming = confirmAction !== null
     const boundHint = (key) => h('div', { className: 'wc-hint' },
       t(confirmAction === 'unbind'
         ? 'pairUnbindConfirm'
-        : confirmAction === 'repair' ? 'pairRepairConfirm' : key))
+        : confirmAction === 'change' ? 'pairChangeConfirm' : key))
     const boundActions = () => confirming
       ? h('div', { className: 'wc-actions wc-actions--full' },
         h('button', {
@@ -453,15 +454,15 @@ export function createPanel(React, { t, connection, portal }) {
           type: 'button',
           className: 'wc-button wc-button--half wc-button--danger-solid',
           disabled: busy,
-          onClick: unbind,
-        }, t(confirmAction === 'unbind' ? 'pairUnbindNowConfirm' : 'pairRepairNowConfirm')))
+          onClick: confirmAction === 'change' ? changePhone : unbind,
+        }, t(confirmAction === 'unbind' ? 'pairUnbindNowConfirm' : 'pairChangeNow')))
       : h('div', { className: 'wc-actions wc-actions--full' },
         h('button', {
           type: 'button',
           className: 'wc-button wc-button--half',
           disabled: busy,
-          onClick: () => setConfirmAction('repair'),
-        }, t('pairAgain')),
+          onClick: () => setConfirmAction('change'),
+        }, t('pairChangePhone')),
         h('button', {
           type: 'button',
           className: 'wc-button wc-button--half wc-button--danger',

@@ -401,8 +401,9 @@ window.__ModuleLoader__.load({
         pairUnbindNow: "解除绑定",
         pairUnbindConfirm: "解除后这台手机会被断开，需要重新扫码才能再连。",
         pairUnbindNowConfirm: "确认解除",
-        pairRepairConfirm: "重新配对会先解除当前手机的绑定，再用新手机扫码连接。",
-        pairRepairNowConfirm: "确认重新配对",
+        pairChangePhone: "更换手机",
+        pairChangeConfirm: "更换手机会先解除当前手机的绑定，再用新手机扫码连接。",
+        pairChangeNow: "确认更换",
         failed: "操作失败：{reason}",
         loading: "正在读取状态…",
         close: "关闭",
@@ -510,8 +511,9 @@ window.__ModuleLoader__.load({
         pairUnbindNow: "Unbind",
         pairUnbindConfirm: "The phone will be disconnected and must scan a new QR code to connect again.",
         pairUnbindNowConfirm: "Unbind now",
-        pairRepairConfirm: "Re-pairing first unbinds the current phone; the new phone must scan the QR code to connect.",
-        pairRepairNowConfirm: "Re-pair now",
+        pairChangePhone: "Change phone",
+        pairChangeConfirm: "Changing phones first unbinds the current phone; the new phone must scan the QR code to connect.",
+        pairChangeNow: "Change phone",
         failed: "Action failed: {reason}",
         loading: "Reading state…",
         close: "Close",
@@ -1123,7 +1125,9 @@ window.__ModuleLoader__.load({
           });
           return view;
         } catch (error) {
-          set({ error: fail(error), loading: false });
+          const detail = fail(error);
+          const ignored = detail.conflict === true && value.binding === true;
+          set({ error: ignored ? void 0 : detail, loading: false, ...ignored ? { halted: true } : {} });
           return void 0;
         }
       }
@@ -1170,7 +1174,8 @@ window.__ModuleLoader__.load({
           return result;
         } catch (error) {
           const detail = fail(error);
-          set({ error: detail, halted: detail.conflict === true });
+          const ignored = detail.conflict === true && value.binding === true;
+          set({ error: ignored ? void 0 : detail, halted: detail.conflict === true });
           return void 0;
         } finally {
           set({ busy: false });
@@ -1231,11 +1236,11 @@ window.__ModuleLoader__.load({
           });
         },
         /**
-         * 解绑当前服务器上的账号并重试：
-         * `settings.logout` 会清掉 host/client 两侧的凭据存储，之后重新读取会话状态，
-         * 若手机上已经确认过（服务器侧 completed），adopt 就能落盘并完成配对。
+         * 解绑当前服务器上的账号。
+         * `settings.logout` 会清掉 host/client 两侧的凭据存储（服务器据此撤销两侧设备）。
+         * `restart: true` 表示「更换手机」：解绑后立刻开一张新二维码，省得用户再点一次。
          */
-        async unbind() {
+        async unbind({ restart = false } = {}) {
           return run(async () => {
             try {
               await control("settings.logout");
@@ -1248,6 +1253,7 @@ window.__ModuleLoader__.load({
             const next = await refresh();
             if (next !== void 0 && next !== null) return next;
             if (value.error !== void 0) return void 0;
+            if (!restart) return void 0;
             const view = await control("host.pairing.start");
             set({ view });
             return view;
@@ -1641,11 +1647,12 @@ window.__ModuleLoader__.load({
           setConfirmAction(null);
         }, [state, value.binding]);
         const unbind = () => void pairing.unbind();
+        const changePhone = () => void pairing.unbind({ restart: true });
         const confirming = confirmAction !== null;
         const boundHint = (key) => h(
           "div",
           { className: "wc-hint" },
-          t(confirmAction === "unbind" ? "pairUnbindConfirm" : confirmAction === "repair" ? "pairRepairConfirm" : key)
+          t(confirmAction === "unbind" ? "pairUnbindConfirm" : confirmAction === "change" ? "pairChangeConfirm" : key)
         );
         const boundActions = () => confirming ? h(
           "div",
@@ -1660,8 +1667,8 @@ window.__ModuleLoader__.load({
             type: "button",
             className: "wc-button wc-button--half wc-button--danger-solid",
             disabled: busy,
-            onClick: unbind
-          }, t(confirmAction === "unbind" ? "pairUnbindNowConfirm" : "pairRepairNowConfirm"))
+            onClick: confirmAction === "change" ? changePhone : unbind
+          }, t(confirmAction === "unbind" ? "pairUnbindNowConfirm" : "pairChangeNow"))
         ) : h(
           "div",
           { className: "wc-actions wc-actions--full" },
@@ -1669,8 +1676,8 @@ window.__ModuleLoader__.load({
             type: "button",
             className: "wc-button wc-button--half",
             disabled: busy,
-            onClick: () => setConfirmAction("repair")
-          }, t("pairAgain")),
+            onClick: () => setConfirmAction("change")
+          }, t("pairChangePhone")),
           h("button", {
             type: "button",
             className: "wc-button wc-button--half wc-button--danger",

@@ -493,7 +493,7 @@ test('配对：会话记录被回收后仍认「已绑定」，不退回「生�
     assert.equal(popover.textContent.includes('pairGenerate'), false, '已绑定就不能再画「生成配对二维码」')
     assert.ok(popover.textContent.includes('pairBoundOnline'), '手机在线时说明手机已连接')
     assert.ok(popover.textContent.includes('Pixel 9'), '展示在线手机的名字')
-    assert.ok(popover.textContent.includes('pairAgain'), '仍允许主动重新配对')
+    assert.ok(popover.textContent.includes('pairChangePhone'), '仍允许主动换一台手机')
     assert.ok(popover.textContent.includes(SERVER), '显示当前配对服务器')
   } finally {
     await panel.unmount()
@@ -877,8 +877,13 @@ test('配对：已绑定卡能「解除绑定」，确认后走 settings.logout 
 
     const endpoints = panel.control.calls.map((call) => call.endpoint)
     assert.ok(endpoints.includes('settings.logout'), '必须真的解绑（服务器两侧撤销）')
-    assert.ok(endpoints.includes('host.pairing.start'), `解绑后自动开一张新二维码: ${JSON.stringify(endpoints)} ${popover.textContent}`)
-    assert.ok(popover.textContent.includes('pairScanHint'), '回到扫码态')
+    assert.equal(
+      endpoints.includes('host.pairing.start'),
+      false,
+      `解除绑定只断开、不替用户开新码: ${JSON.stringify(endpoints)}`,
+    )
+    assert.ok(popover.textContent.includes('pairGenerate'), '停在未绑定态，由用户决定要不要生成二维码')
+    assert.equal(popover.textContent.includes('pairBoundOnline'), false, '解绑后不再显示已连接')
     assert.equal(
       panel.dom.window.localStorage.getItem('dsh-toolkit-remote/last-paired.v1'),
       null,
@@ -889,7 +894,45 @@ test('配对：已绑定卡能「解除绑定」，确认后走 settings.logout 
   }
 })
 
-test('配对：已绑定卡点「重新配对」先注销旧的，再开新二维码', async () => {
+test('配对：已绑定时账号冲突不画红字，只保留已绑定卡', async () => {
+  // 用户报过：上面显示「手机已绑定」，下面又叠一行「配对请求失败：Pairing cannot
+  // replace the current account」。这种冲突来自一张过期会话记录，绑定本身是好的，
+  // 不该同时出现两种互斥结论，更不该再给一个和「解除绑定」重复的按钮。
+  const panel = await mount({
+    'settings.get': {
+      config: { serverUrl: SERVER },
+      associations: { host: { method: 'device-pairing', account: 'dsh-device:abc' } },
+    },
+    'host.pairing.status': {
+      __error: {
+        code: 'internal',
+        message: 'Pairing cannot replace the current account.',
+        details: { remoteCode: 'PAIRING_ACCOUNT_CONFLICT' },
+      },
+    },
+    status: { mode: 'local', host: { online: true, connectedClients: [] } },
+    'plugin:peers': { ok: true, peers: [] },
+  }, {
+    lastPaired: { deviceId: 'phone-1', name: 'Pixel 9', fingerprint: 'c'.repeat(64), serverUrl: SERVER },
+  })
+  try {
+    await panel.flush()
+    await panel.flush()
+    const popover = panel.popover()
+    assert.ok(popover.textContent.includes('pairBoundOffline'), '仍然显示已绑定卡')
+    assert.equal(popover.textContent.includes('pairConflictHint'), false, '不显示冲突说明')
+    assert.equal(popover.querySelector('.wc-error'), null, '不叠加红色的配对失败')
+    assert.equal(
+      [...popover.querySelectorAll('.wc-button')].some((node) => node.textContent === 'pairUnbind'),
+      false,
+      '不再出现与「解除绑定」重复的「解绑并重试」',
+    )
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('配对：已绑定卡点「更换手机」先注销旧的，再开新二维码', async () => {
   // 上游的 re-pair 会拿新会话的账号去 adopt 本机旧凭据，直接撞
   // PAIRING_ACCOUNT_CONFLICT（"Pairing cannot replace the current account."），
   // 所以「重新配对」必须先 settings.logout 撤销旧的，再 host.pairing.start。
@@ -914,15 +957,15 @@ test('配对：已绑定卡点「重新配对」先注销旧的，再开新二�
   try {
     await panel.flush()
     const popover = panel.popover()
-    const repair = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairAgain')
-    assert.ok(repair !== undefined, '已绑定卡要有「重新配对」')
+    const swap = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairChangePhone')
+    assert.ok(swap !== undefined, '已绑定卡要有「更换手机」')
 
-    await panel.click(repair)
-    assert.ok(popover.textContent.includes('pairRepairConfirm'), '先就地确认：会先解除当前手机')
+    await panel.click(swap)
+    assert.ok(popover.textContent.includes('pairChangeConfirm'), '先就地确认：会先解除当前手机')
     assert.equal(popover.textContent.includes('pairBoundOnline'), false, '确认时不再显示已连接说明')
 
-    const confirm = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairRepairNowConfirm')
-    assert.ok(confirm !== undefined, '确认行要有「确认重新配对」')
+    const confirm = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairChangeNow')
+    assert.ok(confirm !== undefined, '确认行要有「确认更换」')
     await panel.click(confirm)
     await panel.flush()
     await panel.flush()
