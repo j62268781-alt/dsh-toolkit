@@ -134,9 +134,12 @@ const COMPLETED = {
   localSaved: true,
 }
 
-async function mount(replies) {
+async function mount(replies, options = {}) {
   const { createPanel } = await loadPanel()
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
+  if (options.lastPaired !== undefined) {
+    dom.window.localStorage.setItem('dsh-toolkit-remote/last-paired.v1', JSON.stringify(options.lastPaired))
+  }
   dom.window.innerWidth = VIEWPORT.width
   dom.window.innerHeight = VIEWPORT.height
   dom.window.Element.prototype.getBoundingClientRect = function getRect() {
@@ -283,6 +286,64 @@ test('配对：首次状态读取完成前只转圈，不先画「生成配对�
 
     assert.equal(popover.querySelector('.wc-spinner'), null, '读完状态后占位消失')
     assert.ok(popover.textContent.includes('pairGenerate'), '读完确实没有会话才显示生成按钮')
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('配对：重启后会话记录被回收，仍按本地快照显示手机名与设备指纹', async () => {
+  // 会话记录只活到过期后 5 分钟；重启往往已经超出。本地快照记住「上次连的是谁」，
+  // 判定能不能连仍由宿主状态（settings 凭据 + connectedClients）负责。
+  const lastPaired = {
+    deviceId: 'phone-1',
+    name: 'DSH App (Android)',
+    fingerprint: '7f2c4ce80a33af0b',
+    serverUrl: SERVER,
+    savedAt: Date.now(),
+  }
+  const panel = await mount({
+    'settings.get': {
+      config: { serverUrl: SERVER },
+      associations: { host: { method: 'device-pairing', account: 'dsh-device:abc' } },
+    },
+    'host.pairing.status': undefined,
+    status: { mode: 'local', host: { online: true, connectedClients: [] } },
+  }, { lastPaired })
+  try {
+    await panel.flush()
+    const popover = panel.popover()
+    assert.ok(popover.textContent.includes('DSH App (Android)'), '手机名来自本地快照')
+    assert.ok(popover.textContent.includes('pairFingerprint'), '显示设备指纹行')
+    assert.ok(popover.textContent.includes('7f2c 4ce8 0a33 af0b'), '指纹按四位分组展示')
+    assert.ok(popover.textContent.includes('pairBoundOffline'), '宿主说手机没连着时标成离线')
+    assert.equal(popover.textContent.includes('pairGenerate'), false)
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('配对：刷新拿到 completed 时把手机快照落进本地存储', async () => {
+  const panel = await mount({
+    'settings.get': { config: { serverUrl: SERVER }, associations: { host: { method: 'device-pairing' } } },
+    'host.pairing.status': {
+      sessionId: 's-1',
+      state: 'completed',
+      expiresAt: Date.now() + 60_000,
+      serverUrl: SERVER,
+      mobile: { deviceId: 'phone-1', name: 'Pixel 9', fingerprint: 'aabbccdd11223344' },
+      localSaved: true,
+    },
+    status: { mode: 'local', host: { online: true, connectedClients: [{ deviceId: 'phone-1', name: 'Pixel 9', mode: 'LAN' }] } },
+  })
+  try {
+    await panel.flush()
+    const raw = panel.dom.window.localStorage.getItem('dsh-toolkit-remote/last-paired.v1')
+    assert.ok(typeof raw === 'string' && raw !== '', 'completed 后应写入本地快照')
+    const saved = JSON.parse(raw)
+    assert.equal(saved.deviceId, 'phone-1')
+    assert.equal(saved.name, 'Pixel 9')
+    assert.equal(saved.fingerprint, 'aabbccdd11223344')
+    assert.equal(saved.mode, 'LAN', '连上时把连接方式一并记住')
   } finally {
     await panel.unmount()
   }

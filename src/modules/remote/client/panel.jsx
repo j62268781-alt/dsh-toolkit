@@ -524,12 +524,27 @@ export function createPanel(React, { t, connection, portal }) {
       if (state === undefined && value.binding === true) {
         const clients = Array.isArray(value.clients) ? value.clients : []
         const phone = clients.find((client) => typeof client?.name === 'string' && client.name.trim() !== '')
+        // 会话记录过期后只剩本地快照：手机名/指纹来自最近一次配对成功时存下的那份，
+        // 是否还能连由上面读到的宿主状态（binding/clients/authError）决定。
+        const snapshot = value.lastPaired
+        const last = snapshot === undefined
+          || snapshot.serverUrl === undefined
+          || value.serverUrl === undefined
+          || snapshot.serverUrl === value.serverUrl
+          ? snapshot
+          : undefined
+        const phoneName = phone?.name ?? last?.name ?? t('pairPhoneFallback')
         return h('div', { className: 'wc-body' },
           h('div', { className: 'wc-info' },
             h('div', { className: 'wc-info__row' },
               h('span', { className: 'wc-info__key' }, t('pairPhone')),
-              h('span', { className: 'wc-info__value' }, phone?.name ?? t('pairPhoneFallback'),
-                h(ModeTag, { mode: clients[0]?.mode, t, h })))),
+              h('span', { className: 'wc-info__value' }, phoneName,
+                h(ModeTag, { mode: clients[0]?.mode ?? last?.mode, t, h }))),
+            last?.fingerprint === undefined
+              ? null
+              : h('div', { className: 'wc-info__row' },
+                h('span', { className: 'wc-info__key' }, t('pairFingerprint')),
+                h('span', { className: 'wc-info__value' }, shortFingerprint(last.fingerprint)))),
           h('div', { className: 'wc-hint' }, t(value.clients.length > 0 ? 'pairBoundOnline' : 'pairBoundOffline')),
           h('div', { className: 'wc-actions' },
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('pairAgain'))),

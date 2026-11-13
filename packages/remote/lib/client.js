@@ -938,6 +938,51 @@ window.__ModuleLoader__.load({
       if (error === "ACCOUNT_AUTH_REQUIRED" && host?.pairingHostOnly === true) return error;
       return void 0;
     }
+    var LAST_PAIRED_KEY = "dsh-toolkit-remote/last-paired.v1";
+    function storage() {
+      try {
+        return globalThis.window?.localStorage ?? globalThis.localStorage;
+      } catch {
+        return void 0;
+      }
+    }
+    function readLastPaired() {
+      try {
+        const raw = storage()?.getItem(LAST_PAIRED_KEY);
+        if (typeof raw !== "string" || raw === "") return void 0;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.deviceId !== "string" || parsed.deviceId === "") return void 0;
+        return parsed;
+      } catch {
+        return void 0;
+      }
+    }
+    function rememberPaired(view, clients) {
+      if (view?.state !== "completed" || typeof view.mobile?.deviceId !== "string") return void 0;
+      const live = Array.isArray(clients) ? clients.find((client) => client?.deviceId === view.mobile.deviceId) : void 0;
+      const snapshot = {
+        deviceId: view.mobile.deviceId,
+        ...view.mobile.name === void 0 ? {} : { name: view.mobile.name },
+        ...view.mobile.fingerprint === void 0 ? {} : { fingerprint: view.mobile.fingerprint },
+        ...view.serverUrl === void 0 ? {} : { serverUrl: view.serverUrl },
+        ...live?.mode === void 0 ? {} : { mode: live.mode },
+        savedAt: Date.now()
+      };
+      return savePaired(snapshot);
+    }
+    function savePaired(snapshot) {
+      try {
+        storage()?.setItem(LAST_PAIRED_KEY, JSON.stringify(snapshot));
+      } catch {
+      }
+      return snapshot;
+    }
+    function syncPairedMode(snapshot, clients) {
+      if (snapshot === void 0) return void 0;
+      const live = Array.isArray(clients) ? clients.find((client) => client?.deviceId === snapshot.deviceId) : void 0;
+      if (live?.mode === void 0 || live.mode === snapshot.mode) return void 0;
+      return savePaired({ ...snapshot, mode: live.mode });
+    }
     var PAIRING_CODE_LENGTH = 8;
     var ACTIVE_STATES = /* @__PURE__ */ new Set(["created", "claimed", "approved"]);
     function isPairingActive(view) {
@@ -1017,6 +1062,8 @@ window.__ModuleLoader__.load({
         binding: void 0,
         /** 当前连着本机的设备（status.host.connectedClients），用于展示手机是否在线。 */
         clients: [],
+        /** 最近一次配对成功的手机快照（本地持久化）：会话记录被回收后仍能显示它是谁。 */
+        lastPaired: readLastPaired(),
         /** 宿主授权已失效的错误码（见 AUTH_ERRORS）：有值时面板要给出「重新配对」的出口。 */
         authError: void 0,
         /** 致命错误时停掉自动轮询：否则每 2.5 秒重试一次，错误行会不停闪。 */
@@ -1040,7 +1087,13 @@ window.__ModuleLoader__.load({
         set({ loading: value.view === void 0, error: void 0 });
         try {
           const view = await control("host.pairing.status");
-          set({ view: view ?? void 0, loading: false, loaded: true });
+          const paired = rememberPaired(view, value.clients);
+          set({
+            view: view ?? void 0,
+            loading: false,
+            loaded: true,
+            ...paired === void 0 ? {} : { lastPaired: paired }
+          });
           return view;
         } catch (error) {
           set({ error: fail(error), loading: false, loaded: true });
@@ -1069,6 +1122,8 @@ window.__ModuleLoader__.load({
           if (host === void 0 || host === null) return void 0;
           const clients = Array.isArray(host.connectedClients) ? host.connectedClients : [];
           set({ clients, authError: authErrorOf(host) });
+          const paired = syncPairedMode(value.lastPaired, clients);
+          if (paired !== void 0) set({ lastPaired: paired });
           return host;
         } catch {
           return void 0;
@@ -1124,9 +1179,11 @@ window.__ModuleLoader__.load({
               sessionId: view.sessionId,
               verificationCode: code
             });
-            set({ view: next });
             if (next?.state === "completed") {
-              set({ authError: void 0 });
+              const paired = rememberPaired(next, value.clients);
+              set({ view: next, authError: void 0, ...paired === void 0 ? {} : { lastPaired: paired } });
+            } else {
+              set({ view: next });
             }
             return next;
           });
@@ -1688,6 +1745,9 @@ window.__ModuleLoader__.load({
           if (state === void 0 && value.binding === true) {
             const clients = Array.isArray(value.clients) ? value.clients : [];
             const phone = clients.find((client) => typeof client?.name === "string" && client.name.trim() !== "");
+            const snapshot = value.lastPaired;
+            const last = snapshot === void 0 || snapshot.serverUrl === void 0 || value.serverUrl === void 0 || snapshot.serverUrl === value.serverUrl ? snapshot : void 0;
+            const phoneName = phone?.name ?? last?.name ?? t("pairPhoneFallback");
             return h(
               "div",
               { className: "wc-body" },
@@ -1701,9 +1761,15 @@ window.__ModuleLoader__.load({
                   h(
                     "span",
                     { className: "wc-info__value" },
-                    phone?.name ?? t("pairPhoneFallback"),
-                    h(ModeTag, { mode: clients[0]?.mode, t, h })
+                    phoneName,
+                    h(ModeTag, { mode: clients[0]?.mode ?? last?.mode, t, h })
                   )
+                ),
+                last?.fingerprint === void 0 ? null : h(
+                  "div",
+                  { className: "wc-info__row" },
+                  h("span", { className: "wc-info__key" }, t("pairFingerprint")),
+                  h("span", { className: "wc-info__value" }, shortFingerprint(last.fingerprint))
                 )
               ),
               h("div", { className: "wc-hint" }, t(value.clients.length > 0 ? "pairBoundOnline" : "pairBoundOffline")),

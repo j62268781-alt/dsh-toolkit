@@ -51,6 +51,68 @@ function authErrorOf(host) {
   return undefined
 }
 
+/**
+ * 最近一次配对成功的手机快照。配对会话记录过期后（服务端只保留到过期后 5 分钟），
+ * 面板就再拿不到手机名/指纹了；本地留一份，重启后先按它显示，再用宿主状态
+ * （凭据 / 授权 / connectedClients）验证这台手机还能不能连。
+ */
+const LAST_PAIRED_KEY = 'dsh-toolkit-remote/last-paired.v1'
+
+function storage() {
+  try {
+    return globalThis.window?.localStorage ?? globalThis.localStorage
+  } catch {
+    return undefined
+  }
+}
+
+function readLastPaired() {
+  try {
+    const raw = storage()?.getItem(LAST_PAIRED_KEY)
+    if (typeof raw !== 'string' || raw === '') return undefined
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.deviceId !== 'string' || parsed.deviceId === '') return undefined
+    return parsed
+  } catch {
+    return undefined
+  }
+}
+
+function rememberPaired(view, clients) {
+  if (view?.state !== 'completed' || typeof view.mobile?.deviceId !== 'string') return undefined
+  const live = Array.isArray(clients)
+    ? clients.find((client) => client?.deviceId === view.mobile.deviceId)
+    : undefined
+  const snapshot = {
+    deviceId: view.mobile.deviceId,
+    ...view.mobile.name === undefined ? {} : { name: view.mobile.name },
+    ...view.mobile.fingerprint === undefined ? {} : { fingerprint: view.mobile.fingerprint },
+    ...view.serverUrl === undefined ? {} : { serverUrl: view.serverUrl },
+    ...live?.mode === undefined ? {} : { mode: live.mode },
+    savedAt: Date.now(),
+  }
+  return savePaired(snapshot)
+}
+
+function savePaired(snapshot) {
+  try {
+    storage()?.setItem(LAST_PAIRED_KEY, JSON.stringify(snapshot))
+  } catch {
+    // 存不进去不影响配对本身，只是重启后少展示一份快照。
+  }
+  return snapshot
+}
+
+/** 手机重新连上时补记连接方式（refresh 时宿主状态还没到，只能在这里补）。 */
+function syncPairedMode(snapshot, clients) {
+  if (snapshot === undefined) return undefined
+  const live = Array.isArray(clients)
+    ? clients.find((client) => client?.deviceId === snapshot.deviceId)
+    : undefined
+  if (live?.mode === undefined || live.mode === snapshot.mode) return undefined
+  return savePaired({ ...snapshot, mode: live.mode })
+}
+
 /** 手机上进码固定 8 位（服务器只接受 /^[0-9]{8}$/）。 */
 export const PAIRING_CODE_LENGTH = 8
 
@@ -155,6 +217,8 @@ export function createPairing() {
     binding: undefined,
     /** 当前连着本机的设备（status.host.connectedClients），用于展示手机是否在线。 */
     clients: [],
+    /** 最近一次配对成功的手机快照（本地持久化）：会话记录被回收后仍能显示它是谁。 */
+    lastPaired: readLastPaired(),
     /** 宿主授权已失效的错误码（见 AUTH_ERRORS）：有值时面板要给出「重新配对」的出口。 */
     authError: undefined,
     /** 致命错误时停掉自动轮询：否则每 2.5 秒重试一次，错误行会不停闪。 */
@@ -181,7 +245,13 @@ export function createPairing() {
     set({ loading: value.view === undefined, error: undefined })
     try {
       const view = await control('host.pairing.status')
-      set({ view: view ?? undefined, loading: false, loaded: true })
+      const paired = rememberPaired(view, value.clients)
+      set({
+        view: view ?? undefined,
+        loading: false,
+        loaded: true,
+        ...paired === undefined ? {} : { lastPaired: paired },
+      })
       return view
     } catch (error) {
       set({ error: fail(error), loading: false, loaded: true })
@@ -219,6 +289,8 @@ export function createPairing() {
       if (host === undefined || host === null) return undefined
       const clients = Array.isArray(host.connectedClients) ? host.connectedClients : []
       set({ clients, authError: authErrorOf(host) })
+      const paired = syncPairedMode(value.lastPaired, clients)
+      if (paired !== undefined) set({ lastPaired: paired })
       return host
     } catch {
       return undefined
@@ -285,10 +357,13 @@ export function createPairing() {
           sessionId: view.sessionId,
           verificationCode: code,
         })
-        set({ view: next })
         if (next?.state === 'completed') {
-          // 配对成功就证明当前授权是好的，别让上一轮的错误卡再跳出来。
-          set({ authError: undefined })
+          // 配对成功就证明当前授权是好的，别让上一轮的错误卡再跳出来；
+          // 同时把手机名/指纹落一份，重启后会话记录被回收也能显示它是谁。
+          const paired = rememberPaired(next, value.clients)
+          set({ view: next, authError: undefined, ...paired === undefined ? {} : { lastPaired: paired } })
+        } else {
+          set({ view: next })
         }
         return next
       })
