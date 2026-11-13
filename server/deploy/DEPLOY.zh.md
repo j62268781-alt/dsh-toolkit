@@ -173,6 +173,12 @@ DSH_SERVER_TURN_SECRET=<与 static-auth-secret 相同>
 
 然后 `sudo systemctl restart dsh-server`。
 
+> 只想打洞、不中继流量时，可以只配 STUN：coturn 配置文件里加一行 `stun-only`，
+> 然后把 `DSH_SERVER_STUN_URLS` 指向这台机器即可——STUN 绑定请求只有几个 UDP 包，
+> 几乎不占上行带宽。国内可直连的公共 STUN（第三方，无 SLA，2026-11 实测可用）：
+> `stun:stun.chat.bilibili.com:3478`、`stun:stun.hitv.com:3478`；
+> `stun.miwifi.com:3478` 目前无响应，`stun.wxlivecdn.com` 域名已失效。
+
 ## 8. 升级与回滚
 
 ```bash
