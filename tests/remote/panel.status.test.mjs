@@ -13,7 +13,7 @@ import { JSDOM } from 'jsdom'
 import { build } from 'esbuild'
 import React, { act } from 'react'
 
-import { createConnection, pollInterval, toneOf } from '../../src/modules/remote/client/model.js'
+import { createConnection, pollInterval, toneOf } from '../../src/modules/remote/client/wechat/model.js'
 
 const VIEWPORT = { width: 1264, height: 785 }
 /** 侧栏底部的图标按钮：32×32，左下角。 */

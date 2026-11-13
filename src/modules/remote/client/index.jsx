@@ -3,7 +3,7 @@ import React from 'react'
 globalThis.__dshReact = React
 
 import { installStylesheet } from '../../../client/ui/stylesheet.js'
-import { createConnection } from './model.js'
+import { createConnection } from './wechat/model.js'
 import { createTranslator, WC_COPY, WC_NS } from './locale.js'
 import { createPanel } from './panel.jsx'
 import { installEntry } from './mount.jsx'

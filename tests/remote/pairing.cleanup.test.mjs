@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { createPairing } from '../../src/modules/remote/client/pairing.js'
+import { createPairing } from '../../src/modules/remote/client/mobile/pairing.js'
 
 const SERVER = 'https://pair.example.com'
 const LAST_PAIRED_KEY = 'dsh-toolkit-remote/last-paired.v1'
