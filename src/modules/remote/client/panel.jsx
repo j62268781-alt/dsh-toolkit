@@ -367,10 +367,10 @@ export function createPanel(React, { t, connection, portal }) {
       return () => clearInterval(timer)
     }, [active, state, value.halted])
 
-    // 没有活动会话时盯着宿主状态：手机连上来、授权被移除都在这里被动感知。
-    // 窗口重新可见/拿回焦点时立刻补查一次，用户切回面板不用等下一轮。
+    // 一直盯着宿主状态：手机连上来、授权被移除都可能在任何时候发生（包括已经
+    // completed、本地还留着会话记录的时候）。窗口重新可见/拿回焦点时立刻补查一次。
     useEffect(() => {
-      if (!active || value.halted || state !== undefined) return undefined
+      if (!active || value.halted) return undefined
       const check = () => {
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
         void pairing.hostStatus()
@@ -408,11 +408,9 @@ export function createPanel(React, { t, connection, portal }) {
         return h('div', { className: 'wc-body wc-pending', 'aria-busy': 'true' },
           h('div', { className: 'wc-spinner', 'aria-hidden': 'true' }))
       }
-      // 授权是最高优先级的事实：哪怕本地还留着一个 completed 的会话记录，
-      // 只要宿主报告授权已被移除，就必须画「授权失效」而不是「已绑定」。
-      // 本机在这台服务器上的授权已经失效（被移除/token 失效）：本地凭据会被宿主清掉，
-      // 只画「生成二维码」用户会以为是从没配过，必须说明原因并给重新配对的出口。
-      if (value.authError !== undefined) {
+      // 授权失效优先于任何旧会话记录（哪怕本地还留着 completed，也必须画「授权失效」），
+      // 但让位于正在进行的配对会话：用户点了「重新配对」后要能看到二维码/输入框。
+      if (value.authError !== undefined && !isPairingActive(view)) {
         return h('div', { className: 'wc-body' },
           h('div', { className: 'wc-error' }, t(authErrorKey(value.authError), { reason: value.authError })),
           h('div', { className: 'wc-actions' },

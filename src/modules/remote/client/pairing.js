@@ -264,6 +264,7 @@ export function createPairing() {
 
     refresh,
     settings,
+    hostStatus,
 
     async start() {
       return run(async () => {

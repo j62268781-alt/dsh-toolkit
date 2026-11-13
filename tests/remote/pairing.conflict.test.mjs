@@ -60,6 +60,31 @@ function stubFetch(handlers) {
   return calls
 }
 
+test('hostStatus：面板轮询依赖这个导出，撤销时立刻记下 authError', async () => {
+  const originalFetch = globalThis.fetch
+  stubFetch({
+    status: () => ok({
+      host: {
+        configured: true,
+        authorized: false,
+        error: 'DEVICE_REVOKED',
+        pairingHostOnly: true,
+        connectedClients: [],
+      },
+    }),
+  })
+  const pairing = createPairing()
+  try {
+    // 导出缺失时面板的 setInterval 里会抛 TypeError，状态永远不更新（真机踩过）。
+    assert.equal(typeof pairing.hostStatus, 'function', 'hostStatus 必须对外暴露')
+    await pairing.hostStatus()
+    assert.equal(pairing.getSnapshot().authError, 'DEVICE_REVOKED', '授权被撤销要写进 store')
+  } finally {
+    pairing.dispose()
+    globalThis.fetch = originalFetch
+  }
+})
+
 test('isAccountConflict：认 control 包出来的 remoteCode，也认原文', () => {
   assert.equal(isAccountConflict({ code: 'internal', details: { remoteCode: 'PAIRING_ACCOUNT_CONFLICT' } }), true)
   assert.equal(isAccountConflict({ code: 'internal', message: 'Pairing cannot replace the current account.' }), true)

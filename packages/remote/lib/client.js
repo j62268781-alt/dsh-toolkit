@@ -1100,6 +1100,7 @@ window.__ModuleLoader__.load({
         },
         refresh,
         settings,
+        hostStatus,
         async start() {
           return run(async () => {
             const view = await control("host.pairing.start");
@@ -1492,7 +1493,7 @@ window.__ModuleLoader__.load({
           return () => clearInterval(timer);
         }, [active, state, value.halted]);
         useEffect(() => {
-          if (!active || value.halted || state !== void 0) return void 0;
+          if (!active || value.halted) return void 0;
           const check = () => {
             if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
             void pairing.hostStatus();
@@ -1525,7 +1526,7 @@ window.__ModuleLoader__.load({
               h("div", { className: "wc-spinner", "aria-hidden": "true" })
             );
           }
-          if (value.authError !== void 0) {
+          if (value.authError !== void 0 && !isPairingActive(view)) {
             return h(
               "div",
               { className: "wc-body" },
