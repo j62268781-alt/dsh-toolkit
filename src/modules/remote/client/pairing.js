@@ -80,6 +80,31 @@ async function loadTrustedPeers(serverUrl) {
   }
 }
 
+/**
+ * 解绑之后的善后：让 host 半边删掉上游解绑没管的残留。
+ *
+ * `settings.logout` 只清凭据与身份记录，`pairing-host-only.json`（本机只被控）
+ * 与旧的 client 角色目录会留下来；重启后上游又把 hostOnly 读成 true，面板就会把
+ * 一次普通的未授权讲成「配对授权已被移除」。用户已经解绑了，本机就不该再留着这套说法。
+ *
+ * 失败不影响解绑本身（老版本插件没有这条路由，或宿主拒绝删盘）：返回 false 只用于测试与排查。
+ */
+async function purgeLocalState(serverUrl) {
+  if (typeof serverUrl !== 'string' || serverUrl.trim() === '') return false
+  try {
+    const response = await fetch(`${PLUGIN_API_PATH}/local-state/purge?serverUrl=${encodeURIComponent(serverUrl)}`, {
+      method: 'POST',
+      headers: { accept: 'application/json' },
+      credentials: 'same-origin',
+    })
+    if (response.ok !== true) return false
+    const body = await response.json()
+    return body?.ok === true
+  } catch {
+    return false
+  }
+}
+
 function storage() {
   try {
     return globalThis.window?.localStorage ?? globalThis.localStorage
@@ -282,6 +307,8 @@ export function createPairing() {
     cooldownUntil: undefined,
   }
   const listeners = new Set()
+  /** 远端撤销只清理一次：每 2.5 秒轮询一次 hostStatus，不能每次都删一遍盘。 */
+  let revocationCleaned = false
 
   const emit = () => {
     for (const listener of listeners) listener()
@@ -365,7 +392,16 @@ export function createPairing() {
       const host = status?.host
       if (host === undefined || host === null) return undefined
       const clients = Array.isArray(host.connectedClients) ? host.connectedClients : []
-      set({ clients, authError: authErrorOf(host) })
+      const authError = authErrorOf(host)
+      set({ clients, authError })
+      // 服务端说「这台设备已被移除」（手机端解绑）：本机这套配对状态就作废了。
+      // 不清的话，重启后 hostOnly 策略 + 一份旧快照还会把本机讲成「已配对、只是授权没了」。
+      if (authError === 'DEVICE_REVOKED' && !revocationCleaned) {
+        revocationCleaned = true
+        forgetPaired()
+        set({ lastPaired: undefined, peers: [] })
+        await purgeLocalState(value.serverUrl)
+      }
       // 已绑定时顺手读一次本机 trusted peers：会话记录被回收后，手机名/指纹只剩这里还有。
       if (value.binding === true) {
         set({ peers: await loadTrustedPeers(value.serverUrl) })
@@ -509,15 +545,21 @@ export function createPairing() {
         // 先解绑本地凭据；远端注销失败（旧 token 已失效时常见）不影响本地清理，
         // 否则会在解绑成功后误报一个 AUTH_INVALID。
         try {
-          await control('settings.logout')
+          // logout 的响应就是 settingsView（含 config.serverUrl），顺手拿来定位要清的目录，
+          // 省一次 settings.get；地址读不到时下面还会补读。
+          applySettings(await control('settings.logout'))
         } catch {
           // 凭据已被清空，继续重读配对状态。
         }
-        set({ view: undefined, halted: false })
-        // 解绑是「忘掉这台手机」：本地快照与 trusted-peers 兜底缓存都清掉，
-        // 否则待机态还会把已经解除的手机名/指纹画回来。
+        set({ view: undefined, halted: false, authError: undefined })
+        // 解绑是「忘掉这台手机」：本地快照、trusted-peers 兜底缓存，以及上游没管的
+        // pairing-host-only 策略与旧 client 角色目录都要清掉。少清一样，重启后本机
+        // 就还会把那套已经作废的配对状态讲给用户听。
         forgetPaired()
         set({ lastPaired: undefined, peers: [] })
+        // 清理要落到具体服务器目录上：地址还没读到时先读一次，不猜。
+        if (value.serverUrl === undefined) await settings()
+        await purgeLocalState(value.serverUrl)
         await settings()
         const next = await refresh()
         if (next !== undefined && next !== null) return next

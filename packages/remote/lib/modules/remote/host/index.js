@@ -18,6 +18,7 @@
  *   POST /api/plugins/dsh-toolkit/remote/bridge/test  发一条测试消息
  *   POST /api/plugins/dsh-toolkit/remote/bridge/access 改访问策略/白名单
  *   GET  /api/plugins/dsh-toolkit/remote/peers?serverUrl= 已信任手机的身份（重启后兜底）
+ *   POST /api/plugins/dsh-toolkit/remote/local-state/purge?serverUrl= 解绑后清本机配对残留
  */
 
 import { sendJson, readBody } from '../../../host/http.js'
@@ -28,6 +29,7 @@ import { createLoginManager } from './login.js'
 import { createMonitor } from './monitor.js'
 import { maskId, normalizeBaseUrl } from './ilink.js'
 import { readTrustedPeers } from './peers.js'
+import { purgePairingState } from './local-state.js'
 
 export const name = 'toolkit-remote'
 /**
@@ -436,10 +438,44 @@ function registerPeersRoute(ctx) {
   })
 }
 
+/**
+ * 解绑之后的善后：删掉上游解绑没管的残留（「本机只被控」策略 + 旧的 client 角色目录）。
+ *
+ * 上游 `settings.logout` 只清凭据与身份记录，`pairing-host-only.json` 会留下来；
+ * 重启后它把本机继续当成「配对主机」，面板于是把一次普通的未授权讲成
+ * 「配对授权已被移除」——用户明明已经解绑，看到的还是旧配对那套说法。
+ *
+ * 只由本插件的面板在解绑后调用，属于「手机连接」而不是 ClawBot，所以不受 enabled 开关影响。
+ */
+function registerLocalStateRoute(ctx) {
+  registerAuthenticatedRoute(ctx, {
+    kind: 'exact',
+    path: `${API_PATH}/local-state/purge`,
+    async handler(req, res) {
+      res.setHeader('cache-control', 'no-store')
+      if (req.method !== 'POST') return sendJson(res, 404, { ok: false, reason: 'not-found' })
+      try {
+        const url = new URL(String(req?.url ?? '/'), 'http://localhost')
+        const serverUrl = url.searchParams.get('serverUrl') ?? ''
+        if (serverUrl.trim() === '') {
+          return sendJson(res, 400, { ok: false, error: '缺少 serverUrl' })
+        }
+        const { dir, hostOnly, removed } = await purgePairingState({ serverUrl })
+        return sendJson(res, 200, { ok: true, dir, hostOnly, removed })
+      } catch (error) {
+        // serverScope 对非法地址抛 400；删盘失败（占用/权限）是 500，别谎称「已经清干净」。
+        const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+        return sendJson(res, status, { ok: false, error: String(error?.message ?? error) })
+      }
+    },
+  })
+}
+
 export function apply(ctx, config) {
   if (typeof ctx.webServer?.register !== 'function') return
   if (typeof ctx.connection?.requestRejection !== 'function') return
   registerPeersRoute(ctx)
+  registerLocalStateRoute(ctx)
   const settings = readConfig(config)
   if (!settings.enabled) return
 

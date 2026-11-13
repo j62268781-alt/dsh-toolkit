@@ -81,6 +81,7 @@ const PATHS = [
   ['POST', 'bridge/test'],
   ['POST', 'bridge/access'],
   ['GET', 'peers'],
+  ['POST', 'local-state/purge'],
 ]
 
 test('插件声明与其依赖', () => {
@@ -114,7 +115,7 @@ test('对外状态：凭据还在但监听断了就报 reconnecting，不能继�
   assert.equal(plugin.deriveConnectionState({ connected: false, loginState: { state: 'expired' }, monitorState: { running: true, connected: false, phase: 'error' } }), 'expired')
 })
 
-test('十一条路由全部注册为 exact 且挂在独立前缀下', async (t) => {
+test('十二条路由全部注册为 exact 且挂在独立前缀下', async (t) => {
   const ctx = new Context()
   await ctx.plugin(WebServer)
   await ctx.plugin(Connection)
@@ -248,6 +249,49 @@ test('peers：读本机 trusted-peers.json，按最近信任排序；缺参数�
   assert.match(missing.body, /serverUrl/)
 })
 
+test('local-state/purge：解绑后删掉 hostOnly 策略与旧 client 目录；缺参数 400', async (t) => {
+  const homeDir = await mkdtemp(join(tmpdir(), 'dsh-routes-purge-'))
+  const SERVER_URL = 'https://dsh.r2049.cn'
+  const dir = join(homeDir, 'ds-harness-remote', 'servers', 'e9988d504cda7c1541adafcc')
+  await mkdir(join(dir, 'host'), { recursive: true })
+  await mkdir(join(dir, 'client'), { recursive: true })
+  await writeFile(join(dir, 'host', 'pairing-host-only.json'), '{"hostOnly":true}')
+  await writeFile(join(dir, 'host', 'device.json'), '{"deviceId":"host-1"}')
+  await writeFile(join(dir, 'client', 'device.json'), '{"deviceId":"client-1"}')
+  const previousHome = process.env.DSH_HOME
+  process.env.DSH_HOME = homeDir
+  t.after(() => {
+    if (previousHome === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = previousHome
+  })
+
+  const ctx = new Context()
+  await ctx.plugin(WebServer)
+  await ctx.plugin(Connection)
+  await ctx.plugin(Credentials)
+  const fiber = ctx.plugin(plugin, {})
+  t.after(() => fiber.dispose())
+  await fiber
+  ctx.get('connection').requestRejection = () => undefined
+  const route = ctx.get('webServer').routes.find(({ path }) => path.endsWith('/local-state/purge'))
+
+  const response = reply()
+  await route.handler({ method: 'POST', url: `/api/plugins/dsh-toolkit/remote/local-state/purge?serverUrl=${encodeURIComponent(SERVER_URL)}` }, response)
+  assert.equal(response.statusCode, 200)
+  const payload = JSON.parse(response.body)
+  assert.equal(payload.ok, true)
+  assert.equal(payload.hostOnly, true)
+  assert.deepEqual(payload.removed.sort(), ['client', 'host/pairing-host-only.json'])
+  await assert.rejects(readFile(join(dir, 'host', 'pairing-host-only.json'), 'utf8'), (error) => error?.code === 'ENOENT')
+  // host 身份留着：运行中的 host 运行时还持有它。
+  assert.equal(await readFile(join(dir, 'host', 'device.json'), 'utf8'), '{"deviceId":"host-1"}')
+
+  const missing = reply()
+  await route.handler({ method: 'POST', url: '/api/plugins/dsh-toolkit/remote/local-state/purge' }, missing)
+  assert.equal(missing.statusCode, 400)
+  assert.match(missing.body, /serverUrl/)
+})
+
 test('已有凭据时 status 只暴露掩码账号与 host', async (t) => {
   const ctx = new Context()
   await ctx.plugin(WebServer)
@@ -295,7 +339,7 @@ test('logout 清空凭据；取消不写凭据', async (t) => {
   assert.equal(JSON.parse(response.body).connected, false)
 })
 
-test('enabled 为 false 时只留配对身份兜底路由，不注册任何 ClawBot 路由', async (t) => {
+test('enabled 为 false 时只留配对相关的兜底路由，不注册任何 ClawBot 路由', async (t) => {
   const ctx = new Context()
   await ctx.plugin(WebServer)
   await ctx.plugin(Connection)
@@ -303,11 +347,14 @@ test('enabled 为 false 时只留配对身份兜底路由，不注册任何 Claw
   const fiber = ctx.plugin(plugin, { enabled: false })
   t.after(() => fiber.dispose())
   await fiber
-  // peers 是「手机连接」的身份兜底（只读盘上的 trusted-peers.json），
-  // 和微信登录无关，所以关掉 ClawBot 也要留着。
+  // peers 与 local-state/purge 都属于「手机连接」，不是微信登录：关掉 ClawBot 也要留着。
+  // 没有 purge，解绑后就清不掉上游没管的 pairing-host-only 策略。
   assert.deepEqual(
-    ctx.get('webServer').routes.map(({ kind, path }) => [kind, path]),
-    [['exact', '/api/plugins/dsh-toolkit/remote/peers']],
+    ctx.get('webServer').routes.map(({ kind, path }) => [kind, path]).sort(),
+    [
+      ['exact', '/api/plugins/dsh-toolkit/remote/local-state/purge'],
+      ['exact', '/api/plugins/dsh-toolkit/remote/peers'],
+    ],
   )
 })
 

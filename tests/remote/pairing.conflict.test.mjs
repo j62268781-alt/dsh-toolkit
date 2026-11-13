@@ -50,7 +50,15 @@ const failure = (code, message, details) => new Response(JSON.stringify({
 function stubFetch(handlers) {
   const calls = []
   globalThis.fetch = async (url, init = {}) => {
-    const endpoint = String(url).replace('/ds-harness-remote/', '')
+    const text = String(url)
+    if (text.includes('/local-state/purge')) {
+      calls.push({ endpoint: 'local-state/purge', payload: undefined })
+      return new Response(JSON.stringify({ ok: true, removed: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+    const endpoint = text.replace('/ds-harness-remote/', '')
     const body = init.body === undefined ? undefined : JSON.parse(init.body)
     calls.push({ endpoint, payload: body?.payload })
     const handler = handlers[endpoint]
@@ -143,13 +151,16 @@ test('解绑并重试：先 settings.logout，再读状态并完成配对', asyn
     })
     const innerFetch = globalThis.fetch
     globalThis.fetch = async (url, init = {}) => {
-      unbindCalls.push(String(url).replace('/ds-harness-remote/', ''))
+      const text = String(url)
+      unbindCalls.push(
+        text.includes('/local-state/purge') ? 'local-state/purge' : text.replace('/ds-harness-remote/', ''),
+      )
       return innerFetch(url, init)
     }
 
     const view = await pairing.unbind()
     const snapshot = pairing.getSnapshot()
-    assert.deepEqual(unbindCalls, ['settings.logout', 'settings.get', 'host.pairing.status'])
+    assert.deepEqual(unbindCalls, ['settings.logout', 'local-state/purge', 'settings.get', 'host.pairing.status'])
     assert.equal(view.state, 'completed')
     assert.equal(snapshot.error, undefined, '解绑成功后要清掉错误')
     assert.equal(snapshot.halted, false)
@@ -193,6 +204,7 @@ test('解除绑定：只注销旧设备，不替用户生成新二维码', async
     const view = await pairing.unbind()
     assert.deepEqual(calls.map((call) => call.endpoint), [
       'settings.logout',
+      'local-state/purge',
       'settings.get',
       'host.pairing.status',
     ])
@@ -218,6 +230,7 @@ test('更换手机：注销旧设备后立刻生成新二维码', async () => {
     const view = await pairing.unbind({ restart: true })
     assert.deepEqual(calls.map((call) => call.endpoint), [
       'settings.logout',
+      'local-state/purge',
       'settings.get',
       'host.pairing.status',
       'host.pairing.start',
