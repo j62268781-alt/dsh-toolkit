@@ -22,8 +22,34 @@ export const PAIRING_PREFIX = '/ds-harness-remote'
 /** 配对会话轮询间隔：服务器侧状态变化（扫码/确认）通常在 1 秒内落库。 */
 export const PAIRING_POLL_MS = 2500
 
-/** 已绑定、没有活动会话时的慢轮询：只为了知道手机是不是刚连上来。 */
+/** 没有活动会话时的慢轮询：只为了知道手机连没连上、本机授权还有没有效。 */
 export const PAIRING_IDLE_POLL_MS = 5000
+
+/**
+ * 宿主授权已失效的错误：服务器上这台电脑被移除了、token 失效或设备身份被占用。
+ * 这类错误不会自己恢复，面板必须说清楚「要重新配对」，而不是假装没事。
+ * （TRANSPORT_CLOSED / CONNECTION_FAILED 之类属于网络抖动，不算。）
+ */
+const AUTH_ERRORS = new Set([
+  'DEVICE_REVOKED',
+  'DEVICE_OWNERSHIP_REQUIRED',
+  'AUTH_INVALID',
+  'TOKEN_EXPIRED',
+  'DEVICE_NOT_FOUND',
+])
+
+/**
+ * 授权被移除后宿主会清掉本地凭据，下一次启动只剩 ACCOUNT_AUTH_REQUIRED；
+ * 从未配对过的全新安装也是这个错误，所以还要靠 pairingHostOnly（配对授权留下的标记）
+ * 区分「曾经绑过、现在失效」和「还没配过」。
+ */
+function authErrorOf(host) {
+  const error = typeof host?.error === 'string' ? host.error : undefined
+  if (error === undefined) return undefined
+  if (AUTH_ERRORS.has(error)) return error
+  if (error === 'ACCOUNT_AUTH_REQUIRED' && host?.pairingHostOnly === true) return error
+  return undefined
+}
 
 /** 手机上进码固定 8 位（服务器只接受 /^[0-9]{8}$/）。 */
 export const PAIRING_CODE_LENGTH = 8
@@ -129,6 +155,8 @@ export function createPairing() {
     binding: undefined,
     /** 当前连着本机的设备（status.host.connectedClients），用于展示手机是否在线。 */
     clients: [],
+    /** 宿主授权已失效的错误码（见 AUTH_ERRORS）：有值时面板要给出「重新配对」的出口。 */
+    authError: undefined,
     /** 致命错误时停掉自动轮询：否则每 2.5 秒重试一次，错误行会不停闪。 */
     halted: false,
   }
@@ -190,7 +218,7 @@ export function createPairing() {
       const host = status?.host
       if (host === undefined || host === null) return undefined
       const clients = Array.isArray(host.connectedClients) ? host.connectedClients : []
-      set({ clients })
+      set({ clients, authError: authErrorOf(host) })
       return host
     } catch {
       return undefined

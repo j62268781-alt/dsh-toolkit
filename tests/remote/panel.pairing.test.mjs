@@ -334,6 +334,81 @@ test('配对：会话记录被回收后仍认「已绑定」，不退回「生�
   }
 })
 
+test('配对：授权被服务器移除时说明原因，而不是退回「生成二维码」', async () => {
+  // 手机/服务器把这台电脑的授权删掉后，宿主会清空本地凭据（associations 变空），
+  // status.host.error = DEVICE_REVOKED。此时只画「生成二维码」会让人以为从没配过。
+  const panel = await mount({
+    'settings.get': { config: { serverUrl: SERVER }, associations: {} },
+    'host.pairing.status': undefined,
+    status: {
+      mode: 'local',
+      host: { online: false, authorized: false, accountRequired: true, error: 'DEVICE_REVOKED', connectedClients: [] },
+    },
+  })
+  try {
+    await panel.flush()
+    const popover = panel.popover()
+    assert.ok(popover.textContent.includes('pairAuthRevoked'), '要说明授权被移除')
+    assert.ok(popover.textContent.includes('pairAgain'), '给出重新配对的出口')
+    assert.equal(popover.textContent.includes('pairGenerate'), false, '不要伪装成从未绑定')
+    assert.equal(popover.textContent.includes('pairIdleHint'), false)
+  } finally {
+    await panel.unmount()
+  }
+
+  // 授权被移除后宿主要到下次启动才清凭据，此时只剩 ACCOUNT_AUTH_REQUIRED；
+  // pairingHostOnly 是配对留下的标记，用它区分「曾经绑过」和「全新安装」。
+  const restarted = await mount({
+    'settings.get': { config: { serverUrl: SERVER }, associations: {} },
+    'host.pairing.status': undefined,
+    status: {
+      mode: 'local',
+      host: { online: false, authorized: false, accountRequired: true, pairingHostOnly: true, error: 'ACCOUNT_AUTH_REQUIRED', connectedClients: [] },
+    },
+  })
+  try {
+    await restarted.flush()
+    const popover = restarted.popover()
+    assert.ok(popover.textContent.includes('pairAuthRevoked'), '重启后凭据被清掉也要说明授权失效')
+    assert.equal(popover.textContent.includes('pairGenerate'), false)
+  } finally {
+    await restarted.unmount()
+  }
+
+  // 全新安装（从没配过）也是 ACCOUNT_AUTH_REQUIRED，但不能吓人地说授权失效。
+  const fresh = await mount({
+    'settings.get': { config: { serverUrl: SERVER }, associations: {} },
+    'host.pairing.status': undefined,
+    status: {
+      mode: 'local',
+      host: { online: false, authorized: false, accountRequired: true, pairingHostOnly: false, error: 'ACCOUNT_AUTH_REQUIRED', connectedClients: [] },
+    },
+  })
+  try {
+    await fresh.flush()
+    const popover = fresh.popover()
+    assert.ok(popover.textContent.includes('pairGenerate'), '全新安装应直接给生成二维码')
+    assert.equal(popover.textContent.includes('pairAuthRevoked'), false)
+  } finally {
+    await fresh.unmount()
+  }
+
+  // 网络类错误不能被当成授权失效（否则服务器重启时会乱报）。
+  const flaky = await mount({
+    'settings.get': { config: { serverUrl: SERVER }, associations: {} },
+    'host.pairing.status': undefined,
+    status: { mode: 'local', host: { online: false, error: 'TRANSPORT_CLOSED', connectedClients: [] } },
+  })
+  try {
+    await flaky.flush()
+    const popover = flaky.popover()
+    assert.ok(popover.textContent.includes('pairGenerate'), '普通断线仍走未绑定页')
+    assert.equal(popover.textContent.includes('pairAuthRevoked'), false, '断线不算授权失效')
+  } finally {
+    await flaky.unmount()
+  }
+})
+
 test('配对：终态按 failureReason 说清原因，不再四种情况一个样', async () => {
   const cases = [
     [{ state: 'failed', failureReason: 'verification_failed' }, 'pairEndCodeWrong'],

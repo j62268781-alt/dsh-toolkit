@@ -99,6 +99,10 @@ export const WC_COPY = {
     pairServerSave: '保存',
     pairError: '配对请求失败（{code}）：{reason}',
     pairConflictHint: '这台设备在该服务器上还绑着旧账号。解绑后即可重新配对。',
+    pairAuthRevoked: '这台电脑在配对服务器上的授权已被移除（可能是在手机上解除了绑定）。重新配对即可恢复。',
+    pairAuthOwnership: '这台电脑的设备身份已被其他账号占用。重新配对即可恢复。',
+    pairAuthInvalid: '本机在配对服务器上的登录状态已失效，需要重新配对。',
+    pairAuthFailed: '本机在配对服务器上的授权已失效（{reason}），需要重新配对。',
     pairUnbind: '解绑并重试',
 
     failed: '操作失败：{reason}',
@@ -202,6 +206,10 @@ export const WC_COPY = {
     pairServerSave: 'Save',
     pairError: 'Pairing request failed ({code}): {reason}',
     pairConflictHint: 'This device is still bound to another account on that server. Unbind it, then pair again.',
+    pairAuthRevoked: 'This computer was removed from the pairing server (probably unbound on the phone). Pair again to restore it.',
+    pairAuthOwnership: 'This computer is now owned by another account. Pair again to restore it.',
+    pairAuthInvalid: 'This computer is no longer signed in on the pairing server. Pair again to restore it.',
+    pairAuthFailed: 'This computer is no longer authorized on the pairing server ({reason}). Pair again.',
     pairUnbind: 'Unbind and retry',
 
     failed: 'Action failed: {reason}',
