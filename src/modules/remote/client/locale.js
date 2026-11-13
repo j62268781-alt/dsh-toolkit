@@ -119,6 +119,7 @@ export const WC_COPY = {
     pairChangePhone: '更换手机',
     pairChangeConfirm: '更换手机会先解除当前手机的绑定，再用新手机扫码连接。',
     pairChangeNow: '确认更换',
+    pairRenewing: '正在注销旧手机，马上就出新的二维码…',
 
     failed: '操作失败：{reason}',
     loading: '正在读取状态…',
@@ -241,6 +242,7 @@ export const WC_COPY = {
     pairChangePhone: 'Change phone',
     pairChangeConfirm: 'Changing phones first unbinds the current phone; the new phone must scan the QR code to connect.',
     pairChangeNow: 'Change phone',
+    pairRenewing: 'Signing out the old phone — the new QR code is on its way…',
 
     failed: 'Action failed: {reason}',
     loading: 'Reading state…',

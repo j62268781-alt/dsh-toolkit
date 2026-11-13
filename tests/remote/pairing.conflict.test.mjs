@@ -228,15 +228,16 @@ test('更换手机：注销旧设备后立刻生成新二维码', async () => {
   const pairing = createPairing()
   try {
     const view = await pairing.unbind({ restart: true })
+    // 更换手机不先读会话状态：终点一定是新二维码，读到的旧 completed 会把面板画回旧手机。
     assert.deepEqual(calls.map((call) => call.endpoint), [
       'settings.logout',
       'local-state/purge',
       'settings.get',
-      'host.pairing.status',
       'host.pairing.start',
     ])
     assert.equal(view.state, 'created', '更换手机后应给出新的扫码会话')
     assert.equal(pairing.getSnapshot().view.state, 'created')
+    assert.equal(pairing.getSnapshot().renewing, false, '拿到新码后要退出「正在生成」')
   } finally {
     pairing.dispose()
     globalThis.fetch = originalFetch

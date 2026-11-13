@@ -1050,3 +1050,60 @@ test('配对：二维码有效期内连点「刷新」不再发起新的配对�
     await panel.unmount()
   }
 })
+
+test('配对：更换手机确认期间画「正在生成」，不闪回未绑定首页', async () => {
+  // 真机反馈（2026-11-13）：点「确认更换」后卡片会先掉回未绑定首页（「生成配对二维码」
+  // + 服务器地址行），再弹回二维码，看着像被踢出去又自动回来。中间态必须是「正在生成」。
+  let releaseStart
+  const pendingStart = new Promise((resolve) => { releaseStart = () => resolve(CREATED) })
+  let settingsCalls = 0
+  const panel = await mount({
+    'settings.get': () => {
+      settingsCalls += 1
+      return settingsCalls === 1
+        ? { config: { serverUrl: SERVER }, associations: { host: { method: 'device-pairing' } } }
+        : { config: { serverUrl: SERVER }, associations: {} }
+    },
+    'host.pairing.status': null,
+    'settings.logout': {},
+    'host.pairing.start': () => pendingStart,
+    'plugin:local-state/purge': { ok: true, removed: [] },
+    status: { mode: 'local', host: { online: true, connectedClients: [] } },
+  }, {
+    lastPaired: { deviceId: 'phone-1', name: 'Pixel 9', fingerprint: 'c'.repeat(64), serverUrl: SERVER },
+  })
+  try {
+    await panel.flush()
+    const popover = panel.popover()
+    const swap = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairChangePhone')
+    await panel.click(swap)
+    const confirm = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairChangeNow')
+    assert.ok(confirm !== undefined, '确认行要有「确认更换」')
+
+    await panel.click(confirm)
+    await panel.flush()
+    await panel.flush()
+
+    // 注销已经完成、新会话还没回来：这一刻 view 与 binding 都是空的，正是会闪回首页的窗口。
+    assert.ok(
+      panel.control.calls.some((call) => call.endpoint === 'host.pairing.start'),
+      '必须已经走到建新会话这一步，才说明真的落在这个窗口里',
+    )
+    assert.ok(popover.textContent.includes('pairRenewing'), `建会话期间要说明正在生成: ${popover.textContent}`)
+    assert.equal(
+      [...popover.querySelectorAll('.wc-button')].some((node) => node.textContent === 'pairGenerate'),
+      false,
+      '这段窗口里不能出现「生成配对二维码」（那就是闪回去的首页）',
+    )
+    assert.equal(popover.querySelector('.wc-info__row'), null, '也不该露出服务器地址那一行')
+
+    releaseStart()
+    await panel.flush()
+    await panel.flush()
+    await panel.flush()
+    assert.ok(popover.querySelector('.wc-qr') !== null, '建完会话直接到二维码')
+    assert.equal(popover.textContent.includes('pairRenewing'), false)
+  } finally {
+    await panel.unmount()
+  }
+})

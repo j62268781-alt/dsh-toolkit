@@ -305,6 +305,11 @@ export function createPairing() {
      * 面板用 useCountdown(cooldownUntil) 每秒重画一次，到点按钮自动恢复。
      */
     cooldownUntil: undefined,
+    /**
+     * 「更换手机」进行中：旧设备注销 + 清残留期间没有 view 也没有 binding，
+     * 面板要画「正在生成」而不是掉回未绑定首页。
+     */
+    renewing: false,
   }
   const listeners = new Set()
   /** 远端撤销只清理一次：每 2.5 秒轮询一次 hostStatus，不能每次都删一遍盘。 */
@@ -542,33 +547,43 @@ export function createPairing() {
      */
     async unbind({ restart = false } = {}) {
       return run(async () => {
-        // 先解绑本地凭据；远端注销失败（旧 token 已失效时常见）不影响本地清理，
-        // 否则会在解绑成功后误报一个 AUTH_INVALID。
+        // 「更换手机」的终点是一张新二维码，可中间要先注销旧设备、清盘上残留、重读设置；
+        // 这段时间 binding 已经掉了、view 也清了，面板会掉回未绑定首页再弹到二维码。
+        // renewing 让面板在这一段画「正在生成」，而不是闪一下首页。
+        if (restart) set({ renewing: true })
         try {
-          // logout 的响应就是 settingsView（含 config.serverUrl），顺手拿来定位要清的目录，
-          // 省一次 settings.get；地址读不到时下面还会补读。
-          applySettings(await control('settings.logout'))
-        } catch {
-          // 凭据已被清空，继续重读配对状态。
+          // 先解绑本地凭据；远端注销失败（旧 token 已失效时常见）不影响本地清理，
+          // 否则会在解绑成功后误报一个 AUTH_INVALID。
+          try {
+            // logout 的响应就是 settingsView（含 config.serverUrl），顺手拿来定位要清的目录，
+            // 省一次 settings.get；地址读不到时下面还会补读。
+            applySettings(await control('settings.logout'))
+          } catch {
+            // 凭据已被清空，继续重读配对状态。
+          }
+          set({ view: undefined, halted: false, authError: undefined })
+          // 解绑是「忘掉这台手机」：本地快照、trusted-peers 兜底缓存，以及上游没管的
+          // pairing-host-only 策略与旧 client 角色目录都要清掉。少清一样，重启后本机
+          // 就还会把那套已经作废的配对状态讲给用户听。
+          forgetPaired()
+          set({ lastPaired: undefined, peers: [] })
+          // 清理要落到具体服务器目录上：地址还没读到时先读一次，不猜。
+          if (value.serverUrl === undefined) await settings()
+          await purgeLocalState(value.serverUrl)
+          await settings()
+          if (restart) {
+            // 更换手机不需要先读一遍会话状态：终点一定是一张新码，读到的旧 completed
+            // 只会把面板又画回那台已经被注销的手机。
+            const view = await control('host.pairing.start')
+            set({ view })
+            return view
+          }
+          const next = await refresh()
+          if (next !== undefined && next !== null) return next
+          return undefined
+        } finally {
+          if (restart) set({ renewing: false })
         }
-        set({ view: undefined, halted: false, authError: undefined })
-        // 解绑是「忘掉这台手机」：本地快照、trusted-peers 兜底缓存，以及上游没管的
-        // pairing-host-only 策略与旧 client 角色目录都要清掉。少清一样，重启后本机
-        // 就还会把那套已经作废的配对状态讲给用户听。
-        forgetPaired()
-        set({ lastPaired: undefined, peers: [] })
-        // 清理要落到具体服务器目录上：地址还没读到时先读一次，不猜。
-        if (value.serverUrl === undefined) await settings()
-        await purgeLocalState(value.serverUrl)
-        await settings()
-        const next = await refresh()
-        if (next !== undefined && next !== null) return next
-        if (value.error !== undefined) return undefined
-        if (!restart) return undefined
-        // 「更换手机」：解绑会连会话一起清掉，直接开一张新二维码给下一台手机。
-        const view = await control('host.pairing.start')
-        set({ view })
-        return view
       })
     },
 

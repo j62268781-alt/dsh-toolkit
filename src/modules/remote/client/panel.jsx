@@ -500,6 +500,13 @@ export function createPanel(React, { t, connection, portal }) {
         return h('div', { className: 'wc-body wc-pending', 'aria-busy': 'true' },
           h('div', { className: 'wc-spinner', 'aria-hidden': 'true' }))
       }
+      // 「更换手机」：注销旧设备 → 清盘上残留 → 建新会话。中途 view 与 binding 都是空的，
+      // 不拦住就会先掉回未绑定首页、再弹到二维码，看着像被踢出去又回来。
+      if (value.renewing === true && !isPairingActive(view)) {
+        return h('div', { className: 'wc-body wc-pending', 'aria-busy': 'true' },
+          h('div', { className: 'wc-spinner', 'aria-hidden': 'true' }),
+          h('div', { className: 'wc-hint' }, t('pairRenewing')))
+      }
       // 授权失效优先于任何旧会话记录（哪怕本地还留着 completed，也必须画「授权失效」），
       // 但让位于正在进行的配对会话：用户点了「重新配对」后要能看到二维码/输入框。
       if (value.authError !== undefined && !isPairingActive(view)) {
@@ -982,3 +989,5 @@ export function createPanel(React, { t, connection, portal }) {
 
   return RemoteEntry
 }
+
+
