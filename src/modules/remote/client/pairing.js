@@ -321,21 +321,33 @@ export function createPairing() {
     }
   }
 
+  /**
+   * 把一份 settingsView 写进快照。
+   *
+   * `settings.server.set` 的返回值就是同一份视图（上游是 `{...await settingsView(), applies:'live'}`），
+   * 所以改服务器时直接拿它的响应更新，不必再补一次 `settings.get`——那会白多一个 round trip，
+   * 而保存本来就卡在「重建运行时」上，没必要再叠一层。
+   */
+  function applySettings(view) {
+    if (view === undefined || view === null) return
+    const associations = view.associations
+    const host = associations?.host
+    const nextServerUrl = view.config?.serverUrl ?? value.serverUrl
+    set({
+      serverUrl: nextServerUrl,
+      // 换了服务器，上一台的手机身份就不作数了。
+      ...nextServerUrl === value.serverUrl ? {} : { peers: [] },
+      // 宿主没给 associations 时保持 undefined（未知），不要误判成「未绑定」。
+      ...associations === undefined || associations === null
+        ? {}
+        : { binding: host !== undefined && host !== null },
+    })
+  }
+
   async function settings() {
     try {
       const view = await control('settings.get')
-      const associations = view?.associations
-      const host = associations?.host
-      const nextServerUrl = view?.config?.serverUrl ?? value.serverUrl
-      set({
-        serverUrl: nextServerUrl,
-        // 换了服务器，上一台的手机身份就不作数了。
-        ...nextServerUrl === value.serverUrl ? {} : { peers: [] },
-        // 宿主没给 associations 时保持 undefined（未知），不要误判成「未绑定」。
-        ...associations === undefined || associations === null
-          ? {}
-          : { binding: host !== undefined && host !== null },
-      })
+      applySettings(view)
       return view
     } catch {
       // 设置服务不可用时（例如极简宿主）不阻塞配对，只是不显示服务器地址。
@@ -518,15 +530,23 @@ export function createPairing() {
       })
     },
 
-    /** 改配对服务器地址（写入 ds-harness-remote 的 settings）。 */
+    /**
+     * 改配对服务器地址（写入 ds-harness-remote 的 settings）。
+     *
+     * 上游 `settings.server.set` 分两步：先把新地址 `settings.replace()` 落盘（这一步就是写进
+     * profile 的插件设置），再 `switchServer()` 把 client 与 host 两套运行时空重建一遍
+     * （重新联网握手、探测服务器能力）。慢的是后者，不是写配置；这几秒里面板只能禁用着等。
+     * 它的响应里已经带着最新 settingsView（`applies: 'live'`），所以这里不再补一次 settings.get。
+     */
     async setServer(serverUrl) {
-      return run(async () => {
-        await control('settings.server.set', { serverUrl })
-        await settings()
+      const saved = await run(async () => {
+        applySettings(await control('settings.server.set', { serverUrl }))
         // 换服务器后旧会话属于旧服务器，直接清空让用户重新生成。
         set({ view: undefined })
-        return undefined
+        // 走完运行时切换才回 true：面板据此决定是退出编辑态，还是留在原地让用户改地址重试。
+        return true
       })
+      return saved === true
     },
 
     dispose() {

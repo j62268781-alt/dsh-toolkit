@@ -280,7 +280,11 @@ export function createPanel(React, { t, connection, portal }) {
     const save = () => {
       const next = draft.trim()
       if (next === '') return
-      void Promise.resolve(onSave(next)).then(() => setEditing(false))
+      // onSave 只在真的切换成功时才回 true。失败（例如新地址连不上、运行时重建失败）就留在
+      // 编辑态：用户还能就地改地址重试，而不是被弹回只读行、只剩面板底部一行报错不知道点哪。
+      void Promise.resolve(onSave(next)).then((saved) => {
+        if (saved === true) setEditing(false)
+      })
     }
     if (!editing) {
       return h('div', { className: 'wc-info__row' },
@@ -311,7 +315,7 @@ export function createPanel(React, { t, connection, portal }) {
         className: 'wc-button wc-button--half wc-button--primary',
         disabled: busy || draft.trim() === '',
         onClick: save,
-      }, t('pairServerSave')),
+      }, busy ? t('pairServerSaving') : t('pairServerSave')),
       h('button', {
         type: 'button',
         className: 'wc-button wc-button--half',
@@ -361,6 +365,8 @@ export function createPanel(React, { t, connection, portal }) {
   function pairErrorText(error) {
     if (error.code === 'RATE_LIMITED') return t('pairRateLimited')
     if (error.code === 'PAIRING_BUSY') return t('pairServerBusy')
+    // 上一次服务器切换还没走完又点保存，上游直接拒绝（见 control-runtime.js 的 setServer）。
+    if (error.code === 'SERVER_SWITCH_BUSY') return t('pairSwitchBusy')
     return t('pairError', { code: error.code, reason: error.message })
   }
 
