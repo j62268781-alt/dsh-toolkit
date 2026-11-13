@@ -1,0 +1,33 @@
+.sk-arch__delete:not(:disabled) {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+/* A working button is unavailable, not disabled: the host's `:disabled` rule drops
+   it to 40% opacity, which made the whole bar read as a flash on every click. */
+.sk-arch__delete[aria-busy="true"] {
+  opacity: 1;
+  cursor: progress;
+}
+
+/* Drawn here because the host Button has no loading state. The ring keeps the
+   button's own size, so enabling it never reflows the footer or the row. */
+.sk-arch__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  corner-shape: round;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  animation: sk-arch-spin 0.7s linear infinite;
+}
+
+@keyframes sk-arch-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sk-arch__delete:hover:not(:disabled) {
+  color: var(--dsw-alias-state-error-primary);
+  background: var(--dsw-alias-interactive-bg-hover-danger);
+}

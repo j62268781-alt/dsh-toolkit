@@ -39,8 +39,787 @@ window.__ModuleLoader__.load({
     });
     module.exports = __toCommonJS(archived_package_entry_exports);
 
-    // src/modules/archived/client/styles.css
-    var styles_default = `.sk-arch {
+    // src/client/ui/stylesheet.ts
+    function composeStyles(...parts) {
+      return parts.filter((part) => typeof part === "string" && part !== "").join("\n");
+    }
+    function installStylesheet(css, id) {
+      const tag = document.createElement("style");
+      tag.dataset.plugin = id;
+      tag.dataset.pluginCss = `${id}/styles.css`;
+      tag.textContent = css;
+      (document.head ?? document.documentElement).appendChild(tag);
+      return () => tag.remove();
+    }
+    function installMutableStylesheet(id) {
+      const tag = document.createElement("style");
+      tag.dataset.plugin = id;
+      tag.dataset.pluginCss = `${id}/runtime.css`;
+      (document.head ?? document.documentElement).appendChild(tag);
+      return {
+        set(css) {
+          if (tag.textContent !== css) tag.textContent = css;
+        },
+        dispose() {
+          tag.remove();
+        }
+      };
+    }
+
+    // src/client/styles/settings.css
+    var settings_default = `/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */
+    .ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}
+    /* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */
+    .ab-pageTitle,.jdg-pageTitle,.smp-pageTitle,.ntf-pageTitle,.sk-arch__title{color:var(--dsw-alias-label-primary);margin:0;font-size:18px;font-weight:600}
+    .ab-pageIntro,.jdg-pageIntro,.smp-pageIntro,.ntf-pageIntro,.sk-arch__subtitle{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:13px}
+    .ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}
+    .ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
+    .ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}
+    .ab-button[data-variant=outline],.jdg-button[data-variant=outline],.smp-button[data-variant=outline]{border-color:var(--dsw-alias-border-l3)}
+    .ab-button[data-variant=primary],.jdg-button[data-variant=primary],.smp-button[data-variant=primary]{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}
+    .ab-button[data-variant=primary]:hover:not(:disabled),.jdg-button[data-variant=primary]:hover:not(:disabled),.smp-button[data-variant=primary]:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}
+    .ab-button:disabled,.jdg-button:disabled,.smp-button:disabled{opacity:.4;cursor:not-allowed}
+    .jdg-filterRow,.smp-filterRow,.sk-filterRow{display:flex;align-items:center;gap:8px}
+    /* Search matches the built-in plugin inventory (36px, l4 stroke, icon at 12px, 34px right inset, focus ring). */
+    .jdg-search,.smp-search,.sk-search{flex:1 1 auto;min-width:140px;color:var(--dsw-alias-label-tertiary);align-items:center;display:flex;position:relative}
+    .jdg-searchIcon,.smp-searchIcon,.sk-searchIcon{position:absolute;left:12px;display:inline-flex;pointer-events:none}
+    .jdg-searchInput,.smp-searchInput,.sk-searchInput{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);padding:0 34px 0 36px;outline:none}
+    .jdg-searchInput::placeholder,.smp-searchInput::placeholder,.sk-searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}
+    .jdg-searchInput:focus-visible,.smp-searchInput:focus-visible,.sk-searchInput:focus-visible{border-color:var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)) 18%,transparent)}
+    .jdg-tabs,.smp-tabs{display:flex;gap:24px;border-bottom:.5px solid var(--dsw-alias-border-l2)}
+    .jdg-tab,.smp-tab{appearance:none;background:none;border:0;padding:0 2px 10px;font:inherit;font-size:14px;line-height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+    .jdg-tab[data-active=true],.smp-tab[data-active=true]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-label-primary)}
+    .jdg-cards,.smp-cards{flex-direction:column;gap:14px;margin:0;padding:0;list-style:none;display:flex}
+    .jdg-card,.smp-card{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:4px;padding:12px 14px;min-width:0;display:flex}
+    .jdg-cardRow,.smp-cardRow{align-items:center;gap:10px;min-width:0;display:flex}
+    .jdg-cardIdentity,.smp-cardIdentity{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;min-width:0;overflow-wrap:anywhere}
+    .jdg-cardEnd,.smp-cardEnd{flex:none;align-items:center;gap:8px;display:inline-flex}
+    .jdg-cardDetails,.smp-cardDetails{border-top:.5px solid var(--dsw-alias-border-l2);padding:12px 0 0}
+    .jdg-card>.jdg-cardDetails:first-child,.smp-card>.smp-cardDetails:first-child{border-top:0;padding-top:0}
+    .jdg-chevron,.smp-chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .14s ease-in-out}
+    .jdg-chevron[data-open=false],.smp-chevron[data-open=false]{transform:rotate(-90deg)}
+    .jdg-tag,.smp-tag{display:inline-flex;align-items:center;border-radius:999px;padding:1px 8px;font-size:11px;line-height:17px;font-weight:500;white-space:nowrap}
+    .jdg-tag[data-tone=neutral],.smp-tag[data-tone=neutral]{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary)}
+    .jdg-tag[data-tone=ok],.smp-tag[data-tone=ok]{background:var(--dsw-alias-state-success-tertiary,var(--dsw-alias-bg-module-platform));color:var(--dsw-alias-state-success-primary,#067647)}
+    .jdg-formGrid,.smp-formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+    /* 原生下拉在这套设置页里只有一种外观：启动动画与通知两个面板共用同一条规则，由
+     * settingsStyles() 按面板前缀各自裁剪。appearance:none 去掉平台自带箭头（macOS 会把它
+     * 紧贴右边框），改由 data-URI 自绘 14px chevron，距右边缘 10px。 */
+    .boot-select,.ntf-select{box-sizing:border-box;height:30px;max-width:100%;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md,8px);appearance:none;-webkit-appearance:none;padding:0 30px 0 10px;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:14px;text-overflow:ellipsis;cursor:pointer}
+    .boot-select:focus-visible,.ntf-select:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}
+    .boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}
+    `;
+
+    // src/client/styles/settings.ts
+    function settingsStyles(namespace) {
+      return settings_default.replace(/\/\*[\s\S]*?\*\//g, "").replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors, declarations) => {
+        const scoped = selectors.split(",").map((selector) => selector.trim()).filter((selector) => selector.startsWith(`.${namespace}-`));
+        return scoped.length > 0 ? `${scoped.join(",")}{${declarations}}` : "";
+      });
+    }
+
+    // src/client/ui/locale.ts
+    function installDictionary(ctx, namespace, copy) {
+      return ctx.effect(() => ctx.locale.register(namespace, copy), `locale ${namespace}`);
+    }
+
+    // src/client/ui/components/settings-icon/index.tsx
+    var import_react = __toESM(require("react"), 1);
+    globalThis.__dshReact ??= import_react.default;
+    var SHAPES = {
+      rocket: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "6", r: "1.15" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 10.6 4.7 12.4M9.7 10.6l1.6 1.8M8 12.1v2.2" })),
+      globe: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2 8h12" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "8", rx: "2.7", ry: "6" })),
+      scale: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.6v10.8M5.7 13.4h4.6M2.9 5.1h10.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.9 5.1 1.6 8.3h2.6L2.9 5.1ZM13.1 5.1l-1.3 3.2h2.6L13.1 5.1Z" })),
+      bell: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1c-2.2 0-3.7 1.6-3.7 3.8 0 2.4-.7 3.4-1.3 4.1-.2.3 0 .7.3.7h9.4c.3 0 .5-.4.3-.7-.6-.7-1.3-1.7-1.3-4.1 0-2.2-1.5-3.8-3.7-3.8Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.6 11a1.4 1.4 0 0 0 2.8 0" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1V1.2" })),
+      paw: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "4.7", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "4.5", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "11.3", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 7.9c2 0 3.4 1.4 3.4 3 0 1.3-1 2.2-2.2 2.2-.5 0-.8-.2-1.2-.2s-.7.2-1.2.2c-1.2 0-2.2-.9-2.2-2.2 0-1.6 1.4-3 3.4-3Z" })),
+      palette: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.3c-3.2 0-5.7 2.5-5.7 5.7s2.5 5.7 5.7 5.7c.9 0 1.5-.6 1.5-1.4 0-.4-.2-.7-.4-1-.2-.3-.4-.5-.4-.9 0-.7.6-1.3 1.3-1.3h1.2c1.6 0 2.9-1.3 2.9-2.9 0-2.2-2.5-3.9-6.1-3.9Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "5.6", cy: "6.3", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8.6", cy: "4.9", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "11.1", cy: "6.6", r: ".75" })),
+      archive: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: "1.9", y: "2.6", width: "12.2", height: "2.5", rx: ".7" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.6 5.1h10.8v7.4c0 .7-.6 1.3-1.3 1.3H3.9c-.7 0-1.3-.6-1.3-1.3V5.1Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 8.5h3.4" })),
+      plug: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M6 2.3v3.2M10 2.3v3.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.4 5.5h7.2v1.6a3.6 3.6 0 0 1-7.2 0V5.5Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 10.7v2.6" })),
+      gear: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "4.6" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" }))
+    };
+    function createGlyph(key) {
+      function ToolkitSettingsGlyph({ size = 16, active = false }) {
+        const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
+        return /* @__PURE__ */ __dshReact.createElement(
+          "svg",
+          {
+            viewBox: "0 0 16 16",
+            width: edge,
+            height: edge,
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: "1.4",
+            strokeLinecap: "round",
+            strokeLinejoin: "round",
+            "aria-hidden": "true",
+            focusable: "false",
+            "data-sk-settings-icon": key,
+            "data-active": active ? "true" : "false"
+          },
+          SHAPES[key]
+        );
+      }
+      ToolkitSettingsGlyph.displayName = `ToolkitSettingsGlyph(${key})`;
+      return ToolkitSettingsGlyph;
+    }
+    var GLYPH_COMPONENTS = Object.freeze(
+      Object.fromEntries(Object.keys(SHAPES).map((key) => [key, createGlyph(key)]))
+    );
+    function registerSettingsIcon(ctx, sectionId, iconKey) {
+      const slots = ctx?.slots;
+      if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return void 0;
+      if (typeof sectionId !== "string" || sectionId === "") return void 0;
+      const Glyph = GLYPH_COMPONENTS[iconKey];
+      if (!Glyph) return void 0;
+      try {
+        const dispose = slots.inject("settings.section.icon", () => slots.register({
+          name: "settings.section.icon",
+          id: sectionId
+        }, Glyph));
+        return typeof dispose === "function" ? dispose : void 0;
+      } catch {
+        return void 0;
+      }
+    }
+
+    // src/modules/archived/client/locale.ts
+    var ARCH_NS = "shell-kit.archived";
+    var ARCH_COPY = {
+      zh: {
+        nav: "已归档的会话",
+        title: "已归档的会话",
+        search: "搜索已归档的会话",
+        allProjects: "所有项目",
+        project: "项目",
+        removeHint: "搜索、恢复或永久删除已归档的会话。",
+        restore: "恢复",
+        restoreFailed: "恢复失败：{reason}",
+        remove: "删除",
+        removeSession: "删除会话",
+        removeAll: "全部删除",
+        cancel: "取消",
+        confirmDelete: "永久删除",
+        deleteAllTitle: "永久删除 {t} 个会话？",
+        deleteAllDesc: "此操作会从本机移除全部已归档会话，之后不能从 dsh 恢复。",
+        deleteOneTitle: "永久删除“{t}”？",
+        deleteOneDesc: "此操作会从本机移除该会话，之后不能从 dsh 恢复。",
+        removeFailed: "删除失败：{reason}",
+        deleteRetained: "已删除 {t} 个会话的文件；残留的归档记录会在重启 dsh 后清理。",
+        chats: "个会话",
+        empty: "还没有归档的会话",
+        emptyHint: "在侧栏会话的「…」菜单里选「归档」，它就会出现在这里。",
+        noMatch: "没有匹配的归档会话",
+        ungrouped: "未分组",
+        untitled: "无标题会话",
+        missing: "无法读取的会话",
+        archiveTitle: "归档“{t}”？",
+        archiveDesc: "它会离开当前任务列表，保留在设置里的已归档的会话中；之后你可以在那里永久删除。",
+        archiveAction: "归档",
+        archiving: "归档中…",
+        archiveFailed: "归档失败：{reason}"
+      },
+      en: {
+        nav: "Archived sessions",
+        title: "Archived sessions",
+        search: "Search archived sessions",
+        allProjects: "All projects",
+        project: "Project",
+        removeHint: "Search, restore, or permanently delete archived sessions.",
+        restore: "Restore",
+        restoreFailed: "Restore failed: {reason}",
+        remove: "Delete",
+        removeSession: "Delete session",
+        removeAll: "Delete all",
+        cancel: "Cancel",
+        confirmDelete: "Delete permanently",
+        deleteAllTitle: "Permanently delete {t} sessions?",
+        deleteAllDesc: "This removes every archived session from this machine. They cannot be recovered from dsh afterwards.",
+        deleteOneTitle: "Permanently delete “{t}”?",
+        deleteOneDesc: "This removes the session from this machine. It cannot be recovered from dsh afterwards.",
+        removeFailed: "Delete failed: {reason}",
+        deleteRetained: "Deleted {t} session file(s); restart dsh to clear them from this list.",
+        chats: "sessions",
+        empty: "No archived sessions yet",
+        emptyHint: "Pick “Archive” from a session’s “…” menu in the sidebar and it shows up here.",
+        noMatch: "No archived sessions match",
+        ungrouped: "Ungrouped",
+        untitled: "Untitled session",
+        missing: "Unreadable session",
+        archiveTitle: "Archive “{t}”?",
+        archiveDesc: "It leaves the current task list and stays under Archived sessions in Settings, where you can delete it permanently later.",
+        archiveAction: "Archive",
+        archiving: "Archiving…",
+        archiveFailed: "Archive failed: {reason}"
+      }
+    };
+
+    // src/modules/archived/host/constants.ts
+    var DELETE_SESSION_PATH = "/_dsh/dsh-toolkit/archived/delete-session";
+    var DELETE_SESSIONS_PATH = "/_dsh/dsh-toolkit/archived/delete-sessions";
+    var PENDING_DELETIONS_PATH = "/_dsh/dsh-toolkit/archived/pending-deletions";
+
+    // src/client/http.ts
+    async function fetchJson(url, { json, ...options } = {}) {
+      const headers = new Headers(options.headers);
+      if (json !== void 0) headers.set("content-type", "application/json");
+      const response = await fetch(url, {
+        credentials: "same-origin",
+        cache: "no-store",
+        ...options,
+        headers: Object.fromEntries(headers),
+        ...json === void 0 ? {} : { body: JSON.stringify(json) }
+      });
+      let parsed;
+      return {
+        ok: response.ok,
+        status: response.status,
+        headers: response.headers,
+        json() {
+          parsed ??= (async () => {
+            if (typeof response.text !== "function") return response.json();
+            const text = await response.text();
+            if (text === "") return {};
+            try {
+              return JSON.parse(text);
+            } catch {
+              const error = new Error(`HTTP ${response.status} 返回了非 JSON：${text.slice(0, 200)}`);
+              error.status = response.status;
+              error.bodyPreview = text.slice(0, 200);
+              throw error;
+            }
+          })();
+          return parsed;
+        }
+      };
+    }
+
+    // src/modules/archived/client/deletion.ts
+    async function removeSessionViaHost(sessionId) {
+      try {
+        const response = await fetchJson(DELETE_SESSION_PATH, { method: "POST", json: { sessionId } });
+        const result = await response.json();
+        if (!response.ok) return { ok: false, reason: String(result?.reason ?? `HTTP ${response.status}`) };
+        return result;
+      } catch (error) {
+        return { ok: false, reason: String(error?.message ?? error) };
+      }
+    }
+    async function removeSessionsViaHost(sessionIds) {
+      try {
+        const response = await fetchJson(DELETE_SESSIONS_PATH, { method: "POST", json: { sessionIds } });
+        const result = await response.json();
+        if (!response.ok) return { ok: false, reason: String(result?.reason ?? `HTTP ${response.status}`) };
+        return { ok: true, results: Array.isArray(result?.results) ? result.results : [] };
+      } catch (error) {
+        return { ok: false, reason: String(error?.message ?? error) };
+      }
+    }
+    async function readPendingDeletions() {
+      try {
+        const response = await fetchJson(PENDING_DELETIONS_PATH, { method: "GET" });
+        if (!response.ok) return /* @__PURE__ */ new Set();
+        const result = await response.json();
+        return new Set(Array.isArray(result?.sessionIds) ? result.sessionIds : []);
+      } catch {
+        return /* @__PURE__ */ new Set();
+      }
+    }
+
+    // src/client/ui/store.ts
+    var import_react2 = __toESM(require("react"), 1);
+    function createStore(initial) {
+      let state = initial;
+      const listeners = /* @__PURE__ */ new Set();
+      return {
+        get: () => state,
+        snapshot: () => state,
+        subscribe(listener) {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        set(patch) {
+          state = { ...state, ...patch };
+          for (const listener of listeners) listener();
+        }
+      };
+    }
+    function useStore(controller) {
+      return import_react2.default.useSyncExternalStore(controller.subscribe, controller.snapshot, controller.snapshot);
+    }
+
+    // src/modules/archived/client/state/removal.ts
+    function createRemoval(ctx) {
+      const t = ctx.locale.bind(ARCH_NS);
+      const store = createStore({
+        request: null,
+        busy: false,
+        busyKind: null,
+        error: "",
+        note: "",
+        // Rows the archived page must stop listing: everything this page deleted, plus
+        // the tombstones the host reported after a reload.
+        removed: /* @__PURE__ */ new Set(),
+        // Rows the sidebar must stop drawing. Narrower than `removed`: a session the
+        // Workspace released comes back as an ordinary row, and hiding that would make
+        // a healthy session disappear.
+        hidden: /* @__PURE__ */ new Set(),
+        pending: /* @__PURE__ */ new Set()
+      });
+      const syncTombstones = async () => {
+        const markers = await readPendingDeletions();
+        if (markers.size === 0) return;
+        const state = store.get();
+        const removed = new Set(state.removed);
+        const hidden = new Set(state.hidden);
+        const patch = {};
+        for (const id of markers) {
+          if (!removed.has(id)) {
+            removed.add(id);
+            patch.removed = removed;
+          }
+          if (!hidden.has(id)) {
+            hidden.add(id);
+            patch.hidden = hidden;
+          }
+        }
+        if (Object.keys(patch).length > 0) store.set(patch);
+      };
+      const controller = {
+        subscribe: store.subscribe,
+        snapshot: store.snapshot,
+        syncTombstones,
+        request(row) {
+          if (!store.get().busy) store.set({ request: { kind: "one", rows: [row] }, error: "" });
+        },
+        requestAll(groups) {
+          const state = store.get();
+          const rows = [...new Map(
+            groups.flatMap((group) => group.rows).filter((row) => !state.removed.has(row.id)).map((row) => [row.id, row])
+          ).values()];
+          if (state.busy || rows.length === 0) return;
+          store.set({ request: { kind: "all", rows }, error: "" });
+        },
+        cancel() {
+          if (!store.get().busy) store.set({ request: null, error: "" });
+        },
+        async confirm() {
+          const current = store.get();
+          if (!current.request || current.busy) return;
+          const request = current.request;
+          const ids = request.rows.map((row) => row.id);
+          const before = current.removed;
+          store.set({ request: null, busy: true, busyKind: request.kind, error: "", note: "", pending: new Set(ids) });
+          const receipts = await collectReceipts(request, ids);
+          const doneIds = [];
+          const retainedIds = /* @__PURE__ */ new Set();
+          const failed = [];
+          const errors = [];
+          for (const row of request.rows) {
+            const receipt = receipts.get(row.id) ?? { ok: false, reason: "no-receipt" };
+            const alreadyGone = receipt.reason === "not-found";
+            if (receipt.ok !== true && !alreadyGone) {
+              failed.push(row);
+              const reason = String(receipt.reason ?? "unknown");
+              errors.push(request.kind === "all" ? `${row.title || row.id}: ${reason}` : reason);
+              continue;
+            }
+            doneIds.push(row.id);
+            if (receipt.retained === true) retainedIds.add(row.id);
+          }
+          await Promise.allSettled(doneIds.filter((id) => !retainedIds.has(id)).flatMap((id) => [
+            Promise.resolve().then(() => ctx.workspaces.unarchiveSession(id)),
+            Promise.resolve().then(() => ctx.workspaces.unpinSession(id))
+          ]));
+          if (doneIds.length > 0) {
+            void Promise.resolve().then(() => ctx.sessions.refresh?.()).catch(() => {
+            });
+          }
+          const removed = new Set(before);
+          for (const id of doneIds) removed.add(id);
+          const hidden = new Set(store.get().hidden);
+          for (const id of retainedIds) hidden.add(id);
+          store.set({
+            busy: false,
+            busyKind: null,
+            pending: /* @__PURE__ */ new Set(),
+            removed,
+            hidden,
+            note: retainedIds.size === 0 ? "" : t("deleteRetained").replace("{t}", String(retainedIds.size)),
+            request: failed.length === 0 ? null : { kind: request.kind, rows: failed },
+            error: errors.join("；")
+          });
+          void syncTombstones();
+        }
+      };
+      void syncTombstones();
+      return controller;
+    }
+    async function collectReceipts(request, ids) {
+      const receipts = /* @__PURE__ */ new Map();
+      if (request.kind === "all") {
+        const response = await removeSessionsViaHost(ids);
+        if (response.ok) {
+          for (const receipt of response.results) {
+            if (receipt !== null && typeof receipt?.sessionId === "string") receipts.set(receipt.sessionId, receipt);
+          }
+          return receipts;
+        }
+        for (const id of ids) receipts.set(id, { ok: false, reason: response.reason });
+        return receipts;
+      }
+      const [row] = request.rows;
+      receipts.set(row.id, await removeSessionViaHost(row.id));
+      return receipts;
+    }
+
+    // src/modules/archived/client/state/archive-confirm.ts
+    function createArchiveConfirm() {
+      const store = createStore({ request: null, busy: false, error: "" });
+      const queue = [];
+      const advance = () => store.set({ busy: false, request: queue[0] ?? null, error: "" });
+      return {
+        subscribe: store.subscribe,
+        snapshot: store.snapshot,
+        ask(sessionId, title, run) {
+          return new Promise((resolve, reject) => {
+            queue.push({ sessionId, title, run, resolve, reject });
+            if (store.get().request === null) store.set({ request: queue[0] });
+          });
+        },
+        cancel() {
+          const entry = store.get().request;
+          if (entry === null || store.get().busy) return;
+          queue.shift();
+          advance();
+          entry.reject(new Error("session archive cancelled"));
+        },
+        async confirm() {
+          const entry = store.get().request;
+          if (entry === null || store.get().busy) return;
+          store.set({ busy: true, error: "" });
+          try {
+            const result = await entry.run();
+            queue.shift();
+            advance();
+            entry.resolve(result);
+          } catch (reason) {
+            store.set({ busy: false, error: String(reason?.message ?? reason) });
+          }
+        }
+      };
+    }
+
+    // src/modules/archived/client/dom/hidden-rows.ts
+    var SELECTOR_SAFE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+    function hiddenRowsCss(ids) {
+      const rules = [];
+      for (const id of ids) {
+        if (typeof id !== "string" || !SELECTOR_SAFE.test(id)) continue;
+        rules.push(`[data-row-key="session:${id}"]{display:none !important}`);
+      }
+      return rules.join("\n");
+    }
+    function installHiddenRows(removal) {
+      const sheet = installMutableStylesheet("toolkit-archived-hidden");
+      let written;
+      const render = () => {
+        const css = hiddenRowsCss(removal.snapshot().hidden);
+        if (css === written) return;
+        written = css;
+        sheet.set(css);
+      };
+      const unsubscribe = removal.subscribe(render);
+      render();
+      return () => {
+        unsubscribe();
+        sheet.dispose();
+      };
+    }
+
+    // src/modules/archived/client/components/delete-button/index.tsx
+    var import_react3 = __toESM(require("react"), 1);
+
+    // src/client/ui/primitives.ts
+    var primitives = (() => {
+      try {
+        return require("@deepseek-ai/dsh-client-ui-primitives");
+      } catch {
+        return {};
+      }
+    })();
+
+    // src/modules/archived/client/components/delete-button/style.css
+    var style_default = ".sk-arch__delete:not(:disabled) {\n  color: var(--dsw-alias-state-error-primary);\n}\n\n/* A working button is unavailable, not disabled: the host's `:disabled` rule drops\n   it to 40% opacity, which made the whole bar read as a flash on every click. */\n.sk-arch__delete[aria-busy=\"true\"] {\n  opacity: 1;\n  cursor: progress;\n}\n\n/* Drawn here because the host Button has no loading state. The ring keeps the\n   button's own size, so enabling it never reflows the footer or the row. */\n.sk-arch__spinner {\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  corner-shape: round;\n  border: 1.5px solid currentColor;\n  border-top-color: transparent;\n  animation: sk-arch-spin 0.7s linear infinite;\n}\n\n@keyframes sk-arch-spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n\n.sk-arch__delete:hover:not(:disabled) {\n  color: var(--dsw-alias-state-error-primary);\n  background: var(--dsw-alias-interactive-bg-hover-danger);\n}\n";
+
+    // src/modules/archived/client/components/delete-button/index.tsx
+    function DeleteButton({ children, size = "md", className, loading = false, ...props }) {
+      const Button = primitives.Button;
+      const Icon = primitives.IconTrashOutlineRegular;
+      const classes = className === void 0 ? "sk-arch__delete" : `sk-arch__delete ${className}`;
+      const spinner = loading ? /* @__PURE__ */ import_react3.default.createElement("span", { className: "sk-arch__spinner", "aria-hidden": "true" }) : null;
+      if (Button === void 0) {
+        return /* @__PURE__ */ import_react3.default.createElement("button", { type: "button", className: classes, "aria-busy": loading || void 0, ...props }, spinner, children);
+      }
+      return /* @__PURE__ */ import_react3.default.createElement(
+        Button,
+        {
+          type: "button",
+          variant: "outline",
+          size,
+          className: classes,
+          "aria-busy": loading || void 0,
+          icon: spinner ?? (Icon ? /* @__PURE__ */ import_react3.default.createElement(Icon, { size: 16 }) : void 0),
+          ...props
+        },
+        children
+      );
+    }
+
+    // src/modules/archived/client/surfaces/archive-confirm/index.tsx
+    var archive_confirm_exports = {};
+    __export(archive_confirm_exports, {
+      NAME: () => NAME,
+      install: () => install
+    });
+    var import_react4 = __toESM(require("react"), 1);
+
+    // src/client/ui/slot.ts
+    function installSlot(ctx, descriptor, Component) {
+      return ctx.slots.inject(descriptor.name, () => ctx.slots.register(descriptor, Component));
+    }
+
+    // src/modules/archived/client/surfaces/archive-confirm/index.tsx
+    var NAME = "archive-confirm";
+    function install(ctx, host) {
+      const t = ctx.locale.bind(ARCH_NS);
+      const Modal = primitives.Modal;
+      const Button = primitives.Button ?? "button";
+      function ArchiveConfirmDialog() {
+        const state = useStore(host.archiveConfirm);
+        if (!state.request || !Modal) return null;
+        const title = t("archiveTitle").replace("{t}", state.request.title || t("untitled"));
+        const error = state.error ? /* @__PURE__ */ import_react4.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("archiveFailed").replace("{reason}", state.error)) : null;
+        return /* @__PURE__ */ import_react4.default.createElement(
+          Modal,
+          {
+            open: true,
+            title,
+            closeLabel: t("cancel"),
+            onClose: () => host.archiveConfirm.cancel(),
+            description: t("archiveDesc"),
+            footer: /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
+              Button,
+              {
+                variant: "outline",
+                disabled: state.busy,
+                onClick: () => host.archiveConfirm.cancel()
+              },
+              t("cancel")
+            ), /* @__PURE__ */ import_react4.default.createElement(
+              Button,
+              {
+                disabled: state.busy,
+                onClick: () => {
+                  void host.archiveConfirm.confirm();
+                }
+              },
+              state.busy ? t("archiving") : t("archiveAction")
+            ))
+          },
+          error
+        );
+      }
+      const offDialog = installSlot(ctx, { name: "shell.overlay", id: "dsh-toolkit.archived.archive-confirm" }, ArchiveConfirmDialog);
+      const offWrap = wrapArchiveSession();
+      return () => {
+        offDialog();
+        offWrap();
+      };
+      function wrapArchiveSession() {
+        const workspaces = ctx.workspaces;
+        const original = workspaces?.archiveSession;
+        if (typeof original !== "function") return () => {
+        };
+        workspaces.archiveSession = async function archiveSession(sessionId, options) {
+          if (options?.stopActivity === true) return original.call(this, sessionId, options);
+          const summary = ctx.sessions?.list?.getSnapshot?.()?.byId?.[sessionId];
+          const title = summary?.title || summary?.displayTitle || "";
+          return host.archiveConfirm.ask(sessionId, title, () => original.call(this, sessionId, options));
+        };
+        return () => {
+          workspaces.archiveSession = original;
+        };
+      }
+    }
+
+    // src/modules/archived/client/surfaces/delete-confirm/index.tsx
+    var delete_confirm_exports = {};
+    __export(delete_confirm_exports, {
+      NAME: () => NAME2,
+      install: () => install2
+    });
+    var import_react5 = __toESM(require("react"), 1);
+    var NAME2 = "delete-confirm";
+    function install2(ctx, host) {
+      const t = ctx.locale.bind(ARCH_NS);
+      function RemovalDialog() {
+        const state = useStore(host.removal);
+        const Modal = primitives.Modal;
+        const Button = primitives.Button ?? "button";
+        if (!state.request || !Modal) return null;
+        const error = state.error ? /* @__PURE__ */ import_react5.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("removeFailed").replace("{reason}", state.error)) : null;
+        if (state.request.kind === "all") {
+          return /* @__PURE__ */ import_react5.default.createElement(
+            Modal,
+            {
+              open: true,
+              title: t("deleteAllTitle").replace("{t}", String(state.request.rows.length)),
+              closeLabel: t("cancel"),
+              onClose: () => host.removal.cancel(),
+              description: t("deleteAllDesc"),
+              footer: /* @__PURE__ */ import_react5.default.createElement(import_react5.default.Fragment, null, /* @__PURE__ */ import_react5.default.createElement(Button, { variant: "outline", onClick: () => host.removal.cancel() }, t("cancel")), /* @__PURE__ */ import_react5.default.createElement(DeleteButton, { onClick: () => {
+                void host.removal.confirm();
+              } }, t("confirmDelete")))
+            },
+            error
+          );
+        }
+        const title = state.request.rows[0]?.title || t("untitled");
+        return /* @__PURE__ */ import_react5.default.createElement(
+          Modal,
+          {
+            open: true,
+            title: t("deleteOneTitle").replace("{t}", title),
+            closeLabel: t("cancel"),
+            onClose: () => host.removal.cancel(),
+            description: t("deleteOneDesc"),
+            footer: /* @__PURE__ */ import_react5.default.createElement(import_react5.default.Fragment, null, /* @__PURE__ */ import_react5.default.createElement(Button, { variant: "outline", onClick: () => host.removal.cancel() }, t("cancel")), /* @__PURE__ */ import_react5.default.createElement(DeleteButton, { onClick: () => {
+              void host.removal.confirm();
+            } }, t("confirmDelete")))
+          },
+          error
+        );
+      }
+      return installSlot(ctx, { name: "shell.overlay", id: "dsh-toolkit.archived.delete-confirm" }, RemovalDialog);
+    }
+
+    // src/modules/archived/client/surfaces/session-menu/index.tsx
+    var session_menu_exports = {};
+    __export(session_menu_exports, {
+      NAME: () => NAME3,
+      install: () => install3
+    });
+    var import_react6 = __toESM(require("react"), 1);
+    var NAME3 = "session-menu";
+    function install3(ctx, host) {
+      const t = ctx.locale.bind(ARCH_NS);
+      const MenuItem = primitives.MenuItemButton;
+      function DeleteSessionMenuItem({ sessionId, displayTitle, useMenuOpenState, useWorkspaces }) {
+        const [, setMenuOpen] = useMenuOpenState();
+        const archived = useWorkspaces((snapshot) => snapshot.archivedSessionIds.includes(sessionId));
+        const state = useStore(host.removal);
+        if (!archived || state.removed.has(sessionId) || !MenuItem) return null;
+        const Icon = primitives.IconTrashOutlineRegular;
+        return /* @__PURE__ */ import_react6.default.createElement(
+          MenuItem,
+          {
+            danger: true,
+            disabled: state.busy,
+            icon: Icon ? /* @__PURE__ */ import_react6.default.createElement(Icon, { size: 14 }) : void 0,
+            onSelect: () => {
+              host.removal.request({ id: sessionId, title: displayTitle });
+              setMenuOpen(false);
+            }
+          },
+          t("removeSession")
+        );
+      }
+      return installSlot(ctx, {
+        name: "sidebar.workspaces.session.menu.item",
+        id: "dsh-toolkit.archived.delete",
+        order: 500
+      }, DeleteSessionMenuItem);
+    }
+
+    // src/modules/archived/client/surfaces/settings/index.tsx
+    var settings_exports = {};
+    __export(settings_exports, {
+      NAME: () => NAME4,
+      css: () => style_default2,
+      install: () => install4
+    });
+    var import_react7 = __toESM(require("react"), 1);
+
+    // src/modules/archived/client/model.ts
+    function archivedRowTitle(summary) {
+      const title = typeof summary?.title === "string" ? summary.title.trim() : "";
+      if (title !== "") return title;
+      const display = typeof summary?.displayTitle === "string" ? summary.displayTitle.trim() : "";
+      return display;
+    }
+    var UNGROUPED = "__ungrouped";
+    function readArchived(ctx) {
+      const sessions = ctx.sessions?.list?.getSnapshot?.() ?? {};
+      const workspaces = ctx.workspaces?.list?.getSnapshot?.() ?? {};
+      const byId = sessions.byId ?? {};
+      const items = Array.isArray(workspaces.items) ? workspaces.items : [];
+      const archived = [...new Set(Array.isArray(workspaces.archivedSessionIds) ? workspaces.archivedSessionIds : [])];
+      const workspaceByPath = /* @__PURE__ */ new Map();
+      for (const workspace of items) {
+        const path = typeof workspace.path === "string" ? workspace.path : "";
+        if (path && !workspaceByPath.has(path)) workspaceByPath.set(path, workspace);
+      }
+      const workspaceKey = (workspace) => workspace?.workspaceId ?? workspace?.id ?? "";
+      const workspaceOf = /* @__PURE__ */ new Map();
+      for (const workspace of items) {
+        for (const sessionId of workspace.sessionIds ?? []) {
+          if (!workspaceOf.has(sessionId)) workspaceOf.set(sessionId, workspace);
+        }
+      }
+      const groupOf = (id) => {
+        const byMember = workspaceOf.get(id);
+        if (byMember) return byMember;
+        const cwd = byId[id]?.cwd;
+        return typeof cwd === "string" ? workspaceByPath.get(cwd) : void 0;
+      };
+      const toRow = (id) => {
+        const summary = byId[id];
+        const workspace = groupOf(id);
+        return {
+          id,
+          title: archivedRowTitle(summary),
+          updatedAt: summary?.updatedAt ?? 0,
+          workspaceId: workspaceKey(workspace),
+          missing: summary === void 0
+        };
+      };
+      const buckets = /* @__PURE__ */ new Map();
+      for (const id of archived) {
+        const workspace = groupOf(id);
+        const key = workspace ? workspaceKey(workspace) : UNGROUPED;
+        if (!buckets.has(key)) {
+          buckets.set(key, { id: key, title: workspace?.title ?? workspace?.path ?? "", rows: [] });
+        }
+        buckets.get(key).rows.push(toRow(id));
+      }
+      const byRecency = (a, b) => b.updatedAt - a.updatedAt;
+      const groups = [];
+      for (const workspace of items) {
+        const key = workspaceKey(workspace);
+        const bucket = buckets.get(key);
+        if (!bucket) continue;
+        groups.push({ id: key, title: bucket.title, rows: bucket.rows.sort(byRecency), workspaceId: key });
+      }
+      const ungrouped = buckets.get(UNGROUPED);
+      if (ungrouped) {
+        groups.push({ id: UNGROUPED, title: "", rows: ungrouped.rows.sort(byRecency), workspaceId: "" });
+      }
+      const projects = items.map((workspace) => ({ id: workspaceKey(workspace), title: workspace?.title ?? workspace?.path ?? "" }));
+      return { groups, total: archived.length, projects, hasUngrouped: ungrouped !== void 0 };
+    }
+
+    // src/modules/archived/client/surfaces/settings/style.css
+    var style_default2 = `.sk-arch {
       max-width: 760px;
       display: flex;
       flex-direction: column;
@@ -218,585 +997,15 @@ window.__ModuleLoader__.load({
       color: var(--dsw-alias-label-caption);
     }
 
-    .sk-arch__delete:not(:disabled) {
-      color: var(--dsw-alias-state-error-primary);
-    }
-
-    /* A working button is unavailable, not disabled: the host's \`:disabled\` rule drops
-       it to 40% opacity, which made the whole bar read as a flash on every click. */
-    .sk-arch__delete[aria-busy="true"] {
-      opacity: 1;
-      cursor: progress;
-    }
-
-    /* Drawn here because the host Button has no loading state. The ring keeps the
-       button's own size, so enabling it never reflows the footer or the row. */
-    .sk-arch__spinner {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      corner-shape: round;
-      border: 1.5px solid currentColor;
-      border-top-color: transparent;
-      animation: sk-arch-spin 0.7s linear infinite;
-    }
-
-    @keyframes sk-arch-spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    .sk-arch__delete:hover:not(:disabled) {
-      color: var(--dsw-alias-state-error-primary);
-      background: var(--dsw-alias-interactive-bg-hover-danger);
-    }
-
     .sk-arch__note--error {
       color: var(--dsw-alias-state-error-primary, var(--dsw-alias-label-secondary));
     }
     `;
 
-    // src/client/ui/stylesheet.js
-    function installStylesheet(css, id) {
-      const tag = document.createElement("style");
-      tag.dataset.plugin = id;
-      tag.dataset.pluginCss = `${id}/styles.css`;
-      tag.textContent = css;
-      (document.head ?? document.documentElement).appendChild(tag);
-      return () => tag.remove();
-    }
-    function installMutableStylesheet(id) {
-      const tag = document.createElement("style");
-      tag.dataset.plugin = id;
-      tag.dataset.pluginCss = `${id}/runtime.css`;
-      (document.head ?? document.documentElement).appendChild(tag);
-      return {
-        set(css) {
-          if (tag.textContent !== css) tag.textContent = css;
-        },
-        dispose() {
-          tag.remove();
-        }
-      };
-    }
-
-    // src/client/styles/settings.css
-    var settings_default = `/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */
-    .ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}
-    /* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */
-    .ab-pageTitle,.jdg-pageTitle,.smp-pageTitle,.ntf-pageTitle,.sk-arch__title{color:var(--dsw-alias-label-primary);margin:0;font-size:18px;font-weight:600}
-    .ab-pageIntro,.jdg-pageIntro,.smp-pageIntro,.ntf-pageIntro,.sk-arch__subtitle{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:13px}
-    .ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}
-    .ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
-    .ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}
-    .ab-button[data-variant=outline],.jdg-button[data-variant=outline],.smp-button[data-variant=outline]{border-color:var(--dsw-alias-border-l3)}
-    .ab-button[data-variant=primary],.jdg-button[data-variant=primary],.smp-button[data-variant=primary]{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}
-    .ab-button[data-variant=primary]:hover:not(:disabled),.jdg-button[data-variant=primary]:hover:not(:disabled),.smp-button[data-variant=primary]:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}
-    .ab-button:disabled,.jdg-button:disabled,.smp-button:disabled{opacity:.4;cursor:not-allowed}
-    .jdg-filterRow,.smp-filterRow,.sk-filterRow{display:flex;align-items:center;gap:8px}
-    /* Search matches the built-in plugin inventory (36px, l4 stroke, icon at 12px, 34px right inset, focus ring). */
-    .jdg-search,.smp-search,.sk-search{flex:1 1 auto;min-width:140px;color:var(--dsw-alias-label-tertiary);align-items:center;display:flex;position:relative}
-    .jdg-searchIcon,.smp-searchIcon,.sk-searchIcon{position:absolute;left:12px;display:inline-flex;pointer-events:none}
-    .jdg-searchInput,.smp-searchInput,.sk-searchInput{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);padding:0 34px 0 36px;outline:none}
-    .jdg-searchInput::placeholder,.smp-searchInput::placeholder,.sk-searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}
-    .jdg-searchInput:focus-visible,.smp-searchInput:focus-visible,.sk-searchInput:focus-visible{border-color:var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)) 18%,transparent)}
-    .jdg-tabs,.smp-tabs{display:flex;gap:24px;border-bottom:.5px solid var(--dsw-alias-border-l2)}
-    .jdg-tab,.smp-tab{appearance:none;background:none;border:0;padding:0 2px 10px;font:inherit;font-size:14px;line-height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
-    .jdg-tab[data-active=true],.smp-tab[data-active=true]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-label-primary)}
-    .jdg-cards,.smp-cards{flex-direction:column;gap:14px;margin:0;padding:0;list-style:none;display:flex}
-    .jdg-card,.smp-card{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:4px;padding:12px 14px;min-width:0;display:flex}
-    .jdg-cardRow,.smp-cardRow{align-items:center;gap:10px;min-width:0;display:flex}
-    .jdg-cardIdentity,.smp-cardIdentity{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;min-width:0;overflow-wrap:anywhere}
-    .jdg-cardEnd,.smp-cardEnd{flex:none;align-items:center;gap:8px;display:inline-flex}
-    .jdg-cardDetails,.smp-cardDetails{border-top:.5px solid var(--dsw-alias-border-l2);padding:12px 0 0}
-    .jdg-card>.jdg-cardDetails:first-child,.smp-card>.smp-cardDetails:first-child{border-top:0;padding-top:0}
-    .jdg-chevron,.smp-chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .14s ease-in-out}
-    .jdg-chevron[data-open=false],.smp-chevron[data-open=false]{transform:rotate(-90deg)}
-    .jdg-tag,.smp-tag{display:inline-flex;align-items:center;border-radius:999px;padding:1px 8px;font-size:11px;line-height:17px;font-weight:500;white-space:nowrap}
-    .jdg-tag[data-tone=neutral],.smp-tag[data-tone=neutral]{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary)}
-    .jdg-tag[data-tone=ok],.smp-tag[data-tone=ok]{background:var(--dsw-alias-state-success-tertiary,var(--dsw-alias-bg-module-platform));color:var(--dsw-alias-state-success-primary,#067647)}
-    .jdg-formGrid,.smp-formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
-    /* 原生下拉在这套设置页里只有一种外观：启动动画与通知两个面板共用同一条规则，由
-     * settingsStyles() 按面板前缀各自裁剪。appearance:none 去掉平台自带箭头（macOS 会把它
-     * 紧贴右边框），改由 data-URI 自绘 14px chevron，距右边缘 10px。 */
-    .boot-select,.ntf-select{box-sizing:border-box;height:30px;max-width:100%;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md,8px);appearance:none;-webkit-appearance:none;padding:0 30px 0 10px;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:14px;text-overflow:ellipsis;cursor:pointer}
-    .boot-select:focus-visible,.ntf-select:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}
-    .boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}
-    `;
-
-    // src/client/styles/settings.js
-    function settingsStyles(namespace) {
-      return settings_default.replace(/\/\*[\s\S]*?\*\//g, "").replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors, declarations) => {
-        const scoped = selectors.split(",").map((selector) => selector.trim()).filter((selector) => selector.startsWith(`.${namespace}-`));
-        return scoped.length > 0 ? `${scoped.join(",")}{${declarations}}` : "";
-      });
-    }
-
-    // src/modules/archived/client/locale.js
-    var ARCH_NS = "shell-kit.archived";
-    var ARCH_COPY = {
-      zh: {
-        nav: "已归档的会话",
-        title: "已归档的会话",
-        search: "搜索已归档的会话",
-        allProjects: "所有项目",
-        project: "项目",
-        removeHint: "搜索、恢复或永久删除已归档的会话。",
-        restore: "恢复",
-        restoreFailed: "恢复失败：{reason}",
-        remove: "删除",
-        removeSession: "删除会话",
-        removeAll: "全部删除",
-        cancel: "取消",
-        confirmDelete: "永久删除",
-        deleteAllTitle: "永久删除 {t} 个会话？",
-        deleteAllDesc: "此操作会从本机移除全部已归档会话，之后不能从 dsh 恢复。",
-        deleteOneTitle: "永久删除“{t}”？",
-        deleteOneDesc: "此操作会从本机移除该会话，之后不能从 dsh 恢复。",
-        removeFailed: "删除失败：{reason}",
-        deleteRetained: "已删除 {t} 个会话的文件；残留的归档记录会在重启 dsh 后清理。",
-        chats: "个会话",
-        empty: "还没有归档的会话",
-        emptyHint: "在侧栏会话的「…」菜单里选「归档」，它就会出现在这里。",
-        noMatch: "没有匹配的归档会话",
-        ungrouped: "未分组",
-        untitled: "无标题会话",
-        missing: "无法读取的会话",
-        archiveTitle: "归档“{t}”？",
-        archiveDesc: "它会离开当前任务列表，保留在设置里的已归档的会话中；之后你可以在那里永久删除。",
-        archiveAction: "归档",
-        archiving: "归档中…",
-        archiveFailed: "归档失败：{reason}"
-      },
-      en: {
-        nav: "Archived sessions",
-        title: "Archived sessions",
-        search: "Search archived sessions",
-        allProjects: "All projects",
-        project: "Project",
-        removeHint: "Search, restore, or permanently delete archived sessions.",
-        restore: "Restore",
-        restoreFailed: "Restore failed: {reason}",
-        remove: "Delete",
-        removeSession: "Delete session",
-        removeAll: "Delete all",
-        cancel: "Cancel",
-        confirmDelete: "Delete permanently",
-        deleteAllTitle: "Permanently delete {t} sessions?",
-        deleteAllDesc: "This removes every archived session from this machine. They cannot be recovered from dsh afterwards.",
-        deleteOneTitle: "Permanently delete “{t}”?",
-        deleteOneDesc: "This removes the session from this machine. It cannot be recovered from dsh afterwards.",
-        removeFailed: "Delete failed: {reason}",
-        deleteRetained: "Deleted {t} session file(s); restart dsh to clear them from this list.",
-        chats: "sessions",
-        empty: "No archived sessions yet",
-        emptyHint: "Pick “Archive” from a session’s “…” menu in the sidebar and it shows up here.",
-        noMatch: "No archived sessions match",
-        ungrouped: "Ungrouped",
-        untitled: "Untitled session",
-        missing: "Unreadable session",
-        archiveTitle: "Archive “{t}”?",
-        archiveDesc: "It leaves the current task list and stays under Archived sessions in Settings, where you can delete it permanently later.",
-        archiveAction: "Archive",
-        archiving: "Archiving…",
-        archiveFailed: "Archive failed: {reason}"
-      }
-    };
-
-    // src/modules/archived/client/section.jsx
-    var import_react2 = __toESM(require("react"), 1);
-
-    // src/modules/archived/client/model.js
-    function archivedRowTitle(summary) {
-      const title = typeof summary?.title === "string" ? summary.title.trim() : "";
-      if (title !== "") return title;
-      const display = typeof summary?.displayTitle === "string" ? summary.displayTitle.trim() : "";
-      return display;
-    }
-    var UNGROUPED = "__ungrouped";
-    function readArchived(ctx) {
-      const sessions = ctx.sessions?.list?.getSnapshot?.() ?? {};
-      const workspaces = ctx.workspaces?.list?.getSnapshot?.() ?? {};
-      const byId = sessions.byId ?? {};
-      const items = Array.isArray(workspaces.items) ? workspaces.items : [];
-      const archived = [...new Set(Array.isArray(workspaces.archivedSessionIds) ? workspaces.archivedSessionIds : [])];
-      const workspaceByPath = /* @__PURE__ */ new Map();
-      for (const workspace of items) {
-        const path = typeof workspace.path === "string" ? workspace.path : "";
-        if (path && !workspaceByPath.has(path)) workspaceByPath.set(path, workspace);
-      }
-      const workspaceKey = (workspace) => workspace?.workspaceId ?? workspace?.id ?? "";
-      const workspaceOf = /* @__PURE__ */ new Map();
-      for (const workspace of items) {
-        for (const sessionId of workspace.sessionIds ?? []) {
-          if (!workspaceOf.has(sessionId)) workspaceOf.set(sessionId, workspace);
-        }
-      }
-      const groupOf = (id) => {
-        const byMember = workspaceOf.get(id);
-        if (byMember) return byMember;
-        const cwd = byId[id]?.cwd;
-        return typeof cwd === "string" ? workspaceByPath.get(cwd) : void 0;
-      };
-      const toRow = (id) => {
-        const summary = byId[id];
-        const workspace = groupOf(id);
-        return {
-          id,
-          title: archivedRowTitle(summary),
-          updatedAt: summary?.updatedAt ?? 0,
-          workspaceId: workspaceKey(workspace),
-          missing: summary === void 0
-        };
-      };
-      const buckets = /* @__PURE__ */ new Map();
-      for (const id of archived) {
-        const workspace = groupOf(id);
-        const key = workspace ? workspaceKey(workspace) : UNGROUPED;
-        if (!buckets.has(key)) {
-          buckets.set(key, { id: key, title: workspace?.title ?? workspace?.path ?? "", rows: [] });
-        }
-        buckets.get(key).rows.push(toRow(id));
-      }
-      const byRecency = (a, b) => b.updatedAt - a.updatedAt;
-      const groups = [];
-      for (const workspace of items) {
-        const key = workspaceKey(workspace);
-        const bucket = buckets.get(key);
-        if (!bucket) continue;
-        groups.push({ id: key, title: bucket.title, rows: bucket.rows.sort(byRecency), workspaceId: key });
-      }
-      const ungrouped = buckets.get(UNGROUPED);
-      if (ungrouped) {
-        groups.push({ id: UNGROUPED, title: "", rows: ungrouped.rows.sort(byRecency), workspaceId: "" });
-      }
-      const projects = items.map((workspace) => ({ id: workspaceKey(workspace), title: workspace?.title ?? workspace?.path ?? "" }));
-      return { groups, total: archived.length, projects, hasUngrouped: ungrouped !== void 0 };
-    }
-
-    // src/modules/archived/client/removal.jsx
-    var import_react = __toESM(require("react"), 1);
-
-    // src/modules/archived/host/paths.js
-    var DELETE_SESSION_PATH = "/_dsh/dsh-toolkit/archived/delete-session";
-    var DELETE_SESSIONS_PATH = "/_dsh/dsh-toolkit/archived/delete-sessions";
-    var PENDING_DELETIONS_PATH = "/_dsh/dsh-toolkit/archived/pending-deletions";
-
-    // src/client/http.js
-    async function fetchJson(url, { json, ...options } = {}) {
-      const headers = new Headers(options.headers);
-      if (json !== void 0) headers.set("content-type", "application/json");
-      const response = await fetch(url, {
-        credentials: "same-origin",
-        cache: "no-store",
-        ...options,
-        headers: Object.fromEntries(headers),
-        ...json === void 0 ? {} : { body: JSON.stringify(json) }
-      });
-      let parsed;
-      return {
-        ok: response.ok,
-        status: response.status,
-        headers: response.headers,
-        json() {
-          parsed ??= (async () => {
-            if (typeof response.text !== "function") return response.json();
-            const text = await response.text();
-            if (text === "") return {};
-            try {
-              return JSON.parse(text);
-            } catch {
-              const error = new Error(`HTTP ${response.status} 返回了非 JSON：${text.slice(0, 200)}`);
-              error.status = response.status;
-              error.bodyPreview = text.slice(0, 200);
-              throw error;
-            }
-          })();
-          return parsed;
-        }
-      };
-    }
-
-    // src/modules/archived/client/deletion.js
-    async function removeSessionViaHost(sessionId) {
-      try {
-        const response = await fetchJson(DELETE_SESSION_PATH, { method: "POST", json: { sessionId } });
-        const result = await response.json();
-        if (!response.ok) return { ok: false, reason: String(result?.reason ?? `HTTP ${response.status}`) };
-        return result;
-      } catch (error) {
-        return { ok: false, reason: String(error?.message ?? error) };
-      }
-    }
-    async function removeSessionsViaHost(sessionIds) {
-      try {
-        const response = await fetchJson(DELETE_SESSIONS_PATH, { method: "POST", json: { sessionIds } });
-        const result = await response.json();
-        if (!response.ok) return { ok: false, reason: String(result?.reason ?? `HTTP ${response.status}`) };
-        return { ok: true, results: Array.isArray(result?.results) ? result.results : [] };
-      } catch (error) {
-        return { ok: false, reason: String(error?.message ?? error) };
-      }
-    }
-    async function readPendingDeletions() {
-      try {
-        const response = await fetchJson(PENDING_DELETIONS_PATH, { method: "GET" });
-        if (!response.ok) return /* @__PURE__ */ new Set();
-        const result = await response.json();
-        return new Set(Array.isArray(result?.sessionIds) ? result.sessionIds : []);
-      } catch {
-        return /* @__PURE__ */ new Set();
-      }
-    }
-
-    // src/modules/archived/client/removal.jsx
-    var primitives = (() => {
-      try {
-        return require("@deepseek-ai/dsh-client-ui-primitives");
-      } catch {
-        return {};
-      }
-    })();
-    function DeleteButton({ children, size = "md", className, loading = false, ...props }) {
-      const Button = primitives.Button;
-      const Icon = primitives.IconTrashOutlineRegular;
-      const classes = className === void 0 ? "sk-arch__delete" : `sk-arch__delete ${className}`;
-      const spinner = loading ? /* @__PURE__ */ import_react.default.createElement("span", { className: "sk-arch__spinner", "aria-hidden": "true" }) : null;
-      if (Button === void 0) {
-        return /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: classes, "aria-busy": loading || void 0, ...props }, spinner, children);
-      }
-      return /* @__PURE__ */ import_react.default.createElement(
-        Button,
-        {
-          type: "button",
-          variant: "outline",
-          size,
-          className: classes,
-          "aria-busy": loading || void 0,
-          icon: spinner ?? (Icon ? /* @__PURE__ */ import_react.default.createElement(Icon, { size: 16 }) : void 0),
-          ...props
-        },
-        children
-      );
-    }
-    function createRemoval(ctx) {
-      const t = ctx.locale.bind(ARCH_NS);
-      let state = {
-        request: null,
-        busy: false,
-        busyKind: null,
-        error: "",
-        note: "",
-        // Rows the archived page must stop listing: everything this page deleted, plus
-        // the tombstones the host reported after a reload.
-        removed: /* @__PURE__ */ new Set(),
-        // Rows the sidebar must stop drawing. Narrower than `removed`: a session the
-        // Workspace released comes back as an ordinary row, and hiding that would make
-        // a healthy session disappear.
-        hidden: /* @__PURE__ */ new Set(),
-        pending: /* @__PURE__ */ new Set()
-      };
-      const listeners = /* @__PURE__ */ new Set();
-      const update = (patch) => {
-        state = { ...state, ...patch };
-        for (const listener of listeners) listener();
-      };
-      const syncTombstones = async () => {
-        const markers = await readPendingDeletions();
-        if (markers.size === 0) return;
-        const removed = new Set(state.removed);
-        const hidden = new Set(state.hidden);
-        const patch = {};
-        for (const id of markers) {
-          if (!removed.has(id)) {
-            removed.add(id);
-            patch.removed = removed;
-          }
-          if (!hidden.has(id)) {
-            hidden.add(id);
-            patch.hidden = hidden;
-          }
-        }
-        if (Object.keys(patch).length > 0) update(patch);
-      };
-      const controller = {
-        subscribe(listener) {
-          listeners.add(listener);
-          return () => listeners.delete(listener);
-        },
-        snapshot: () => state,
-        syncTombstones,
-        request(row) {
-          if (!state.busy) update({ request: { kind: "one", rows: [row] }, error: "" });
-        },
-        requestAll(groups) {
-          const rows = [...new Map(
-            groups.flatMap((group) => group.rows).filter((row) => !state.removed.has(row.id)).map((row) => [row.id, row])
-          ).values()];
-          if (state.busy || rows.length === 0) return;
-          update({ request: { kind: "all", rows }, error: "" });
-        },
-        cancel() {
-          if (!state.busy) update({ request: null, error: "" });
-        },
-        async confirm() {
-          if (!state.request || state.busy) return;
-          const request = state.request;
-          const ids = request.rows.map((row) => row.id);
-          const before = state.removed;
-          update({ request: null, busy: true, busyKind: request.kind, error: "", note: "", pending: new Set(ids) });
-          const receipts = await collectReceipts(request, ids);
-          const doneIds = [];
-          const retainedIds = /* @__PURE__ */ new Set();
-          const failed = [];
-          const errors = [];
-          for (const row of request.rows) {
-            const receipt = receipts.get(row.id) ?? { ok: false, reason: "no-receipt" };
-            const alreadyGone = receipt.reason === "not-found";
-            if (receipt.ok !== true && !alreadyGone) {
-              failed.push(row);
-              const reason = String(receipt.reason ?? "unknown");
-              errors.push(request.kind === "all" ? `${row.title || row.id}: ${reason}` : reason);
-              continue;
-            }
-            doneIds.push(row.id);
-            if (receipt.retained === true) retainedIds.add(row.id);
-          }
-          await Promise.allSettled(doneIds.filter((id) => !retainedIds.has(id)).flatMap((id) => [
-            Promise.resolve().then(() => ctx.workspaces.unarchiveSession(id)),
-            Promise.resolve().then(() => ctx.workspaces.unpinSession(id))
-          ]));
-          if (doneIds.length > 0) {
-            void Promise.resolve().then(() => ctx.sessions.refresh?.()).catch(() => {
-            });
-          }
-          const removed = new Set(before);
-          for (const id of doneIds) removed.add(id);
-          const hidden = new Set(state.hidden);
-          for (const id of retainedIds) hidden.add(id);
-          update({
-            busy: false,
-            busyKind: null,
-            pending: /* @__PURE__ */ new Set(),
-            removed,
-            hidden,
-            note: retainedIds.size === 0 ? "" : t("deleteRetained").replace("{t}", String(retainedIds.size)),
-            request: failed.length === 0 ? null : { kind: request.kind, rows: failed },
-            error: errors.join("；")
-          });
-          void syncTombstones();
-        }
-      };
-      void syncTombstones();
-      return controller;
-    }
-    async function collectReceipts(request, ids) {
-      const receipts = /* @__PURE__ */ new Map();
-      if (request.kind === "all") {
-        const response = await removeSessionsViaHost(ids);
-        if (response.ok) {
-          for (const receipt of response.results) {
-            if (receipt !== null && typeof receipt?.sessionId === "string") receipts.set(receipt.sessionId, receipt);
-          }
-          return receipts;
-        }
-        for (const id of ids) receipts.set(id, { ok: false, reason: response.reason });
-        return receipts;
-      }
-      const [row] = request.rows;
-      receipts.set(row.id, await removeSessionViaHost(row.id));
-      return receipts;
-    }
-    function useRemoval(controller) {
-      return import_react.default.useSyncExternalStore(controller.subscribe, controller.snapshot, controller.snapshot);
-    }
-    function installRemoval(ctx, controller) {
-      const t = ctx.locale.bind(ARCH_NS);
-      const MenuItem = primitives.MenuItemButton;
-      function DeleteSessionMenuItem({ sessionId, displayTitle, useMenuOpenState, useWorkspaces }) {
-        const [, setMenuOpen] = useMenuOpenState();
-        const archived = useWorkspaces((snapshot) => snapshot.archivedSessionIds.includes(sessionId));
-        const state = useRemoval(controller);
-        if (!archived || state.removed.has(sessionId) || !MenuItem) return null;
-        const Icon = primitives.IconTrashOutlineRegular;
-        return /* @__PURE__ */ import_react.default.createElement(
-          MenuItem,
-          {
-            danger: true,
-            disabled: state.busy,
-            icon: Icon ? /* @__PURE__ */ import_react.default.createElement(Icon, { size: 14 }) : void 0,
-            onSelect: () => {
-              controller.request({ id: sessionId, title: displayTitle });
-              setMenuOpen(false);
-            }
-          },
-          t("removeSession")
-        );
-      }
-      function RemovalDialog() {
-        const state = useRemoval(controller);
-        const Modal = primitives.Modal;
-        const Button = primitives.Button ?? "button";
-        if (!state.request || !Modal) return null;
-        if (state.request.kind === "all") {
-          return /* @__PURE__ */ import_react.default.createElement(
-            Modal,
-            {
-              open: true,
-              title: t("deleteAllTitle").replace("{t}", String(state.request.rows.length)),
-              closeLabel: t("cancel"),
-              onClose: () => controller.cancel(),
-              description: t("deleteAllDesc"),
-              footer: /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement(Button, { variant: "outline", onClick: () => controller.cancel() }, t("cancel")), /* @__PURE__ */ import_react.default.createElement(DeleteButton, { onClick: () => {
-                void controller.confirm();
-              } }, t("confirmDelete")))
-            },
-            state.error ? /* @__PURE__ */ import_react.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("removeFailed").replace("{reason}", state.error)) : null
-          );
-        }
-        const title = state.request.rows[0]?.title || t("untitled");
-        return /* @__PURE__ */ import_react.default.createElement(
-          Modal,
-          {
-            open: true,
-            title: t("deleteOneTitle").replace("{t}", title),
-            closeLabel: t("cancel"),
-            onClose: () => controller.cancel(),
-            description: t("deleteOneDesc"),
-            footer: /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement(Button, { variant: "outline", onClick: () => controller.cancel() }, t("cancel")), /* @__PURE__ */ import_react.default.createElement(DeleteButton, { onClick: () => {
-              void controller.confirm();
-            } }, t("confirmDelete")))
-          },
-          state.error ? /* @__PURE__ */ import_react.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("removeFailed").replace("{reason}", state.error)) : null
-        );
-      }
-      const offMenu = ctx.slots.inject("sidebar.workspaces.session.menu.item", () => ctx.slots.register({
-        name: "sidebar.workspaces.session.menu.item",
-        id: "dsh-toolkit.archived.delete",
-        order: 500
-      }, DeleteSessionMenuItem));
-      const offDialog = ctx.slots.inject("shell.overlay", () => ctx.slots.register({
-        name: "shell.overlay",
-        id: "dsh-toolkit.archived.delete-confirm"
-      }, RemovalDialog));
-      return () => {
-        offDialog();
-        offMenu();
-      };
-    }
-
-    // src/modules/archived/client/section.jsx
-    var primitives2 = (() => {
-      try {
-        return require("@deepseek-ai/dsh-client-ui-primitives");
-      } catch {
-        return {};
-      }
-    })();
+    // src/modules/archived/client/surfaces/settings/index.tsx
     var UNGROUPED2 = "__ungrouped";
     function ArchivedFolderIcon() {
-      return /* @__PURE__ */ import_react2.default.createElement(
+      return /* @__PURE__ */ import_react7.default.createElement(
         "svg",
         {
           className: "sk-arch__icon",
@@ -807,38 +1016,38 @@ window.__ModuleLoader__.load({
           strokeWidth: 1,
           "aria-hidden": "true"
         },
-        /* @__PURE__ */ import_react2.default.createElement(
+        /* @__PURE__ */ import_react7.default.createElement(
           "path",
           {
             d: "M1.50439 3.11059C1.50439 2.55831 1.95211 2.1106 2.50439 2.1106H5.43389C5.67773 2.1106 5.91318 2.19969 6.09593 2.36113L7.71649 3.79265C7.89924 3.95409 8.1347 4.04319 8.3785 4.04319H13.4958C14.0481 4.04319 14.4958 4.4909 14.4958 5.04319V12.8894C14.4958 13.4417 14.0481 13.8894 13.4958 13.8894H2.50439C1.95211 13.8894 1.50439 13.4417 1.50439 12.8894V4.04319V3.11059Z",
             stroke: "currentColor"
           }
         ),
-        /* @__PURE__ */ import_react2.default.createElement("path", { d: "M3.63501 7.66614H12.3647", stroke: "currentColor" })
+        /* @__PURE__ */ import_react7.default.createElement("path", { d: "M3.63501 7.66614H12.3647", stroke: "currentColor" })
       );
     }
     function FallbackSearchIcon() {
-      return /* @__PURE__ */ import_react2.default.createElement("svg", { width: 16, height: 16, viewBox: "0 0 16 16", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ import_react2.default.createElement("circle", { cx: 7, cy: 7, r: 4.5, stroke: "currentColor", strokeWidth: 1 }), /* @__PURE__ */ import_react2.default.createElement("path", { d: "M10.6 10.6L14 14", stroke: "currentColor", strokeWidth: 1 }));
+      return /* @__PURE__ */ import_react7.default.createElement("svg", { width: 16, height: 16, viewBox: "0 0 16 16", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ import_react7.default.createElement("circle", { cx: 7, cy: 7, r: 4.5, stroke: "currentColor", strokeWidth: 1 }), /* @__PURE__ */ import_react7.default.createElement("path", { d: "M10.6 10.6L14 14", stroke: "currentColor", strokeWidth: 1 }));
     }
     function createArchivedSection(ctx, removal) {
       const timeFormat = new Intl.DateTimeFormat(void 0, { dateStyle: "medium", timeStyle: "short" });
-      const Button = primitives2.Button;
-      const SearchIcon = primitives2.IconSearchOutlineRegular ?? FallbackSearchIcon;
+      const Button = primitives.Button;
+      const SearchIcon = primitives.IconSearchOutlineRegular ?? FallbackSearchIcon;
       function RestoreButton({ busy, disabled, onClick, className, children }) {
         if (Button === void 0) {
-          return /* @__PURE__ */ import_react2.default.createElement("button", { type: "button", className: className ?? "sk-arch__btn", disabled: busy || disabled, onClick }, children);
+          return /* @__PURE__ */ import_react7.default.createElement("button", { type: "button", className: className ?? "sk-arch__btn", disabled: busy || disabled, onClick }, children);
         }
-        return /* @__PURE__ */ import_react2.default.createElement(Button, { type: "button", variant: "outline", size: "sm", className, disabled: busy || disabled, onClick }, children);
+        return /* @__PURE__ */ import_react7.default.createElement(Button, { type: "button", variant: "outline", size: "sm", className, disabled: busy || disabled, onClick }, children);
       }
       return function ArchivedChatsSection() {
         const t = ctx.locale.bind(ARCH_NS);
-        const [, bump] = import_react2.default.useState(0);
-        const [query, setQuery] = import_react2.default.useState("");
-        const [project, setProject] = import_react2.default.useState("");
-        const [busyId, setBusyId] = import_react2.default.useState(null);
-        const [error, setError] = import_react2.default.useState("");
-        const removalState = useRemoval(removal);
-        import_react2.default.useEffect(() => {
+        const [, bump] = import_react7.default.useState(0);
+        const [query, setQuery] = import_react7.default.useState("");
+        const [project, setProject] = import_react7.default.useState("");
+        const [busyId, setBusyId] = import_react7.default.useState(null);
+        const [error, setError] = import_react7.default.useState("");
+        const removalState = useStore(removal);
+        import_react7.default.useEffect(() => {
           const rerender = () => bump((n) => n + 1);
           const offs = [];
           try {
@@ -880,7 +1089,7 @@ window.__ModuleLoader__.load({
             setBusyId(null);
           }
         };
-        return /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__head" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__headText" }, /* @__PURE__ */ import_react2.default.createElement("h2", { className: "sk-arch__title" }, t("title")), /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__subtitle" }, t("removeHint")))), /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__bar" }, /* @__PURE__ */ import_react2.default.createElement("label", { className: "sk-search" }, /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-searchIcon" }, /* @__PURE__ */ import_react2.default.createElement(SearchIcon, { "aria-hidden": "true" })), /* @__PURE__ */ import_react2.default.createElement(
+        return /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__head" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__headText" }, /* @__PURE__ */ import_react7.default.createElement("h2", { className: "sk-arch__title" }, t("title")), /* @__PURE__ */ import_react7.default.createElement("p", { className: "sk-arch__subtitle" }, t("removeHint")))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__bar" }, /* @__PURE__ */ import_react7.default.createElement("label", { className: "sk-search" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-searchIcon" }, /* @__PURE__ */ import_react7.default.createElement(SearchIcon, { "aria-hidden": "true" })), /* @__PURE__ */ import_react7.default.createElement(
           "input",
           {
             className: "sk-searchInput",
@@ -890,7 +1099,7 @@ window.__ModuleLoader__.load({
             "aria-label": t("search"),
             onChange: (event) => setQuery(event.target.value)
           }
-        )), /* @__PURE__ */ import_react2.default.createElement(
+        )), /* @__PURE__ */ import_react7.default.createElement(
           "select",
           {
             className: "sk-arch__select",
@@ -898,10 +1107,10 @@ window.__ModuleLoader__.load({
             "aria-label": t("project"),
             onChange: (event) => setProject(event.target.value)
           },
-          /* @__PURE__ */ import_react2.default.createElement("option", { value: "" }, t("allProjects")),
-          projects.map((entry) => /* @__PURE__ */ import_react2.default.createElement("option", { value: entry.id, key: entry.id }, entry.title)),
-          hasUngrouped ? /* @__PURE__ */ import_react2.default.createElement("option", { value: UNGROUPED2 }, t("ungrouped")) : null
-        ), /* @__PURE__ */ import_react2.default.createElement(
+          /* @__PURE__ */ import_react7.default.createElement("option", { value: "" }, t("allProjects")),
+          projects.map((entry) => /* @__PURE__ */ import_react7.default.createElement("option", { value: entry.id, key: entry.id }, entry.title)),
+          hasUngrouped ? /* @__PURE__ */ import_react7.default.createElement("option", { value: UNGROUPED2 }, t("ungrouped")) : null
+        ), /* @__PURE__ */ import_react7.default.createElement(
           DeleteButton,
           {
             className: "sk-arch__removeAll",
@@ -910,7 +1119,7 @@ window.__ModuleLoader__.load({
             onClick: () => removal.requestAll(visible)
           },
           t("removeAll")
-        )), error !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("restoreFailed").replace("{reason}", error)) : null, removalState.note !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__note", role: "status" }, removalState.note) : null, visible.length === 0 ? /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__empty" }, /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyTitle" }, shown === 0 && total <= removalState.removed.size ? t("empty") : t("noMatch")), total <= removalState.removed.size ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyHint" }, t("emptyHint")) : null) : visible.map((group) => /* @__PURE__ */ import_react2.default.createElement("section", { className: "sk-arch__group", key: group.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__groupHead" }, /* @__PURE__ */ import_react2.default.createElement(ArchivedFolderIcon, null), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupTitle" }, group.title || t("ungrouped")), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupCount" }, `${group.rows.length} ${t("chats")}`)), group.rows.map((row) => /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__row", key: row.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__rowMain" }, /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTitle", title: row.missing ? row.id : row.title || t("untitled") }, row.title || (row.missing ? t("missing") : t("untitled"))), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTime" }, row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : "")), /* @__PURE__ */ import_react2.default.createElement(
+        )), error !== "" ? /* @__PURE__ */ import_react7.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("restoreFailed").replace("{reason}", error)) : null, removalState.note !== "" ? /* @__PURE__ */ import_react7.default.createElement("p", { className: "sk-arch__note", role: "status" }, removalState.note) : null, visible.length === 0 ? /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__empty" }, /* @__PURE__ */ import_react7.default.createElement("p", { className: "sk-arch__emptyTitle" }, shown === 0 && total <= removalState.removed.size ? t("empty") : t("noMatch")), total <= removalState.removed.size ? /* @__PURE__ */ import_react7.default.createElement("p", { className: "sk-arch__emptyHint" }, t("emptyHint")) : null) : visible.map((group) => /* @__PURE__ */ import_react7.default.createElement("section", { className: "sk-arch__group", key: group.id }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__groupHead" }, /* @__PURE__ */ import_react7.default.createElement(ArchivedFolderIcon, null), /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__groupTitle" }, group.title || t("ungrouped")), /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__groupCount" }, `${group.rows.length} ${t("chats")}`)), group.rows.map((row) => /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__row", key: row.id }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__rowMain" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__rowTitle", title: row.missing ? row.id : row.title || t("untitled") }, row.title || (row.missing ? t("missing") : t("untitled"))), /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__rowTime" }, row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : "")), /* @__PURE__ */ import_react7.default.createElement(
           RestoreButton,
           {
             busy: busyId === row.id,
@@ -920,7 +1129,7 @@ window.__ModuleLoader__.load({
             }
           },
           t("restore")
-        ), /* @__PURE__ */ import_react2.default.createElement(
+        ), /* @__PURE__ */ import_react7.default.createElement(
           DeleteButton,
           {
             size: "sm",
@@ -932,230 +1141,32 @@ window.__ModuleLoader__.load({
         ))))));
       };
     }
-    function installArchivedSection(ctx, removal) {
+    var NAME4 = "settings";
+    function install4(ctx, host) {
       const t = ctx.locale.bind(ARCH_NS);
-      return ctx.slots.inject(
-        "settings.section",
-        () => ctx.slots.register(
-          {
-            name: "settings.section",
-            id: "archived-chats",
-            order: 20,
-            label: () => t("nav"),
-            locale: ARCH_NS
-          },
-          createArchivedSection(ctx, removal)
-        )
-      );
+      return installSlot(ctx, {
+        name: "settings.section",
+        id: "archived-chats",
+        order: 20,
+        label: () => t("nav"),
+        locale: ARCH_NS
+      }, createArchivedSection(ctx, host.removal));
     }
 
-    // src/client/settings-icon.jsx
-    var import_react3 = __toESM(require("react"), 1);
-    globalThis.__dshReact ??= import_react3.default;
-    var SHAPES = {
-      rocket: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "6", r: "1.15" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 10.6 4.7 12.4M9.7 10.6l1.6 1.8M8 12.1v2.2" })),
-      globe: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2 8h12" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "8", rx: "2.7", ry: "6" })),
-      scale: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.6v10.8M5.7 13.4h4.6M2.9 5.1h10.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.9 5.1 1.6 8.3h2.6L2.9 5.1ZM13.1 5.1l-1.3 3.2h2.6L13.1 5.1Z" })),
-      bell: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1c-2.2 0-3.7 1.6-3.7 3.8 0 2.4-.7 3.4-1.3 4.1-.2.3 0 .7.3.7h9.4c.3 0 .5-.4.3-.7-.6-.7-1.3-1.7-1.3-4.1 0-2.2-1.5-3.8-3.7-3.8Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.6 11a1.4 1.4 0 0 0 2.8 0" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1V1.2" })),
-      paw: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "4.7", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "4.5", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "11.3", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 7.9c2 0 3.4 1.4 3.4 3 0 1.3-1 2.2-2.2 2.2-.5 0-.8-.2-1.2-.2s-.7.2-1.2.2c-1.2 0-2.2-.9-2.2-2.2 0-1.6 1.4-3 3.4-3Z" })),
-      palette: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.3c-3.2 0-5.7 2.5-5.7 5.7s2.5 5.7 5.7 5.7c.9 0 1.5-.6 1.5-1.4 0-.4-.2-.7-.4-1-.2-.3-.4-.5-.4-.9 0-.7.6-1.3 1.3-1.3h1.2c1.6 0 2.9-1.3 2.9-2.9 0-2.2-2.5-3.9-6.1-3.9Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "5.6", cy: "6.3", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8.6", cy: "4.9", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "11.1", cy: "6.6", r: ".75" })),
-      archive: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: "1.9", y: "2.6", width: "12.2", height: "2.5", rx: ".7" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.6 5.1h10.8v7.4c0 .7-.6 1.3-1.3 1.3H3.9c-.7 0-1.3-.6-1.3-1.3V5.1Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 8.5h3.4" })),
-      plug: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M6 2.3v3.2M10 2.3v3.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.4 5.5h7.2v1.6a3.6 3.6 0 0 1-7.2 0V5.5Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 10.7v2.6" })),
-      gear: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "4.6" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" }))
-    };
-    function createGlyph(key) {
-      function ToolkitSettingsGlyph({ size = 16, active = false }) {
-        const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
-        return /* @__PURE__ */ __dshReact.createElement(
-          "svg",
-          {
-            viewBox: "0 0 16 16",
-            width: edge,
-            height: edge,
-            fill: "none",
-            stroke: "currentColor",
-            strokeWidth: "1.4",
-            strokeLinecap: "round",
-            strokeLinejoin: "round",
-            "aria-hidden": "true",
-            focusable: "false",
-            "data-sk-settings-icon": key,
-            "data-active": active ? "true" : "false"
-          },
-          SHAPES[key]
-        );
-      }
-      ToolkitSettingsGlyph.displayName = `ToolkitSettingsGlyph(${key})`;
-      return ToolkitSettingsGlyph;
-    }
-    var GLYPH_COMPONENTS = Object.freeze(
-      Object.fromEntries(Object.keys(SHAPES).map((key) => [key, createGlyph(key)]))
-    );
-    function registerSettingsIcon(ctx, sectionId, iconKey) {
-      const slots = ctx?.slots;
-      if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return void 0;
-      if (typeof sectionId !== "string" || sectionId === "") return void 0;
-      const Glyph = GLYPH_COMPONENTS[iconKey];
-      if (!Glyph) return void 0;
-      try {
-        const dispose = slots.inject("settings.section.icon", () => slots.register({
-          name: "settings.section.icon",
-          id: sectionId
-        }, Glyph));
-        return typeof dispose === "function" ? dispose : void 0;
-      } catch {
-        return void 0;
-      }
-    }
-
-    // src/modules/archived/client/hidden-rows.js
-    var SELECTOR_SAFE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-    function hiddenRowsCss(ids) {
-      const rules = [];
-      for (const id of ids) {
-        if (typeof id !== "string" || !SELECTOR_SAFE.test(id)) continue;
-        rules.push(`[data-row-key="session:${id}"]{display:none !important}`);
-      }
-      return rules.join("\n");
-    }
-    function installHiddenRows(removal) {
-      const sheet = installMutableStylesheet("toolkit-archived-hidden");
-      let written;
-      const render = () => {
-        const css = hiddenRowsCss(removal.snapshot().hidden);
-        if (css === written) return;
-        written = css;
-        sheet.set(css);
-      };
-      const unsubscribe = removal.subscribe(render);
-      render();
-      return () => {
-        unsubscribe();
-        sheet.dispose();
-      };
-    }
-
-    // src/modules/archived/client/archive-confirm.jsx
-    var import_react4 = __toESM(require("react"), 1);
-    var primitives3 = (() => {
-      try {
-        return require("@deepseek-ai/dsh-client-ui-primitives");
-      } catch {
-        return {};
-      }
-    })();
-    function createArchiveConfirm() {
-      let state = { request: null, busy: false, error: "" };
-      const listeners = /* @__PURE__ */ new Set();
-      const queue = [];
-      const update = (patch) => {
-        state = { ...state, ...patch };
-        for (const listener of listeners) listener();
-      };
-      const advance = () => update({ busy: false, request: queue[0] ?? null, error: "" });
-      return {
-        subscribe(listener) {
-          listeners.add(listener);
-          return () => listeners.delete(listener);
-        },
-        snapshot: () => state,
-        ask(sessionId, title, run) {
-          return new Promise((resolve, reject) => {
-            queue.push({ sessionId, title, run, resolve, reject });
-            if (state.request === null) update({ request: queue[0] });
-          });
-        },
-        cancel() {
-          const entry = state.request;
-          if (entry === null || state.busy) return;
-          queue.shift();
-          advance();
-          entry.reject(new Error("session archive cancelled"));
-        },
-        async confirm() {
-          const entry = state.request;
-          if (entry === null || state.busy) return;
-          update({ busy: true, error: "" });
-          try {
-            const result = await entry.run();
-            queue.shift();
-            advance();
-            entry.resolve(result);
-          } catch (reason) {
-            update({ busy: false, error: String(reason?.message ?? reason) });
-          }
-        }
-      };
-    }
-    function useArchiveConfirm(controller) {
-      return import_react4.default.useSyncExternalStore(controller.subscribe, controller.snapshot, controller.snapshot);
-    }
-    function installArchiveConfirm(ctx, controller) {
-      const t = ctx.locale.bind(ARCH_NS);
-      const Button = primitives3.Button ?? "button";
-      function ArchiveConfirmDialog() {
-        const state = useArchiveConfirm(controller);
-        const Modal = primitives3.Modal;
-        if (state.request === null || Modal === void 0) return null;
-        const title = state.request.title || t("untitled");
-        return /* @__PURE__ */ import_react4.default.createElement(
-          Modal,
-          {
-            open: true,
-            title: t("archiveTitle").replace("{t}", title),
-            closeLabel: t("cancel"),
-            onClose: () => controller.cancel(),
-            description: t("archiveDesc"),
-            footer: /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Button, { variant: "outline", disabled: state.busy, onClick: () => controller.cancel() }, t("cancel")), /* @__PURE__ */ import_react4.default.createElement(Button, { variant: "outline", disabled: state.busy, onClick: () => {
-              void controller.confirm();
-            } }, state.busy ? t("archiving") : t("archiveAction")))
-          },
-          state.error !== "" ? /* @__PURE__ */ import_react4.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("archiveFailed").replace("{reason}", state.error)) : null
-        );
-      }
-      function wrapArchiveSession() {
-        const workspaces = ctx.workspaces;
-        if (workspaces === null || workspaces === void 0 || typeof workspaces.archiveSession !== "function") return () => {
-        };
-        const original = workspaces.archiveSession;
-        const wrapped = function archiveSession(sessionId, options) {
-          if (options !== null && typeof options === "object" && options.stopActivity === true) {
-            return original.call(workspaces, sessionId, options);
-          }
-          const summary = ctx.sessions?.list?.getSnapshot?.()?.byId?.[sessionId];
-          const displayTitle = summary?.title || summary?.displayTitle || "";
-          return controller.ask(sessionId, displayTitle, () => original.call(workspaces, sessionId, options));
-        };
-        workspaces.archiveSession = wrapped;
-        return () => {
-          workspaces.archiveSession = original;
-        };
-      }
-      if (primitives3.Modal === void 0) return () => {
-      };
-      const offDialog = ctx.slots.inject("shell.overlay", () => ctx.slots.register({
-        name: "shell.overlay",
-        id: "dsh-toolkit.archived.archive-confirm"
-      }, ArchiveConfirmDialog));
-      const offWrap = wrapArchiveSession();
-      return () => {
-        offWrap();
-        offDialog();
-      };
-    }
-
-    // src/modules/archived/client/index.js
+    // src/modules/archived/client/index.ts
     var inject = ["slots", "locale", "sessions", "workspaces"];
+    var SURFACES = [settings_exports, session_menu_exports, delete_confirm_exports, archive_confirm_exports];
     function apply(ctx) {
-      const removal = createRemoval(ctx);
-      const archiveConfirm = createArchiveConfirm();
-      ctx.effect(() => installStylesheet(`${settingsStyles("sk")}
-    ${styles_default}`, "toolkit-archived"), "toolkit-archived:stylesheet");
-      ctx.effect(() => ctx.locale.register(ARCH_NS, ARCH_COPY), "toolkit-archived:dictionary");
-      ctx.effect(() => installRemoval(ctx, removal), "toolkit-archived:removal");
-      ctx.effect(() => installHiddenRows(removal), "toolkit-archived:hidden-rows");
-      ctx.effect(() => installArchiveConfirm(ctx, archiveConfirm), "toolkit-archived:archive-confirm");
-      ctx.effect(() => installArchivedSection(ctx, removal), "toolkit-archived:section");
+      const host = { removal: createRemoval(ctx), archiveConfirm: createArchiveConfirm() };
+      ctx.effect(() => installStylesheet(
+        composeStyles(settingsStyles("sk"), style_default2, style_default),
+        "toolkit-archived"
+      ), "toolkit-archived:stylesheet");
+      installDictionary(ctx, ARCH_NS, ARCH_COPY);
+      ctx.effect(() => installHiddenRows(host.removal), "toolkit-archived:hidden-rows");
+      for (const surface of SURFACES) {
+        ctx.effect(() => surface.install(ctx, host), `toolkit-archived:${surface.NAME}`);
+      }
       ctx.effect(() => registerSettingsIcon(ctx, "archived-chats", "archive"), "toolkit-archived:settings-icon");
     }
 

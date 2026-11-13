@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises'
 import { JSDOM } from 'jsdom'
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ARCH_COPY } from '../../src/modules/archived/client/locale.js'
+import { ARCH_COPY } from '../../src/modules/archived/client/locale.ts'
 
 const h = React.createElement
 

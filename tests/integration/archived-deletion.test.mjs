@@ -6,11 +6,11 @@ import { dirname, join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { test } from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import * as archived from '../../src/modules/archived/host/index.js'
-import { DELETE_SESSION_PATH, DELETE_SESSIONS_PATH, PENDING_DELETIONS_PATH } from '../../src/modules/archived/host/paths.js'
-import { pruneArchivedTombstones } from '../../src/modules/archived/host/reconcile.js'
-import { listPendingDeletions } from '../../src/modules/archived/host/files.js'
-import { readPendingDeletions, removeSessionViaHost, removeSessionsViaHost } from '../../src/modules/archived/client/deletion.js'
+import * as archived from '../../src/modules/archived/host/index.ts'
+import { DELETE_SESSION_PATH, DELETE_SESSIONS_PATH, PENDING_DELETIONS_PATH } from '../../src/modules/archived/host/constants.ts'
+import { pruneArchivedTombstones } from '../../src/modules/archived/host/trash/reconcile.ts'
+import { listPendingDeletions } from '../../src/modules/archived/host/trash/files.ts'
+import { readPendingDeletions, removeSessionViaHost, removeSessionsViaHost } from '../../src/modules/archived/client/deletion.ts'
 
 function response() {
   let finish
