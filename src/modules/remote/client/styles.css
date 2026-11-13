@@ -594,6 +594,28 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
 }
 
 /* 地址之类不需要抢占视线的值：次要色 + 单行省略（完整值在 title 里）。 */
+/* 连接方式小标签：LAN/P2P = 直连，TURN/Relay = 绕服务器。 */
+.wc-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  background: var(--dsw-alias-bg-layer-3);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 16px;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
+.wc-tag[data-mode="P2P"],
+.wc-tag[data-mode="LAN"] {
+  color: var(--dsw-alias-brand-primary);
+  border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 35%, transparent);
+}
+
 .wc-info__value--muted {
   color: var(--dsw-alias-label-secondary);
   overflow: hidden;

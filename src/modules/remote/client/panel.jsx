@@ -15,6 +15,22 @@ function shortFingerprint(value) {
   return (value.slice(0, 16).match(/.{1,4}/g) ?? []).join(' ')
 }
 
+// 连接方式（宿主 status 里的 mode）：LAN/P2P/TURN/Relay 决定这条链路的快慢，
+// 放在手机名后面当小标签，用户不用翻日志就知道走的是直连还是中继。
+const MODE_KEYS = {
+  LAN: 'pairModeLan',
+  P2P: 'pairModeP2p',
+  TURN: 'pairModeTurn',
+  RELAY: 'pairModeRelay',
+}
+
+function ModeTag({ mode, t, h }) {
+  if (typeof mode !== 'string') return null
+  const key = MODE_KEYS[mode.toUpperCase()]
+  if (key === undefined) return null
+  return h('span', { className: 'wc-tag', 'data-mode': mode.toUpperCase() }, t(key))
+}
+
 /** 视口尺寸；定位用的是 `position: fixed`，所以基准必须是视口而不是文档。 */
 function readViewport() {
   if (typeof window === 'undefined') return { width: 0, height: 0 }
@@ -427,11 +443,15 @@ export function createPanel(React, { t, connection, portal }) {
           }))
       }
       if (state === 'completed') {
+        const liveClients = Array.isArray(value.clients) ? value.clients : []
+        const live = liveClients.find((client) => client?.deviceId !== undefined && client.deviceId === view.mobile?.deviceId)
+          ?? liveClients[0]
         return h('div', { className: 'wc-body' },
           h('div', { className: 'wc-info' },
             h('div', { className: 'wc-info__row' },
               h('span', { className: 'wc-info__key' }, t('pairPhone')),
-              h('span', { className: 'wc-info__value' }, view.mobile?.name ?? '—')),
+              h('span', { className: 'wc-info__value' }, view.mobile?.name ?? '—',
+                h(ModeTag, { mode: live?.mode, t, h }))),
             h('div', { className: 'wc-info__row' },
               h('span', { className: 'wc-info__key' }, t('pairFingerprint')),
               h('span', { className: 'wc-info__value' }, shortFingerprint(view.mobile?.fingerprint))),
@@ -502,14 +522,14 @@ export function createPanel(React, { t, connection, portal }) {
       // 没有活动会话，但本机已经和这台服务器绑过：配对记录被回收不代表掉线。
       // 这里必须画「已绑定」，否则每次 DSH 重启后都会假装没连过，诱导用户重复配对。
       if (state === undefined && value.binding === true) {
-        const phone = Array.isArray(value.clients)
-          ? value.clients.find((client) => typeof client?.name === 'string' && client.name.trim() !== '')
-          : undefined
+        const clients = Array.isArray(value.clients) ? value.clients : []
+        const phone = clients.find((client) => typeof client?.name === 'string' && client.name.trim() !== '')
         return h('div', { className: 'wc-body' },
           h('div', { className: 'wc-info' },
             h('div', { className: 'wc-info__row' },
               h('span', { className: 'wc-info__key' }, t('pairPhone')),
-              h('span', { className: 'wc-info__value' }, phone?.name ?? t('pairPhoneFallback')))),
+              h('span', { className: 'wc-info__value' }, phone?.name ?? t('pairPhoneFallback'),
+                h(ModeTag, { mode: clients[0]?.mode, t, h })))),
           h('div', { className: 'wc-hint' }, t(value.clients.length > 0 ? 'pairBoundOnline' : 'pairBoundOffline')),
           h('div', { className: 'wc-actions' },
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('pairAgain'))),

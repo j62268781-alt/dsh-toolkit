@@ -458,6 +458,7 @@ test('配对：手机 claim 后输入 8 位码，确认时带上 sessionId 与�
     'host.pairing.status': undefined,
     'host.pairing.start': CLAIMED,
     'host.pairing.confirm': COMPLETED,
+    status: { host: { online: true, connectedClients: [{ deviceId: 'phone-1', name: 'Pixel 9', mode: 'LAN' }] } },
   })
   try {
     const popover = panel.popover()
@@ -505,6 +506,10 @@ test('配对：手机 claim 后输入 8 位码，确认时带上 sessionId 与�
     assert.equal(popover.querySelector('.wc-status'), null, '完成后不再显示状态行')
     assert.match(popover.textContent, /pairCompletedHint/, '完成后要给出「可以打开 DSH-Go」的说明')
     assert.ok(popover.textContent.includes('Pixel 9'), '完成后要显示手机名称')
+    const tag = popover.querySelector('.wc-tag')
+    assert.ok(tag !== null, '连接方式要有小标签')
+    assert.equal(tag.getAttribute('data-mode'), 'LAN', '标签要标出走的是局域网直连')
+    assert.equal(tag.textContent, 'pairModeLan')
   } finally {
     await panel.unmount()
   }
@@ -522,6 +527,40 @@ test('配对：控制路由不存在时给出可读错误', async () => {
     assert.match(error.textContent, /CONTROL_MISSING/)
   } finally {
     await panel.unmount()
+  }
+})
+
+test('配对：已绑定卡片标出连接方式，未知 mode 不显示标签', async () => {
+  const base = {
+    'settings.get': {
+      config: { serverUrl: SERVER },
+      associations: { host: { method: 'device-pairing', account: 'dsh-device:abc' } },
+    },
+    'host.pairing.status': undefined,
+  }
+  const cases = [
+    ['P2P', 'pairModeP2p'],
+    ['Relay', 'pairModeRelay'],
+    ['TURN', 'pairModeTurn'],
+    ['remote', null],
+  ]
+  for (const [mode, key] of cases) {
+    const panel = await mount({
+      ...base,
+      status: { host: { online: true, connectedClients: [{ deviceId: 'phone-1', name: 'Pixel 9', mode }] } },
+    })
+    try {
+      await panel.flush()
+      const tag = panel.popover().querySelector('.wc-tag')
+      if (key === null) {
+        assert.equal(tag, null, `未知 mode(${mode}) 不该画标签`)
+      } else {
+        assert.ok(tag !== null, `${mode} 应画标签`)
+        assert.equal(tag.textContent, key, `${mode} 应显示 ${key}`)
+      }
+    } finally {
+      await panel.unmount()
+    }
   }
 })
 
