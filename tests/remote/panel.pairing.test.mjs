@@ -610,3 +610,46 @@ test('配对：账号冲突时给出「解绑并重试」，解绑后完成配�
     await panel.unmount()
   }
 })
+
+test('配对：授权失效后点「重新配对」，扫码完成不再闪一下错误卡', async () => {
+  const panel = await mount({
+    'settings.get': { config: { serverUrl: SERVER } },
+    'host.pairing.status': undefined,
+    'host.pairing.start': CLAIMED,
+    'host.pairing.confirm': COMPLETED,
+    status: {
+      mode: 'local',
+      host: { online: false, authorized: false, accountRequired: true, error: 'DEVICE_REVOKED', connectedClients: [] },
+    },
+  })
+  try {
+    await panel.flush()
+    const popover = panel.popover()
+    assert.ok(popover.textContent.includes('pairAuthRevoked'), '撤销后先显示授权失效')
+
+    const repair = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairAgain')
+    assert.ok(repair !== undefined, '授权失效卡要有重新配对按钮')
+    await panel.click(repair)
+    await panel.flush()
+
+    // 关键：开始新配对时上一轮的授权失效必须立刻让位，
+    // 否则视图变成 completed 的瞬间（不再是「进行中」）它会先跳出来再被轮询抹掉。
+    assert.equal(popover.textContent.includes('pairAuthRevoked'), false, '开始重新配对后旧错误要让位')
+    const input = popover.querySelector('.wc-code__input')
+    assert.ok(input !== null, '应直接进入输入验证码')
+
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(panel.dom.window.HTMLInputElement.prototype, 'value').set
+      setter.call(input, '00123456')
+      input.dispatchEvent(new panel.dom.window.Event('input', { bubbles: true }))
+    })
+    const bind = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairBind')
+    await panel.click(bind)
+    await panel.flush()
+
+    assert.ok(popover.textContent.includes('pairCompletedHint'), '确认后应显示已绑定')
+    assert.equal(popover.textContent.includes('pairAuthRevoked'), false, '完成后更不能残留授权失效卡')
+  } finally {
+    await panel.unmount()
+  }
+})

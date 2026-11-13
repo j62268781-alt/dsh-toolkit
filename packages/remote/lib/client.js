@@ -1112,7 +1112,7 @@ window.__ModuleLoader__.load({
         async start() {
           return run(async () => {
             const view = await control("host.pairing.start");
-            set({ view });
+            set({ view, authError: void 0 });
             return view;
           });
         },
@@ -1125,6 +1125,9 @@ window.__ModuleLoader__.load({
               verificationCode: code
             });
             set({ view: next });
+            if (next?.state === "completed") {
+              set({ authError: void 0 });
+            }
             return next;
           });
         },

@@ -269,7 +269,10 @@ export function createPairing() {
     async start() {
       return run(async () => {
         const view = await control('host.pairing.start')
-        set({ view })
+        // 上一轮留下的授权失效已经和这次配对无关了：不清掉的话，配对一完成
+        // （view 变成 completed、不再是「进行中」）那面红字卡会先闪一下再被下一次
+        // hostStatus 抹掉，用户看到的就是「扫码后先报错、再变已绑定」。
+        set({ view, authError: undefined })
         return view
       })
     },
@@ -283,6 +286,10 @@ export function createPairing() {
           verificationCode: code,
         })
         set({ view: next })
+        if (next?.state === 'completed') {
+          // 配对成功就证明当前授权是好的，别让上一轮的错误卡再跳出来。
+          set({ authError: undefined })
+        }
         return next
       })
     },
