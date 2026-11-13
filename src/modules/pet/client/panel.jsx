@@ -36,7 +36,7 @@ export function createPetPanel(React, { t, settings, connection, actions, primit
     return <div className="pet-row"><div className="pet-rowCopy"><div className="pet-title">{title}</div>{description && <div className="pet-desc">{description}</div>}</div><div className="pet-control">{children}</div></div>
   }
   function Preview({ builtIn, width, height }) {
-    return <div className="pet-preview"><div className={`pet-screen${builtIn ? ' pet-screenNotch' : ''}`} aria-label={t('preview')}><span className="pet-island" style={{ width: `${(builtIn ? 52 : 40) * width / 100}%`, height: `${14 * height / 100}px` }}><span className="pet-previewEyes" aria-hidden="true"><span>●</span><span>•••</span></span></span></div><div className="pet-previewLabel">{t(builtIn ? 'builtIn' : 'external')}</div></div>
+    return <div className="pet-preview"><div className={`pet-screen${builtIn ? ' pet-screenNotch' : ''}`} aria-label={t('preview')}><span className="pet-island" style={{ width: `${(builtIn ? 52 : 40) * width / 100}%`, height: `${builtIn ? 14 : 14 * height / 100}px` }}><span className="pet-previewEyes" aria-hidden="true"><span>●</span><span>•••</span></span></span></div><div className="pet-previewLabel">{t(builtIn ? 'builtIn' : 'external')}</div></div>
   }
   return function PetPanel() {
     const value = useSyncExternalStore(settings.subscribe, settings.getSnapshot, settings.getSnapshot)

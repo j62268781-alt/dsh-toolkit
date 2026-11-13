@@ -508,7 +508,7 @@ window.__ModuleLoader__.load({
         islandAllDisplays: "在其他显示器上显示",
         islandAllDisplaysDesc: "连接多个显示器时，在各屏幕顶部同步显示灵动岛。",
         islandSize: "灵动岛大小",
-        islandSizeDesc: "调整收起时的宽度和高度，不影响展开内容。有刘海的屏幕，高度不会小于刘海。",
+        islandSizeDesc: "调整收起时的宽度和普通屏幕的高度。刘海屏高度始终贴合系统刘海区域。",
         restore: "恢复默认大小",
         builtIn: "内置显示器",
         external: "外接显示器",
@@ -577,7 +577,7 @@ window.__ModuleLoader__.load({
         islandAllDisplays: "Show on other displays",
         islandAllDisplaysDesc: "Show the island at the top of every connected display.",
         islandSize: "Island size",
-        islandSizeDesc: "Adjust the collapsed width and height without changing expanded content. Height stays at least as tall as a display notch.",
+        islandSizeDesc: "Adjust the collapsed width and the height on displays without a notch. On notched displays, height always matches the system notch area.",
         restore: "Restore default size",
         builtIn: "Built-in display",
         external: "External display",
@@ -679,7 +679,7 @@ window.__ModuleLoader__.load({
         return /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-row" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-rowCopy" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, title), description && /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-desc" }, description)), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-control" }, children));
       }
       function Preview({ builtIn, width, height }) {
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-preview" }, /* @__PURE__ */ __dshReact.createElement("div", { className: `pet-screen${builtIn ? " pet-screenNotch" : ""}`, "aria-label": t("preview") }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-island", style: { width: `${(builtIn ? 52 : 40) * width / 100}%`, height: `${14 * height / 100}px` } }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-previewEyes", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("span", null, "●"), /* @__PURE__ */ __dshReact.createElement("span", null, "•••")))), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-previewLabel" }, t(builtIn ? "builtIn" : "external")));
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-preview" }, /* @__PURE__ */ __dshReact.createElement("div", { className: `pet-screen${builtIn ? " pet-screenNotch" : ""}`, "aria-label": t("preview") }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-island", style: { width: `${(builtIn ? 52 : 40) * width / 100}%`, height: `${builtIn ? 14 : 14 * height / 100}px` } }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-previewEyes", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("span", null, "●"), /* @__PURE__ */ __dshReact.createElement("span", null, "•••")))), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-previewLabel" }, t(builtIn ? "builtIn" : "external")));
       }
       return function PetPanel() {
         const value = useSyncExternalStore(settings.subscribe, settings.getSnapshot, settings.getSnapshot);

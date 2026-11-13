@@ -47,6 +47,13 @@ try {
   const report = JSON.parse(await readFile(path.join(output, 'smoke-report.json'), 'utf8'))
   const allDisplays = process.env.PET_SMOKE_ALL_DISPLAYS === '1'
   assert.equal(report.islands.length, allDisplays ? report.displays : 1)
+  assert.equal(report.compact.length, report.islands.length)
+  for (const compact of report.compact) {
+    const height = compact.notch?.height || 38
+    assert.equal(compact.surface.height, height, 'collapsed surface matches the display height')
+    assert.equal(compact.cap.height, height)
+    assert.equal(compact.contentFits, true, 'pet and badge fit vertically inside the collapsed pill')
+  }
   assert.equal(report.independentHover.length, report.islands.length)
   for (const hover of report.independentHover) {
     assert.equal(hover.onlySourceExpanded, true)

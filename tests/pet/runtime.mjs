@@ -94,12 +94,15 @@ test('actions exclude grants and reject malformed prompts and coordinates', () =
 })
 test('island geometry reserves native camera space and a stable expanded width', () => {
   assert.deepEqual(islandGeometry(), { compact:280,expanded:552,height:38 })
-  assert.deepEqual(islandGeometry({}, { width:185,height:32 }), { compact:360,expanded:590,height:38 })
+  assert.deepEqual(islandGeometry({}, { width:185,height:32 }), { compact:360,expanded:590,height:32 })
   assert.equal(islandGeometry({ islandWidth:150 }).expanded, 552)
   // 屏幕太窄时按屏宽封顶，展开面板不能超出显示器。
   assert.equal(islandGeometry({}, { width:185,height:32 }, { width:600,height:900 }).expanded, 480)
   assert.equal(islandGeometry({ islandWidth:75 }).compact, 210)
-  assert.ok(islandGeometry({ islandHeight:75 }, { width:185,height:32 }).height >= 36)
+  for (const islandHeight of [75, 100, 150]) {
+    assert.equal(islandGeometry({ islandHeight }, { width:185,height:32 }).height, 32, 'notched height stays inside the native safe area')
+    assert.equal(islandGeometry({ islandHeight }).height, Math.round(38 * islandHeight / 100), 'plain displays retain height scaling')
+  }
 })
 test('island placement follows the display anchor and keeps a dragged offset on screen', () => {
   const notched = { id:1, bounds:{ x:1920,y:0,width:1512,height:982 }, workArea:{ x:1920,y:33,width:1512,height:949 }, notch:{ x:663.5,width:185,height:32 } }
@@ -221,7 +224,7 @@ test('collapsed pill speaks Qoder: status badge on the right, greeting when idle
   dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
   const base = {
     settings: { language: 'zh', activePet: 'duck' }, pets: [], kind: 'island',
-    display: { notch: { width: 185, height: 32 }, island: { compact: 360, expanded: 390, height: 38 } },
+    display: { notch: { width: 185, height: 32 }, island: { compact: 360, expanded: 390, height: 32 } },
     sessions: [{ id: 'a', title: 'A', status: 'running', running: true }],
   }
   let update
@@ -233,6 +236,23 @@ test('collapsed pill speaks Qoder: status badge on the right, greeting when idle
   assert.equal(badge.textContent, '正在工作')
   const width = Number(surface.style.width.replace('px', ''))
   assert.ok(width >= 300 && width <= 360, `notch compact stays in range: ${width}`)
+  const cap = doc.getElementById('cap')
+  cap.getBoundingClientRect = () => ({ left: 0, top: 0, right: width, bottom: 32, width, height: 32 })
+  assert.equal(surface.style.height, '32px')
+  surface.dispatchEvent(new dom.window.MouseEvent('pointerenter', { clientX: 25, clientY: 16 }))
+  assert.equal(cap.style.height, '32px', 'hover must not grow below the native notch')
+  assert.equal(surface.style.height, '32px')
+  assert.ok(Number.parseFloat(surface.style.width) > width, 'hover still widens the pill')
+  timers.get(300)()
+  assert.equal(body.classList.contains('expanded'), true, 'hover still opens after 300ms')
+  doc.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape' }))
+  surface.dispatchEvent(new dom.window.Event('pointerleave'))
+  update({ ...base, display: { island: { compact: 280, expanded: 552, height: 38 } } })
+  assert.equal(surface.style.height, '38px')
+  surface.dispatchEvent(new dom.window.MouseEvent('pointerenter', { clientX: 25, clientY: 16 }))
+  assert.equal(cap.style.height, '42px', 'plain displays retain their hover height')
+  assert.equal(surface.style.height, '42px')
+  surface.dispatchEvent(new dom.window.Event('pointerleave'))
   update({ ...base, sessions: [{ id: 'b', title: 'B', status: 'waiting', pendingKind: 'approval' }] })
   assert.equal(body.dataset.status, 'waiting')
   assert.equal(badge.textContent, '需要你处理')

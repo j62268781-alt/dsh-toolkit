@@ -49,7 +49,7 @@ function dimensions() {
   if (state.display?.island) return { compact: state.display.island.compact, wide: state.display.island.expanded, height: state.display.island.height }
   const scale = Math.max(75, Math.min(150, state.settings.islandWidth || 100)) / 100
   const compact = Math.min(360, Math.round(280 * scale))
-  return { compact, wide: Math.max(390, compact), height: Math.round(38 * Math.max(75, Math.min(150, state.settings.islandHeight || 100)) / 100) }
+  return { compact, wide: Math.max(390, compact), height: state.display?.notch?.height || Math.round(38 * Math.max(75, Math.min(150, state.settings.islandHeight || 100)) / 100) }
 }
 function layout() {
   if (!state) return
@@ -64,7 +64,7 @@ function layout() {
   document.body.style.setProperty('--notch-height', `${notch?.height || 0}px`)
   const compact = compactWidth(state.sessions[0]?.status || 'idle')
   surface.style.width = `${expanded ? g.wide : hovered ? Math.min(g.wide, compact + 32) : compact}px`
-  const capHeight = g.height + (!expanded && hovered ? 4 : 0)
+  const capHeight = g.height + (!notch && !expanded && hovered ? 4 : 0)
   cap.style.height = `${capHeight}px`
   activity.style.width = `${g.wide}px`
   surface.style.height = `${expanded ? Math.min(480, g.height + activity.scrollHeight) : capHeight}px`

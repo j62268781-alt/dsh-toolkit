@@ -49,7 +49,8 @@ function islandGeometry(settings = {}, notch = null, bounds = null) {
   const wanted = notched ? 590 : 552
   const limit = Number.isFinite(bounds?.width) && bounds.width > 0 ? Math.max(320, bounds.width - 120) : wanted
   const expanded = Math.round(Math.max(compact, Math.min(wanted, limit)))
-  const height = Math.max(notched ? notch.height + 4 : 0, Math.round(38 * Math.max(75, Math.min(150, Number(settings.islandHeight) || 100)) / 100))
+  // 刘海屏贴合系统安全区，避免收起胶囊向下盖住标题栏；高度缩放仅用于普通屏幕。
+  const height = notched ? notch.height : Math.round(38 * Math.max(75, Math.min(150, Number(settings.islandHeight) || 100)) / 100)
   return { compact, expanded, height }
 }
 
