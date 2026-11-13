@@ -136,6 +136,29 @@ export const PAIRING_CODE_LENGTH = 8
 /** 会话仍在推进的状态；只有这些状态值得轮询。 */
 const ACTIVE_STATES = new Set(['created', 'claimed', 'approved'])
 
+/**
+ * 复用现有二维码的下限：剩下的有效期不足这个数才允许再建一张新的。
+ * 这样「刷新二维码」在有效期内是幂等的，而临期时仍然能真的换一张。
+ */
+const REUSE_MIN_REMAINING_MS = 30_000
+
+/**
+ * 限流后的冷却窗口。
+ *
+ * server 对建会话限流 5 次/分钟/IP 并回 `Retry-After: 60`（见 server/src/server.ts 的 rate()），
+ * 冷却期内再点「生成二维码」必然还是 429。继续发请求不只是白打一次宿主：每次失败都会让
+ * 错误行重新画一遍，而卡片是「底边贴按钮、向上长」的（position.js），高度一变整张卡片就上下弹。
+ * 所以这段时间里 store 直接不出请求，面板按 `cooldownUntil` 把按钮禁掉并倒计时。
+ */
+const RATE_LIMIT_COOLDOWN_MS = 60_000
+
+/** 会话还剩多少毫秒（expiresAt 是宿主给的毫秒时间戳；兼容 ISO 字符串）。 */
+function remainingMs(view) {
+  const raw = view?.expiresAt
+  const at = typeof raw === 'number' ? raw : Date.parse(String(raw ?? ''))
+  return Number.isFinite(at) ? at - Date.now() : undefined
+}
+
 export function isPairingActive(view) {
   return view !== undefined && view !== null && ACTIVE_STATES.has(view.state)
 }
@@ -207,9 +230,16 @@ async function control(endpoint, payload = {}) {
 
   const result = body?.result
   if (result?.ok === true) return result.value
-  const code = typeof result?.error?.code === 'string' ? result.error.code : 'PAIRING_FAILED'
+  // 控制路由把上游错误统一包成 `{code:'internal', details:{remoteCode}}`。只读 code 的话，
+  // 限流（429 RATE_LIMITED）、设备冲突这些全都会被画成 (internal)，面板上只剩一句
+  // "Pairing failed; recover the original submission if sent."，用户没法处理（真机报过）。
+  // 真码在 details.remoteCode 里，优先用它——与宿主自己的 client 同一做法。
+  const details = result?.error?.details
+  const code = typeof details?.remoteCode === 'string'
+    ? details.remoteCode
+    : typeof result?.error?.code === 'string' ? result.error.code : 'PAIRING_FAILED'
   const message = typeof result?.error?.message === 'string' ? result.error.message : 'pairing request failed.'
-  throw new PairingError(code, message, result?.error?.details)
+  throw new PairingError(code, message, details)
 }
 
 /**
@@ -245,6 +275,11 @@ export function createPairing() {
     authError: undefined,
     /** 致命错误时停掉自动轮询：否则每 2.5 秒重试一次，错误行会不停闪。 */
     halted: false,
+    /**
+     * 限流冷却的截止时间（毫秒时间戳）：有值时「生成二维码」按钮禁用并倒计时。
+     * 面板用 useCountdown(cooldownUntil) 每秒重画一次，到点按钮自动恢复。
+     */
+    cooldownUntil: undefined,
   }
   const listeners = new Set()
 
@@ -258,6 +293,8 @@ export function createPairing() {
   const fail = (error) => ({
     code: typeof error?.code === 'string' ? error.code : 'PAIRING_FAILED',
     message: String(error?.message ?? error),
+    // 限流（429）与 5xx 是「过一会儿再试」，面板据此给可操作文案，而不是当成内部错误。
+    retryable: error?.details?.retryable === true,
     conflict: isAccountConflict(error),
   })
 
@@ -330,10 +367,20 @@ export function createPairing() {
   }
 
   async function run(work) {
-    set({ busy: true, error: undefined })
+    // 这里刻意**不**先清 error。卡片是「底边贴着按钮、向上长」的（position.js 的 placePopover），
+    // 每次点击先撤掉错误行、失败再画回来，整张卡片就会上下弹两次——真机连点
+    // 「重新生成二维码」时看到的抖动就是这个。重试期间保持原样，成功后再清。
+    const pending = value.error
+    set({ busy: true })
     try {
       const result = await work()
-      set({ halted: false })
+      set({
+        halted: false,
+        cooldownUntil: undefined,
+        // work 自己可能已经写了新错误（例如 unbind 内部的 refresh 失败），那就留着；
+        // 只有「这轮没产生错误」时才把上一轮留下的那行清掉。
+        ...value.error === pending ? { error: undefined } : {},
+      })
       return result
     } catch (error) {
       const detail = fail(error)
@@ -341,7 +388,14 @@ export function createPairing() {
       // 已经绑好的机器上，这类冲突来自一张过期的会话记录，绑定本身是好的——
       // 把它画成红字会变成「上面说已绑定、下面说配对失败」的自相矛盾画面。
       const ignored = detail.conflict === true && value.binding === true
-      set({ error: ignored ? undefined : detail, halted: detail.conflict === true })
+      set({
+        error: ignored ? undefined : detail,
+        halted: detail.conflict === true,
+        // 429：server 回了 Retry-After: 60。冷却期内不再打宿主，按钮跟着禁用并倒计时。
+        ...detail.code === 'RATE_LIMITED'
+          ? { cooldownUntil: Date.now() + RATE_LIMIT_COOLDOWN_MS }
+          : {},
+      })
       return undefined
     } finally {
       set({ busy: false })
@@ -376,7 +430,19 @@ export function createPairing() {
     hostStatus,
 
     async start() {
-      return run(async () => {
+      // 连点「生成/刷新二维码」不该反复建会话：服务器对建会话限流 5 次/分钟/IP，
+      // 第 6 次直接 429（真机就是连点几次后看到那句英文报错的）。
+      // 现有二维码还没临期就复用它，重复点击因此是幂等的，一个配额都不烧。
+      if (value.busy) return undefined
+      const current = value.view
+      const remaining = remainingMs(current)
+      if (current?.state === 'created' && remaining !== undefined && remaining > REUSE_MIN_REMAINING_MS) {
+        set({ error: undefined })
+        return current
+      }
+      // 限流冷却期内再点也只会拿到 429：不出请求，面板把按钮禁用并倒计时。
+      if ((value.cooldownUntil ?? 0) > Date.now()) return undefined
+      const started = await run(async () => {
         const view = await control('host.pairing.start')
         // 上一轮留下的授权失效已经和这次配对无关了：不清掉的话，配对一完成
         // （view 变成 completed、不再是「进行中」）那面红字卡会先闪一下再被下一次
@@ -384,6 +450,11 @@ export function createPairing() {
         set({ view, authError: undefined })
         return view
       })
+      // 宿主的 start 是「先取消旧会话，再建新会话」：限流/5xx 发生在取消之后，
+      // 旧二维码已经作废。继续把它画在面板上，用户会去扫一张注定失败的码；
+      // 收起来只留错误提示，下一次点「生成二维码」才是干净的一次。
+      if (started === undefined && value.error?.retryable === true) set({ view: undefined })
+      return started
     },
 
     async confirm(code) {

@@ -979,3 +979,74 @@ test('配对：已绑定卡点「更换手机」先注销旧的，再开新二�
     await panel.unmount()
   }
 })
+
+test('配对：限流 429 画成可操作提示，不再显示 (internal) 英文原文', async () => {
+  // 真机回归：一分钟内连点几次「重新生成二维码」→ 服务器建会话限流 5 次/分钟 →
+  // 面板出现「配对请求失败（internal）：Pairing failed; recover the original
+  // submission if sent.」。文案必须告诉用户「等一会儿再试」。
+  const panel = await mount({
+    'settings.get': { config: { serverUrl: SERVER } },
+    'host.pairing.status': undefined,
+    'host.pairing.start': {
+      __error: {
+        code: 'internal',
+        message: 'Pairing failed; recover the original submission if sent.',
+        details: { remoteCode: 'RATE_LIMITED', retryable: true },
+      },
+    },
+  })
+  try {
+    const popover = panel.popover()
+    const generate = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairGenerate')
+    assert.ok(generate !== undefined, '未配对时要给出生成二维码按钮')
+    await panel.click(generate)
+    await panel.flush()
+
+    const error = popover.querySelector('.wc-error')
+    assert.ok(error !== null, '限流时要显示错误行')
+    assert.match(error.textContent, /pairRateLimited/, '按限流给中文提示与下一步')
+    assert.equal(error.textContent.includes('internal'), false, '不能把控制路由的 (internal) 画出来')
+    assert.equal(error.textContent.includes('recover the original submission'), false, '不直接甩英文原文')
+
+    // 限流后 60 秒内不再发请求：按钮换成倒计时并禁用，连点也不会把错误行刷来刷去。
+    const cooling = [...popover.querySelectorAll('.wc-button')]
+      .find((node) => node.textContent.startsWith('pairCooldownWait'))
+    assert.ok(cooling !== undefined, '限流后「生成二维码」要变成冷却倒计时')
+    assert.equal(cooling.disabled, true, '冷却期内按钮禁用')
+    assert.match(cooling.textContent, /"s":6\d/, '倒计时从 60 秒开始')
+    const starts = panel.control.calls.filter((call) => call.endpoint === 'host.pairing.start')
+    assert.equal(starts.length, 1, '只打过一次建会话请求')
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('配对：二维码有效期内连点「刷新」不再发起新的配对会话', async () => {
+  // 服务器对建会话限流 5 次/分钟/IP，连点会把配额烧光并换成 429 报错。
+  // 有效期内「刷新」应当复用当前会话（幂等），只有临期/结束后才真的重建。
+  const panel = await mount({
+    'settings.get': { config: { serverUrl: SERVER } },
+    'host.pairing.status': undefined,
+    'host.pairing.start': CREATED,
+  })
+  try {
+    const popover = panel.popover()
+    const generate = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairGenerate')
+    await panel.click(generate)
+    await panel.flush()
+    assert.ok(popover.querySelector('.wc-qr') !== null, '第一次要真的画二维码')
+
+    const refresh = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'refresh')
+    assert.ok(refresh !== undefined, '二维码态要给出刷新按钮')
+    await panel.click(refresh)
+    await panel.flush()
+    await panel.click(refresh)
+    await panel.flush()
+
+    const starts = panel.control.calls.filter((call) => call.endpoint === 'host.pairing.start')
+    assert.equal(starts.length, 1, `有效期内连点刷新不该再建会话，实际 ${starts.length} 次`)
+    assert.ok(popover.querySelector('.wc-qr') !== null, '二维码继续显示')
+  } finally {
+    await panel.unmount()
+  }
+})

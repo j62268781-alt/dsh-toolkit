@@ -351,6 +351,20 @@ export function createPanel(React, { t, connection, portal }) {
   }
 
   /**
+   * 配对错误行文案。
+   *
+   * 限流（429）与服务器会话打满时，上游给的是固定英文
+   * "Pairing failed; recover the original submission if sent."，把 code + 原文一起画出来
+   * 等于没解释（真机连点「重新生成二维码」后看到的就是这个）。这类错误码换成人话＋下一步，
+   * 其余仍保留原始 code/reason，方便定位。
+   */
+  function pairErrorText(error) {
+    if (error.code === 'RATE_LIMITED') return t('pairRateLimited')
+    if (error.code === 'PAIRING_BUSY') return t('pairServerBusy')
+    return t('pairError', { code: error.code, reason: error.message })
+  }
+
+  /**
    * 手机配对 tab：对齐 ds-harness-remote 的配对状态机
    * created(二维码) → claimed(手机显示 8 位码，这里输入) → approved → completed。
    *
@@ -368,6 +382,9 @@ export function createPanel(React, { t, connection, portal }) {
     const [confirmAction, setConfirmAction] = useState(null)
     const codeRef = useRef(null)
     const seconds = useCountdown(view?.expiresAt)
+    // 限流冷却（store 里 429 后设的 60 秒窗口）：按钮禁用 + 倒计时，连点不再发请求。
+    const cooldown = useCountdown(value.cooldownUntil)
+    const cooling = cooldown !== undefined && cooldown > 0
 
     // 切到配对 tab 才读状态：默认 tab 是配对，所以打开面板就会读一次。
     useEffect(() => {
@@ -568,7 +585,12 @@ export function createPanel(React, { t, connection, portal }) {
             ? null
             : h('div', { className: 'wc-countdown' }, t('pairCountdown', { s: seconds })),
           h('div', { className: 'wc-actions' },
-            h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('refresh')),
+            h('button', {
+              type: 'button',
+              className: 'wc-button',
+              disabled: busy || cooling,
+              onClick: start,
+            }, cooling ? t('pairCooldownWait', { s: cooldown }) : t('refresh')),
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: cancel }, t('cancel'))))
       }
       // 没有活动会话，但本机已经和这台服务器绑过：配对记录被回收不代表掉线。
@@ -620,9 +642,11 @@ export function createPanel(React, { t, connection, portal }) {
           h('button', {
             type: 'button',
             className: 'wc-button wc-button--primary',
-            disabled: busy,
+            disabled: busy || cooling,
             onClick: start,
-          }, terminal ? t('pairRegenerate') : t('pairGenerate'))),
+          }, cooling
+            ? t('pairCooldownWait', { s: cooldown })
+            : terminal ? t('pairRegenerate') : t('pairGenerate'))),
         state === undefined || state === 'idle' || terminal
           ? h(ServerRow, {
             serverUrl: value.serverUrl ?? view?.serverUrl,
@@ -637,10 +661,7 @@ export function createPanel(React, { t, connection, portal }) {
       value.error === undefined
         ? null
         : h('div', { className: 'wc-body' },
-          h('div', { className: 'wc-error' }, t('pairError', {
-            code: value.error.code,
-            reason: value.error.message,
-          })),
+          h('div', { className: 'wc-error' }, pairErrorText(value.error)),
           value.error.conflict === true
             ? h('div', { className: 'wc-hint' }, t('pairConflictHint'))
             : null,
