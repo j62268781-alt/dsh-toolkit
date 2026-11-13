@@ -1,6 +1,12 @@
 /** One owner for replaceable reads. Invalidating also cancels transports that honor signal. */
-export function createLatestTask() {
-  let current
+
+export interface LatestTask {
+  begin(): { signal: AbortSignal; isCurrent(): boolean }
+  invalidate(): void
+}
+
+export function createLatestTask(): LatestTask {
+  let current: AbortController | undefined
   return {
     begin() {
       current?.abort()

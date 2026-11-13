@@ -12,9 +12,14 @@ import React from "react";
 // JSX in this file compiles to `__dshReact.createElement`; every entry that ships
 // JSX normally installs that global first, but the archived entry does not, so
 // make sure it exists whichever module reaches this file first.
-globalThis.__dshReact ??= React;
+(globalThis as any).__dshReact ??= React;
 
-const SHAPES = {
+export interface SettingsGlyphProps {
+  size?: number;
+  active?: boolean;
+}
+
+const SHAPES: Record<string, any> = {
   rocket: (
     <>
       <path d="M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" />
@@ -82,8 +87,8 @@ const SHAPES = {
 };
 
 /** One React component per icon key; the shell passes `{ size, active }`. */
-function createGlyph(key) {
-  function ToolkitSettingsGlyph({ size = 16, active = false }) {
+function createGlyph(key: string) {
+  function ToolkitSettingsGlyph({ size = 16, active = false }: SettingsGlyphProps) {
     const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
     return (
       <svg
@@ -104,11 +109,11 @@ function createGlyph(key) {
       </svg>
     );
   }
-  ToolkitSettingsGlyph.displayName = `ToolkitSettingsGlyph(${key})`;
+  (ToolkitSettingsGlyph as any).displayName = `ToolkitSettingsGlyph(${key})`;
   return ToolkitSettingsGlyph;
 }
 
-const GLYPH_COMPONENTS = Object.freeze(
+const GLYPH_COMPONENTS: Record<string, any> = Object.freeze(
   Object.fromEntries(Object.keys(SHAPES).map((key) => [key, createGlyph(key)])),
 );
 
@@ -118,7 +123,7 @@ const GLYPH_COMPONENTS = Object.freeze(
  * the shipped glyphs. Returns the unregister disposer, or undefined when the
  * slots API is missing/throws or the arguments are unknown.
  */
-export function registerSettingsIcon(ctx, sectionId, iconKey) {
+export function registerSettingsIcon(ctx: any, sectionId: string, iconKey: string): (() => void) | undefined {
   const slots = ctx?.slots;
   if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return undefined;
   if (typeof sectionId !== "string" || sectionId === "") return undefined;

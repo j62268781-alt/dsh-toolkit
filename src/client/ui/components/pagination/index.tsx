@@ -3,10 +3,25 @@
  * 样式以 `paginationCss` 字符串导出，模块把它拼进自己的样式表即可，不需要额外注入通道。
  */
 
+export interface PaginationLabels {
+  label?: string
+  prev?: string
+  next?: string
+}
+
+export interface PaginationProps {
+  page?: number
+  pages?: number
+  onChange?: (page: number) => void
+  labels?: PaginationLabels
+  disabled?: boolean
+  summary?: any
+}
+
 /** 页码窗口：首尾两页 + 当前页附近，中间用 null 表示省略号。 */
-export function paginationWindow(page, pages, span = 2) {
+export function paginationWindow(page: number, pages: number, span = 2): (number | null)[] {
   if (!Number.isInteger(page) || !Number.isInteger(pages) || pages <= 0 || page < 0) return []
-  const shown = []
+  const shown: (number | null)[] = []
   let last = -1
   for (let index = 0; index < pages; index += 1) {
     const near = Math.abs(index - page) <= span
@@ -19,12 +34,12 @@ export function paginationWindow(page, pages, span = 2) {
   return shown
 }
 
-export function Pagination({ page = 0, pages = 1, onChange, labels = {}, disabled = false, summary }) {
+export function Pagination({ page = 0, pages = 1, onChange, labels = {}, disabled = false, summary }: PaginationProps) {
   const total = Number.isInteger(pages) && pages > 0 ? pages : 1
   const shown = paginationWindow(page, total)
   const paged = shown.length > 0 && total > 1
   if (!paged && !summary) return null
-  const go = (next) => {
+  const go = (next: number) => {
     if (disabled) return
     if (!Number.isInteger(next) || next < 0 || next >= total || next === page) return
     if (typeof onChange === 'function') onChange(next)

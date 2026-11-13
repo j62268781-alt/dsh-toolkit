@@ -12,15 +12,62 @@ import { useEffect, useRef, useState } from 'react'
 /** 遮罩四周的留白，卡片尺寸的上限要扣掉它。 */
 const OVERLAY_PADDING = 24
 
+export interface DialogSize {
+  width: number
+  height: number
+}
+
+export interface DialogLimits {
+  minWidth: number
+  minHeight: number
+  maxWidth: number
+  maxHeight: number
+}
+
+export interface DialogOptions {
+  minWidth?: number
+  minHeight?: number
+  maxWidth?: number
+  maxHeight?: number
+}
+
+export interface DialogViewport {
+  width?: number
+  height?: number
+}
+
+export interface ResizableDialogProps extends DialogOptions {
+  open: boolean
+  onClose?: () => void
+  title?: string
+  description?: any
+  toolbar?: any
+  children?: any
+  footer?: any
+  closeLabel?: string
+  resizeLabel?: string
+  storageKey?: string
+  width?: number
+  height?: number
+}
+
+interface DragState {
+  x: number
+  y: number
+  width: number
+  height: number
+  limits: DialogLimits
+}
+
 /** 默认与会话无关的尺寸：足够放 4 列宫格，又不至于铺满屏幕。 */
 export const DIALOG_DEFAULTS = { width: 920, height: 640, minWidth: 640, minHeight: 420, maxWidth: 1120, maxHeight: 860 }
 
 /** 拖拽 / 键盘每次调整的步长。 */
 const STEP = 16
 
-function limitsOf(base, viewport) {
-  const width = Number.isFinite(viewport?.width) && viewport.width > 0 ? viewport.width : base.maxWidth + OVERLAY_PADDING * 2
-  const height = Number.isFinite(viewport?.height) && viewport.height > 0 ? viewport.height : base.maxHeight + OVERLAY_PADDING * 2
+function limitsOf(base: DialogLimits, viewport?: DialogViewport): DialogLimits {
+  const width = Number.isFinite(viewport?.width) && (viewport?.width as number) > 0 ? (viewport?.width as number) : base.maxWidth + OVERLAY_PADDING * 2
+  const height = Number.isFinite(viewport?.height) && (viewport?.height as number) > 0 ? (viewport?.height as number) : base.maxHeight + OVERLAY_PADDING * 2
   // 上限永远不超过「视口减留白」；窗口小到连最小值都放不下时，最小值也跟着降到上限，
   // 否则卡片会撑出视口、把留白吃掉（用户把窗口拖窄时最常见）。
   const maxWidth = Math.max(240, Math.min(base.maxWidth, width - OVERLAY_PADDING * 2))
@@ -33,7 +80,7 @@ function limitsOf(base, viewport) {
   }
 }
 
-function clampTo(size, limits) {
+function clampTo(size: Partial<DialogSize> | null | undefined, limits: DialogLimits): DialogSize {
   const width = Math.round(Number(size?.width))
   const height = Math.round(Number(size?.height))
   const safeWidth = Number.isFinite(width) ? width : limits.minWidth
@@ -45,11 +92,11 @@ function clampTo(size, limits) {
 }
 
 /** 当前视口允许的尺寸区间；窗口变化时调用方据此重新夹取。 */
-export function dialogLimits(options = {}, viewport) {
+export function dialogLimits(options: DialogOptions = {}, viewport?: DialogViewport): DialogLimits {
   return limitsOf({ ...DIALOG_DEFAULTS, ...options }, viewport)
 }
 
-function readStored(key) {
+function readStored(key: string | undefined): Partial<DialogSize> | null {
   if (!key || typeof localStorage === 'undefined') return null
   try {
     const raw = localStorage.getItem(key)
@@ -62,7 +109,7 @@ function readStored(key) {
   }
 }
 
-function storeSize(key, size) {
+function storeSize(key: string | undefined, size: DialogSize): void {
   if (!key || typeof localStorage === 'undefined') return
   try {
     localStorage.setItem(key, JSON.stringify({ width: size.width, height: size.height }))
@@ -88,15 +135,15 @@ export function ResizableDialog({
   minHeight = DIALOG_DEFAULTS.minHeight,
   maxWidth = DIALOG_DEFAULTS.maxWidth,
   maxHeight = DIALOG_DEFAULTS.maxHeight,
-}) {
-  const base = { minWidth, minHeight, maxWidth, maxHeight }
-  const [size, setSize] = useState(() => {
+}: ResizableDialogProps): any {
+  const base: DialogLimits = { minWidth, minHeight, maxWidth, maxHeight }
+  const [size, setSize] = useState<DialogSize>(() => {
     const viewport = typeof window === 'undefined' ? undefined : { width: window.innerWidth, height: window.innerHeight }
     const limits = limitsOf(base, viewport)
     const stored = readStored(storageKey)
     return clampTo(stored ?? { width: width ?? DIALOG_DEFAULTS.width, height: height ?? DIALOG_DEFAULTS.height }, limits)
   })
-  const drag = useRef(null)
+  const drag = useRef<DragState | null>(null)
 
   useEffect(() => {
     if (!open) return undefined
@@ -108,7 +155,7 @@ export function ResizableDialog({
 
   useEffect(() => {
     if (!open) return undefined
-    const onKey = (event) => {
+    const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
         if (typeof onClose === 'function') onClose()
@@ -126,13 +173,13 @@ export function ResizableDialog({
 
   if (!open) return null
 
-  const dragStart = (event) => {
+  const dragStart = (event: React.MouseEvent) => {
     if (event.button !== 0) return
     event.preventDefault()
     const limits = limitsOf(base, { width: window.innerWidth, height: window.innerHeight })
     drag.current = { x: event.clientX, y: event.clientY, width: size.width, height: size.height, limits }
     if (typeof document !== 'undefined' && document.body) document.body.classList.add('tk-dialogDragging')
-    const onMove = (move) => {
+    const onMove = (move: MouseEvent) => {
       const start = drag.current
       if (!start) return
       setSize(clampTo({ width: start.width + (move.clientX - start.x), height: start.height + (move.clientY - start.y) }, start.limits))
@@ -147,7 +194,7 @@ export function ResizableDialog({
     document.addEventListener('mouseup', onUp)
   }
 
-  const resizeKeys = (event) => {
+  const resizeKeys = (event: React.KeyboardEvent) => {
     const step = event.shiftKey ? STEP * 4 : STEP
     const limits = limitsOf(base, { width: window.innerWidth, height: window.innerHeight })
     const next = { width: size.width, height: size.height }
@@ -166,7 +213,7 @@ export function ResizableDialog({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      onMouseDown={(event) => {
+      onMouseDown={(event: React.MouseEvent) => {
         if (event.target === event.currentTarget && typeof onClose === 'function') onClose()
       }}
     >

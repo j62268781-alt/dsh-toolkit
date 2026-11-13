@@ -10,9 +10,9 @@ import createPet from '../modules/pet/client/index.jsx'
 import createRemote from '../modules/remote/client/index.jsx'
 import * as boot from '../modules/boot/client/index.jsx'
 
-export const inject = []
+export const inject: readonly string[] = []
 
-export function apply(ctx) {
+export function apply(ctx: any): void {
   ctx.plugin({ name: 'toolkit-theme-client', ...theme })
   ctx.plugin({ name: 'toolkit-archived-client', ...archived })
   ctx.plugin({ name: 'toolkit-skills-mcp-client', ...createSkillsMcp(require) })
