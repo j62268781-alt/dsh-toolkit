@@ -23,7 +23,7 @@ export const PAIRING_PREFIX = '/ds-harness-remote'
 export const PAIRING_POLL_MS = 2500
 
 /** 没有活动会话时的慢轮询：只为了知道手机连没连上、本机授权还有没有效。 */
-export const PAIRING_IDLE_POLL_MS = 5000
+export const PAIRING_IDLE_POLL_MS = 2500
 
 /**
  * 宿主授权已失效的错误：服务器上这台电脑被移除了、token 失效或设备身份被占用。

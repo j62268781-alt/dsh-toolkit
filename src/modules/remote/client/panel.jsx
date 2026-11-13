@@ -367,15 +367,24 @@ export function createPanel(React, { t, connection, portal }) {
       return () => clearInterval(timer)
     }, [active, state, value.halted])
 
-    // 没有活动会话时慢轮询宿主连接状态：手机连上来/断掉、本机授权失效都能自己更新。
+    // 没有活动会话时盯着宿主状态：手机连上来、授权被移除都在这里被动感知。
+    // 窗口重新可见/拿回焦点时立刻补查一次，用户切回面板不用等下一轮。
     useEffect(() => {
       if (!active || value.halted || state !== undefined) return undefined
-      const timer = setInterval(() => {
+      const check = () => {
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
         void pairing.hostStatus()
-      }, PAIRING_IDLE_POLL_MS)
-      return () => clearInterval(timer)
-    }, [active, state, value.halted, value.binding])
+      }
+      const timer = setInterval(check, PAIRING_IDLE_POLL_MS)
+      const onVisible = () => check()
+      document.addEventListener('visibilitychange', onVisible)
+      window.addEventListener('focus', onVisible)
+      return () => {
+        clearInterval(timer)
+        document.removeEventListener('visibilitychange', onVisible)
+        window.removeEventListener('focus', onVisible)
+      }
+    }, [active, state, value.halted])
 
     // 本地倒计时归零等价于「这张二维码已经不能用了」，状态文案要立刻改口。
     const expired = state === 'created' && seconds === 0
@@ -398,6 +407,26 @@ export function createPanel(React, { t, connection, portal }) {
       if (value.loaded !== true && view === undefined) {
         return h('div', { className: 'wc-body wc-pending', 'aria-busy': 'true' },
           h('div', { className: 'wc-spinner', 'aria-hidden': 'true' }))
+      }
+      // 授权是最高优先级的事实：哪怕本地还留着一个 completed 的会话记录，
+      // 只要宿主报告授权已被移除，就必须画「授权失效」而不是「已绑定」。
+      // 本机在这台服务器上的授权已经失效（被移除/token 失效）：本地凭据会被宿主清掉，
+      // 只画「生成二维码」用户会以为是从没配过，必须说明原因并给重新配对的出口。
+      if (value.authError !== undefined) {
+        return h('div', { className: 'wc-body' },
+          h('div', { className: 'wc-error' }, t(authErrorKey(value.authError), { reason: value.authError })),
+          h('div', { className: 'wc-actions' },
+            h('button', {
+              type: 'button',
+              className: 'wc-button wc-button--primary',
+              disabled: busy,
+              onClick: start,
+            }, t('pairAgain'))),
+          h(ServerRow, {
+            serverUrl: value.serverUrl,
+            busy,
+            onSave: (next) => pairing.setServer(next),
+          }))
       }
       if (state === 'completed') {
         return h('div', { className: 'wc-body' },
@@ -471,24 +500,6 @@ export function createPanel(React, { t, connection, portal }) {
           h('div', { className: 'wc-actions' },
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('refresh')),
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: cancel }, t('cancel'))))
-      }
-      // 本机在这台服务器上的授权已经失效（被移除/token 失效）：本地凭据会被宿主清掉，
-      // 只画「生成二维码」用户会以为是从没配过，必须说明原因并给重新配对的出口。
-      if (value.authError !== undefined) {
-        return h('div', { className: 'wc-body' },
-          h('div', { className: 'wc-error' }, t(authErrorKey(value.authError), { reason: value.authError })),
-          h('div', { className: 'wc-actions' },
-            h('button', {
-              type: 'button',
-              className: 'wc-button wc-button--primary',
-              disabled: busy,
-              onClick: start,
-            }, t('pairAgain'))),
-          h(ServerRow, {
-            serverUrl: value.serverUrl,
-            busy,
-            onSave: (next) => pairing.setServer(next),
-          }))
       }
       // 没有活动会话，但本机已经和这台服务器绑过：配对记录被回收不代表掉线。
       // 这里必须画「已绑定」，否则每次 DSH 重启后都会假装没连过，诱导用户重复配对。

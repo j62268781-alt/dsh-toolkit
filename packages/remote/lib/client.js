@@ -915,7 +915,7 @@ window.__ModuleLoader__.load({
     // src/modules/remote/client/pairing.js
     var PAIRING_PREFIX = "/ds-harness-remote";
     var PAIRING_POLL_MS = 2500;
-    var PAIRING_IDLE_POLL_MS = 5e3;
+    var PAIRING_IDLE_POLL_MS = 2500;
     var AUTH_ERRORS = /* @__PURE__ */ new Set([
       "DEVICE_REVOKED",
       "DEVICE_OWNERSHIP_REQUIRED",
@@ -1493,12 +1493,20 @@ window.__ModuleLoader__.load({
         }, [active, state, value.halted]);
         useEffect(() => {
           if (!active || value.halted || state !== void 0) return void 0;
-          const timer = setInterval(() => {
+          const check = () => {
             if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
             void pairing.hostStatus();
-          }, PAIRING_IDLE_POLL_MS);
-          return () => clearInterval(timer);
-        }, [active, state, value.halted, value.binding]);
+          };
+          const timer = setInterval(check, PAIRING_IDLE_POLL_MS);
+          const onVisible = () => check();
+          document.addEventListener("visibilitychange", onVisible);
+          window.addEventListener("focus", onVisible);
+          return () => {
+            clearInterval(timer);
+            document.removeEventListener("visibilitychange", onVisible);
+            window.removeEventListener("focus", onVisible);
+          };
+        }, [active, state, value.halted]);
         const expired = state === "created" && seconds === 0;
         const terminal = state === "failed" || state === "cancelled" || state === "expired" || expired;
         const failureReason = typeof view?.failureReason === "string" && view.failureReason !== "" ? view.failureReason : void 0;
@@ -1515,6 +1523,28 @@ window.__ModuleLoader__.load({
               "div",
               { className: "wc-body wc-pending", "aria-busy": "true" },
               h("div", { className: "wc-spinner", "aria-hidden": "true" })
+            );
+          }
+          if (value.authError !== void 0) {
+            return h(
+              "div",
+              { className: "wc-body" },
+              h("div", { className: "wc-error" }, t(authErrorKey(value.authError), { reason: value.authError })),
+              h(
+                "div",
+                { className: "wc-actions" },
+                h("button", {
+                  type: "button",
+                  className: "wc-button wc-button--primary",
+                  disabled: busy,
+                  onClick: start
+                }, t("pairAgain"))
+              ),
+              h(ServerRow, {
+                serverUrl: value.serverUrl,
+                busy,
+                onSave: (next) => pairing.setServer(next)
+              })
             );
           }
           if (state === "completed") {
@@ -1622,28 +1652,6 @@ window.__ModuleLoader__.load({
                 h("button", { type: "button", className: "wc-button", disabled: busy, onClick: start }, t("refresh")),
                 h("button", { type: "button", className: "wc-button", disabled: busy, onClick: cancel }, t("cancel"))
               )
-            );
-          }
-          if (value.authError !== void 0) {
-            return h(
-              "div",
-              { className: "wc-body" },
-              h("div", { className: "wc-error" }, t(authErrorKey(value.authError), { reason: value.authError })),
-              h(
-                "div",
-                { className: "wc-actions" },
-                h("button", {
-                  type: "button",
-                  className: "wc-button wc-button--primary",
-                  disabled: busy,
-                  onClick: start
-                }, t("pairAgain"))
-              ),
-              h(ServerRow, {
-                serverUrl: value.serverUrl,
-                busy,
-                onSave: (next) => pairing.setServer(next)
-              })
             );
           }
           if (state === void 0 && value.binding === true) {

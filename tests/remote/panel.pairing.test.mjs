@@ -356,6 +356,25 @@ test('配对：授权被服务器移除时说明原因，而不是退回「生�
     await panel.unmount()
   }
 
+  // 宿主被撤销的瞬间本地可能还留着已完成会话记录；授权失效必须压过它，
+  // 否则面板会先说「已绑定」再被轮询改成失效，这正是用户嫌闪的那一类。
+  const stale = await mount({
+    'settings.get': { config: { serverUrl: SERVER }, associations: { host: { method: 'pairing', account: 'dsh-device:x' } } },
+    'host.pairing.status': { sessionId: 'stale', state: 'completed', mobile: { deviceId: 'd', name: 'Pixel 9', fingerprint: 'aa' } },
+    status: {
+      mode: 'local',
+      host: { online: false, authorized: false, accountRequired: true, error: 'DEVICE_REVOKED', connectedClients: [] },
+    },
+  })
+  try {
+    await stale.flush()
+    const popover = stale.popover()
+    assert.ok(popover.textContent.includes('pairAuthRevoked'), '有旧会话记录也要先报授权失效')
+    assert.equal(popover.textContent.includes('pairCompletedHint'), false, '不能同时画「手机已连接」')
+  } finally {
+    await stale.unmount()
+  }
+
   // 授权被移除后宿主要到下次启动才清凭据，此时只剩 ACCOUNT_AUTH_REQUIRED；
   // pairingHostOnly 是配对留下的标记，用它区分「曾经绑过」和「全新安装」。
   const restarted = await mount({
