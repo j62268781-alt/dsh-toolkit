@@ -401,6 +401,8 @@ window.__ModuleLoader__.load({
         pairUnbindNow: "解除绑定",
         pairUnbindConfirm: "解除后这台手机会被断开，需要重新扫码才能再连。",
         pairUnbindNowConfirm: "确认解除",
+        pairRepairConfirm: "重新配对会先解除当前手机的绑定，再用新手机扫码连接。",
+        pairRepairNowConfirm: "确认重新配对",
         failed: "操作失败：{reason}",
         loading: "正在读取状态…",
         close: "关闭",
@@ -508,6 +510,8 @@ window.__ModuleLoader__.load({
         pairUnbindNow: "Unbind",
         pairUnbindConfirm: "The phone will be disconnected and must scan a new QR code to connect again.",
         pairUnbindNowConfirm: "Unbind now",
+        pairRepairConfirm: "Re-pairing first unbinds the current phone; the new phone must scan the QR code to connect.",
+        pairRepairNowConfirm: "Re-pair now",
         failed: "Action failed: {reason}",
         loading: "Reading state…",
         close: "Close",
@@ -1589,7 +1593,7 @@ window.__ModuleLoader__.load({
         const state = view?.state;
         const busy = value.busy;
         const [code, setCode] = useState("");
-        const [unbindAsk, setUnbindAsk] = useState(false);
+        const [confirmAction, setConfirmAction] = useState(null);
         const codeRef = useRef(null);
         const seconds = useCountdown(view?.expiresAt);
         useEffect(() => {
@@ -1634,29 +1638,30 @@ window.__ModuleLoader__.load({
           if (next !== void 0) setCode("");
         };
         useEffect(() => {
-          setUnbindAsk(false);
+          setConfirmAction(null);
         }, [state, value.binding]);
         const unbind = () => void pairing.unbind();
+        const confirming = confirmAction !== null;
         const boundHint = (key) => h(
           "div",
           { className: "wc-hint" },
-          t(unbindAsk === true ? "pairUnbindConfirm" : key)
+          t(confirmAction === "unbind" ? "pairUnbindConfirm" : confirmAction === "repair" ? "pairRepairConfirm" : key)
         );
-        const boundActions = () => unbindAsk === true ? h(
+        const boundActions = () => confirming ? h(
           "div",
           { className: "wc-actions wc-actions--full" },
           h("button", {
             type: "button",
             className: "wc-button wc-button--half",
             disabled: busy,
-            onClick: () => setUnbindAsk(false)
+            onClick: () => setConfirmAction(null)
           }, t("cancel")),
           h("button", {
             type: "button",
             className: "wc-button wc-button--half wc-button--danger-solid",
             disabled: busy,
             onClick: unbind
-          }, t("pairUnbindNowConfirm"))
+          }, t(confirmAction === "unbind" ? "pairUnbindNowConfirm" : "pairRepairNowConfirm"))
         ) : h(
           "div",
           { className: "wc-actions wc-actions--full" },
@@ -1664,13 +1669,13 @@ window.__ModuleLoader__.load({
             type: "button",
             className: "wc-button wc-button--half",
             disabled: busy,
-            onClick: start
+            onClick: () => setConfirmAction("repair")
           }, t("pairAgain")),
           h("button", {
             type: "button",
             className: "wc-button wc-button--half wc-button--danger",
             disabled: busy,
-            onClick: () => setUnbindAsk(true)
+            onClick: () => setConfirmAction("unbind")
           }, t("pairUnbindNow"))
         );
         const body = (() => {

@@ -64,7 +64,13 @@ DSH 侧的会话/审批接入方式参考 [DeepSeek-harness-weixin](https://gith
 - **自己部署**：仓库 `server/` 是可独立部署的 ds-harness-remote 服务端（单账号、Node 22、Docker 可选），
   启动方式与所需环境变量见 [server/README.zh.md](../../server/README.zh.md)。
 - 配对只需要「能访问配对服务器」：手机与电脑不必同网段，也不需要内网穿透。
-- 认证码只在手机屏幕显示，桌面端状态查询永远拿不到它；二维码过期后重新点「生成配对二维码」即可。
+- **已绑定后的两个动作**：
+  - **重新配对**（换手机）：会先 `settings.logout` 解除当前手机的绑定（服务器撤销这台电脑与旧手机两侧的
+    设备），再生成新二维码。上游的 re-pair 会拿新账号去 adopt 旧凭据，直接撞
+    `PAIRING_ACCOUNT_CONFLICT`，所以必须「先注销旧的、再发起新的」。
+  - **解除绑定**（彻底断开）：同样撤销两侧设备，并且清掉本地的指纹快照与 trusted-peers 兜底缓存；
+    之后手机再连会收到 `403 DEVICE_REVOKED`（WebSocket close code 4004），必须重新扫码。
+  - 二维码界面上的「取消」只取消本次配对会话，不会动已有的绑定。
 
 ## 状态与协议
 

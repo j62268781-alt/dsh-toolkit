@@ -888,3 +888,51 @@ test('配对：已绑定卡能「解除绑定」，确认后走 settings.logout 
     await panel.unmount()
   }
 })
+
+test('配对：已绑定卡点「重新配对」先注销旧的，再开新二维码', async () => {
+  // 上游的 re-pair 会拿新会话的账号去 adopt 本机旧凭据，直接撞
+  // PAIRING_ACCOUNT_CONFLICT（"Pairing cannot replace the current account."），
+  // 所以「重新配对」必须先 settings.logout 撤销旧的，再 host.pairing.start。
+  let settingsCalls = 0
+  const panel = await mount({
+    'settings.get': () => {
+      settingsCalls += 1
+      return settingsCalls === 1
+        ? { config: { serverUrl: SERVER }, associations: { host: { method: 'device-pairing', account: 'dsh-device:abc' } } }
+        : { config: { serverUrl: SERVER }, associations: {} }
+    },
+    'host.pairing.status': null,
+    'settings.logout': {},
+    'host.pairing.start': CREATED,
+    status: {
+      mode: 'local',
+      host: { online: true, connectedClients: [{ deviceId: 'phone-1', name: 'Pixel 9', mode: 'remote' }] },
+    },
+  }, {
+    lastPaired: { deviceId: 'phone-1', name: 'Pixel 9', fingerprint: 'c'.repeat(64), serverUrl: SERVER },
+  })
+  try {
+    await panel.flush()
+    const popover = panel.popover()
+    const repair = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairAgain')
+    assert.ok(repair !== undefined, '已绑定卡要有「重新配对」')
+
+    await panel.click(repair)
+    assert.ok(popover.textContent.includes('pairRepairConfirm'), '先就地确认：会先解除当前手机')
+    assert.equal(popover.textContent.includes('pairBoundOnline'), false, '确认时不再显示已连接说明')
+
+    const confirm = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairRepairNowConfirm')
+    assert.ok(confirm !== undefined, '确认行要有「确认重新配对」')
+    await panel.click(confirm)
+    await panel.flush()
+    await panel.flush()
+    await panel.flush()
+
+    const endpoints = panel.control.calls.map((call) => call.endpoint)
+    assert.ok(endpoints.includes('settings.logout'), '重新配对必须先注销旧绑定')
+    assert.ok(endpoints.includes('host.pairing.start'), `注销后再开新二维码: ${JSON.stringify(endpoints)}`)
+    assert.ok(popover.textContent.includes('pairScanHint'), '回到扫码态')
+  } finally {
+    await panel.unmount()
+  }
+})

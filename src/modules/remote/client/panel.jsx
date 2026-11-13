@@ -363,8 +363,9 @@ export function createPanel(React, { t, connection, portal }) {
     const state = view?.state
     const busy = value.busy
     const [code, setCode] = useState('')
-    // 「解除绑定」是破坏性动作：先就地确认一次，避免误触把正在用的手机踢掉。
-    const [unbindAsk, setUnbindAsk] = useState(false)
+    // 重新配对/解除绑定都是破坏性动作（会先把服务器上的旧绑定撤销掉），先就地确认一次。
+    // 取值 null | 'repair' | 'unbind'。
+    const [confirmAction, setConfirmAction] = useState(null)
     const codeRef = useRef(null)
     const seconds = useCountdown(view?.expiresAt)
 
@@ -424,43 +425,48 @@ export function createPanel(React, { t, connection, portal }) {
     }
     // 分支一变（配对完成、解绑成功、授权失效），确认态就该归零，别把红按钮留在新卡片上。
     useEffect(() => {
-      setUnbindAsk(false)
+      setConfirmAction(null)
     }, [state, value.binding])
 
     const unbind = () => void pairing.unbind()
     /**
      * 已绑定卡片的动作行：重新配对 + 解除绑定。
-     * 解除绑定必须真的把服务器上的设备撤销掉，否则手机会以为自己还连着——
-     * 这正是用户报过的「电脑端取消了，手机照样能连」。
+     * 两者都要真的撤销服务器上的旧设备：上游的 re-pair 会拿新账号去 adopt 旧凭据，
+     * 直接撞 PAIRING_ACCOUNT_CONFLICT，所以「重新配对」= 先注销旧的、再生成新二维码
+     * （pairing.unbind() 内部就是 settings.logout → settings → refresh → host.pairing.start）。
+     * 「解除绑定」不保留任何旧设备，否则手机以为自己还连着——用户报过的那个 bug。
      */
+    const confirming = confirmAction !== null
     const boundHint = (key) => h('div', { className: 'wc-hint' },
-      t(unbindAsk === true ? 'pairUnbindConfirm' : key))
-    const boundActions = () => unbindAsk === true
+      t(confirmAction === 'unbind'
+        ? 'pairUnbindConfirm'
+        : confirmAction === 'repair' ? 'pairRepairConfirm' : key))
+    const boundActions = () => confirming
       ? h('div', { className: 'wc-actions wc-actions--full' },
         h('button', {
           type: 'button',
           className: 'wc-button wc-button--half',
           disabled: busy,
-          onClick: () => setUnbindAsk(false),
+          onClick: () => setConfirmAction(null),
         }, t('cancel')),
         h('button', {
           type: 'button',
           className: 'wc-button wc-button--half wc-button--danger-solid',
           disabled: busy,
           onClick: unbind,
-        }, t('pairUnbindNowConfirm')))
+        }, t(confirmAction === 'unbind' ? 'pairUnbindNowConfirm' : 'pairRepairNowConfirm')))
       : h('div', { className: 'wc-actions wc-actions--full' },
         h('button', {
           type: 'button',
           className: 'wc-button wc-button--half',
           disabled: busy,
-          onClick: start,
+          onClick: () => setConfirmAction('repair'),
         }, t('pairAgain')),
         h('button', {
           type: 'button',
           className: 'wc-button wc-button--half wc-button--danger',
           disabled: busy,
-          onClick: () => setUnbindAsk(true),
+          onClick: () => setConfirmAction('unbind'),
         }, t('pairUnbindNow')))
 
     const body = (() => {
