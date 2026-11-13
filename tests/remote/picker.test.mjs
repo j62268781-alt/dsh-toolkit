@@ -17,7 +17,7 @@ import {
   sessionCardText,
   workspaceCardText,
   workspaceLabel,
-} from '../../src/modules/remote/host/picker.js'
+} from '../../src/modules/remote/host/wechat/picker.js'
 
 const HOME = '/Users/joeson'
 const WORKSPACE_A = '/Users/joeson'

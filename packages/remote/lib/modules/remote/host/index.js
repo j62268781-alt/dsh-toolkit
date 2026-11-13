@@ -1,8 +1,10 @@
 /**
- * Host 半边：微信扫码登录（ClawBot / iLink）+ 双向消息桥。
+ * Host 半边：远程连接。两个子目录各管一件事，本文件只负责装配：
+ *   · wechat/ —— 微信扫码登录（ClawBot / iLink）与「微信 ↔ DSH Agent」双向桥；
+ *   · mobile/ —— 手机扫码配对的本机支撑：可信设备清单（peers）、解绑后的残留清理。
  *
  * 职责边界：
- *   · 登录、通道自检，以及可选的「微信 ↔ DSH Agent」桥接（bridge.js）。
+ *   · 登录、通道自检，以及可选的「微信 ↔ DSH Agent」桥接（wechat/bridge.js）。
  *   · token 只经 ctx.credentials 存取，绝不进日志、绝不回前端。
  *   · 二维码 URL 是短生命周期凭据，只在 start() 的响应里回给前端，不打印。
  *
@@ -23,13 +25,13 @@
 
 import { sendJson, readBody } from '../../../host/http.js'
 import { registerAuthenticatedRoute } from '../../../host/routes.js'
-import { createBridge } from './bridge.js'
-import { Config, DEFAULT_CREDENTIAL_REF, readConfig } from './config.js'
-import { createLoginManager } from './login.js'
-import { createMonitor } from './monitor.js'
-import { maskId, normalizeBaseUrl } from './ilink.js'
-import { readTrustedPeers } from './peers.js'
-import { purgePairingState } from './local-state.js'
+import { createBridge } from './wechat/bridge.js'
+import { Config, DEFAULT_CREDENTIAL_REF, readConfig } from './wechat/config.js'
+import { createLoginManager } from './wechat/login.js'
+import { createMonitor } from './wechat/monitor.js'
+import { maskId, normalizeBaseUrl } from './wechat/ilink.js'
+import { readTrustedPeers } from './mobile/peers.js'
+import { purgePairingState } from './mobile/local-state.js'
 
 export const name = 'toolkit-remote'
 /**

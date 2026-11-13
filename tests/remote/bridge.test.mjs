@@ -11,8 +11,8 @@ import { tmpdir, homedir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 
-import { createBridge } from '../../src/modules/remote/host/bridge.js'
-import { createBridgeStore } from '../../src/modules/remote/host/store.js'
+import { createBridge } from '../../src/modules/remote/host/wechat/bridge.js'
+import { createBridgeStore } from '../../src/modules/remote/host/wechat/store.js'
 
 const CREDENTIAL = {
   token: 'tibdr-unit-token',

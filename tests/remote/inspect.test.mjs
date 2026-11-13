@@ -18,7 +18,7 @@ import {
   resolveWorkspace,
   sessionsByPrefix,
   sessionsOfWorkspace,
-} from '../../src/modules/remote/host/inspect.js'
+} from '../../src/modules/remote/host/wechat/inspect.js'
 
 const SESSION_ID = 'remote-6f338b7ca279'
 

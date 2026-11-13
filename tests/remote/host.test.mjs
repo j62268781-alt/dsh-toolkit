@@ -6,10 +6,10 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { maskId, normalizeBaseUrl, extractMessageText, readCredential, redirectBaseUrl } from '../../src/modules/remote/host/ilink.js'
-import { createLoginManager, QR_TTL_MS } from '../../src/modules/remote/host/login.js'
-import { createMonitor, STALE_RETRY_MESSAGE, STALE_INVALID_MESSAGE } from '../../src/modules/remote/host/monitor.js'
-import { readConfig, Config, DEFAULT_CREDENTIAL_REF } from '../../src/modules/remote/host/config.js'
+import { maskId, normalizeBaseUrl, extractMessageText, readCredential, redirectBaseUrl } from '../../src/modules/remote/host/wechat/ilink.js'
+import { createLoginManager, QR_TTL_MS } from '../../src/modules/remote/host/wechat/login.js'
+import { createMonitor, STALE_RETRY_MESSAGE, STALE_INVALID_MESSAGE } from '../../src/modules/remote/host/wechat/monitor.js'
+import { readConfig, Config, DEFAULT_CREDENTIAL_REF } from '../../src/modules/remote/host/wechat/config.js'
 import { createRequire as createRequireForSchema } from 'node:module'
 import { pathToFileURL } from 'node:url'
 
