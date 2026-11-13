@@ -10,10 +10,10 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createOAuthStore, emptyRecord } from '../../src/modules/skills-mcp/host/mcp/oauth/store.js'
-import { createOAuthProvider } from '../../src/modules/skills-mcp/host/mcp/oauth/provider.js'
-import { FLOW_ERRORS, createOAuthFlow, flowReasonText } from '../../src/modules/skills-mcp/host/mcp/oauth/flow.js'
-import { CALLBACK_PATH, escapeHtml, registerOAuthCallback } from '../../src/modules/skills-mcp/host/mcp/oauth/callback.js'
+import { createOAuthStore, emptyRecord } from '../../src/modules/skills-mcp/host/mcp/oauth/store.ts'
+import { createOAuthProvider } from '../../src/modules/skills-mcp/host/mcp/oauth/provider.ts'
+import { FLOW_ERRORS, createOAuthFlow, flowReasonText } from '../../src/modules/skills-mcp/host/mcp/oauth/flow.ts'
+import { CALLBACK_PATH, escapeHtml, registerOAuthCallback } from '../../src/modules/skills-mcp/host/mcp/oauth/callback.ts'
 
 const noopLog = { warn: () => {}, info: () => {} }
 

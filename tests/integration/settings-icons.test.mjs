@@ -2,7 +2,7 @@
  *
  * Every feature module registers its own `settings.section.icon` entry next to
  * the `settings.section` page it already owns, using the shared glyph helper in
- * `src/client/settings-icon.jsx`. This test loads each real module client entry
+ * `src/client/ui/components/settings-icon/index.tsx`. This test loads each real module client entry
  * (bundled with esbuild, exactly like the shipped client build), applies it with
  * a recording slots registry, and checks the registration, the rendered SVG and
  * the teardown. The shell keeps its default gear for any section that registers
@@ -23,18 +23,18 @@ globalThis.__dshReact = React;
 
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const CACHE = join(ROOT, "node_modules", ".cache", "settings-icons-test");
-const ENTRY = join(ROOT, "src", "client", "settings-icon.jsx");
+const ENTRY = join(ROOT, "src", "client", "ui", "components", "settings-icon", "index.tsx");
 
 /** One row per module that owns a settings page. */
 const MODULES = [
-  { name: "boot", entry: "src/modules/boot/client/index.jsx", section: "boot", icon: "rocket" },
-  { name: "browser", entry: "src/modules/browser/client/index.jsx", section: "browser", icon: "globe" },
-  { name: "judgment", entry: "src/modules/judgment/client/index.jsx", section: "judgment", icon: "scale" },
-  { name: "notification", entry: "src/modules/notification/client/index.jsx", section: "notification", icon: "bell", factory: true },
-  { name: "pet", entry: "src/modules/pet/client/index.jsx", section: "desktop-pet", icon: "paw", factory: true },
-  { name: "theme", entry: "src/modules/theme/client/index.js", section: "theme", icon: "palette" },
-  { name: "archived", entry: "src/modules/archived/client/index.js", section: "archived-chats", icon: "archive" },
-  { name: "skills-mcp", entry: "src/modules/skills-mcp/client/client.js", section: "skills-mcp", icon: "plug", factory: true },
+  { name: "boot", entry: "src/modules/boot/client/index.tsx", section: "boot", icon: "rocket" },
+  { name: "browser", entry: "src/modules/browser/client/index.tsx", section: "browser", icon: "globe" },
+  { name: "judgment", entry: "src/modules/judgment/client/index.tsx", section: "judgment", icon: "scale" },
+  { name: "notification", entry: "src/modules/notification/client/index.tsx", section: "notification", icon: "bell", factory: true },
+  { name: "pet", entry: "src/modules/pet/client/index.tsx", section: "desktop-pet", icon: "paw", factory: true },
+  { name: "theme", entry: "src/modules/theme/client/index.ts", section: "theme", icon: "palette" },
+  { name: "archived", entry: "src/modules/archived/client/index.ts", section: "archived-chats", icon: "archive" },
+  { name: "skills-mcp", entry: "src/modules/skills-mcp/client/client.ts", section: "skills-mcp", icon: "plug", factory: true },
 ];
 
 /** A slots registry that records only the icon registrations we care about. */
@@ -109,7 +109,7 @@ async function buildBundle(entry) {
     external: ["react", "react/*", "@deepseek-ai/*"],
     jsxFactory: "__dshReact.createElement",
     jsxFragment: "__dshReact.Fragment",
-    loader: { ".js": "jsx", ".css": "text", ".html": "text", ".svg": "text" },
+    loader: {  ".ts": "ts", ".tsx": "tsx",".js": "jsx", ".css": "text", ".html": "text", ".svg": "text" },
     logLevel: "silent",
   });
   await writeFile(outfile, result.outputFiles[0].text, "utf8");
@@ -144,7 +144,7 @@ test.after(async () => {
 });
 
 test("the shared helper registers one glyph for a known section", async () => {
-  const { registerSettingsIcon } = await load("src/client/settings-icon.jsx");
+  const { registerSettingsIcon } = await load("src/client/ui/components/settings-icon/index.tsx");
   const slots = recordingSlots();
   const dispose = registerSettingsIcon({ slots }, "boot", "rocket");
   assert.equal(typeof dispose, "function");
@@ -160,7 +160,7 @@ test("the shared helper registers one glyph for a known section", async () => {
 });
 
 test("the shared helper tolerates a missing or throwing slots API", async () => {
-  const { registerSettingsIcon } = await load("src/client/settings-icon.jsx");
+  const { registerSettingsIcon } = await load("src/client/ui/components/settings-icon/index.tsx");
   assert.equal(registerSettingsIcon(undefined, "boot", "rocket"), undefined);
   assert.equal(registerSettingsIcon({}, "boot", "rocket"), undefined);
   assert.equal(registerSettingsIcon({ slots: {} }, "boot", "rocket"), undefined);

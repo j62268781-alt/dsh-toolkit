@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createSerialQueue } from '../../src/host/serial.js'
+import { createSerialQueue } from '../../src/host/serial.ts'
 
 test('serial queue preserves FIFO and continues after rejection', async () => {
   const queue = createSerialQueue()

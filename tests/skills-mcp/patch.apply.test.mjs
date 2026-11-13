@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
-import { applyRowOp, migrateServerEntries, setPatchIO } from '../../src/modules/skills-mcp/host/patch/apply.js'
+import { applyRowOp, migrateServerEntries, setPatchIO } from '../../src/modules/skills-mcp/host/patch/apply.ts'
 
 const PATCH = `- insert:
     - id: mcp-context7

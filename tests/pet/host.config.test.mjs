@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { readElectronPath, readField, readSettings } from '../../src/modules/pet/host/config.js'
+import { readElectronPath, readField, readSettings } from '../../src/modules/pet/host/config.ts'
 
 /** Mirrors the frozen reference DSH hands to `apply()` for a `.volatile()` field. */
 const reference = (value) => ({ get: () => value })

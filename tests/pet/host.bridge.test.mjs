@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { request } from 'node:http'
 import { test } from 'node:test'
-import { createHelperBridge } from '../../src/modules/pet/host/bridge.js'
+import { createHelperBridge } from '../../src/modules/pet/host/bridge.ts'
 
 async function fixture(t, action = async (value) => ({ accepted: value.action })) {
   let state = { settings: { petEnabled: true }, sessions: [] }

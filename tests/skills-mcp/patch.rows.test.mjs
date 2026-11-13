@@ -5,7 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { parseDocument } from 'yaml'
-import { insertRow, locateRow, removeRow, setRowConfigField, setRowDisabled } from '../../src/modules/skills-mcp/host/patch/rows.js'
+import { insertRow, locateRow, removeRow, setRowConfigField, setRowDisabled } from '../../src/modules/skills-mcp/host/patch/rows.ts'
 
 const PATCH = `- insert:
     - id: mcp-context7

@@ -3,13 +3,13 @@ import { test } from 'node:test'
 import { readFile } from 'node:fs/promises'
 import { build } from 'esbuild'
 import { JSDOM } from 'jsdom'
-import { installCodexShell } from '../../src/modules/theme/client/shell.js'
-import { installShellMarkers } from '../../src/modules/theme/client/platform.js'
-import { installBandHeight } from '../../src/modules/theme/client/band.js'
-import { installSidebarWidth, installWorkspaceCollapse } from '../../src/modules/theme/client/sidebar.js'
+import { installCodexShell } from '../../src/modules/theme/client/shell.ts'
+import { installShellMarkers } from '../../src/modules/theme/client/platform.ts'
+import { installBandHeight } from '../../src/modules/theme/client/band.ts'
+import { installSidebarWidth, installWorkspaceCollapse } from '../../src/modules/theme/client/sidebar.ts'
 
 const railBundle = await build({
-  entryPoints: ['src/modules/theme/client/rail.js'], bundle: true, platform: 'node',
+  entryPoints: ['src/modules/theme/client/rail.ts'], bundle: true, platform: 'node',
   format: 'esm', loader: { '.svg': 'text' }, write: false, logLevel: 'silent',
 })
 const { installHomeRail, installRailTitles } = await import(`data:text/javascript;base64,${Buffer.from(railBundle.outputFiles[0].text).toString('base64')}`)

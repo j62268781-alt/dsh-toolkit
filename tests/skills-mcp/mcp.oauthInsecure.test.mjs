@@ -18,7 +18,7 @@ import {
   isLoopbackHost,
   tokenExchangeErrorText,
   validateTokens,
-} from '../../src/modules/skills-mcp/host/mcp/oauth/insecure.js'
+} from '../../src/modules/skills-mcp/host/mcp/oauth/insecure.ts'
 
 test('isLoopbackHost：与 SDK 的豁免名单逐字一致', () => {
   // 这份名单必须与 `@modelcontextprotocol/client` 的 `isLoopbackHost` 相同：

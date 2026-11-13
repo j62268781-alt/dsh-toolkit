@@ -14,14 +14,14 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 async function dialogModule(name) {
   const result = await build({
-    entryPoints: ['src/client/ui/resizable-dialog.jsx'],
+    entryPoints: ['src/client/ui/components/resizable-dialog/index.tsx'],
     bundle: true,
     format: 'esm',
     platform: 'node',
     target: 'es2022',
     external: ['react', 'react/*', 'react-dom', 'react-dom/*'],
     jsx: 'automatic',
-    loader: { '.jsx': 'jsx', '.js': 'jsx' },
+    loader: {  '.ts': 'ts', '.tsx': 'tsx','.jsx': 'jsx', '.js': 'jsx' },
     write: false,
     logLevel: 'silent',
   })

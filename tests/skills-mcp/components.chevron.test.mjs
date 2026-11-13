@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import React from 'react'
-import { Chevron } from '../../src/modules/skills-mcp/client/components/chevron.jsx'
+import { Chevron } from '../../src/modules/skills-mcp/client/components/chevron.tsx'
 
 globalThis.__dshReact = React
 

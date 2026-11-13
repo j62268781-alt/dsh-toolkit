@@ -1,7 +1,7 @@
 /** config 接口测试：三种 form 形状的归一化与数组字段读取。 */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { listOf, snapshotOf, statusOf } from '../../src/modules/skills-mcp/client/config.js'
+import { listOf, snapshotOf, statusOf } from '../../src/modules/skills-mcp/client/config.ts'
 
 test('snapshotOf：getSnapshot().value / store / 裸 snapshot / 空', () => {
   assert.deepEqual(snapshotOf({ getSnapshot: () => ({ value: { a: 1 } }) }), { a: 1 })

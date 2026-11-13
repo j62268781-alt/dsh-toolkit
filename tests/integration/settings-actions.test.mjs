@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
-import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.js';
+import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.ts';
 
 test('titlebar config menu forwards native action, tracks availability, errors and Escape', async (t) => {
   const dom = new JSDOM(`<div data-shortcut-modal="settings"><nav class="_AnXs9G_nav"><div class="_AnXs9G_navList"></div></nav><div class="_AnXs9G_content"><div class="_AnXs9G_header"><div class="_AnXs9G_actions"><div class="_yHUiNq_action"><button>打开配置文件</button></div></div></div></div></div>`);

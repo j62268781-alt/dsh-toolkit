@@ -12,8 +12,8 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { AUTH_KIND } from '../../src/modules/skills-mcp/host/mcp/auth.js'
-import { createAuthProbe } from '../../src/modules/skills-mcp/host/mcp/authprobe.js'
+import { AUTH_KIND } from '../../src/modules/skills-mcp/host/mcp/auth.ts'
+import { createAuthProbe } from '../../src/modules/skills-mcp/host/mcp/authprobe.ts'
 
 /** 一个只记录调用、返回预设响应的 fetch 替身。 */
 function fakeFetch(response, calls = []) {

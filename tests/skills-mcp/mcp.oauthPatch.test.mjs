@@ -13,7 +13,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { PATCH_REASONS, installTransportPatch, makeAuthProvider, patchReasonText } from '../../src/modules/skills-mcp/host/mcp/oauth/patch.js'
+import { PATCH_REASONS, installTransportPatch, makeAuthProvider, patchReasonText } from '../../src/modules/skills-mcp/host/mcp/oauth/patch.ts'
 
 /**
  * A minimal stand-in for `StreamableHTTPClientTransport`.

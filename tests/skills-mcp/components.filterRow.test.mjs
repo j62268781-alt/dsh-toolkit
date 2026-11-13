@@ -8,7 +8,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import React from 'react'
-import { filterRow } from '../../src/modules/skills-mcp/client/components/filterRow.jsx'
+import { filterRow } from '../../src/modules/skills-mcp/client/components/filterRow.tsx'
 
 globalThis.__dshReact = React
 

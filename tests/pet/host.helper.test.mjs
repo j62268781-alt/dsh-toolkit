@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import { test } from 'node:test'
-import { HelperManager } from '../../src/modules/pet/host/helper.js'
+import { HelperManager } from '../../src/modules/pet/host/helper.ts'
 
 const enabled = { petEnabled: true, islandEnabled: false }
 const disabled = { petEnabled: false, islandEnabled: false }

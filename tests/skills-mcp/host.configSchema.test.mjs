@@ -6,7 +6,7 @@
  * 把技能或运行态重新写回 settings 的字段都会让 yml 又长出一条缓存 —— 这个文件钉住
  * 「Config 里只剩 toolFilters」这件事。
  *
- * 这里读源码而不是导入 schema：`src/index.js` import 宿主的
+ * 这里读源码而不是导入 schema：`src/index.ts` import 宿主的
  * `@deepseek-ai/schemastery`，只有运行中的 app 能解析到，CI 上直接 import 会
  * `ERR_MODULE_NOT_FOUND`。冒烟（`scripts/host-smoke.mjs`）能 import 并断言元数据，
  * 但它在 CI 上会跳过，所以这条文本断言是 CI 的护栏。
@@ -15,7 +15,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const source = readFileSync(new URL('../../src/modules/skills-mcp/host/config.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n')
+const source = readFileSync(new URL('../../src/modules/skills-mcp/host/config.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n')
 
 /** The `const <name> = z.object({ … })` block for one definition, if present. */
 const declarationOf = (name) => {
@@ -27,7 +27,7 @@ const declarationOf = (name) => {
 
 const configBlock = (() => {
   const start = source.indexOf('export const Config = z.object({')
-  assert.ok(start >= 0, 'src/index.js 里找不到 export const Config')
+  assert.ok(start >= 0, 'src/index.ts 里找不到 export const Config')
   const end = source.indexOf('\n})', start)
   assert.ok(end >= 0, '找不到 Config 的收尾')
   return source.slice(start, end + 3)
@@ -48,7 +48,7 @@ test('Config 只保留 toolFilters，技能 / 行 / 投影 / 命令字段全部�
 
 test('SkillRequest 是纯校验器：不带 .volatile()', () => {
   const wire = declarationOf('SkillRequest')
-  assert.ok(wire !== undefined, 'src/index.js 里找不到 const SkillRequest')
+  assert.ok(wire !== undefined, 'src/index.ts 里找不到 const SkillRequest')
   assert.doesNotMatch(wire, /\.volatile\(\)/,
     'SkillRequest 带上 .volatile() 了：它作为 HTTP 路由的校验器会返回 {}，导致 scope/id 丢失')
   assert.equal(source.includes('SkillRequestField'), false, 'Config 字段版本应已删除，只留 HTTP 校验器')
@@ -56,7 +56,7 @@ test('SkillRequest 是纯校验器：不带 .volatile()', () => {
 
 test('SkillRequest 声明 path，且字段集合完整', () => {
   const block = declarationOf('SkillRequest')
-  assert.ok(block !== undefined, 'src/index.js 里找不到 const SkillRequest')
+  assert.ok(block !== undefined, 'src/index.ts 里找不到 const SkillRequest')
   assert.match(block, /^\s+path: z\.string\(\)/m, '缺少 path：技能正文读取靠它定位 SKILL.md')
   const names = [...block.matchAll(/^\s{2}([a-zA-Z]+):\s*z\./gm)].map((m) => m[1]).sort()
   assert.deepEqual(names, ['body', 'description', 'id', 'name', 'nonce', 'op', 'path', 'prevName', 'project', 'scope'])

@@ -10,7 +10,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { PROBE_STATE, createConnectionProbe } from '../../src/modules/skills-mcp/host/mcp/probe.js'
+import { PROBE_STATE, createConnectionProbe } from '../../src/modules/skills-mcp/host/mcp/probe.ts'
 
 /** 造一个假的 mcpResources 服务；`reply` 决定 request 的行为。 */
 const serviceWith = (reply) => {

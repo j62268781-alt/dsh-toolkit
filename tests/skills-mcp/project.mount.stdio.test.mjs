@@ -11,8 +11,8 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { stdioMountConfig } from '../../src/modules/skills-mcp/host/project/mount.js'
-import { bundledRuntime } from '../../src/modules/skills-mcp/host/runtime/env.js'
+import { stdioMountConfig } from '../../src/modules/skills-mcp/host/project/mount.ts'
+import { bundledRuntime } from '../../src/modules/skills-mcp/host/runtime/env.ts'
 
 test('stdio 挂载：默认用系统 npx（内置 pnpx 只做兜底）', () => {
   /**

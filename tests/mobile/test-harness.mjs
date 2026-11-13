@@ -19,17 +19,17 @@ import { join } from "node:path";
 import net from "node:net";
 import http from "node:http";
 import { Readable } from "node:stream";
-import { Mobilecli, resolveBinary } from "../../src/modules/mobile/host/device/mobilecli.js";
-import { resolveDevice } from "../../src/modules/mobile/host/agent/device-resolution.js";
+import { Mobilecli, resolveBinary } from "../../src/modules/mobile/host/device/mobilecli.ts";
+import { resolveDevice } from "../../src/modules/mobile/host/agent/device-resolution.ts";
 import {
   createMobileLoopRequest,
   isJudgmentUsable,
   runMobileLoop,
-} from "../../src/modules/mobile/host/agent/mobile-loop.js";
-import { StreamRoutes, toDeviceCoordinates } from "../../src/modules/mobile/host/stream/routes.js";
+} from "../../src/modules/mobile/host/agent/mobile-loop.ts";
+import { StreamRoutes, toDeviceCoordinates } from "../../src/modules/mobile/host/stream/routes.ts";
 import { mountMobileTestRoute, runMobileAuthTests, TEST_SESSION_COOKIE } from "./auth-harness.mjs";
 import { runMobileCacheTests } from "./cache-harness.mjs";
-import { CHASSIS_INSET, createCanvasRuntime } from "../../src/modules/mobile/client/stream/canvas.js";
+import { CHASSIS_INSET, createCanvasRuntime } from "../../src/modules/mobile/client/stream/canvas.ts";
 import {
   resolveSocketPath,
   callDaemon,
@@ -37,7 +37,7 @@ import {
   rpcForInput,
   rpcForDeviceAction,
   DaemonRpc,
-} from "../../src/modules/mobile/host/device/daemon-rpc.js";
+} from "../../src/modules/mobile/host/device/daemon-rpc.ts";
 
 let passed = 0;
 let failed = 0;
@@ -274,7 +274,7 @@ const {
   isLoopbackRemoteAddress,
   isSameOriginRequest,
   parseTrustedAuthority,
-} = await import("../../src/modules/mobile/host/stream/access.js");
+} = await import("../../src/modules/mobile/host/stream/access.ts");
 
 await test("loopback 判定覆盖 IPv4 / IPv6 / mapped / 非本机", () => {
   for (const addr of ["127.0.0.1", "::1", "::ffff:127.0.0.1", "127.0.0.53"]) {
@@ -394,7 +394,7 @@ await test("同源校验：跨站 POST 被拒，无 Origin 交给围栏兜底", 
 
 console.log("\n流格式嗅探");
 
-const { sniffStreamFormat } = await import("../../src/modules/mobile/host/stream/session.js");
+const { sniffStreamFormat } = await import("../../src/modules/mobile/host/stream/session.ts");
 
 await test("识别 H.264 Annex B（4 字节起始码）", () => {
   const head = Buffer.from([0, 0, 0, 1, 0x67, 0x42, 0x00, 0x1e]);
@@ -423,7 +423,7 @@ await test("空 / 未知数据不误判", () => {
 
 console.log("\n交互输入校验");
 
-const { validateInput } = await import("../../src/modules/mobile/host/stream/routes.js");
+const { validateInput } = await import("../../src/modules/mobile/host/stream/routes.ts");
 
 await test("tap 要求数值型坐标", () => {
   assert.ok(validateInput("tap", { x: 10, y: 20 }).ok);
@@ -480,7 +480,7 @@ await test("未知 action 被拒", () => {
 
 console.log("\n路由匹配");
 
-const { matchRouteName } = await import("../../src/modules/mobile/host/stream/routes.js");
+const { matchRouteName } = await import("../../src/modules/mobile/host/stream/routes.ts");
 const PREFIX = "/_dsh/dsh-sidebar-mobile";
 
 await test("匹配已知路由", () => {
@@ -511,7 +511,7 @@ await test("拒绝未知路由与裸前缀", () => {
 console.log("\n背压对齐");
 
 const { findStartCode, lastStartCode, findBoundary, lastBoundary } =
-  await import("../../src/modules/mobile/host/stream/routes.js");
+  await import("../../src/modules/mobile/host/stream/routes.ts");
 
 /** 造一段真实的 MJPEG multipart 数据（帧内含 00 00 01 序列）。 */
 function fakeMjpeg(boundary, frameCount, filler) {
@@ -718,7 +718,7 @@ await test("没有选中设备时仍然 409（去掉预检查不能连带丢掉�
 console.log("\nAndroid 工具链（adb）");
 
 const { findAdb, parseAdbDevices, describeAdbProblem, probeAdb, AdbProbe } =
-  await import("../../src/modules/mobile/host/device/android-toolchain.js");
+  await import("../../src/modules/mobile/host/device/android-toolchain.ts");
 
 await test("parseAdbDevices 解析真实输出（含 -l 的 key:value）", () => {
   const out = [
@@ -840,7 +840,7 @@ await test("adb 装了但当前进程看不到 → 提示重启 DSH，而不是�
 });
 
 await test("findAdbOutsideEnv：能从常见安装位置找到 adb（不依赖 PATH）", async () => {
-  const { findAdbOutsideEnv } = await import("../../src/modules/mobile/host/device/android-toolchain.js");
+  const { findAdbOutsideEnv } = await import("../../src/modules/mobile/host/device/android-toolchain.ts");
   // 造一个"常见位置"，确认它真的会被查到
   const fakeDrive = join(tmpdir(), "adb-outside");
   const target = join(fakeDrive, "Android", "platform-tools");
@@ -878,7 +878,7 @@ await test("AdbProbe：短时间内的重复查询命中缓存，invalidate 能�
 
 console.log("\n技能注册");
 
-const { parseFrontmatter, loadBundledSkill } = await import("../../src/modules/mobile/host/agent/skills.js");
+const { parseFrontmatter, loadBundledSkill } = await import("../../src/modules/mobile/host/agent/skills.ts");
 
 await test("frontmatter 解析：标量 + 折叠块 + 正文切分", () => {
   const { attributes, body } = parseFrontmatter(
@@ -1610,7 +1610,7 @@ await test("concatBytes 在 subarray 上工作（真实调用场景）", () => {
 console.log("\n流会话");
 
 const { StreamSession, StreamSessionPool, DEFAULT_SWIPE_DURATION_MS } =
-  await import("../../src/modules/mobile/host/stream/session.js");
+  await import("../../src/modules/mobile/host/stream/session.ts");
 
 /** 造一个可控的假流进程。 */
 function fakeStream() {
@@ -2013,7 +2013,7 @@ await test("只注册加工型工具，薄包装不许回流", () => {
    * 在没有宿主的环境会直接抛（见 lib/tool-support.js 的说明）。
    * 所以按本仓库惯例：读源码 + 先剥注释（注释里会引用工具名，不剥会骗过断言）。
    */
-  const source = stripComments(readFileSync(new URL("../../src/modules/mobile/host/agent/tools.js", import.meta.url), "utf8"));
+  const source = stripComments(readFileSync(new URL("../../src/modules/mobile/host/agent/tools.ts", import.meta.url), "utf8"));
 
   /**
    * 注册表 = 源码里的 `[TOOL_NAMES.x]: y` 注册项。
@@ -2085,7 +2085,7 @@ await test("render 必须按 (args, value) 两参签名 —— 否则工具会�
    * 这就是"所有 mobile_* 工具返回空结果"那个长期未解之谜的答案。
    */
   const source = stripComments(
-    readFileSync(new URL("../../src/modules/mobile/host/agent/tools.js", import.meta.url), "utf8"),
+    readFileSync(new URL("../../src/modules/mobile/host/agent/tools.ts", import.meta.url), "utf8"),
   );
 
   const m = source.match(/export function renderJson\(([^)]*)\)\s*\{([\s\S]*?)\n\}/u);
@@ -2122,14 +2122,14 @@ console.log("\n打开面板（mobile_open_panel）");
 await test("面板打开的路由名在宿主与客户端两处必须一致", () => {
   /**
    * 这两个名字是**跨进程的契约**：宿主在 lib/stream/access.js 的 ROUTES 里
-   * 定义，客户端在 src/client/index.jsx 里拼 URL。两边写错一个字符，症状是
+   * 定义，客户端在 src/client/index.ts 里拼 URL。两边写错一个字符，症状是
    * 404 或者长轮询永远挂着 —— 都不会有人报错，只会"点了没反应"。
    */
   const access = stripComments(
-    readFileSync(new URL("../../src/modules/mobile/host/stream/access.js", import.meta.url), "utf8"),
+    readFileSync(new URL("../../src/modules/mobile/host/stream/access.ts", import.meta.url), "utf8"),
   );
   const client = stripComments(
-    readFileSync(new URL("../../src/modules/mobile/client/index.jsx", import.meta.url), "utf8"),
+    readFileSync(new URL("../../src/modules/mobile/client/index.tsx", import.meta.url), "utf8"),
   );
 
   const pairs = [
@@ -2161,7 +2161,7 @@ await test("「请打开面板」的轮询必须在 apply() 里，不能放进�
    * 重排失效，但那时它会**失败**而不是静默放过 —— 这是刻意的。
    */
   const source = stripComments(
-    readFileSync(new URL("../../src/modules/mobile/client/index.jsx", import.meta.url), "utf8"),
+    readFileSync(new URL("../../src/modules/mobile/client/index.tsx", import.meta.url), "utf8"),
   );
 
   const applyAt = source.indexOf("apply(ctx) {");
@@ -2185,13 +2185,13 @@ await test("「请打开面板」的轮询必须在 apply() 里，不能放进�
 });
 
 await test("打开面板的跨进程链路必须完整接线", () => {
-  const routes = readFileSync(new URL("../../src/modules/mobile/host/stream/routes.js", import.meta.url), "utf8");
+  const routes = readFileSync(new URL("../../src/modules/mobile/host/stream/routes.ts", import.meta.url), "utf8");
   const tools = stripComments(
-    readFileSync(new URL("../../src/modules/mobile/host/agent/tools.js", import.meta.url), "utf8"),
+    readFileSync(new URL("../../src/modules/mobile/host/agent/tools.ts", import.meta.url), "utf8"),
   );
-  const index = stripComments(readFileSync(new URL("../../src/modules/mobile/host/index.js", import.meta.url), "utf8"));
+  const index = stripComments(readFileSync(new URL("../../src/modules/mobile/host/index.ts", import.meta.url), "utf8"));
   const client = stripComments(
-    readFileSync(new URL("../../src/modules/mobile/client/index.jsx", import.meta.url), "utf8"),
+    readFileSync(new URL("../../src/modules/mobile/client/index.tsx", import.meta.url), "utf8"),
   );
 
   // 宿主：请求状态 + 长轮询 + 回执 + 分发
@@ -2322,7 +2322,7 @@ await test("面板轮询不许忙等：除「正常超时」外每一轮都要�
    * 立刻重挂是**对的**，不算忙等。
    */
   const source = stripComments(
-    readFileSync(new URL("../../src/modules/mobile/client/index.jsx", import.meta.url), "utf8"),
+    readFileSync(new URL("../../src/modules/mobile/client/index.tsx", import.meta.url), "utf8"),
   );
 
   const start = source.indexOf("const pump = async () => {");
@@ -2514,7 +2514,7 @@ await test("被删工具的关键知识必须留在 skill 里（否则是净损�
 });
 
 await test("skill 的触发描述不许覆盖工具已能做的场景", async () => {
-  const { loadBundledSkill } = await import("../../src/modules/mobile/host/agent/skills.js");
+  const { loadBundledSkill } = await import("../../src/modules/mobile/host/agent/skills.ts");
   const skill = loadBundledSkill();
   assert.ok(skill !== null, "skill 未加载");
 
@@ -2586,7 +2586,7 @@ await test("客户端必须有断流自动重连（而不是停在『流已结�
 });
 
 await test("流启动成功后 crashCount 要归零（否则退避单向累积到 30s）", () => {
-  const source = stripComments(readFileSync(new URL("../../src/modules/mobile/host/stream/session.js", import.meta.url), "utf8"));
+  const source = stripComments(readFileSync(new URL("../../src/modules/mobile/host/stream/session.ts", import.meta.url), "utf8"));
   /**
    * ⚠️ crashCount 原先只在**空闲自停**时归零，会单向累积：
    * 一次抖动 + 一次设备忙碌就能把退避推到 30s 上限，此后即使流跑得很好，
@@ -3246,7 +3246,7 @@ await test("状态栏用同一个映射（避免与下拉自相矛盾）", () =>
 console.log("\n离线设备");
 
 await test("grant 必须包含离线设备（否则与面板列表自相矛盾）", () => {
-  const source = stripComments(readFileSync(new URL("../../src/modules/mobile/host/stream/routes.js", import.meta.url), "utf8"));
+  const source = stripComments(readFileSync(new URL("../../src/modules/mobile/host/stream/routes.ts", import.meta.url), "utf8"));
   const grant = source.slice(source.indexOf("async #grant"));
   const head = grant.slice(0, grant.indexOf("#status") === -1 ? 2000 : 2000);
   assert.ok(
@@ -3256,7 +3256,7 @@ await test("grant 必须包含离线设备（否则与面板列表自相矛盾�
 });
 
 await test("选中离线模拟器会自动启动，且 boot 失败不影响选中", () => {
-  const source = stripComments(readFileSync(new URL("../../src/modules/mobile/host/stream/routes.js", import.meta.url), "utf8"));
+  const source = stripComments(readFileSync(new URL("../../src/modules/mobile/host/stream/routes.ts", import.meta.url), "utf8"));
   // 只有虚拟设备才 boot（真机 boot 无意义）
   assert.ok(/"simulator"/u.test(source) && /"emulator"/u.test(source), "应识别 simulator 与 emulator");
   assert.ok(/device", "boot"/u.test(source), "应调用 device boot");
@@ -3298,7 +3298,7 @@ await test("面板会提示正在启动（冷启动数分钟，否则看起来�
 
 console.log("\n客户端源码与构建");
 
-const SRC_CLIENT = new URL("../../src/modules/mobile/client/index.jsx", import.meta.url);
+const SRC_CLIENT = new URL("../../src/modules/mobile/client/index.tsx", import.meta.url);
 const SRC_STYLES = new URL("../../src/modules/mobile/client/styles.css", import.meta.url);
 const CLIENT_JSX = readdirSync(new URL("./", SRC_CLIENT), { recursive: true })
   .filter((name) => name.endsWith(".jsx"))
@@ -3496,7 +3496,7 @@ await test("control 路由按流的真实 plan 换算坐标（不是按请求体
 // 需要的物理像素都变大了，流却还是老分辨率 —— 实测面板里手机屏幕区 598 物理像素，
 // 编码进程只有 378×832（scale 0.35），被浏览器放大 1.58× 画上去，文字边缘全是插值糊。
 //
-// 判定数学（阈值 / 持续时间 / 冷却 / 设备宽封顶）全在 src/client/index.jsx 的
+// 判定数学（阈值 / 持续时间 / 冷却 / 设备宽封顶）全在 src/client/index.ts 的
 // 两个纯函数里，通过 plugin.__test 暴露出来。这里按 250ms 节拍喂时间戳，
 // 断言"什么时候该重建流"，不需要渲染 React、也不需要等真实时间。
 
@@ -4372,7 +4372,7 @@ await test("grant 回包带 fixed 标记（原生取流 → 客户端不再按�
 
 console.log("\n取流分辨率按画布精确反算");
 
-const { exactScale, MIN_SCALE } = await import("../../src/modules/mobile/host/stream/scale-plan.js");
+const { exactScale, MIN_SCALE } = await import("../../src/modules/mobile/host/stream/scale-plan.ts");
 
 await test("画布 532 → scale 0.4926，编码出来正好 532 宽（恒等绘制、零重采样）", () => {
   const scale = exactScale(532, 1080);

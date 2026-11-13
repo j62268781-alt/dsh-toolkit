@@ -1,7 +1,7 @@
 /** importSources 接口测试：26 项、id 唯一、标签为纯名字。 */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { IMPORT_CHOICES } from '../../src/modules/skills-mcp/client/importSources.js'
+import { IMPORT_CHOICES } from '../../src/modules/skills-mcp/client/importSources.ts'
 
 test('IMPORT_CHOICES：26 项且 id 唯一', () => {
   assert.equal(IMPORT_CHOICES.length, 26)

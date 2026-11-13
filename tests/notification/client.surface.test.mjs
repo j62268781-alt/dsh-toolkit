@@ -8,9 +8,9 @@ import {
   TAG_LIMIT, TAG_PREFIX, activateWindow, browserPermission, dismissLiveNotifications,
   liveNotificationCount, notificationTag, pageIconUrl, requestBrowserPermission,
   showBrowserNotification, showTestNotification,
-} from '../../src/modules/notification/client/browser-notify.js'
-import { RECENT_LIMIT, createRecentStore } from '../../src/modules/notification/client/recent.js'
-import { SOUND_IDS, SOUND_RECIPES, SoundPlayer, audioSupported, clampVolume, recipeDuration } from '../../src/modules/notification/client/sounds.js'
+} from '../../src/modules/notification/client/browser-notify.ts'
+import { RECENT_LIMIT, createRecentStore } from '../../src/modules/notification/client/recent.ts'
+import { SOUND_IDS, SOUND_RECIPES, SoundPlayer, audioSupported, clampVolume, recipeDuration } from '../../src/modules/notification/client/sounds.ts'
 import { createNotificationStub, makeDom } from './helpers.mjs'
 
 const restores = []

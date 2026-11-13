@@ -4,8 +4,8 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { IMPORT_SOURCES } from '../../src/modules/skills-mcp/host/import/sources.js'
-import { scanImportSource } from '../../src/modules/skills-mcp/host/import/scan.js'
+import { IMPORT_SOURCES } from '../../src/modules/skills-mcp/host/import/sources.ts'
+import { scanImportSource } from '../../src/modules/skills-mcp/host/import/scan.ts'
 
 const home = mkdtempSync(join(tmpdir(), 'smp-import-home-'))
 const project = mkdtempSync(join(tmpdir(), 'smp-import-proj-'))

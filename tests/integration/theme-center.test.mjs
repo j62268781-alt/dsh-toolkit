@@ -8,7 +8,7 @@ import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { JSDOM } from 'jsdom'
-import { Config, PALETTES, readThemeConfig } from '../../src/modules/theme/host/config.js'
+import { Config, PALETTES, readThemeConfig } from '../../src/modules/theme/host/config.ts'
 import {
   HERO_SELECTOR,
   PALETTE_ATTR,
@@ -20,7 +20,7 @@ import {
   mountPaletteScene,
   readPalette,
   registerPaletteScene,
-} from '../../src/modules/theme/client/palette.js'
+} from '../../src/modules/theme/client/palette.ts'
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
 
@@ -269,8 +269,8 @@ test('hero lifecycle preserves settings preview scenes through active chats and 
 
 test('theme center CSS and selector keep the hero scoping and visual states', async () => {
   const css = await readFile(`${ROOT}src/modules/theme/client/styles/theme-center.css`, 'utf8')
-  const palette = await readFile(`${ROOT}src/modules/theme/client/palette.js`, 'utf8')
-  const panel = await readFile(`${ROOT}src/modules/theme/client/settings-theme.jsx`, 'utf8')
+  const palette = await readFile(`${ROOT}src/modules/theme/client/palette.ts`, 'utf8')
+  const panel = await readFile(`${ROOT}src/modules/theme/client/settings-theme.tsx`, 'utf8')
 
   assert.match(palette, /\[data-slot="main\.conversation"\] > \[data-phase="hero"\] > \[data-conversation-content\]\[data-content-phase="hero"\]/)
   assert.match(css, /\.sk-theme-card\.is-selected\s*\{/)

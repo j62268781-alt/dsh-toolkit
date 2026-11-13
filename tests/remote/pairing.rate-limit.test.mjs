@@ -14,7 +14,7 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPairing } from '../../src/modules/remote/client/mobile/pairing.js'
+import { createPairing } from '../../src/modules/remote/client/mobile/pairing.ts'
 
 const SERVER = 'https://pair.example.com'
 

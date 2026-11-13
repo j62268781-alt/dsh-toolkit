@@ -22,8 +22,10 @@ const ALL_SERVICES = new Set([
 ])
 const IMMEDIATE_EFFECTS = new Set([
   'toolkit-theme:settings-section',
-  'toolkit-archived:dictionary',
-  'toolkit-archived:section',
+  // Archived registers its dictionary through the shared bridge (generic label) and
+  // mounts its settings page as one of several surfaces.
+  'locale shell-kit.archived',
+  'toolkit-archived:settings',
   'toolkit-notification:dictionary',
   'toolkit-notification:section',
   'toolkit-pet:dictionary',

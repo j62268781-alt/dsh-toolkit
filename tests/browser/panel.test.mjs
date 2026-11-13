@@ -22,7 +22,7 @@ async function loadModule(entry) {
     target: 'es2022',
     external: ['react', 'react/*', 'react-dom', 'react-dom/*', '@deepseek-ai/*'],
     jsx: 'automatic',
-    loader: { '.jsx': 'jsx', '.js': 'jsx', '.css': 'text' },
+    loader: {  '.ts': 'ts', '.tsx': 'tsx','.jsx': 'jsx', '.js': 'jsx', '.css': 'text' },
     write: false,
     logLevel: 'silent',
   })
@@ -49,7 +49,7 @@ const fakeForm = (value = VALUE) => ({
 })
 
 test('设置页画出了页头、所有行（标题 + 子标题）与两行开关', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const html = renderToStaticMarkup(React.createElement(Panel, {
     form: fakeForm(),
     entryId: 'agent-browser',
@@ -127,7 +127,7 @@ test('CSS 回归：Switch 不被拉伸；分组标题照抄「Agent 预设」的
 })
 
 test('共享设置样式在三个页面共存时保持局部尺寸和选择器隔离', async () => {
-  const { settingsStyles } = await loadModule('../../client/styles/settings.js')
+  const { settingsStyles } = await loadModule('../../client/styles/settings.ts')
   const paths = {
     ab: '../../src/modules/browser/client/styles.css',
     jdg: '../../src/modules/judgment/client/styles.css',
@@ -155,7 +155,7 @@ test('共享设置样式在三个页面共存时保持局部尺寸和选择器�
 })
 
 test('自检卡片：两项、成功/失败各自的说明与"帮忙安装"，且不含路径', async () => {
-  const { InstallSummary } = await loadModule('client/panel.jsx')
+  const { InstallSummary } = await loadModule('client/panel.tsx')
   const render = (probe, extra = {}) => renderToStaticMarkup(React.createElement(InstallSummary, {
     primitives: undefined, probe, probing: false, error: '', installing: false, note: '', onCheck: () => {}, onInstall: () => {}, ...extra,
   }))
@@ -199,7 +199,7 @@ test('自检卡片：两项、成功/失败各自的说明与"帮忙安装"，�
 })
 
 test('host 半是旧版本时，把"重启 DSH"说清楚（而不是画一张看不懂的卡片）', async () => {
-  const { InstallSummary } = await loadModule('client/panel.jsx')
+  const { InstallSummary } = await loadModule('client/panel.tsx')
   const html = renderToStaticMarkup(React.createElement(InstallSummary, {
     primitives: undefined,
     probing: false, error: '', installing: false, note: '', onCheck: () => {}, onInstall: () => {},
@@ -211,7 +211,7 @@ test('host 半是旧版本时，把"重启 DSH"说清楚（而不是画一张看
 })
 
 test('还没检查时给一句明确的下一步，而不是空白', async () => {
-  const { InstallSummary } = await loadModule('client/panel.jsx')
+  const { InstallSummary } = await loadModule('client/panel.tsx')
   const html = renderToStaticMarkup(React.createElement(InstallSummary, {
     primitives: undefined, probe: null, probing: false, error: '', installing: false, note: '', onCheck: () => {}, onInstall: () => {},
   }))
@@ -220,7 +220,7 @@ test('还没检查时给一句明确的下一步，而不是空白', async () =>
 })
 
 test('自检通路报错时把原因显示出来（不让页面默默失败）', async () => {
-  const { InstallSummary } = await loadModule('client/panel.jsx')
+  const { InstallSummary } = await loadModule('client/panel.tsx')
   const html = renderToStaticMarkup(React.createElement(InstallSummary, {
     primitives: undefined, probe: null, probing: false, error: '自检通路不可用（host 半未加载）', installing: false, note: '', onCheck: () => {}, onInstall: () => {},
   }))

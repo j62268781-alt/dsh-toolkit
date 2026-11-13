@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import React from 'react'
-import { deleteConfirmDialog } from '../../src/modules/skills-mcp/client/components/dialog.jsx'
+import { deleteConfirmDialog } from '../../src/modules/skills-mcp/client/components/dialog.tsx'
 
 globalThis.__dshReact = React
 

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { test } from 'node:test'
-import { findExecutableOnPath, createExecutableResolver } from '../../src/host/executable.js'
-import { runProcess } from '../../src/host/process.js'
-import { createOperation } from '../../src/host/operation.js'
+import { findExecutableOnPath, createExecutableResolver } from '../../src/host/executable.ts'
+import { runProcess } from '../../src/host/process.ts'
+import { createOperation } from '../../src/host/operation.ts'
 import { Ledger } from '../../lib/modules/judgment/host/provider/ledger.js'
 
 const tick = () => new Promise((resolve) => setImmediate(resolve))

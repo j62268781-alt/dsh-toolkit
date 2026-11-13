@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { JSDOM } from 'jsdom'
-import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.js'
+import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.ts'
 
 function page(t, html) {
   const dom = new JSDOM(html)

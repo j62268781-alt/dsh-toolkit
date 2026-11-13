@@ -3,8 +3,8 @@ import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { ELECTRON_VERSION, executableIn, helperEnvironment, resolveElectron, runtimeDirectory } from '../../src/modules/pet/host/electron.js'
-import { readSettings } from '../../src/modules/pet/host/config.js'
+import { ELECTRON_VERSION, executableIn, helperEnvironment, resolveElectron, runtimeDirectory } from '../../src/modules/pet/host/electron.ts'
+import { readSettings } from '../../src/modules/pet/host/config.ts'
 
 async function temporaryHome(t) {
   const directory = await mkdtemp(path.join(tmpdir(), 'toolkit-pet-test-'))

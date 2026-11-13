@@ -3,10 +3,10 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 import { JSDOM } from 'jsdom'
-import { createOceanScene } from '../../src/modules/theme/client/scenes/ocean.js'
+import { createOceanScene } from '../../src/modules/theme/client/scenes/ocean.ts'
 
 const [sceneSource, cssSource] = await Promise.all([
-  readFile(new URL('../../src/modules/theme/client/scenes/ocean.js', import.meta.url), 'utf8'),
+  readFile(new URL('../../src/modules/theme/client/scenes/ocean.ts', import.meta.url), 'utf8'),
   readFile(new URL('../../src/modules/theme/client/styles/ocean.css', import.meta.url), 'utf8'),
 ])
 

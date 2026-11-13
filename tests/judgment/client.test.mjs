@@ -103,7 +103,7 @@ test('entry 名对不上时退回包名，页面仍能渲染（只是不可写�
 })
 
 test('Remote contribution 是手写的纯数据，且 wire 名与 host 形参名一致', async () => {
-  const { judgmentContribution } = await import('../../src/modules/judgment/client/judgment-remote.js')
+  const { judgmentContribution } = await import('../../src/modules/judgment/client/judgment-remote.ts')
   const contribution = judgmentContribution()
 
   assert.equal(contribution.package, 'dsh-judgment')

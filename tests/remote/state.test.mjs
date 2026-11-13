@@ -8,9 +8,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 
-import { INSTRUCTIONS_SOURCE, collectReply, createConversations, eventCount, eventsSince, sessionIdFor, sessionTitleFor } from '../../src/modules/remote/host/wechat/conversation.js'
-import { INBOX_DIR, buildInboundContent, messageKey, safeFileName } from '../../src/modules/remote/host/wechat/inbound.js'
-import { bridgeStatePath, createBridgeStore } from '../../src/modules/remote/host/wechat/store.js'
+import { INSTRUCTIONS_SOURCE, collectReply, createConversations, eventCount, eventsSince, sessionIdFor, sessionTitleFor } from '../../src/modules/remote/host/wechat/conversation.ts'
+import { INBOX_DIR, buildInboundContent, messageKey, safeFileName } from '../../src/modules/remote/host/wechat/inbound.ts'
+import { bridgeStatePath, createBridgeStore } from '../../src/modules/remote/host/wechat/store.ts'
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01, 0x02])
 

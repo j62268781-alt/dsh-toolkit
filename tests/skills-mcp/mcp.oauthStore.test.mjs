@@ -23,8 +23,8 @@ import {
   normalizeRecord,
   oauthDir,
   oauthFile,
-} from '../../src/modules/skills-mcp/host/mcp/oauth/store.js'
-import { createOAuthProvider, defaultClientMetadata, pendingIsFresh, randomState, tokenStatus } from '../../src/modules/skills-mcp/host/mcp/oauth/provider.js'
+} from '../../src/modules/skills-mcp/host/mcp/oauth/store.ts'
+import { createOAuthProvider, defaultClientMetadata, pendingIsFresh, randomState, tokenStatus } from '../../src/modules/skills-mcp/host/mcp/oauth/provider.ts'
 
 /** A throwaway `$DSH_HOME`; `t.after` cleans it up so a failure cannot leave files behind. */
 async function tempHome(t) {

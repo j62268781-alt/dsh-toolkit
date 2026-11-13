@@ -12,7 +12,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { ROWS_PATH, registerRowRoute } from '../../src/modules/skills-mcp/host/mcp/rows.js'
+import { ROWS_PATH, registerRowRoute } from '../../src/modules/skills-mcp/host/mcp/rows.ts'
 
 /**
  * `registerRowRoute` 只要求一个「能把 payload 校验成 op」的函数，不关心它怎么实现 ——

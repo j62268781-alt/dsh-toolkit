@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import React from 'react'
-import { field } from '../../src/modules/skills-mcp/client/components/field.jsx'
+import { field } from '../../src/modules/skills-mcp/client/components/field.tsx'
 
 globalThis.__dshReact = React
 

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createSkill, deleteSkill, renderSkillMarkdown, renameSkill, stripFrontmatter, updateSkill, validateSkillName, writableRoots } from '../../src/modules/skills-mcp/host/skills/write.js'
+import { createSkill, deleteSkill, renderSkillMarkdown, renameSkill, stripFrontmatter, updateSkill, validateSkillName, writableRoots } from '../../src/modules/skills-mcp/host/skills/write.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'smp-write-'))
 const dir = join(root, 'skills')
@@ -95,8 +95,8 @@ test('renderSkillMarkdown / stripFrontmatter：往返一致', async () => {
  * 这条测试钉住的是**不变量**（往返恒等），而不是某个具体正则 —— 只要两边再次漂移就会失败。
  */
 test('bodyOf / renderSkillMarkdown：往返恒等，且不带改动的保存不改文件', async () => {
-  const { bodyOf } = await import('../../src/modules/skills-mcp/host/skills/discover.js')
-  const { renderSkillMarkdown } = await import('../../src/modules/skills-mcp/host/skills/write.js')
+  const { bodyOf } = await import('../../src/modules/skills-mcp/host/skills/discover.ts')
+  const { renderSkillMarkdown } = await import('../../src/modules/skills-mcp/host/skills/write.ts')
 
   for (const body of [
     'test',
@@ -117,8 +117,8 @@ test('bodyOf / renderSkillMarkdown：往返恒等，且不带改动的保存不�
 })
 
 test('bodyOf / stripFrontmatter：两份实现必须一致（它们漂移过一次）', async () => {
-  const { bodyOf } = await import('../../src/modules/skills-mcp/host/skills/discover.js')
-  const { stripFrontmatter } = await import('../../src/modules/skills-mcp/host/skills/write.js')
+  const { bodyOf } = await import('../../src/modules/skills-mcp/host/skills/discover.ts')
+  const { stripFrontmatter } = await import('../../src/modules/skills-mcp/host/skills/write.ts')
   for (const markdown of [
     '---\nname: a\ndescription: d\n---\n\ntext',
     '---\nname: a\n---\n    indented',

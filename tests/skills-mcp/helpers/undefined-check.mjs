@@ -63,7 +63,7 @@ const runTsc = (root, args) => {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const hostFiles = collect(join(root, 'src', 'modules', 'skills-mcp', 'host'), ['.js'])
+  const hostFiles = collect(join(root, 'src', 'modules', 'skills-mcp', 'host'), ['.ts'])
   const hostOutput = runTsc(root, [
     '--noEmit', '--allowJs', '--checkJs', '--target', 'es2022', '--module', 'esnext',
     '--moduleResolution', 'bundler', '--skipLibCheck', '--lib', 'es2022',
@@ -72,10 +72,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // The client half is JSX and the TDZ class (used before declaration) is what
   // once rendered a blank panel, so every client module is checked, not just the
   // entry. The dev scripts are checked too: a broken checker misleads by silence.
-  const clientFiles = collect(join(root, 'src', 'modules', 'skills-mcp', 'client'), ['.js', '.jsx'])
+  const clientFiles = collect(join(root, 'src', 'modules', 'skills-mcp', 'client'), ['.ts', '.tsx'])
   // 通知模块没有 TypeScript 侧，同样的「未定义名字」风险只能靠这项检查兜住
   // （它此前抓到过 index.jsx 里漏 import 的配置命名空间常量）。
-  const notificationFiles = collect(join(root, 'src', 'modules', 'notification', 'client'), ['.js', '.jsx'])
+  const notificationFiles = collect(join(root, 'src', 'modules', 'notification', 'client'), ['.ts', '.tsx'])
   const scriptFiles = collect(here, ['.mjs'])
   const clientOutput = runTsc(root, [
     '--noEmit', '--allowJs', '--checkJs', '--target', 'es2022', '--module', 'esnext',
@@ -94,6 +94,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const item of found.slice(0, 10)) console.log('    ' + item.line)
     process.exit(1)
   }
-  console.log('  ✓ 未定义名字检查通过（tsc --checkJs，已排除纯环境名）')
+  console.log('  ✓ 未定义名字检查通过（tsc，已排除纯环境名）')
   process.exit(0)
 }

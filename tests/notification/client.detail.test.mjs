@@ -6,7 +6,7 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { displayTitleOf, sessionDetailOf } from '../../src/modules/notification/client/detail.js'
+import { displayTitleOf, sessionDetailOf } from '../../src/modules/notification/client/detail.ts'
 
 /** store 形状的对话快照（宿主 ui-chat 的形状）。 */
 function chatStore(nodes) {

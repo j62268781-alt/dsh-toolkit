@@ -19,11 +19,11 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseDocument } from 'yaml'
-import { applyRowOp, setPatchIO } from '../../src/modules/skills-mcp/host/patch/apply.js'
-import { serverRows } from '../../src/modules/skills-mcp/host/mcp/serverRows.js'
-import { stdioMountConfig } from '../../src/modules/skills-mcp/host/project/mount.js'
-import { bundledRuntime } from '../../src/modules/skills-mcp/host/runtime/env.js'
-import { addServerOp, draftFromRow } from '../../src/modules/skills-mcp/client/crud/servers.js'
+import { applyRowOp, setPatchIO } from '../../src/modules/skills-mcp/host/patch/apply.ts'
+import { serverRows } from '../../src/modules/skills-mcp/host/mcp/serverRows.ts'
+import { stdioMountConfig } from '../../src/modules/skills-mcp/host/project/mount.ts'
+import { bundledRuntime } from '../../src/modules/skills-mcp/host/runtime/env.ts'
+import { addServerOp, draftFromRow } from '../../src/modules/skills-mcp/client/crud/servers.ts'
 
 async function scratch() {
   const dir = await mkdtemp(join(tmpdir(), 'smp-rt-'))

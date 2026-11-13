@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
-import { IMPORT_SOURCES, adaptImportedEntry, importFilePath, parseJsonLoose } from '../../src/modules/skills-mcp/host/import/sources.js'
+import { IMPORT_SOURCES, adaptImportedEntry, importFilePath, parseJsonLoose } from '../../src/modules/skills-mcp/host/import/sources.ts'
 
 test('来源表：26 项、id 唯一、字段齐备', () => {
   assert.equal(IMPORT_SOURCES.length, 26)

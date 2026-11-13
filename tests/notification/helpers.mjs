@@ -2,7 +2,7 @@
  * notification 模块测试的共享夹具。
  *
  * 三件事：
- *  1. 用主 bundle 同款的 jsxFactory 把 `src/modules/notification/client/index.jsx` 现场打成
+ *  1. 用主 bundle 同款的 jsxFactory 把 `src/modules/notification/client/index.tsx` 现场打成
  *     ESM（node 不能直接 import `.css`，CSS 走 esbuild 的 text loader）；
  *  2. 一套 jsdom 全局的安装/还原；
  *  3. 一个「够真」的假 ctx：effect/locale/slots/configForms + sessions/uiSession/
@@ -12,8 +12,8 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { JSDOM } from 'jsdom'
 import { build } from 'esbuild'
 import React from 'react'
-import { DEFAULT_SETTINGS } from '../../src/modules/notification/client/model.js'
-import { NOTIFICATION_COPY } from '../../src/modules/notification/client/locale.js'
+import { DEFAULT_SETTINGS } from '../../src/modules/notification/client/model.ts'
+import { NOTIFICATION_COPY } from '../../src/modules/notification/client/locale.ts'
 
 /** 与 scripts/build-client.mjs 一致：JSX 走全局 __dshReact。 */
 export async function loadClientEntry(entry, name) {
@@ -26,7 +26,7 @@ export async function loadClientEntry(entry, name) {
     external: ['react', 'react/*', '@deepseek-ai/*'],
     jsxFactory: '__dshReact.createElement',
     jsxFragment: '__dshReact.Fragment',
-    loader: { '.js': 'jsx', '.css': 'text' },
+    loader: {  '.ts': 'ts', '.tsx': 'tsx','.js': 'jsx', '.css': 'text' },
     write: false,
     logLevel: 'silent',
   })
@@ -38,7 +38,7 @@ export async function loadClientEntry(entry, name) {
 
 /** 客户端半（index.jsx）的打包入口。 */
 export function loadNotificationModule(name = 'notification-client') {
-  return loadClientEntry('src/modules/notification/client/index.jsx', name)
+  return loadClientEntry('src/modules/notification/client/index.tsx', name)
 }
 
 /** 安装 jsdom 全局；返回 restore()。 */

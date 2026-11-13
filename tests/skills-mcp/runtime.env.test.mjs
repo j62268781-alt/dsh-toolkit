@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { access, unlink } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
-import { bundledRuntime, commandEnv, parseEnv, resolveCommand, spawnEnv, splitArgs } from '../../src/modules/skills-mcp/host/runtime/env.js'
+import { bundledRuntime, commandEnv, parseEnv, resolveCommand, spawnEnv, splitArgs } from '../../src/modules/skills-mcp/host/runtime/env.ts'
 
 test('parseEnv：KEY=VALUE 逐行解析，忽略空行与注释', () => {
   assert.deepEqual(parseEnv('A=1\n\n# c\nB=two=3'), { A: '1', B: 'two=3' })

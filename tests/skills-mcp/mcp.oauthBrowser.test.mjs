@@ -11,7 +11,7 @@ import {
   browserLaunchCommand,
   openErrorText,
   openExternalUrl,
-} from '../../src/modules/skills-mcp/host/mcp/oauth/browser.js'
+} from '../../src/modules/skills-mcp/host/mcp/oauth/browser.ts'
 
 test('browserLaunchCommand：三个平台的启动命令', () => {
   assert.deepEqual(browserLaunchCommand('darwin'), { command: 'open', args: [] })

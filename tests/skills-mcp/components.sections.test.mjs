@@ -6,7 +6,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { emptyMcpText, emptySearchText, emptySkillText } from '../../src/modules/skills-mcp/client/components/sections.js'
+import { emptyMcpText, emptySearchText, emptySkillText } from '../../src/modules/skills-mcp/client/components/sections.ts'
 
 test('技能空态：无标签时自成一句，不留前导空格', () => {
   const text = emptySkillText('')

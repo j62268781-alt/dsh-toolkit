@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { test } from 'node:test'
-import { encode } from '../../src/modules/remote/client/qrcode.js'
+import { encode } from '../../src/modules/remote/client/qrcode.ts'
 
 const require = createRequire(import.meta.url)
 

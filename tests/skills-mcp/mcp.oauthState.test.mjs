@@ -11,7 +11,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { randomToken, singleParams, stateMatches } from '../../src/modules/skills-mcp/host/mcp/oauth/state.js'
+import { randomToken, singleParams, stateMatches } from '../../src/modules/skills-mcp/host/mcp/oauth/state.ts'
 
 test('stateMatches：相等才为 true，且大小写/前后空白都算不同', () => {
   const value = 'abcDEF123-_'

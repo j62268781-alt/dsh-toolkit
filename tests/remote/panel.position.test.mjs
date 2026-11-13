@@ -17,7 +17,7 @@ import { JSDOM } from 'jsdom'
 import { build } from 'esbuild'
 import React, { act } from 'react'
 
-import { POPOVER_GAP, POPOVER_MARGIN, placePopover } from '../../src/modules/remote/client/position.js'
+import { POPOVER_GAP, POPOVER_MARGIN, placePopover } from '../../src/modules/remote/client/position.ts'
 
 const VIEWPORT = { width: 1264, height: 785 }
 /** 侧栏底部的图标按钮：32×32，左下角。 */
@@ -90,14 +90,14 @@ test('placePopover: 还没量到锚点/尺寸时退化到安全落点', () => {
 
 async function loadPanel() {
   const result = await build({
-    entryPoints: ['src/modules/remote/client/panel.jsx'],
+    entryPoints: ['src/modules/remote/client/panel.tsx'],
     bundle: true,
     format: 'esm',
     platform: 'node',
     target: 'es2022',
     external: ['react', 'react/*', 'react-dom', 'react-dom/*'],
     jsx: 'automatic',
-    loader: { '.jsx': 'jsx', '.js': 'jsx', '.css': 'text' },
+    loader: {  '.ts': 'ts', '.tsx': 'tsx','.jsx': 'jsx', '.js': 'jsx', '.css': 'text' },
     write: false,
     logLevel: 'silent',
   })

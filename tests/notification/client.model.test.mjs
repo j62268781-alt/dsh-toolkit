@@ -9,8 +9,8 @@ import { test } from 'node:test'
 import {
   CONFIG_NS, CURRENT_MODES, DEFAULT_SETTINGS, DEFAULT_SOUND, FIELDS, KINDS, SCOPES, SOUNDS,
   isKind, isSound, notificationBody, readSettings, relativeTime, resolveSettings, safeSnapshot, truncate,
-} from '../../src/modules/notification/client/model.js'
-// 根 schema 只从构建产物读：`src/host/config.js` 引用的是编译后的 host TS 模块。
+} from '../../src/modules/notification/client/model.ts'
+// 根 schema 只从构建产物读：`src/host/config.ts` 引用的是编译后的 host TS 模块。
 import { Config } from '../../lib/index.js'
 
 /** 简单的 t：只回填占位符，用来断言正文与时间文案。 */

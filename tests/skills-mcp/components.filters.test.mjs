@@ -1,7 +1,7 @@
 /** components/filters 接口测试：名称搜索、计数标签、scope 过滤。 */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { filterByName, matchesName, serversForScope, tabLabel } from '../../src/modules/skills-mcp/client/components/filters.js'
+import { filterByName, matchesName, serversForScope, tabLabel } from '../../src/modules/skills-mcp/client/components/filters.ts'
 
 test('matchesName：只按名称、忽略大小写、空查询全通过', () => {
   assert.equal(matchesName('Demo-Skill', 'demo'), true)

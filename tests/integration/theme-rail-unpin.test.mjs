@@ -12,8 +12,8 @@ async function load(entry) {
   })
   return import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`)
 }
-const { installRailTitles } = await load('src/modules/theme/client/rail.js')
-const { installRailUnpin } = await load('src/modules/theme/client/rail-unpin.js')
+const { installRailTitles } = await load('src/modules/theme/client/rail.ts')
+const { installRailUnpin } = await load('src/modules/theme/client/rail-unpin.ts')
 
 const entry = (markup) => `<div class="kB3qhq_panelEntry kB3qhq_panelEntryWide">${markup}</div>`
 

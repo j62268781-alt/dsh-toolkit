@@ -12,7 +12,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { AUTH_KIND, authDetailText, classifyAuthChallenge, parseWwwAuthenticate } from '../../src/modules/skills-mcp/host/mcp/auth.js'
+import { AUTH_KIND, authDetailText, classifyAuthChallenge, parseWwwAuthenticate } from '../../src/modules/skills-mcp/host/mcp/auth.ts'
 
 test('parseWwwAuthenticate：只认 Bearer，字段带引号或不带都能读', () => {
   const full = parseWwwAuthenticate(

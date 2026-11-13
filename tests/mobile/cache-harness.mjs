@@ -5,13 +5,13 @@ import { tmpdir } from "node:os";
 import net from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { Singleflight } from "../../src/host/singleflight.js";
-import { Mobilecli, MobilecliError } from "../../src/modules/mobile/host/device/mobilecli.js";
-import { AdbProbe } from "../../src/modules/mobile/host/device/android-toolchain.js";
-import { callDaemon, DaemonRpc, isSafeCliFallbackError } from "../../src/modules/mobile/host/device/daemon-rpc.js";
-import { createScreenSizeLookup } from "../../src/modules/mobile/host/stream/screen-size.js";
-import { createMobileLoopTool } from "../../src/modules/mobile/host/agent/tools.js";
-import { createUseH264Canvas } from "../../src/modules/mobile/client/stream/use-h264-canvas.js";
+import { Singleflight } from "../../src/host/singleflight.ts";
+import { Mobilecli, MobilecliError } from "../../src/modules/mobile/host/device/mobilecli.ts";
+import { AdbProbe } from "../../src/modules/mobile/host/device/android-toolchain.ts";
+import { callDaemon, DaemonRpc, isSafeCliFallbackError } from "../../src/modules/mobile/host/device/daemon-rpc.ts";
+import { createScreenSizeLookup } from "../../src/modules/mobile/host/stream/screen-size.ts";
+import { createMobileLoopTool } from "../../src/modules/mobile/host/agent/tools.ts";
+import { createUseH264Canvas } from "../../src/modules/mobile/client/stream/use-h264-canvas.ts";
 
 const deferred = () => {
   let resolve, reject;
@@ -356,7 +356,7 @@ export async function runMobileCacheTests(test) {
 
   await test("Mobile status waits for completion and aborts late unmounted results", async () => {
     const { build } = await import("esbuild");
-    const output = await build({ entryPoints: [fileURLToPath(new URL("../../src/modules/mobile/client/panel.jsx", import.meta.url))],
+    const output = await build({ entryPoints: [fileURLToPath(new URL("../../src/modules/mobile/client/panel.tsx", import.meta.url))],
       bundle: true, write: false, format: "esm", platform: "node", target: "es2022", jsxFactory: "h", jsxFragment: "Fragment", logLevel: "silent" });
     const { createMobilePanel } = await import(`data:text/javascript;base64,${Buffer.from(output.outputFiles[0].text).toString("base64")}`);
     const effects = [], writes = [], work = [], timers = clock();

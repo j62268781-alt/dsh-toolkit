@@ -7,8 +7,8 @@ import { pathToFileURL } from 'node:url'
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { JSDOM } from 'jsdom'
-import { apply as applyHost } from '../../src/modules/boot/host/index.js'
-import { createBootScene, createPreviewDocument } from '../../src/modules/boot/host/scene.js'
+import { apply as applyHost } from '../../src/modules/boot/host/index.ts'
+import { createBootScene, createPreviewDocument } from '../../src/modules/boot/host/scene.ts'
 
 const sourceAssets = {
   css: await readFile(new URL('../../src/modules/boot/host/boot.css', import.meta.url), 'utf8'),
@@ -18,7 +18,7 @@ const sourceAssets = {
 
 const panelBundle = `node_modules/.cache/boot-panel-test-${process.pid}.mjs`
 const builtPanel = await build({
-  entryPoints: ['src/modules/boot/client/index.jsx'], bundle: true, platform: 'node', format: 'esm',
+  entryPoints: ['src/modules/boot/client/index.tsx'], bundle: true, platform: 'node', format: 'esm',
   target: 'node20', external: ['react', 'react/*'], jsxFactory: '__dshReact.createElement',
   jsxFragment: '__dshReact.Fragment', loader: { '.css': 'text', '.html': 'text' }, write: false, logLevel: 'silent',
 })

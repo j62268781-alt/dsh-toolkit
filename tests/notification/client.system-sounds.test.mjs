@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { SystemSoundPlayer, loadSystemSounds } from '../../src/modules/notification/client/system-sounds.js'
+import { SystemSoundPlayer, loadSystemSounds } from '../../src/modules/notification/client/system-sounds.ts'
 
 function environment(t, fetcher) {
   const original = new Map(['fetch', 'AudioContext'].map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]))

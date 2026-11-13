@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { RUNTIME_PATH, registerRuntimeRoute } from '../../src/modules/skills-mcp/host/mcp/runtime.js'
-import { ROWS_PATH, registerRowRoute } from '../../src/modules/skills-mcp/host/mcp/rows.js'
-import { RECONNECT_PATH, registerReconnectRoute } from '../../src/modules/skills-mcp/host/mcp/reconnect.js'
-import { IMPORT_PATH, registerImportRoute } from '../../src/modules/skills-mcp/host/import/route.js'
-import { SKILLS_PATH, registerSkillRoute } from '../../src/modules/skills-mcp/host/skills/route.js'
-import { SKILL_READ_PATH, registerSkillReadRoute } from '../../src/modules/skills-mcp/host/skills/read.js'
-import { OAUTH_PATH, registerOAuthRoute } from '../../src/modules/skills-mcp/host/mcp/oauth/route.js'
+import { RUNTIME_PATH, registerRuntimeRoute } from '../../src/modules/skills-mcp/host/mcp/runtime.ts'
+import { ROWS_PATH, registerRowRoute } from '../../src/modules/skills-mcp/host/mcp/rows.ts'
+import { RECONNECT_PATH, registerReconnectRoute } from '../../src/modules/skills-mcp/host/mcp/reconnect.ts'
+import { IMPORT_PATH, registerImportRoute } from '../../src/modules/skills-mcp/host/import/route.ts'
+import { SKILLS_PATH, registerSkillRoute } from '../../src/modules/skills-mcp/host/skills/route.ts'
+import { SKILL_READ_PATH, registerSkillReadRoute } from '../../src/modules/skills-mcp/host/skills/read.ts'
+import { OAUTH_PATH, registerOAuthRoute } from '../../src/modules/skills-mcp/host/mcp/oauth/route.ts'
 
 const routes = [
   { path: RUNTIME_PATH, register: (ctx, reject) => registerRuntimeRoute(ctx, reject) },

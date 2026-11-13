@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import React from 'react'
-import { skillPreviewDialog } from '../../src/modules/skills-mcp/client/components/skillPreview.jsx'
+import { skillPreviewDialog } from '../../src/modules/skills-mcp/client/components/skillPreview.tsx'
 
 globalThis.__dshReact = React
 

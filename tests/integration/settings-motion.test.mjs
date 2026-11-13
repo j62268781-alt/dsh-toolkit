@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { JSDOM } from 'jsdom'
-import { createSettingsMotion } from '../../src/modules/theme/client/settings-motion.js'
+import { createSettingsMotion } from '../../src/modules/theme/client/settings-motion.ts'
 
 const FRAMES = [
   { transform: 'translateY(100%)', opacity: 0 },

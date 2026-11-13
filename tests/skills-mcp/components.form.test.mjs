@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import {
   HINTS, fieldApplies, isValidName, serverFieldDefs, skillFieldDefs,
   validateServerDraft, validateSkillDraft,
-} from '../../src/modules/skills-mcp/client/components/form.js'
+} from '../../src/modules/skills-mcp/client/components/form.ts'
 
 test('文案被固定住：名称提示与环境变量示例', () => {
   assert.equal(HINTS.serverName, '例如 context7，最多 32 字符')

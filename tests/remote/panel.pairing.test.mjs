@@ -33,14 +33,14 @@ let panelModule
 async function loadPanel() {
   if (panelModule !== undefined) return panelModule
   const result = await build({
-    entryPoints: ['src/modules/remote/client/panel.jsx'],
+    entryPoints: ['src/modules/remote/client/panel.tsx'],
     bundle: true,
     format: 'esm',
     platform: 'node',
     target: 'es2022',
     external: ['react', 'react/*', 'react-dom', 'react-dom/*'],
     jsx: 'automatic',
-    loader: { '.jsx': 'jsx', '.js': 'jsx', '.css': 'text' },
+    loader: {  '.ts': 'ts', '.tsx': 'tsx','.jsx': 'jsx', '.js': 'jsx', '.css': 'text' },
     write: false,
     logLevel: 'silent',
   })

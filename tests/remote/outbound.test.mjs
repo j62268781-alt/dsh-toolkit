@@ -7,15 +7,15 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { MESSAGE_STATE, MESSAGE_TYPE, createIlinkApi } from '../../src/modules/remote/host/wechat/api.js'
-import { approvalPrompt, createApprovals, parseApprovalAnswer } from '../../src/modules/remote/host/wechat/approvals.js'
-import { helpText, isKnownCommand, parseCommand } from '../../src/modules/remote/host/wechat/commands.js'
+import { MESSAGE_STATE, MESSAGE_TYPE, createIlinkApi } from '../../src/modules/remote/host/wechat/api.ts'
+import { approvalPrompt, createApprovals, parseApprovalAnswer } from '../../src/modules/remote/host/wechat/approvals.ts'
+import { helpText, isKnownCommand, parseCommand } from '../../src/modules/remote/host/wechat/commands.ts'
 import {
   MAX_OUTBOUND_TEXT_BYTES,
   prepareOutboundText,
   truncateUtf8,
-} from '../../src/modules/remote/host/wechat/markdown.js'
-import { encryptAesEcb } from '../../src/modules/remote/host/wechat/media.js'
+} from '../../src/modules/remote/host/wechat/markdown.ts'
+import { encryptAesEcb } from '../../src/modules/remote/host/wechat/media.ts'
 
 const BASE_URL = 'https://ilinkai.weixin.qq.com'
 const TOKEN = 'tibdr-unit-token'

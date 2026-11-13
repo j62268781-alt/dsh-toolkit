@@ -12,7 +12,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { SKILLS_PATH, registerSkillRoute } from '../../src/modules/skills-mcp/host/skills/route.js'
+import { SKILLS_PATH, registerSkillRoute } from '../../src/modules/skills-mcp/host/skills/route.ts'
 
 /**
  * 等价的本地校验函数，**刻意不 import 宿主的 schemastery**。

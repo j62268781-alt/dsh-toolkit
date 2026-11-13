@@ -1,7 +1,7 @@
 /** crud/import 接口测试：同名跳过、请求构造、按钮文案。 */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { importLabel, importRequest, nextNonce, splitImport, takenNames } from '../../src/modules/skills-mcp/client/crud/import.js'
+import { importLabel, importRequest, nextNonce, splitImport, takenNames } from '../../src/modules/skills-mcp/client/crud/import.ts'
 
 const rows = [{ serverName: 'context7' }, { serverName: 'github' }]
 const found = [

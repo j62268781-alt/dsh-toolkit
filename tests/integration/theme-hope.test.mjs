@@ -3,9 +3,9 @@ import { readFile } from 'node:fs/promises'
 import { after, before, describe, test } from 'node:test'
 import { JSDOM } from 'jsdom'
 
-import { createHopeScene, updateHopeSceneTime } from '../../src/modules/theme/client/scenes/hope.js'
+import { createHopeScene, updateHopeSceneTime } from '../../src/modules/theme/client/scenes/hope.ts'
 
-const SCENE_URL = new URL('../../src/modules/theme/client/scenes/hope.js', import.meta.url)
+const SCENE_URL = new URL('../../src/modules/theme/client/scenes/hope.ts', import.meta.url)
 const CSS_URL = new URL('../../src/modules/theme/client/styles/hope.css', import.meta.url)
 const SCOPE = 'html[data-sk-palette="hope"]'
 const PREVIEW_SCOPE = '[data-preview-palette="hope"]'

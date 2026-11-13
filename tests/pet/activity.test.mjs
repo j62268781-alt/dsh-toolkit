@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createActivityFeed } from '../../src/modules/pet/host/activity.js'
+import { createActivityFeed } from '../../src/modules/pet/host/activity.ts'
 
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
 const row = (sessionId, fields = {}, values = {}) => ({ sessionId, blank: false, running: false, updatedAt: Date.now() - 60_000, ...fields, projections: { kind: 'sequenced', asOfSeq: 1, values } })

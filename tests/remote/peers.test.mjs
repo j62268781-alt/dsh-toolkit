@@ -9,7 +9,7 @@ import {
   readTrustedPeers,
   serverScope,
   trustedPeersPath,
-} from '../../src/modules/remote/host/mobile/peers.js'
+} from '../../src/modules/remote/host/mobile/peers.ts'
 
 // 这三个目录名是真实机器上 ds-harness-remote 的落盘结果（配对服务器 / 本地验证服）。
 // 哈希算法必须和上游 identity-store 一致，否则读不到同伴文件。

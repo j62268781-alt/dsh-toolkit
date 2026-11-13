@@ -7,7 +7,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { TOOL_READ_REASONS, toolReasonText, toolsByServer } from '../../src/modules/skills-mcp/host/mcp/tools.js'
+import { TOOL_READ_REASONS, toolReasonText, toolsByServer } from '../../src/modules/skills-mcp/host/mcp/tools.ts'
 
 /** A fake ctx exposing just the `tools` service the function reads. */
 function ctxWith(schemas, { throwOnGet = false, throwOnSchemas = false, noService = false, noApi = false } = {}) {

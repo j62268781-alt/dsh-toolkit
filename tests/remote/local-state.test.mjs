@@ -16,7 +16,7 @@ import {
   purgePairingState,
   readPairingHostOnly,
   serverStateDir,
-} from '../../src/modules/remote/host/mobile/local-state.js'
+} from '../../src/modules/remote/host/mobile/local-state.ts'
 
 const SERVER = 'https://dsh.r2049.cn'
 const SCOPE = 'e9988d504cda7c1541adafcc'

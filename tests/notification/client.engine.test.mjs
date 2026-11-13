@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { NotificationEngine } from '../../src/modules/notification/client/engine.js'
+import { NotificationEngine } from '../../src/modules/notification/client/engine.ts'
 
 /** 一次列表快照。 */
 function list(rows) {

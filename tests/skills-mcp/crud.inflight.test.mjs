@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   DEFAULT_TIMEOUT, UPDATE_GRACE, hasSettled, isPending, markInflight, pendingAdds, pendingLabel, settleInflight,
-} from '../../src/modules/skills-mcp/client/crud/inflight.js'
+} from '../../src/modules/skills-mcp/client/crud/inflight.ts'
 
 const rows = [{ entryId: 'include:mcp-a', serverName: 'a', enabled: true }]
 

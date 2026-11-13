@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { acceptConfigWrite } from '../../src/client/config-write.js'
-import { createLatestTask } from '../../src/client/latest-task.js'
-import { startPolling } from '../../src/client/poll.js'
-import { fetchJson } from '../../src/client/http.js'
-import { anchorStyle, listenMenuDismiss, measureMenuAnchor } from '../../src/client/ui/menu.js'
+import { acceptConfigWrite } from '../../src/client/config-write.ts'
+import { createLatestTask } from '../../src/client/latest-task.ts'
+import { startPolling } from '../../src/client/poll.ts'
+import { fetchJson } from '../../src/client/http.ts'
+import { anchorStyle, listenMenuDismiss, measureMenuAnchor } from '../../src/client/ui/components/menu/index.ts'
 
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done }); return { promise, resolve } }
 

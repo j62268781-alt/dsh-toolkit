@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import React from 'react'
 import { JSDOM } from 'jsdom'
-import { ThemeCenterPanel } from '../../src/modules/theme/client/settings-theme.jsx'
+import { ThemeCenterPanel } from '../../src/modules/theme/client/settings-theme.tsx'
 
 async function renderPanel(t, { palette = 'ocean', preference = 'light', writable = true, save } = {}) {
   const dom = new JSDOM('<html><body><div id="root"></div></body></html>')

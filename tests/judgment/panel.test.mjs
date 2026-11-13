@@ -21,7 +21,7 @@ async function loadModule(entry) {
     target: 'es2022',
     external: ['react', 'react/*', 'react-dom', 'react-dom/*', '@deepseek-ai/*'],
     jsx: 'automatic',
-    loader: { '.jsx': 'jsx', '.js': 'jsx', '.css': 'text' },
+    loader: {  '.ts': 'ts', '.tsx': 'tsx','.jsx': 'jsx', '.js': 'jsx', '.css': 'text' },
     write: false,
     logLevel: 'silent',
   })
@@ -32,7 +32,7 @@ async function loadModule(entry) {
 }
 
 function loadPanel() {
-  return loadModule('client/panel.jsx')
+  return loadModule('client/panel.tsx')
 }
 
 function fakeForm(value) {
@@ -172,7 +172,7 @@ test('样式随页面注入，且类名不与他插件共用', async () => {
 /* ─────────────────── 删除确认：交给 DSH 自带的 Modal ─────────────────── */
 
 test('删除确认把标题/关闭/两个按钮交给宿主 Modal（与内置页面同一个弹窗）', async () => {
-  const { ConfirmDialog } = await loadModule('client/dialog.jsx')
+  const { ConfirmDialog } = await loadModule('client/dialog.tsx')
   const seen = []
   function StubModal(props) {
     seen.push(props)
@@ -201,7 +201,7 @@ test('删除确认把标题/关闭/两个按钮交给宿主 Modal（与内置页
 })
 
 test('删除确认：失败原因与进行中状态都留在弹窗里，不静默关掉', async () => {
-  const { ConfirmDialog } = await loadModule('client/dialog.jsx')
+  const { ConfirmDialog } = await loadModule('client/dialog.tsx')
   function StubModal(props) { return React.createElement('div', null, props.description, props.footer) }
 
   const html = renderToStaticMarkup(ConfirmDialog({
@@ -219,7 +219,7 @@ test('删除确认：失败原因与进行中状态都留在弹窗里，不静�
 })
 
 test('拿不到官方 Modal 时不渲染弹窗（调用方退回原生 confirm）', async () => {
-  const { ConfirmDialog } = await loadModule('client/dialog.jsx')
+  const { ConfirmDialog } = await loadModule('client/dialog.tsx')
   const dialog = { kind: 'connection', label: 'x', note: 'n' }
   const noop = () => {}
   assert.equal(ConfirmDialog({ dialog, primitives: null, onCancel: noop, onConfirm: noop }), null)

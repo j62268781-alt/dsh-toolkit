@@ -9,7 +9,7 @@ import { actionArgs, isSupportedVersion, nativeBinaryName, nativeSiblingPath, re
 import { FOLLOW_UP_VERBS, MAX_CLICK_CANDIDATES, SELECT_OPTION_CAP, activeClauseOf, addToCartTarget, bestEmptyInputForGoal, candidatesFromExtracted, candidatesOf, diffCandidates, disabledTargetWithoutUnlock, fieldName, filterStateMatchesGoal, goalMentions, groupOutlineOf, inputMatchesOf, inputsApplied, isAlreadySatisfied, isTargetToggleCandidate, matchInputValue, ordinalWidgetTargetOf, pendingFieldOf, questionsOf, rankByGoal, requiresPrimaryContentTarget, scopeCandidatesOf, selectOptionQuestion, soleValueFor, specificallyNamed, stateOf, urlChangeMatchesGoal } from '../../lib/modules/browser/host/task.js'
 import { parseExtracted, stripBoundaries } from '../../lib/modules/browser/host/extract.js'
 import { parseSkillFile, pluginNote } from '../../lib/modules/browser/host/skill.js'
-import { parseDomains } from '../../src/modules/browser/client/config.js'
+import { parseDomains } from '../../src/modules/browser/client/config.ts'
 
 test('动作 → CLI 参数：每个动作都拼对，缺参数就地拒绝', () => {
   assert.deepEqual(actionArgs('click', '@e2'), ['click', '@e2'])

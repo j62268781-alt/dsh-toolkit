@@ -31,7 +31,7 @@ async function loadModule(entry) {
     target: 'es2022',
     external: ['react', 'react/*', 'react-dom', 'react-dom/*', '@deepseek-ai/*'],
     jsx: 'automatic',
-    loader: { '.jsx': 'jsx', '.js': 'jsx', '.css': 'text' },
+    loader: {  '.ts': 'ts', '.tsx': 'tsx','.jsx': 'jsx', '.js': 'jsx', '.css': 'text' },
     write: false,
     logLevel: 'silent',
   })
@@ -145,7 +145,7 @@ const waitDomValue = (document, selector, expected, label = selector) => waitFor
 )
 
 test('点「增加毫秒」真的写回宿主：30000 → 30100', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const form = fakeForm(VALUE)
   const view = await mount(Panel, {
     form, entryId: 'agent-browser', primitives: undefined, settings: undefined, hasDocument: false, browser: undefined,
@@ -165,7 +165,7 @@ test('点「增加毫秒」真的写回宿主：30000 → 30100', async () => {
 })
 
 test('点「减少毫秒」真的写回宿主：30000 → 29900', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const form = fakeForm(VALUE)
   const view = await mount(Panel, {
     form, entryId: 'agent-browser', primitives: undefined, settings: undefined, hasDocument: false, browser: undefined,
@@ -181,7 +181,7 @@ test('点「减少毫秒」真的写回宿主：30000 → 29900', async () => {
 })
 
 test('输入框里打精确毫秒：回车提交并夹到区间', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const form = fakeForm(VALUE)
   const view = await mount(Panel, {
     form, entryId: 'agent-browser', primitives: undefined, settings: undefined, hasDocument: false, browser: undefined,
@@ -202,7 +202,7 @@ test('输入框里打精确毫秒：回车提交并夹到区间', async () => {
 })
 
 test('空闲超时选「自定义」把预设折算成毫秒写进去；选回预设写回 CLI 写法', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const form = fakeForm({ ...VALUE, browser: { ...VALUE.browser, idleTimeout: '30m' } })
   const view = await mount(Panel, {
     form, entryId: 'agent-browser', primitives: undefined, browser: undefined,
@@ -223,7 +223,7 @@ test('空闲超时选「自定义」把预设折算成毫秒写进去；选回�
 })
 
 test('开关也走同一条写入路径（对照组）', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const form = fakeForm(VALUE)
   const view = await mount(Panel, {
     form, entryId: 'agent-browser', primitives: undefined, settings: undefined, hasDocument: false, browser: undefined,
@@ -241,7 +241,7 @@ test('开关也走同一条写入路径（对照组）', async () => {
 })
 
 test('宿主静默拒绝（set resolve false）时必须报错，不能假装成功', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const form = fakeForm(VALUE)
   form.set = async () => false // 宿主拒绝：resolve false 而不是 throw
   const view = await mount(Panel, {
@@ -289,7 +289,7 @@ const probeWith = (judgment) => ({
 })
 
 test('决策：依赖缺失时开关置灰，并说清"需要 dsh-judgment"', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const view = await mount(Panel, {
     form: fakeForm(VALUE), entryId: 'agent-browser', primitives: undefined, browser: probeWith(false),
   })
@@ -306,7 +306,7 @@ test('决策：依赖缺失时开关置灰，并说清"需要 dsh-judgment"', as
 })
 
 test('决策：依赖在时开关可点（置灰条件不能误伤）', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const view = await mount(Panel, {
     form: fakeForm(VALUE), entryId: 'agent-browser', primitives: undefined, browser: probeWith(true),
   })
@@ -320,7 +320,7 @@ test('决策：依赖在时开关可点（置灰条件不能误伤）', async ()
 })
 
 test('决策：配置里已开启但依赖缺失 → 明确报错（不是只有一个灰开关）', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const onConfig = { ...VALUE, tools: { ...VALUE.tools, decision: true } }
   const view = await mount(Panel, {
     form: fakeForm(onConfig), entryId: 'agent-browser', primitives: undefined, browser: probeWith(false),
@@ -339,7 +339,7 @@ test('决策：配置里已开启但依赖缺失 → 明确报错（不是只有
  * 依赖检查是**四态**的，而且"确认不了"也算不许开启（之前的漏洞：未知 → 放行）。
  */
 test('决策：自检还没回来（checking）→ 先不许开启', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const view = await mount(Panel, {
     form: fakeForm(VALUE), entryId: 'agent-browser', primitives: undefined,
     browser: { probe: () => new Promise(() => {}) }, // 永不 resolve
@@ -354,7 +354,7 @@ test('决策：自检还没回来（checking）→ 先不许开启', async () =>
 })
 
 test('决策：host 半是旧码（载荷版本不匹配）→ 也不许开启', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const view = await mount(Panel, {
     form: fakeForm(VALUE), entryId: 'agent-browser', primitives: undefined,
     browser: {
@@ -373,7 +373,7 @@ test('决策：host 半是旧码（载荷版本不匹配）→ 也不许开启',
 })
 
 test('决策：开启前向宿主现问一次依赖，宿主说没有 → 不写配置并报错', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const form = fakeForm(VALUE)
   const browser = {
     ...probeWith(true),
@@ -399,7 +399,7 @@ test('决策：开启前向宿主现问一次依赖，宿主说没有 → 不写
  * 现在：首次结果出来之前页面上不出现任何提示，且第一次 probe 失败会安静重试一次。
  */
 test('首次 probe 失败一次 → 安静重试，页面上从不出现红字', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   let calls = 0
   const browser = {
     async probe() {
@@ -439,7 +439,7 @@ test('首次 probe 失败一次 → 安静重试，页面上从不出现红字',
 })
 
 test('自检还没回来时，页面上不显示"还没有检查过"之类的占位文字', async () => {
-  const { Panel } = await loadModule('client/panel.jsx')
+  const { Panel } = await loadModule('client/panel.tsx')
   const browser = { probe: () => new Promise(() => {}) } // 永不返回
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
   globalThis.window = dom.window

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { discoverSkills, parseFrontmatter, skillRootsFor } from '../../src/modules/skills-mcp/host/skills/discover.js'
+import { discoverSkills, parseFrontmatter, skillRootsFor } from '../../src/modules/skills-mcp/host/skills/discover.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'smp-discover-'))
 const project = join(root, 'proj')

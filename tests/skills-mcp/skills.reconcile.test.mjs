@@ -4,8 +4,8 @@ import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { NAME, LEGACY_NAME } from '../../src/modules/skills-mcp/host/identity.js'
-import { readState, reconcileSkills, scopeRoot } from '../../src/modules/skills-mcp/host/skills/reconcile.js'
+import { NAME, LEGACY_NAME } from '../../src/modules/skills-mcp/host/identity.ts'
+import { readState, reconcileSkills, scopeRoot } from '../../src/modules/skills-mcp/host/skills/reconcile.ts'
 
 const home = mkdtempSync(join(tmpdir(), 'smp-skills-'))
 process.env.DSH_HOME = home

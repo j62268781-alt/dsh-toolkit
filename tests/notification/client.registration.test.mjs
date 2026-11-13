@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import React, { act } from 'react'
-import { NOTIFICATION_COPY, NOTIFICATION_NS } from '../../src/modules/notification/client/locale.js'
+import { NOTIFICATION_COPY, NOTIFICATION_NS } from '../../src/modules/notification/client/locale.ts'
 import {
   chatSnapshot, createFakeContext, createNotificationStub, createSoundFetchStub,
   loadNotificationModule, makeDom, mountComponent, sleep,

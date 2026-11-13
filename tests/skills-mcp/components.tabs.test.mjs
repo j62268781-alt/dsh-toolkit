@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import React from 'react'
-import { TAB_ITEMS, tabStrip } from '../../src/modules/skills-mcp/client/components/tabs.jsx'
+import { TAB_ITEMS, tabStrip } from '../../src/modules/skills-mcp/client/components/tabs.tsx'
 
 globalThis.__dshReact = React
 

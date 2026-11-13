@@ -12,7 +12,7 @@ import assert from 'node:assert/strict'
 import {
   GLOBAL_SCOPE, loaderManagedServers, phaseOf, projectServersFor, scopeCovers,
   serverFromRow, serverRows, serverSetKey,
-} from '../../src/modules/skills-mcp/host/mcp/serverRows.js'
+} from '../../src/modules/skills-mcp/host/mcp/serverRows.ts'
 
 const MCP = '@deepseek-ai/dsh-mcp-client'
 

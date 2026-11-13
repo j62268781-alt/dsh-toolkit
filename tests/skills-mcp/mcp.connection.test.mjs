@@ -4,7 +4,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { CONNECTION_DEFAULTS, CONNECTION_DRAFT_DEFAULTS, connectionDraftOf, connectionFields } from '../../src/modules/skills-mcp/host/mcp/connection.js'
+import { CONNECTION_DEFAULTS, CONNECTION_DRAFT_DEFAULTS, connectionDraftOf, connectionFields } from '../../src/modules/skills-mcp/host/mcp/connection.ts'
 
 test('connectionFields：没填的 reconnect 写**显式默认值**，不再省略', () => {
   /**

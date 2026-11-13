@@ -7,9 +7,9 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { NotificationDispatcher, SOUND_WINDOW } from '../../src/modules/notification/client/dispatch.js'
-import { TAG_LIMIT, notificationTag } from '../../src/modules/notification/client/browser-notify.js'
-import { resolveSettings } from '../../src/modules/notification/client/model.js'
+import { NotificationDispatcher, SOUND_WINDOW } from '../../src/modules/notification/client/dispatch.ts'
+import { TAG_LIMIT, notificationTag } from '../../src/modules/notification/client/browser-notify.ts'
+import { resolveSettings } from '../../src/modules/notification/client/model.ts'
 
 /** 默认偏好上打补丁。 */
 function settings(patch = {}) {

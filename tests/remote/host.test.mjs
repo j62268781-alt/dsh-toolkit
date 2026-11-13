@@ -6,17 +6,17 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { maskId, normalizeBaseUrl, extractMessageText, readCredential, redirectBaseUrl } from '../../src/modules/remote/host/wechat/ilink.js'
-import { createLoginManager, QR_TTL_MS } from '../../src/modules/remote/host/wechat/login.js'
-import { createMonitor, STALE_RETRY_MESSAGE, STALE_INVALID_MESSAGE } from '../../src/modules/remote/host/wechat/monitor.js'
-import { readConfig, Config, DEFAULT_CREDENTIAL_REF } from '../../src/modules/remote/host/wechat/config.js'
+import { maskId, normalizeBaseUrl, extractMessageText, readCredential, redirectBaseUrl } from '../../src/modules/remote/host/wechat/ilink.ts'
+import { createLoginManager, QR_TTL_MS } from '../../src/modules/remote/host/wechat/login.ts'
+import { createMonitor, STALE_RETRY_MESSAGE, STALE_INVALID_MESSAGE } from '../../src/modules/remote/host/wechat/monitor.ts'
+import { readConfig, Config, DEFAULT_CREDENTIAL_REF } from '../../src/modules/remote/host/wechat/config.ts'
 import { createRequire as createRequireForSchema } from 'node:module'
 import { pathToFileURL } from 'node:url'
 
 // Resolve the exact Cosmokit instance the installed schema runtime uses.
 const schemaRequire = createRequireForSchema(import.meta.resolve('@deepseek-ai/schemastery'))
 const { isVolatile } = await import(pathToFileURL(schemaRequire.resolve('@deepseek-ai/cosmokit')).href)
-import { publicAccount } from '../../src/modules/remote/host/index.js'
+import { publicAccount } from '../../src/modules/remote/host/index.ts'
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 

@@ -13,7 +13,7 @@ import assert from 'node:assert/strict'
 import {
   AUTH_STATUSES, RECONNECT_DEFAULTS, RECOVERABLE_STATUSES, SERVER_STATUS, SERVER_STATUS_TEXT,
   deriveStatus, reconnectBudgetMs, reconnectPolicy, remainingSeconds,
-} from '../../src/modules/skills-mcp/host/mcp/status.js'
+} from '../../src/modules/skills-mcp/host/mcp/status.ts'
 
 test('reconnectPolicy：留空/垃圾值回落到客户端默认值', () => {
   assert.deepEqual(reconnectPolicy({}), {

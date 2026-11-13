@@ -4,7 +4,7 @@ import { mkdtemp, readFile, writeFile, readdir, lstat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parse } from 'yaml'
-import { migratePatch, MODULE_NAMESPACES, ROOT_IDS } from '../../src/host/migration.js'
+import { migratePatch, MODULE_NAMESPACES, ROOT_IDS } from '../../src/host/migration.ts'
 import { main, migrateYaml } from '../../scripts/migrate-config.mjs'
 
 const moduleId = (name) => `dsh-toolkit-${name}`

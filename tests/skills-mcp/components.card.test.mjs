@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import React from 'react'
-import { detailNodes, entryDetailPairs, hasInjectedPath, headersText, maskEnv, maskHeaders, rowDetailPairs, splitEnv } from '../../src/modules/skills-mcp/client/components/card.jsx'
+import { detailNodes, entryDetailPairs, hasInjectedPath, headersText, maskEnv, maskHeaders, rowDetailPairs, splitEnv } from '../../src/modules/skills-mcp/client/components/card.tsx'
 
 globalThis.__dshReact = React
 

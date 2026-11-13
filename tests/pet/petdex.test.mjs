@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readdir, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createCatalog, filterCatalog, installPet, isSlug, listInstalled, parseImageSize, parseManifest, removePet, resolveAssetUrl, validatePetJson } from '../../src/modules/pet/host/petdex.js'
+import { createCatalog, filterCatalog, installPet, isSlug, listInstalled, parseImageSize, parseManifest, removePet, resolveAssetUrl, validatePetJson } from '../../src/modules/pet/host/petdex.ts'
 
 const png = (width, height) => {
   const bytes = Buffer.alloc(33)

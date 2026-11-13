@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { apply, inject, registerNotificationSoundRoutes, SOUND_PATH, SOUNDS_PATH } from '../../src/modules/notification/host/index.js'
-import { createSoundService, MAX_SOUND_BYTES } from '../../src/modules/notification/host/sounds.js'
+import { apply, inject, registerNotificationSoundRoutes, SOUND_PATH, SOUNDS_PATH } from '../../src/modules/notification/host/index.ts'
+import { createSoundService, MAX_SOUND_BYTES } from '../../src/modules/notification/host/sounds.ts'
 
 function wav(value = 0) {
   const bytes = Buffer.alloc(46)

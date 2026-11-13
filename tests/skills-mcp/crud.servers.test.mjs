@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import {
   addServerOp, connectionChanged, connectionDraft, deleteServerOp, draftFromRow, envChanged, headersChanged,
   inflightKeyForRow, rowEntryId, toggleServerOp, updateServerOp,
-} from '../../src/modules/skills-mcp/client/crud/servers.js'
+} from '../../src/modules/skills-mcp/client/crud/servers.ts'
 
 test('rowEntryId / inflightKeyForRow：两种 entryId 归一成同一个键', () => {
   assert.equal(rowEntryId('12306-mcp'), 'mcp-12306-mcp')

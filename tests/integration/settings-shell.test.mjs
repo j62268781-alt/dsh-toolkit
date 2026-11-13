@@ -10,8 +10,8 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { JSDOM } from 'jsdom'
-import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.js'
-import { createSettingsMotion } from '../../src/modules/theme/client/settings-motion.js'
+import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.ts'
+import { createSettingsMotion } from '../../src/modules/theme/client/settings-motion.ts'
 
 const THEME_CLIENT = fileURLToPath(new URL('../../src/modules/theme/client/', import.meta.url))
 

@@ -8,8 +8,8 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { RAISE_PATH, registerRaiseRoute } from '../../src/modules/notification/host/index.js'
-import { raiseWindow } from '../../src/modules/notification/host/raise.js'
+import { RAISE_PATH, registerRaiseRoute } from '../../src/modules/notification/host/index.ts'
+import { raiseWindow } from '../../src/modules/notification/host/raise.ts'
 
 /** 记录启动参数的 spawn 替身。 */
 function createSpawnSpy({ throws = false } = {}) {

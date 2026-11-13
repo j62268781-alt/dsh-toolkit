@@ -12,7 +12,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { anchorStyle, measureMenuAnchor } from '../../src/modules/skills-mcp/client/components/menuAnchor.js'
+import { anchorStyle, measureMenuAnchor } from '../../src/modules/skills-mcp/client/components/menuAnchor.ts'
 
 const VIEWPORT = { viewportWidth: 800, viewportHeight: 600 }
 /** 一个位于视口中间偏上的触发按钮。 */

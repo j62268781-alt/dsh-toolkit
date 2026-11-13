@@ -10,7 +10,7 @@ import {
   findForm, keyFieldState, keyStateText, matchesQuery, nextCredentialRef, purposeStatus, purposeTargetLabel,
   purposesUsing, resolveCredentialRef, shouldClearCredential, validateConnection, validateKey,
   validatePurpose, withoutKey,
-} from '../../src/modules/judgment/client/config.js'
+} from '../../src/modules/judgment/client/config.ts'
 
 const GOOD = {
   name: 'typesafe-main',

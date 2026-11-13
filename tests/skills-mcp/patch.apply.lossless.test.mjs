@@ -13,8 +13,8 @@ import { mkdtempSync, existsSync, readdirSync, readFileSync, writeFileSync } fro
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parse } from 'yaml'
-import { NAME, LEGACY_NAME } from '../../src/modules/skills-mcp/host/identity.js'
-import { applyRowOp, migratePanelConfig, setPatchIO } from '../../src/modules/skills-mcp/host/patch/apply.js'
+import { NAME, LEGACY_NAME } from '../../src/modules/skills-mcp/host/identity.ts'
+import { applyRowOp, migratePanelConfig, setPatchIO } from '../../src/modules/skills-mcp/host/patch/apply.ts'
 
 const YAML_JS_TAG = { tag: 'tag:yaml.org,2002:js', resolve: (value) => value }
 const readPatch = (path) => parse(readFileSync(path, 'utf8'), { customTags: [YAML_JS_TAG] })

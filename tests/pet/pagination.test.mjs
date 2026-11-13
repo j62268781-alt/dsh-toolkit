@@ -9,7 +9,7 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 async function paginationModule() {
   const result = await build({
-    entryPoints: ['src/client/ui/pagination.jsx'], bundle: true, platform: 'node', format: 'esm',
+    entryPoints: ['src/client/ui/components/pagination/index.tsx'], bundle: true, platform: 'node', format: 'esm',
     target: 'node20', jsxFactory: '__dshReact.createElement', jsxFragment: '__dshReact.Fragment',
     write: false, logLevel: 'silent',
   })

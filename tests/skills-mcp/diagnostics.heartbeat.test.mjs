@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { beat, beatFile } from '../../src/modules/skills-mcp/host/diagnostics/heartbeat.js'
+import { beat, beatFile } from '../../src/modules/skills-mcp/host/diagnostics/heartbeat.ts'
 
 const home = await mkdtemp(join(tmpdir(), 'smp-beat-'))
 process.env.DSH_HOME = home

@@ -5,10 +5,10 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { readFile } from 'node:fs/promises'
 import vm from 'node:vm'
-import { readArchived } from '../../src/modules/archived/client/model.js'
-import { ARCH_COPY } from '../../src/modules/archived/client/locale.js'
-import { installShellMarkers } from '../../src/modules/theme/client/platform.js'
-import { installSidebarWidth, installWorkspaceCollapse } from '../../src/modules/theme/client/sidebar.js'
+import { readArchived } from '../../src/modules/archived/client/model.ts'
+import { ARCH_COPY } from '../../src/modules/archived/client/locale.ts'
+import { installShellMarkers } from '../../src/modules/theme/client/platform.ts'
+import { installSidebarWidth, installWorkspaceCollapse } from '../../src/modules/theme/client/sidebar.ts'
 
 function page(t, html) {
   const dom = new JSDOM(html)

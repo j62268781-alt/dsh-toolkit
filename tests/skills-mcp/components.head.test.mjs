@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import React from 'react'
-import { PAGE_INTRO, PAGE_TITLE, pageHead } from '../../src/modules/skills-mcp/client/components/head.jsx'
+import { PAGE_INTRO, PAGE_TITLE, pageHead } from '../../src/modules/skills-mcp/client/components/head.tsx'
 
 // JSX 产物调用全局 __dshReact（入口在 app 里设置；测试在这里设置）
 globalThis.__dshReact = React

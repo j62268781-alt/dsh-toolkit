@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { ENVIRONMENT_NAMES, undefinedNames } from './helpers/undefined-check.mjs'
 
 test('真实历史输出：invalidate 会被拦下（这正是导致整个 profile 被隔离的那个 bug）', () => {
-  const output = `src/index.js(585,13): error TS2304: Cannot find name 'invalidate'.`
+  const output = `src/index.ts(585,13): error TS2304: Cannot find name 'invalidate'.`
   const found = undefinedNames(output)
   assert.equal(found.length, 1)
   assert.equal(found[0].name, 'invalidate')

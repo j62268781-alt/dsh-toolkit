@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import React, { act } from 'react'
-import { notificationTag } from '../../src/modules/notification/client/browser-notify.js'
+import { notificationTag } from '../../src/modules/notification/client/browser-notify.ts'
 import {
   chatSnapshot, createFakeContext, createNotificationStub, createSoundFetchStub, loadNotificationModule, makeDom, sleep,
 } from './helpers.mjs'

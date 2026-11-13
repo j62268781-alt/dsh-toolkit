@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import {
   dropOptimisticSkill, hideSkillUntilGone, isValidSkillName, matchesSkillName, removalTargetOf,
   removeSkill, rootOfSkill, scopeOfSkill, skillDraftFrom, skillEntryOf, skillsForScope, upsertSkill, upsertSkillByName,
-} from '../../src/modules/skills-mcp/client/crud/skills.js'
+} from '../../src/modules/skills-mcp/client/crud/skills.ts'
 
 const g = { name: 'global-one', scope: 'global' }
 const p = { name: 'proj-one', scope: '/p/app' }

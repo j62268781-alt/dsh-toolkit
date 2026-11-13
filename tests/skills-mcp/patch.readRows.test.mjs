@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { mcpEntriesFromPatchText, readMcpRowsFromPatch } from '../../src/modules/skills-mcp/host/patch/readRows.js'
+import { mcpEntriesFromPatchText, readMcpRowsFromPatch } from '../../src/modules/skills-mcp/host/patch/readRows.ts'
 
 const PATCH = `- insert:
     - id: mcp-context7

@@ -12,7 +12,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   FILTER_MODES, MODE_ALLOW, MODE_DENY, MODE_OFF, installShadow, isMcpName, judge, liveToolNames, matchServer,
-} from '../../src/modules/skills-mcp/host/mcp/filter.js'
+} from '../../src/modules/skills-mcp/host/mcp/filter.ts'
 
 const SERVERS = ['github', 'chrome-devtools', 'context7']
 

@@ -5,12 +5,12 @@ import { build } from 'esbuild'
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { JSDOM } from 'jsdom'
-import { createPetConnection } from '../../src/modules/pet/client/connection.js'
-import { DEFAULT_SETTINGS } from '../../src/modules/pet/client/model.js'
+import { createPetConnection } from '../../src/modules/pet/client/connection.ts'
+import { DEFAULT_SETTINGS } from '../../src/modules/pet/client/model.ts'
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 async function clientModule() {
-  const result = await build({ entryPoints: ['src/modules/pet/client/index.jsx'], bundle: true, platform: 'node', format: 'esm', target: 'node20', external: ['react', 'react/*', 'react-dom', 'react-dom/*'], jsxFactory: '__dshReact.createElement', jsxFragment: '__dshReact.Fragment', loader: { '.css': 'text' }, write: false, logLevel: 'silent' })
+  const result = await build({ entryPoints: ['src/modules/pet/client/index.tsx'], bundle: true, platform: 'node', format: 'esm', target: 'node20', external: ['react', 'react/*', 'react-dom', 'react-dom/*'], jsxFactory: '__dshReact.createElement', jsxFragment: '__dshReact.Fragment', loader: { '.css': 'text' }, write: false, logLevel: 'silent' })
   // 共享组件（resizable-dialog/pagination）直接 import 'react'，写成文件再从 node_modules 解析，
   // 才能与测试里的 React 是同一份实例（data: URL 解析不了裸模块名，会把 React 再打一份进去）。
   await mkdir('node_modules/.cache', { recursive: true })

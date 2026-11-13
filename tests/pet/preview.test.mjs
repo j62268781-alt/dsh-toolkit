@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { createPreviewStore, previewPath } from '../../src/modules/pet/host/preview.js'
+import { createPreviewStore, previewPath } from '../../src/modules/pet/host/preview.ts'
 
 /** 只需要一段带 RIFF/WEBP 魔数的字节：缓存层不解析像素。 */
 function webp(bytes = 64) {

@@ -20,9 +20,9 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseDocument } from 'yaml'
-import { applyRowOp, setPatchIO } from '../../src/modules/skills-mcp/host/patch/apply.js'
-import { scanImportSource } from '../../src/modules/skills-mcp/host/import/scan.js'
-import { addServerOp } from '../../src/modules/skills-mcp/client/crud/servers.js'
+import { applyRowOp, setPatchIO } from '../../src/modules/skills-mcp/host/patch/apply.ts'
+import { scanImportSource } from '../../src/modules/skills-mcp/host/import/scan.ts'
+import { addServerOp } from '../../src/modules/skills-mcp/client/crud/servers.ts'
 
 /** 一个临时 profile：`cordis.patch.yml` 为空列表，备份写到自己的目录。 */
 async function scratchProfile() {

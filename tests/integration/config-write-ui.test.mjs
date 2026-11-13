@@ -17,7 +17,7 @@ test('Judgment rejected configuration keeps editor and never writes credentials;
   const { act } = React
   const { createRoot } = await import('react-dom/client')
   const result = await build({
-    entryPoints: ['src/modules/judgment/client/panel.jsx'], bundle: true, platform: 'node', format: 'esm',
+    entryPoints: ['src/modules/judgment/client/panel.tsx'], bundle: true, platform: 'node', format: 'esm',
     target: 'node20', external: ['react', 'react/*'], jsx: 'automatic', loader: { '.css': 'text' }, write: false, logLevel: 'silent',
   })
   await mkdir('node_modules/.cache', { recursive: true })

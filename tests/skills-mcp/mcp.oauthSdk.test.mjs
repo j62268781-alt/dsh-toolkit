@@ -9,7 +9,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { MIN_SDK_MAJOR, OAUTH_SDK_REASONS, loadSdk, oauthSdkReasonText, resolveSdkEsmEntry, runtimeNodeModulesFrom } from '../../src/modules/skills-mcp/host/mcp/oauth/sdk.js'
+import { MIN_SDK_MAJOR, OAUTH_SDK_REASONS, loadSdk, oauthSdkReasonText, resolveSdkEsmEntry, runtimeNodeModulesFrom } from '../../src/modules/skills-mcp/host/mcp/oauth/sdk.ts'
 
 /** The real runtime layout, expressed as paths only (no files are touched). */
 const HOST_URL = 'file:///Applications/DeepSeek Harness.app/Contents/Resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-mcp-client/lib/index.js'

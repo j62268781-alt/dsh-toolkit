@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import vm from 'node:vm'
 import { Context, Service } from '@deepseek-ai/cordis'
-import * as plugin from '../../src/modules/remote/host/index.js'
+import * as plugin from '../../src/modules/remote/host/index.ts'
 
 class WebServer extends Service {
   constructor(ctx) {

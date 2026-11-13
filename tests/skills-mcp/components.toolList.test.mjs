@@ -9,8 +9,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import React from 'react'
-import { TOOL_ERROR_REASONS, toolsForServer, toolsSummary } from '../../src/modules/skills-mcp/client/components/card.jsx'
-import { normalizeDescription, toolListNode } from '../../src/modules/skills-mcp/client/components/toolList.jsx'
+import { TOOL_ERROR_REASONS, toolsForServer, toolsSummary } from '../../src/modules/skills-mcp/client/components/card.tsx'
+import { normalizeDescription, toolListNode } from '../../src/modules/skills-mcp/client/components/toolList.tsx'
 
 globalThis.__dshReact = React
 

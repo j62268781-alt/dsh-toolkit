@@ -3,8 +3,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   envObject, mountedKeyOf, projectServersFor, serverMountConfig, setMountClient, workingDirectoryOf,
-} from '../../src/modules/skills-mcp/host/project/mount.js'
-import { serverFromRow } from '../../src/modules/skills-mcp/host/mcp/serverRows.js'
+} from '../../src/modules/skills-mcp/host/project/mount.ts'
+import { serverFromRow } from '../../src/modules/skills-mcp/host/mcp/serverRows.ts'
 
 setMountClient({ name: '@deepseek-ai/dsh-mcp-client' })
 

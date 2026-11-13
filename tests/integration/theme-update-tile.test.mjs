@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { JSDOM } from 'jsdom'
 
-import { installUpdateTile } from '../../src/modules/theme/client/update-tile.js'
+import { installUpdateTile } from '../../src/modules/theme/client/update-tile.ts'
 
 const PAGE = `<!doctype html><html><body>
   <div data-slot="sidebar">

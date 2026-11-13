@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { findScopedForm, ROOT_ENTRIES, scopeForm } from '../../src/client/config.js'
+import { findScopedForm, ROOT_ENTRIES, scopeForm } from '../../src/client/config.ts'
 
 function makeForm(initial, { storeOnly = false } = {}) {
   let snapshot = initial

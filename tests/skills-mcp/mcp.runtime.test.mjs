@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { registerRuntimeRoute, RUNTIME_PATH } from '../../src/modules/skills-mcp/host/mcp/runtime.js'
-import { createServerObserver } from '../../src/modules/skills-mcp/host/mcp/observe.js'
+import { registerRuntimeRoute, RUNTIME_PATH } from '../../src/modules/skills-mcp/host/mcp/runtime.ts'
+import { createServerObserver } from '../../src/modules/skills-mcp/host/mcp/observe.ts'
 
 function harness(read, rejection) {
   let route

@@ -10,7 +10,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { orderedScopeGroups, scopeKey } from '../../src/modules/skills-mcp/client/components/scopeOrder.js'
+import { orderedScopeGroups, scopeKey } from '../../src/modules/skills-mcp/client/components/scopeOrder.ts'
 
 const srv = (serverName, scope = '') => ({ serverName, scope, entryId: `mcp-${serverName}` })
 const names = (groups) => groups.map((group) => group.items.map((row) => row.serverName))

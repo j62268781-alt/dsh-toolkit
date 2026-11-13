@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { registerRoute, registerAuthenticatedRoute } from '../../src/host/routes.js'
+import { registerRoute, registerAuthenticatedRoute } from '../../src/host/routes.ts'
 
 function host(register, connection) {
   const ctx = new Context()

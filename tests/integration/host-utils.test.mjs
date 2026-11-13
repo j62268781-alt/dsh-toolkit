@@ -6,15 +6,15 @@ import { PassThrough } from 'node:stream'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
-import { readBody, sendJson } from '../../src/host/http.js'
-import { sleep } from '../../src/host/time.js'
-import { findOnPath } from '../../src/modules/mobile/host/device/path.js'
-import { findExecutableOnPath } from '../../src/host/executable.js'
-import { registerImportRoute } from '../../src/modules/skills-mcp/host/import/route.js'
-import { registerSkillRoute } from '../../src/modules/skills-mcp/host/skills/route.js'
-import { registerRowRoute } from '../../src/modules/skills-mcp/host/mcp/rows.js'
-import { registerReconnectRoute } from '../../src/modules/skills-mcp/host/mcp/reconnect.js'
-import { registerOAuthRoute } from '../../src/modules/skills-mcp/host/mcp/oauth/route.js'
+import { readBody, sendJson } from '../../src/host/http.ts'
+import { sleep } from '../../src/host/time.ts'
+import { findOnPath } from '../../src/modules/mobile/host/device/path.ts'
+import { findExecutableOnPath } from '../../src/host/executable.ts'
+import { registerImportRoute } from '../../src/modules/skills-mcp/host/import/route.ts'
+import { registerSkillRoute } from '../../src/modules/skills-mcp/host/skills/route.ts'
+import { registerRowRoute } from '../../src/modules/skills-mcp/host/mcp/rows.ts'
+import { registerReconnectRoute } from '../../src/modules/skills-mcp/host/mcp/reconnect.ts'
+import { registerOAuthRoute } from '../../src/modules/skills-mcp/host/mcp/oauth/route.ts'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 
@@ -171,7 +171,7 @@ test('browser task sleep re-export retains the shared timer behavior', async () 
     name: 'shared-time-instance',
     setup(builder) {
       builder.onResolve({ filter: /[/\\]host[/\\]time\.js$/ }, () => ({
-        path: new URL('../../src/host/time.js', import.meta.url).href, external: true,
+        path: new URL('../../src/host/time.ts', import.meta.url).href, external: true,
       }))
     },
   }])
@@ -212,12 +212,14 @@ test('Skills host split activates routes, adopts agents, reconnects projects and
   globalThis.clearTimeout = (handle) => { timers.delete(handle) }
   t.after(() => Object.assign(globalThis, originalTimers))
 
-  const host = await bundleModule(`export { apply } from './src/modules/skills-mcp/host/index.js'`, [{
+  const host = await bundleModule(`export { apply } from './src/modules/skills-mcp/host/index.ts'`, [{
     name: 'isolate-optional-runtime',
     setup(builder) {
       builder.onResolve({ filter: /^@deepseek-ai\/dsh-mcp-client$/ }, () => ({ path: 'mcp-client', namespace: 'fixture' }))
       builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ contents: `export const name = '@deepseek-ai/dsh-mcp-client'; export function apply() {}; export const inject = []; export const Config = undefined;` }))
-      builder.onResolve({ filter: /^\.\/sdk\.js$/ }, (args) => /[/\\]mcp[/\\]oauth[/\\]controller\.js$/.test(args.importer)
+      // The importer is a resolved path, so it carries the real extension (.ts under
+      // the TypeScript tree). Accept both rather than pinning one.
+      builder.onResolve({ filter: /^\.\/sdk\.js$/ }, (args) => /[/\\]mcp[/\\]oauth[/\\]controller\.(?:js|ts)$/.test(args.importer)
         ? { path: 'oauth-sdk', namespace: 'fixture-sdk' } : undefined)
       builder.onLoad({ filter: /.*/, namespace: 'fixture-sdk' }, () => ({ contents: `export async function loadSdk() { return { ok: false, reason: 'fixture-unavailable', detail: '' } }; export const oauthSdkReasonText = value => value.reason;` }))
       // Diagnostics are not part of this lifecycle assertion; avoid an unawaited side-channel write.

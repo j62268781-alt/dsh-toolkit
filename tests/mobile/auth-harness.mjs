@@ -4,16 +4,16 @@ import { dirname, join } from "node:path";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { Context } from "@deepseek-ai/cordis";
-import * as mobile from "../../src/modules/mobile/host/index.js";
-import { AdbProbe } from "../../src/modules/mobile/host/device/android-toolchain.js";
+import * as mobile from "../../src/modules/mobile/host/index.ts";
+import { AdbProbe } from "../../src/modules/mobile/host/device/android-toolchain.ts";
 import {
   StreamAccessController,
   checkTransportFence,
   isLoopbackRemoteAddress,
   isSameOriginRequest,
   parseTrustedAuthority,
-} from "../../src/modules/mobile/host/stream/access.js";
-import { StreamRoutes, mountRoutes } from "../../src/modules/mobile/host/stream/routes.js";
+} from "../../src/modules/mobile/host/stream/access.ts";
+import { StreamRoutes, mountRoutes } from "../../src/modules/mobile/host/stream/routes.ts";
 
 export const TEST_SESSION_COOKIE = "dsh-mobile-test=authenticated";
 const PREFIX = "/_dsh/dsh-sidebar-mobile";
