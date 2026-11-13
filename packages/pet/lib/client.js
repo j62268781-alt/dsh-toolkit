@@ -26,7 +26,7 @@ window.__ModuleLoader__.load({
       mod
     ));
 
-    // src/client/config.js
+    // src/client/config.ts
     var ROOT_ENTRIES = ["shell-kit", "dsh-toolkit", "dsh-shell-kit"];
     function moduleEntryId(namespace) {
       const module2 = { judgement: "judgment", skillsMcp: "skills-mcp" }[namespace] ?? namespace;
@@ -79,14 +79,14 @@ window.__ModuleLoader__.load({
       return { form: void 0, entryId: moduleEntryId(namespace) };
     }
 
-    // src/client/config-write.js
+    // src/client/config-write.ts
     async function acceptConfigWrite(write, field) {
       const accepted = await write();
       if (accepted === false) throw new Error(`宿主拒绝了这次写入（${field}）：配置可能未通过校验，或当前文档不可写`);
       return accepted;
     }
 
-    // src/client/ui/stylesheet.js
+    // src/client/ui/stylesheet.ts
     function installStylesheet(css, id) {
       const tag = document.createElement("style");
       tag.dataset.plugin = id;
@@ -96,7 +96,7 @@ window.__ModuleLoader__.load({
       return () => tag.remove();
     }
 
-    // src/client/ui/pagination.jsx
+    // src/client/ui/components/pagination/index.tsx
     function paginationWindow(page, pages, span = 2) {
       if (!Number.isInteger(page) || !Number.isInteger(pages) || pages <= 0 || page < 0) return [];
       const shown = [];
@@ -135,14 +135,14 @@ window.__ModuleLoader__.load({
     .tk-pagination .tk-pageGap { color: var(--dsw-alias-label-secondary); padding: 0 2px; }
     `;
 
-    // src/client/ui/resizable-dialog.jsx
+    // src/client/ui/components/resizable-dialog/index.tsx
     var import_react = require("react");
     var OVERLAY_PADDING = 24;
     var DIALOG_DEFAULTS = { width: 920, height: 640, minWidth: 640, minHeight: 420, maxWidth: 1120, maxHeight: 860 };
     var STEP = 16;
     function limitsOf(base, viewport) {
-      const width = Number.isFinite(viewport?.width) && viewport.width > 0 ? viewport.width : base.maxWidth + OVERLAY_PADDING * 2;
-      const height = Number.isFinite(viewport?.height) && viewport.height > 0 ? viewport.height : base.maxHeight + OVERLAY_PADDING * 2;
+      const width = Number.isFinite(viewport?.width) && viewport?.width > 0 ? viewport?.width : base.maxWidth + OVERLAY_PADDING * 2;
+      const height = Number.isFinite(viewport?.height) && viewport?.height > 0 ? viewport?.height : base.maxHeight + OVERLAY_PADDING * 2;
       const maxWidth = Math.max(240, Math.min(base.maxWidth, width - OVERLAY_PADDING * 2));
       const maxHeight = Math.max(200, Math.min(base.maxHeight, height - OVERLAY_PADDING * 2));
       return {
@@ -308,7 +308,7 @@ window.__ModuleLoader__.load({
     body.tk-dialogDragging { cursor: nwse-resize; user-select: none; }
     `;
 
-    // src/modules/pet/client/connection.js
+    // src/modules/pet/client/connection.ts
     var PREFIX = "/api/plugins/dsh-toolkit/pet";
     function petPreviewUrl(slug) {
       return `${PREFIX}/asset?slug=${encodeURIComponent(String(slug || ""))}`;
@@ -455,7 +455,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/pet/client/model.js
+    // src/modules/pet/client/model.ts
     var CONFIG_NS = "pet";
     var DEFAULT_SETTINGS = Object.freeze({ activePet: "deepseek-whale", petEnabled: false, petSize: 100, bubbleWidth: 280, islandEnabled: false, islandIdle: true, islandAllDisplays: true, islandWidth: 100, islandHeight: 100 });
     var LIMITS = Object.freeze({ petSize: [50, 100, 10], bubbleWidth: [240, 480, 20], islandWidth: [75, 150, 1], islandHeight: [75, 150, 1] });
@@ -480,7 +480,7 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // src/modules/pet/client/locale.js
+    // src/modules/pet/client/locale.ts
     var PET_NS = "dsh-toolkit.pet";
     var PET_COPY = {
       zh: {
@@ -645,7 +645,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/pet/client/panel.jsx
+    // src/modules/pet/client/panel.tsx
     var PAGE_SIZE = 20;
     function createPetPanel(React2, { t, settings, connection, actions, primitives }) {
       const { useEffect: useEffect2, useRef: useRef2, useState: useState2, useSyncExternalStore } = React2;
@@ -788,7 +788,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/client/settings-icon.jsx
+    // src/client/ui/components/settings-icon/index.tsx
     var import_react2 = __toESM(require("react"), 1);
     globalThis.__dshReact ??= import_react2.default;
     var SHAPES = {
@@ -945,7 +945,7 @@ window.__ModuleLoader__.load({
     @media (prefers-reduced-motion: reduce) { .pet-tile, .pet-tileArt, .pet-tileButton, .pet-tileProgressFill { transition: none; } .pet-tile:hover, .pet-tile:focus-within { transform: none; } .pet-tile:hover .pet-tileArt { transform: none; } }
     `;
 
-    // src/modules/pet/client/index.jsx
+    // src/modules/pet/client/index.tsx
     function createPet(require2) {
       const React2 = require2("react");
       globalThis.__dshReact = React2;

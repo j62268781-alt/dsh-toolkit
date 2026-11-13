@@ -1,45 +1,49 @@
-import { sendJson } from '../../../host/http.js'
-import { registerAuthenticatedRoute } from '../../../host/routes.js'
-import { raiseWindow } from './raise.js'
-import { createSoundService } from './sounds.js'
-
-export const name = 'toolkit-notification'
-export const inject = ['webServer', 'connection']
-export const SOUNDS_PATH = '/api/plugins/dsh-toolkit/notification/sounds'
-export const SOUND_PATH = '/api/plugins/dsh-toolkit/notification/sound'
-export const RAISE_PATH = '/api/plugins/dsh-toolkit/notification/raise'
-
+import { sendJson } from '../../../host/http.js';
+import { registerAuthenticatedRoute } from '../../../host/routes.js';
+import { raiseWindow } from './raise.js';
+import { createSoundService } from './sounds.js';
+export const name = 'toolkit-notification';
+export const inject = ['webServer', 'connection'];
+export const SOUNDS_PATH = '/api/plugins/dsh-toolkit/notification/sounds';
+export const SOUND_PATH = '/api/plugins/dsh-toolkit/notification/sound';
+export const RAISE_PATH = '/api/plugins/dsh-toolkit/notification/raise';
 /**
  * 提示音目录与音频文件两条只读路由。
  * @param ctx - 宿主上下文。
  * @param service - 声音服务（测试注入）。
  */
 export function registerNotificationSoundRoutes(ctx, service = createSoundService()) {
-  for (const [pathname, audio] of [[SOUNDS_PATH, false], [SOUND_PATH, true]]) {
-    registerAuthenticatedRoute(ctx, {
-      kind: 'exact',
-      path: pathname,
-      async handler(req, res) {
-        res.setHeader('cache-control', 'no-store')
-        if (req.method !== 'GET') return sendJson(res, 404, { ok: false, reason: 'not-found' })
-        try {
-          if (!audio) return sendJson(res, 200, await service.getCatalog())
-          const url = new URL(req.url, 'http://localhost')
-          const { bytes, contentType } = await service.readSound(url.searchParams.get('id'))
-          res.statusCode = 200
-          res.setHeader('content-type', contentType)
-          res.setHeader('content-length', bytes.length)
-          res.setHeader('x-content-type-options', 'nosniff')
-          res.end(bytes)
-        } catch (error) {
-          const status = error?.statusCode === 404 ? 404 : 503
-          sendJson(res, status, { ok: false, reason: status === 404 ? 'sound-not-found' : 'sound-unavailable' })
-        }
-      },
-    })
-  }
+    const endpoints = [
+        [SOUNDS_PATH, false],
+        [SOUND_PATH, true],
+    ];
+    for (const [pathname, audio] of endpoints) {
+        registerAuthenticatedRoute(ctx, {
+            kind: 'exact',
+            path: pathname,
+            async handler(req, res) {
+                res.setHeader('cache-control', 'no-store');
+                if (req.method !== 'GET')
+                    return sendJson(res, 404, { ok: false, reason: 'not-found' });
+                try {
+                    if (!audio)
+                        return sendJson(res, 200, await service.getCatalog());
+                    const url = new URL(req.url ?? '/', 'http://localhost');
+                    const { bytes, contentType } = await service.readSound(url.searchParams.get('id') ?? '');
+                    res.statusCode = 200;
+                    res.setHeader('content-type', contentType);
+                    res.setHeader('content-length', bytes.length);
+                    res.setHeader('x-content-type-options', 'nosniff');
+                    res.end(bytes);
+                }
+                catch (error) {
+                    const status = error?.statusCode === 404 ? 404 : 503;
+                    sendJson(res, status, { ok: false, reason: status === 404 ? 'sound-not-found' : 'sound-unavailable' });
+                }
+            },
+        });
+    }
 }
-
 /**
  * 「把窗口提到前台」的 POST 路由。
  *
@@ -51,22 +55,23 @@ export function registerNotificationSoundRoutes(ctx, service = createSoundServic
  * @param options - 注入给 raiseWindow 的选项（测试用）。
  */
 export function registerRaiseRoute(ctx, options = {}) {
-  registerAuthenticatedRoute(ctx, {
-    kind: 'exact',
-    path: RAISE_PATH,
-    async handler(req, res) {
-      res.setHeader('cache-control', 'no-store')
-      if (req.method !== 'POST') return sendJson(res, 404, { ok: false, reason: 'not-found' })
-      const raised = raiseWindow(options)
-      return sendJson(res, 200, { ok: raised, reason: raised ? undefined : 'unsupported' })
-    },
-  })
+    registerAuthenticatedRoute(ctx, {
+        kind: 'exact',
+        path: RAISE_PATH,
+        async handler(req, res) {
+            res.setHeader('cache-control', 'no-store');
+            if (req.method !== 'POST')
+                return sendJson(res, 404, { ok: false, reason: 'not-found' });
+            const raised = raiseWindow(options);
+            return sendJson(res, 200, { ok: raised, reason: raised ? undefined : 'unsupported' });
+        },
+    });
 }
-
 export function apply(ctx) {
-  if (typeof ctx.webServer?.register !== 'function' || typeof ctx.connection?.requestRejection !== 'function') return
-  registerNotificationSoundRoutes(ctx)
-  registerRaiseRoute(ctx)
+    if (typeof ctx.webServer?.register !== 'function' || typeof ctx.connection?.requestRejection !== 'function')
+        return;
+    registerNotificationSoundRoutes(ctx);
+    registerRaiseRoute(ctx);
 }
-
-export default { name, inject, apply }
+export default { name, inject, apply };
+//# sourceMappingURL=index.js.map

@@ -45,7 +45,10 @@ export class Ledger {
     }
     exclusive(work) {
         const result = this.serial.then(work, work);
-        this.serial = result.then(() => undefined, () => undefined);
+        // Annotate the settle callbacks: without a return type they are contextually
+        // typed `any` in the emit program, which trips noImplicitAny (TS7011).
+        const settle = () => undefined;
+        this.serial = result.then(settle, settle);
         return result;
     }
     async ensureSeeded() {

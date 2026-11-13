@@ -24,31 +24,27 @@
  *   （它自己会退出，但会挂在父进程身上），不 detach 会把 Host 的进程生命周期拖住。
  * · 不传任何环境变量或凭据：命令里只有那个 URL。
  */
-
-import { spawn as nodeSpawn } from 'node:child_process'
-
+import { spawn as nodeSpawn } from 'node:child_process';
 /** 打开失败的原因取值。 */
 export const OPEN_ERRORS = Object.freeze({
-  badUrl: 'not-an-http-url',
-  unsupported: 'unsupported-platform',
-  failed: 'launcher-failed',
-})
-
+    badUrl: 'not-an-http-url',
+    unsupported: 'unsupported-platform',
+    failed: 'launcher-failed',
+});
 /** 人话错误。 */
 export function openErrorText(reason, detail) {
-  const tail = typeof detail === 'string' && detail !== '' ? `：${detail}` : ''
-  switch (reason) {
-    case OPEN_ERRORS.badUrl:
-      return `这不是一个可以打开的 http(s) 链接${tail}`
-    case OPEN_ERRORS.unsupported:
-      return `当前系统没有可用的浏览器启动方式${tail}`
-    case OPEN_ERRORS.failed:
-      return `拉起浏览器失败${tail}`
-    default:
-      return `打开浏览器失败${tail}`
-  }
+    const tail = typeof detail === 'string' && detail !== '' ? `：${detail}` : '';
+    switch (reason) {
+        case OPEN_ERRORS.badUrl:
+            return `这不是一个可以打开的 http(s) 链接${tail}`;
+        case OPEN_ERRORS.unsupported:
+            return `当前系统没有可用的浏览器启动方式${tail}`;
+        case OPEN_ERRORS.failed:
+            return `拉起浏览器失败${tail}`;
+        default:
+            return `打开浏览器失败${tail}`;
+    }
 }
-
 /**
  * 该平台的浏览器启动命令。
  *
@@ -59,20 +55,19 @@ export function openErrorText(reason, detail) {
  * @returns `{ command, args }`，或 null（不认识平台）。
  */
 export function browserLaunchCommand(platform) {
-  switch (platform) {
-    case 'darwin':
-      return { command: 'open', args: [] }
-    case 'win32':
-      return { command: 'cmd', args: ['/c', 'start', ''] }
-    case 'linux':
-    case 'freebsd':
-    case 'openbsd':
-      return { command: 'xdg-open', args: [] }
-    default:
-      return null
-  }
+    switch (platform) {
+        case 'darwin':
+            return { command: 'open', args: [] };
+        case 'win32':
+            return { command: 'cmd', args: ['/c', 'start', ''] };
+        case 'linux':
+        case 'freebsd':
+        case 'openbsd':
+            return { command: 'xdg-open', args: [] };
+        default:
+            return null;
+    }
 }
-
 /**
  * 打开一个 URL。
  *
@@ -83,48 +78,48 @@ export function browserLaunchCommand(platform) {
  * @returns `{ ok: true, command }` 或 `{ ok: false, reason, detail, text }`。永不抛错。
  */
 export function openExternalUrl({ url, platform, spawn, log } = {}) {
-  let parsed
-  try {
-    parsed = new URL(String(url))
-  } catch (error) {
-    const detail = String(error?.message ?? error)
-    return { ok: false, reason: OPEN_ERRORS.badUrl, detail, text: openErrorText(OPEN_ERRORS.badUrl, detail) }
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    const detail = parsed.protocol
-    return { ok: false, reason: OPEN_ERRORS.badUrl, detail, text: openErrorText(OPEN_ERRORS.badUrl, detail) }
-  }
-
-  const target = browserLaunchCommand(platform ?? process.platform)
-  if (target === null) {
-    const detail = String(platform ?? process.platform)
-    return { ok: false, reason: OPEN_ERRORS.unsupported, detail, text: openErrorText(OPEN_ERRORS.unsupported, detail) }
-  }
-
-  const spawnFn = spawn ?? nodeSpawn
-  if (typeof spawnFn !== 'function') {
-    return { ok: false, reason: OPEN_ERRORS.unsupported, detail: 'no spawn', text: openErrorText(OPEN_ERRORS.unsupported) }
-  }
-
-  try {
-    const child = spawnFn(target.command, [...target.args, parsed.href], {
-      // `detached` + `unref`: the launcher must not keep the Host's event loop (or its process
-      // group) alive. On macOS `open` returns immediately, but xdg-open can linger.
-      detached: true,
-      stdio: 'ignore',
-      // No shell: the URL is an argument, never a command line to be re-parsed.
-      shell: false,
-    })
-    // `error` fires for ENOENT (launcher missing) asynchronously; swallow it and log — the
-    // caller already got `ok: true` for "we asked the OS", and the user still has the link.
-    child?.on?.('error', (error) => {
-      log?.warn?.(`dsh-skills-mcp-manager: 拉起浏览器失败（${target.command}）：${String(error?.message ?? error)}`)
-    })
-    child?.unref?.()
-    return { ok: true, command: target.command }
-  } catch (error) {
-    const detail = String(error?.message ?? error)
-    log?.warn?.(`dsh-skills-mcp-manager: 拉起浏览器失败：${detail}`)
-    return { ok: false, reason: OPEN_ERRORS.failed, detail, text: openErrorText(OPEN_ERRORS.failed, detail) }
-  }
+    let parsed;
+    try {
+        parsed = new URL(String(url));
+    }
+    catch (error) {
+        const detail = String(error?.message ?? error);
+        return { ok: false, reason: OPEN_ERRORS.badUrl, detail, text: openErrorText(OPEN_ERRORS.badUrl, detail) };
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        const detail = parsed.protocol;
+        return { ok: false, reason: OPEN_ERRORS.badUrl, detail, text: openErrorText(OPEN_ERRORS.badUrl, detail) };
+    }
+    const target = browserLaunchCommand(platform ?? process.platform);
+    if (target === null) {
+        const detail = String(platform ?? process.platform);
+        return { ok: false, reason: OPEN_ERRORS.unsupported, detail, text: openErrorText(OPEN_ERRORS.unsupported, detail) };
+    }
+    const spawnFn = spawn ?? nodeSpawn;
+    if (typeof spawnFn !== 'function') {
+        return { ok: false, reason: OPEN_ERRORS.unsupported, detail: 'no spawn', text: openErrorText(OPEN_ERRORS.unsupported) };
+    }
+    try {
+        const child = spawnFn(target.command, [...target.args, parsed.href], {
+            // `detached` + `unref`: the launcher must not keep the Host's event loop (or its process
+            // group) alive. On macOS `open` returns immediately, but xdg-open can linger.
+            detached: true,
+            stdio: 'ignore',
+            // No shell: the URL is an argument, never a command line to be re-parsed.
+            shell: false,
+        });
+        // `error` fires for ENOENT (launcher missing) asynchronously; swallow it and log — the
+        // caller already got `ok: true` for "we asked the OS", and the user still has the link.
+        child?.on?.('error', (error) => {
+            log?.warn?.(`dsh-skills-mcp-manager: 拉起浏览器失败（${target.command}）：${String(error?.message ?? error)}`);
+        });
+        child?.unref?.();
+        return { ok: true, command: target.command };
+    }
+    catch (error) {
+        const detail = String(error?.message ?? error);
+        log?.warn?.(`dsh-skills-mcp-manager: 拉起浏览器失败：${detail}`);
+        return { ok: false, reason: OPEN_ERRORS.failed, detail, text: openErrorText(OPEN_ERRORS.failed, detail) };
+    }
 }
+//# sourceMappingURL=browser.js.map

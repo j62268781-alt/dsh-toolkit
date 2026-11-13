@@ -29,7 +29,7 @@ window.__ModuleLoader__.load({
     // src/modules/notification/client/styles.css
     var styles_default = "/* Notification cards use the same title/description metrics as General settings.\n * 页头（标题 + 副标题）直接复用 src/client/styles/settings.css 的 .ntf-pageTitle /\n * .ntf-pageIntro（index.jsx 用 settingsStyles('ntf') 拼在前），这里不再重复声明。 */\n.ntf-page { box-sizing: border-box; width: 100%; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }\n.ntf-page > * { width: 100%; max-width: 960px; }\n.ntf-pageHead { box-sizing: border-box; display: flex; flex-direction: column; }\n.ntf-section { min-width: 0; }\n.ntf-sectionTitle { margin: 0 0 10px; color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 500; line-height: 20px; }\n.ntf-card { border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; padding: 0 16px; min-width: 0; }\n.ntf-row { box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 16px 0; border-bottom: 0.5px solid var(--dsw-alias-border-l2); }\n.ntf-row:last-child { border-bottom: none; }\n.ntf-rowText { display: flex; flex-direction: column; flex: 1 1 auto; gap: 4px; min-width: 0; }\n.ntf-title { color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 400; line-height: 20px; overflow-wrap: anywhere; }\n.ntf-desc { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }\n.ntf-rowControl { flex: none; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 55%; }\n.ntf-selectSound { width: 156px; }\n.ntf-button:focus-visible, .ntf-switch:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }\n.ntf-range:disabled, .ntf-switch:disabled, .ntf-button:disabled { opacity: 0.5; cursor: not-allowed; }\n.ntf-volume { display: flex; align-items: center; gap: 10px; max-width: 100%; }\n.ntf-range { width: 140px; min-width: 50px; accent-color: var(--dsw-alias-state-business-primary, var(--dsw-alias-button-primary-fill)); cursor: pointer; }\n.ntf-volumeValue { min-width: 38px; text-align: right; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; font-variant-numeric: tabular-nums; }\n.ntf-switch { box-sizing: border-box; flex: none; position: relative; width: 26px; height: 15px; padding: 0; border: 0; border-radius: 999px; cursor: pointer; background: var(--dsw-alias-border-l3); transition: background 0.12s ease; }\n.ntf-switch[data-on=true] { background: var(--dsw-alias-state-success-primary, var(--dsw-alias-state-business-primary)); }\n.ntf-switchKnob { position: absolute; top: 1.5px; left: 1.5px; width: 12px; height: 12px; border-radius: 50%; background: var(--dsw-alias-label-primary-foreground); box-shadow: 0 1px 2px var(--dsw-alias-bg-mask-1, transparent); transition: transform 0.12s ease; }\n.ntf-switch[data-on=true] .ntf-switchKnob { transform: translateX(11px); }\n.ntf-button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 30px; padding: 0 10px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; cursor: pointer; flex: none; white-space: nowrap; }\n.ntf-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }\n.ntf-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }\n.ntf-error, .ntf-notice, .ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }\n.ntf-error { color: var(--dsw-alias-state-error-primary); }\n@media (max-width: 720px) {\n  .ntf-row { gap: 12px; }\n  .ntf-rowControl { max-width: 60%; }\n  .ntf-selectSound { width: 120px; }\n  .ntf-range { width: 80px; }\n}\n";
 
-    // src/client/ui/stylesheet.js
+    // src/client/ui/stylesheet.ts
     function installStylesheet(css, id) {
       const tag = document.createElement("style");
       tag.dataset.plugin = id;
@@ -83,7 +83,7 @@ window.__ModuleLoader__.load({
     .boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}
     `;
 
-    // src/client/styles/settings.js
+    // src/client/styles/settings.ts
     function settingsStyles(namespace) {
       return settings_default.replace(/\/\*[\s\S]*?\*\//g, "").replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors, declarations) => {
         const scoped = selectors.split(",").map((selector) => selector.trim()).filter((selector) => selector.startsWith(`.${namespace}-`));
@@ -91,7 +91,7 @@ window.__ModuleLoader__.load({
       });
     }
 
-    // src/client/config.js
+    // src/client/config.ts
     var ROOT_ENTRIES = ["shell-kit", "dsh-toolkit", "dsh-shell-kit"];
     function moduleEntryId(namespace) {
       const module2 = { judgement: "judgment", skillsMcp: "skills-mcp" }[namespace] ?? namespace;
@@ -144,14 +144,14 @@ window.__ModuleLoader__.load({
       return { form: void 0, entryId: moduleEntryId(namespace) };
     }
 
-    // src/client/config-write.js
+    // src/client/config-write.ts
     async function acceptConfigWrite(write, field) {
       const accepted = await write();
       if (accepted === false) throw new Error(`宿主拒绝了这次写入（${field}）：配置可能未通过校验，或当前文档不可写`);
       return accepted;
     }
 
-    // src/client/http.js
+    // src/client/http.ts
     async function fetchJson(url, { json, ...options } = {}) {
       const headers = new Headers(options.headers);
       if (json !== void 0) headers.set("content-type", "application/json");
@@ -186,7 +186,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/notification/client/locale.js
+    // src/modules/notification/client/locale.ts
     var NOTIFICATION_NS = "dsh-toolkit.notification";
     var NOTIFICATION_COPY = {
       zh: {
@@ -385,7 +385,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/notification/client/model.js
+    // src/modules/notification/client/model.ts
     var CONFIG_NS = "notification";
     var KINDS = ["completed", "failed", "question", "permission"];
     var SOUNDS = ["chime", "fault", "pop", "alert", "none"];
@@ -479,7 +479,7 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // src/modules/notification/client/detail.js
+    // src/modules/notification/client/detail.ts
     function textOfBlocks(blocks) {
       if (!Array.isArray(blocks)) return "";
       return blocks.filter((block) => block !== null && typeof block === "object" && block.kind === "text" && typeof block.text === "string").map((block) => block.text).join("");
@@ -550,7 +550,7 @@ window.__ModuleLoader__.load({
       return t("untitled");
     }
 
-    // src/modules/notification/client/engine.js
+    // src/modules/notification/client/engine.ts
     var NotificationEngine = class {
       /**
        * @param {EnginePorts} ports 注入端口。
@@ -752,7 +752,7 @@ window.__ModuleLoader__.load({
       }
     };
 
-    // src/modules/notification/client/browser-notify.js
+    // src/modules/notification/client/browser-notify.ts
     var TAG_PREFIX = "dsh-toolkit:notification";
     var TAG_LIMIT = 44;
     function digest(text) {
@@ -946,7 +946,7 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // src/modules/notification/client/dispatch.js
+    // src/modules/notification/client/dispatch.ts
     var SOUND_WINDOW = 900;
     var NotificationDispatcher = class {
       /**
@@ -1025,7 +1025,7 @@ window.__ModuleLoader__.load({
       }
     };
 
-    // src/modules/notification/client/sounds.js
+    // src/modules/notification/client/sounds.ts
     var SOUND_IDS = ["chime", "fault", "pop", "alert"];
     var SOUND_RECIPES = Object.freeze({
       chime: [
@@ -1162,7 +1162,7 @@ window.__ModuleLoader__.load({
       return Math.min(1, Math.max(0, number));
     }
 
-    // src/modules/notification/client/system-sounds.js
+    // src/modules/notification/client/system-sounds.ts
     var SOUND_CATALOG_URL = "/api/plugins/dsh-toolkit/notification/sounds";
     var SOUND_AUDIO_URL = "/api/plugins/dsh-toolkit/notification/sound";
     var MAX_AUDIO_BYTES = 8 * 1024 * 1024;
@@ -1259,7 +1259,7 @@ window.__ModuleLoader__.load({
       }
     };
 
-    // src/modules/notification/client/recent.js
+    // src/modules/notification/client/recent.ts
     var RECENT_LIMIT = 6;
     function createRecentStore(limit = RECENT_LIMIT) {
       let entries = [];
@@ -1311,7 +1311,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/notification/client/panel.jsx
+    // src/modules/notification/client/panel.tsx
     var KIND_COPY = { completed: "typeCompleted", failed: "typeFailed", question: "typeQuestion", permission: "typePermission" };
     var MODE_COPY = { never: "currentNever", unfocused: "currentUnfocused", always: "currentAlways" };
     var PERMISSION_COPY = { granted: "permissionGranted", denied: "permissionDenied", default: "permissionDefault", unsupported: "permissionUnsupported" };
@@ -1456,7 +1456,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/client/settings-icon.jsx
+    // src/client/ui/components/settings-icon/index.tsx
     var import_react = __toESM(require("react"), 1);
     globalThis.__dshReact ??= import_react.default;
     var SHAPES = {
@@ -1515,7 +1515,7 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // src/modules/notification/client/index.jsx
+    // src/modules/notification/client/index.tsx
     function localeHint(ctx) {
       try {
         const language = ctx?.locale?.language ?? (typeof ctx?.locale?.getLanguage === "function" ? ctx.locale.getLanguage() : void 0) ?? ctx?.locale?.lang;

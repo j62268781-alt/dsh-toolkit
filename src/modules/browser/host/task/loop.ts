@@ -1281,7 +1281,7 @@ export async function runTask(goal: string, deps: TaskDeps): Promise<TaskResult>
           timings.actMs += now() - started
           actionFailures = 0
           if (observedPage.mode === 'tree') {
-            const readback = await deps.browser.get('value', chosen.ref, undefined, { signal: deps.signal }).catch(() => undefined)
+            const readback = await deps.browser.get('value', chosen.ref, undefined, { signal: deps.signal }).catch((): undefined => undefined)
             const matched = readback !== undefined && readback.trim() === given.trim()
             if (matched) {
               for (const [key, value] of Object.entries(deps.inputs ?? {})) if (value === given) verifiedFills.add(key)

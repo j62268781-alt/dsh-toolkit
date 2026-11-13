@@ -25,17 +25,14 @@
  *
  * @module dsh-sidebar-mobile/lib/android-toolchain
  */
-
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { findOnPath } from "./path.js";
 import { Singleflight } from "../../../../host/singleflight.js";
 import { runProcess } from "../../../../host/process.js";
-
 /** 体检结果缓存时长。adb 不会频繁地装上/卸掉，但用户可能刚装完就刷新页面。 */
 const PROBE_TTL_MS = 30_000;
-
 /**
  * 常见默认安装位置（PATH / ANDROID_HOME 都没命中时才会去查）。
  *
@@ -54,35 +51,35 @@ const PROBE_TTL_MS = 30_000;
  * @returns {string[]}
  */
 function wellKnownAdbPaths() {
-  const exe = process.platform === "win32" ? "adb.exe" : "adb";
-  const candidates = [];
-
-  if (process.platform === "win32") {
-    // Android Studio 的默认 SDK 位置
-    const localAppData = process.env.LOCALAPPDATA;
-    if (localAppData) candidates.push(join(localAppData, "Android", "Sdk", "platform-tools", exe));
-    for (const base of [process.env.ProgramFiles, process.env["ProgramFiles(x86)"]]) {
-      if (base) candidates.push(join(base, "Android", "platform-tools", exe));
+    const exe = process.platform === "win32" ? "adb.exe" : "adb";
+    const candidates = [];
+    if (process.platform === "win32") {
+        // Android Studio 的默认 SDK 位置
+        const localAppData = process.env.LOCALAPPDATA;
+        if (localAppData)
+            candidates.push(join(localAppData, "Android", "Sdk", "platform-tools", exe));
+        for (const base of [process.env.ProgramFiles, process.env["ProgramFiles(x86)"]]) {
+            if (base)
+                candidates.push(join(base, "Android", "platform-tools", exe));
+        }
+        // 手动解压的常见位置。盘符就那么几个，existsSync 很便宜。
+        for (const drive of ["C:", "D:", "E:", "F:"]) {
+            candidates.push(join(`${drive}\\`, "Android", "platform-tools", exe));
+            candidates.push(join(`${drive}\\`, "platform-tools", exe));
+            candidates.push(join(`${drive}\\`, "android-sdk", "platform-tools", exe));
+        }
     }
-    // 手动解压的常见位置。盘符就那么几个，existsSync 很便宜。
-    for (const drive of ["C:", "D:", "E:", "F:"]) {
-      candidates.push(join(`${drive}\\`, "Android", "platform-tools", exe));
-      candidates.push(join(`${drive}\\`, "platform-tools", exe));
-      candidates.push(join(`${drive}\\`, "android-sdk", "platform-tools", exe));
+    else {
+        const home = homedir();
+        candidates.push(join(home, "Library", "Android", "sdk", "platform-tools", exe));
+        candidates.push(join(home, "Android", "Sdk", "platform-tools", exe));
+        candidates.push(join(home, "Android", "sdk", "platform-tools", exe));
+        candidates.push(join("/usr", "lib", "android-sdk", "platform-tools", exe));
+        candidates.push(join("/usr", "local", "share", "android-sdk", "platform-tools", exe));
+        candidates.push(join("/opt", "android-sdk", "platform-tools", exe));
     }
-  } else {
-    const home = homedir();
-    candidates.push(join(home, "Library", "Android", "sdk", "platform-tools", exe));
-    candidates.push(join(home, "Android", "Sdk", "platform-tools", exe));
-    candidates.push(join(home, "Android", "sdk", "platform-tools", exe));
-    candidates.push(join("/usr", "lib", "android-sdk", "platform-tools", exe));
-    candidates.push(join("/usr", "local", "share", "android-sdk", "platform-tools", exe));
-    candidates.push(join("/opt", "android-sdk", "platform-tools", exe));
-  }
-
-  return candidates;
+    return candidates;
 }
-
 /**
  * 找出 adb 二进制。
  *
@@ -101,28 +98,26 @@ function wellKnownAdbPaths() {
  * @returns {string|null} adb 绝对路径；找不到返回 null
  */
 export function findAdb(env = process.env) {
-  const exe = process.platform === "win32" ? "adb.exe" : "adb";
-
-  // 1) PATH
-  const onPath = findOnPath("adb", env.PATH ?? "");
-  if (onPath !== null) return onPath;
-
-  // 2) / 3) SDK 根目录下的 platform-tools
-  for (const key of ["ANDROID_HOME", "ANDROID_SDK_ROOT"]) {
-    const root = env[key];
-    if (typeof root !== "string" || root === "") continue;
-
-    const inPlatformTools = join(root, "platform-tools", exe);
-    if (existsSync(inPlatformTools)) return inPlatformTools;
-
-    // 容忍 ANDROID_HOME 被直接指到 platform-tools
-    const direct = join(root, exe);
-    if (existsSync(direct)) return direct;
-  }
-
-  return null;
+    const exe = process.platform === "win32" ? "adb.exe" : "adb";
+    // 1) PATH
+    const onPath = findOnPath("adb", env.PATH ?? "");
+    if (onPath !== null)
+        return onPath;
+    // 2) / 3) SDK 根目录下的 platform-tools
+    for (const key of ["ANDROID_HOME", "ANDROID_SDK_ROOT"]) {
+        const root = env[key];
+        if (typeof root !== "string" || root === "")
+            continue;
+        const inPlatformTools = join(root, "platform-tools", exe);
+        if (existsSync(inPlatformTools))
+            return inPlatformTools;
+        // 容忍 ANDROID_HOME 被直接指到 platform-tools
+        const direct = join(root, exe);
+        if (existsSync(direct))
+            return direct;
+    }
+    return null;
 }
-
 /**
  * 在"当前环境查不到"的前提下，看看 adb 是不是其实装了。
  *
@@ -133,13 +128,13 @@ export function findAdb(env = process.env) {
  * @returns {string|null}
  */
 export function findAdbOutsideEnv(env = process.env) {
-  for (const candidate of wellKnownAdbPaths()) {
-    if (existsSync(candidate)) return candidate;
-  }
-  // 用户可能把它放在其它位置并只配在系统级 PATH 里 —— 那也只能靠重启继承
-  return null;
+    for (const candidate of wellKnownAdbPaths()) {
+        if (existsSync(candidate))
+            return candidate;
+    }
+    // 用户可能把它放在其它位置并只配在系统级 PATH 里 —— 那也只能靠重启继承
+    return null;
 }
-
 /**
  * 解析 `adb devices -l` 的输出。
  *
@@ -160,31 +155,32 @@ export function findAdbOutsideEnv(env = process.env) {
  * @returns {{serial: string, state: string, model: string, product: string}[]}
  */
 export function parseAdbDevices(stdout) {
-  if (typeof stdout !== "string" || stdout === "") return [];
-
-  const devices = [];
-  for (const rawLine of stdout.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (line === "") continue;
-    // 表头与 daemon 提示（"* daemon not running; starting now at tcp:5037"）
-    if (line.startsWith("List of devices")) continue;
-    if (line.startsWith("*")) continue;
-
-    // serial 与 state 之间是空白；state 之后是可选的 key:value 列表
-    const match = /^(\S+)\s+(\S+)(.*)$/.exec(line);
-    if (match === null) continue;
-
-    const [, serial, state, rest] = match;
-    devices.push({
-      serial,
-      state,
-      model: /model:(\S+)/.exec(rest)?.[1] ?? "",
-      product: /product:(\S+)/.exec(rest)?.[1] ?? "",
-    });
-  }
-  return devices;
+    if (typeof stdout !== "string" || stdout === "")
+        return [];
+    const devices = [];
+    for (const rawLine of stdout.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (line === "")
+            continue;
+        // 表头与 daemon 提示（"* daemon not running; starting now at tcp:5037"）
+        if (line.startsWith("List of devices"))
+            continue;
+        if (line.startsWith("*"))
+            continue;
+        // serial 与 state 之间是空白；state 之后是可选的 key:value 列表
+        const match = /^(\S+)\s+(\S+)(.*)$/.exec(line);
+        if (match === null)
+            continue;
+        const [, serial, state, rest] = match;
+        devices.push({
+            serial,
+            state,
+            model: /model:(\S+)/.exec(rest)?.[1] ?? "",
+            product: /product:(\S+)/.exec(rest)?.[1] ?? "",
+        });
+    }
+    return devices;
 }
-
 /**
  * 跑一次 `adb devices` 体检。
  *
@@ -201,64 +197,62 @@ export function parseAdbDevices(stdout) {
  * }>}
  */
 export async function probeAdb({ env = process.env, timeoutMs = 20_000, signal } = {}) {
-  signal?.throwIfAborted();
-  const path = findAdb(env);
-
-  if (path === null) {
-    /**
-     * 当前环境里没有 —— 但可能只是**这个进程看不到**。
-     *
-     * 实测：adb 已装在 `D:\Android\platform-tools`，用户级 PATH 与
-     * ANDROID_HOME 也都正确，但 DSH 进程启动得更早，环境是启动时的快照。
-     * 此时若直接报"未找到 adb，请安装"，就是在让用户去装一个已经装好的
-     * 东西 —— 而正确答案是"重启 DSH"。
-     *
-     * 所以这里再查一遍常见安装位置，把两种情况分开。
-     */
-    const installedPath = findAdbOutsideEnv(env);
-    return {
-      available: false,
-      path: null,
-      devices: [],
-      usable: 0,
-      reason: installedPath === null ? "adb-not-found" : "adb-not-in-env",
-      installedPath,
-    };
-  }
-
-  let stdout;
-  try {
-    const result = await runProcess(path, ["devices", "-l"], { env, timeoutMs, signal });
-    if (result.aborted) throw signal?.reason ?? new DOMException("adb 体检已取消", "AbortError");
-    if (result.spawnError || result.timedOut || result.outputLimitExceeded || result.code !== 0) {
-      throw result.spawnError ?? new Error(result.stderr.trim() || (result.timedOut ? "adb 体检超时" : "adb 执行失败"));
+    signal?.throwIfAborted();
+    const path = findAdb(env);
+    if (path === null) {
+        /**
+         * 当前环境里没有 —— 但可能只是**这个进程看不到**。
+         *
+         * 实测：adb 已装在 `D:\Android\platform-tools`，用户级 PATH 与
+         * ANDROID_HOME 也都正确，但 DSH 进程启动得更早，环境是启动时的快照。
+         * 此时若直接报"未找到 adb，请安装"，就是在让用户去装一个已经装好的
+         * 东西 —— 而正确答案是"重启 DSH"。
+         *
+         * 所以这里再查一遍常见安装位置，把两种情况分开。
+         */
+        const installedPath = findAdbOutsideEnv(env);
+        return {
+            available: false,
+            path: null,
+            devices: [],
+            usable: 0,
+            reason: installedPath === null ? "adb-not-found" : "adb-not-in-env",
+            installedPath,
+        };
     }
-    stdout = result.stdout;
-  } catch (error) {
-    if (signal?.aborted) throw error;
-    return {
-      available: true,
-      path,
-      devices: [],
-      usable: 0,
-      reason: "adb-failed",
-      error: error?.message ?? String(error),
-    };
-  }
-
-  const devices = parseAdbDevices(stdout);
-  // 只有 state === "device" 才是真正可用的
-  const usable = devices.filter((d) => d.state === "device").length;
-
-  let reason = "ok";
-  if (devices.length === 0) reason = "no-device";
-  else if (usable === 0) {
-    reason = devices.some((d) => d.state === "unauthorized") ? "unauthorized" : "offline";
-  }
-
-  return { available: true, path, devices, usable, reason };
+    let stdout;
+    try {
+        const result = await runProcess(path, ["devices", "-l"], { env, timeoutMs, signal });
+        if (result.aborted)
+            throw signal?.reason ?? new DOMException("adb 体检已取消", "AbortError");
+        if (result.spawnError || result.timedOut || result.outputLimitExceeded || result.code !== 0) {
+            throw result.spawnError ?? new Error(result.stderr.trim() || (result.timedOut ? "adb 体检超时" : "adb 执行失败"));
+        }
+        stdout = result.stdout;
+    }
+    catch (error) {
+        if (signal?.aborted)
+            throw error;
+        return {
+            available: true,
+            path,
+            devices: [],
+            usable: 0,
+            reason: "adb-failed",
+            error: error?.message ?? String(error),
+        };
+    }
+    const devices = parseAdbDevices(stdout);
+    // 只有 state === "device" 才是真正可用的
+    const usable = devices.filter((d) => d.state === "device").length;
+    let reason = "ok";
+    if (devices.length === 0)
+        reason = "no-device";
+    else if (usable === 0) {
+        reason = devices.some((d) => d.state === "unauthorized") ? "unauthorized" : "offline";
+    }
+    return { available: true, path, devices, usable, reason };
 }
-
 /**
  * 把体检结果翻成"给人看 + 能照着做"的一段话。
  *
@@ -269,89 +263,81 @@ export async function probeAdb({ env = process.env, timeoutMs = 20_000, signal }
  * @returns {{code: string, message: string, hint: string, adbPath: string|null}}
  */
 export function describeAdbProblem(probe) {
-  const adbPath = probe?.path ?? null;
-
-  switch (probe?.reason) {
-    case "adb-not-in-env":
-      /**
-       * adb 装了，但这个进程看不到它的路径。
-       *
-       * ⚠️ 这句话必须与"没装 adb"分开说。实测踩到的真实场景：adb 装在
-       * `D:\Android\platform-tools`，用户级 PATH / ANDROID_HOME 也配好了，
-       * 但 DSH 是在那之前启动的 —— 进程环境是启动那一刻的快照。
-       * 此时正确的动作是**重启 DSH**（以及让 daemon 重读环境），
-       * 而不是再去装一遍 adb。
-       */
-      return {
-        code: "ADB_NOT_IN_ENV",
-        adbPath: probe.installedPath ?? adbPath,
-        message: `找到 adb（${probe.installedPath ?? "常见安装位置"}），但当前运行的 DSH 进程看不到它`
-          + " —— 进程的环境变量是启动时的快照，之后新配的 PATH / ANDROID_HOME 不会自动生效，"
-          + "**重启 DSH** 才会。所以 mobilecli 现在也找不到 adb，设备列表为空。",
-        hint: "① 重启 DSH 让新环境变量进入进程；"
-          + "② 重启后执行 `mobilecli daemon stop` —— 常驻 daemon 同样缓存着旧环境，"
-          + "不重启它的话即使 DSH 环境对了也仍然看不到设备；"
-          + "③ 若重启后仍不行，说明 PATH 没配好：把 platform-tools **目录**加进 PATH"
-          + (probe.installedPath === null || probe.installedPath === undefined
-            ? "。"
-            : ` —— 即 ${dirname(probe.installedPath)}。`),
-      };
-
-    case "adb-not-found":
-      return {
-        code: "ADB_NOT_FOUND",
-        adbPath,
-        message: "未找到 adb —— mobilecli 依赖它来发现 Android 设备，没有 adb 时它会"
-          + "静默返回空设备列表（不报错），所以看起来像“没有设备”。",
-        hint: "装 Android platform-tools，并让 adb 可被找到："
-          + "① 下载 https://developer.android.com/tools/releases/platform-tools 并解压；"
-          + "② 把其中的 platform-tools 目录加进 PATH，或设 ANDROID_HOME 指向它的上一级；"
-          + "③ 重启 DSH 让新环境变量生效，并执行 mobilecli daemon stop 让常驻 daemon 重新读取环境。",
-      };
-
-    case "adb-failed":
-      return {
-        code: "ADB_FAILED",
-        adbPath,
-        message: `找到了 adb（${adbPath}），但它执行失败：${probe.error ?? "未知原因"}`,
-        hint: "手动跑一次 `adb devices` 看具体报错。常见原因：adb server 端口 5037 被占用，"
-          + "或 adb 版本过旧与设备不兼容。",
-      };
-
-    case "unauthorized":
-      return {
-        code: "ADB_UNAUTHORIZED",
-        adbPath,
-        message: "adb 能看到设备，但设备处于 unauthorized —— 手机上还没有授权这台电脑。",
-        hint: "在手机上点“允许 USB 调试”（建议勾选“一律允许”）。"
-          + "若没弹窗：拔插数据线，或在开发者选项里点“撤销 USB 调试授权”后重连。",
-      };
-
-    case "offline":
-      return {
-        code: "ADB_OFFLINE",
-        adbPath,
-        message: "adb 能看到设备，但状态是 offline —— 连接不稳定或 adb server 状态错乱。",
-        hint: "先试 `adb kill-server` 然后 `adb devices`；仍不行就重新拔插数据线，"
-          + "或在手机上关掉再打开 USB 调试。",
-      };
-
-    case "no-device":
-      return {
-        code: "ADB_NO_DEVICE",
-        adbPath,
-        message: "adb 已就绪，但没有看到任何设备。",
-        hint: "确认：① 手机已用数据线连接（不是仅充电的线）；"
-          + "② 开发者选项里的“USB 调试”已开启；"
-          + "③ 手机弹窗里点了“允许”。装完 adb 后若仍看不到，"
-          + "执行 mobilecli daemon stop —— 常驻 daemon 会缓存启动时的环境变量。",
-      };
-
-    default:
-      return { code: "OK", adbPath, message: "", hint: "" };
-  }
+    const adbPath = probe?.path ?? null;
+    switch (probe?.reason) {
+        case "adb-not-in-env":
+            /**
+             * adb 装了，但这个进程看不到它的路径。
+             *
+             * ⚠️ 这句话必须与"没装 adb"分开说。实测踩到的真实场景：adb 装在
+             * `D:\Android\platform-tools`，用户级 PATH / ANDROID_HOME 也配好了，
+             * 但 DSH 是在那之前启动的 —— 进程环境是启动那一刻的快照。
+             * 此时正确的动作是**重启 DSH**（以及让 daemon 重读环境），
+             * 而不是再去装一遍 adb。
+             */
+            return {
+                code: "ADB_NOT_IN_ENV",
+                adbPath: probe.installedPath ?? adbPath,
+                message: `找到 adb（${probe.installedPath ?? "常见安装位置"}），但当前运行的 DSH 进程看不到它`
+                    + " —— 进程的环境变量是启动时的快照，之后新配的 PATH / ANDROID_HOME 不会自动生效，"
+                    + "**重启 DSH** 才会。所以 mobilecli 现在也找不到 adb，设备列表为空。",
+                hint: "① 重启 DSH 让新环境变量进入进程；"
+                    + "② 重启后执行 `mobilecli daemon stop` —— 常驻 daemon 同样缓存着旧环境，"
+                    + "不重启它的话即使 DSH 环境对了也仍然看不到设备；"
+                    + "③ 若重启后仍不行，说明 PATH 没配好：把 platform-tools **目录**加进 PATH"
+                    + (probe.installedPath === null || probe.installedPath === undefined
+                        ? "。"
+                        : ` —— 即 ${dirname(probe.installedPath)}。`),
+            };
+        case "adb-not-found":
+            return {
+                code: "ADB_NOT_FOUND",
+                adbPath,
+                message: "未找到 adb —— mobilecli 依赖它来发现 Android 设备，没有 adb 时它会"
+                    + "静默返回空设备列表（不报错），所以看起来像“没有设备”。",
+                hint: "装 Android platform-tools，并让 adb 可被找到："
+                    + "① 下载 https://developer.android.com/tools/releases/platform-tools 并解压；"
+                    + "② 把其中的 platform-tools 目录加进 PATH，或设 ANDROID_HOME 指向它的上一级；"
+                    + "③ 重启 DSH 让新环境变量生效，并执行 mobilecli daemon stop 让常驻 daemon 重新读取环境。",
+            };
+        case "adb-failed":
+            return {
+                code: "ADB_FAILED",
+                adbPath,
+                message: `找到了 adb（${adbPath}），但它执行失败：${probe.error ?? "未知原因"}`,
+                hint: "手动跑一次 `adb devices` 看具体报错。常见原因：adb server 端口 5037 被占用，"
+                    + "或 adb 版本过旧与设备不兼容。",
+            };
+        case "unauthorized":
+            return {
+                code: "ADB_UNAUTHORIZED",
+                adbPath,
+                message: "adb 能看到设备，但设备处于 unauthorized —— 手机上还没有授权这台电脑。",
+                hint: "在手机上点“允许 USB 调试”（建议勾选“一律允许”）。"
+                    + "若没弹窗：拔插数据线，或在开发者选项里点“撤销 USB 调试授权”后重连。",
+            };
+        case "offline":
+            return {
+                code: "ADB_OFFLINE",
+                adbPath,
+                message: "adb 能看到设备，但状态是 offline —— 连接不稳定或 adb server 状态错乱。",
+                hint: "先试 `adb kill-server` 然后 `adb devices`；仍不行就重新拔插数据线，"
+                    + "或在手机上关掉再打开 USB 调试。",
+            };
+        case "no-device":
+            return {
+                code: "ADB_NO_DEVICE",
+                adbPath,
+                message: "adb 已就绪，但没有看到任何设备。",
+                hint: "确认：① 手机已用数据线连接（不是仅充电的线）；"
+                    + "② 开发者选项里的“USB 调试”已开启；"
+                    + "③ 手机弹窗里点了“允许”。装完 adb 后若仍看不到，"
+                    + "执行 mobilecli daemon stop —— 常驻 daemon 会缓存启动时的环境变量。",
+            };
+        default:
+            return { code: "OK", adbPath, message: "", hint: "" };
+    }
 }
-
 /**
  * 带 TTL 缓存的 adb 体检器。
  *
@@ -363,41 +349,41 @@ export function describeAdbProblem(probe) {
  * 看完提示就去装了 adb，然后刷新页面期待立刻生效。
  */
 export class AdbProbe {
-  #cached = null;
-  #inflight = new Singleflight();
-  #probe;
-
-  /** @param {object} [options] @param {Function} [options.log] @param {typeof probeAdb} [options.probe] */
-  constructor({ log = () => {}, probe = probeAdb } = {}) {
-    this.log = log;
-    this.#probe = probe;
-  }
-
-  /**
-   * 取体检结果（可能命中缓存）。
-   * @param {object} [options]
-   * @param {boolean} [options.fresh] 绕过缓存
-   * @returns {Promise<Awaited<ReturnType<typeof probeAdb>>>}
-   */
-  async get({ fresh = false } = {}) {
-    const now = Date.now();
-    if (!fresh && this.#cached !== null) {
-      // 一切正常时缓存久一点；有问题时短一点，便于用户装完 adb / 重启后
-      // 立刻看到变化（"装完还要等 30 秒"会让人以为没生效）
-      const ttl = this.#cached.value.reason === "ok" ? PROBE_TTL_MS : 5_000;
-      if (now - this.#cached.at < ttl) return this.#cached.value;
+    #cached = null;
+    #inflight = new Singleflight();
+    #probe;
+    log;
+    /** 构造函数：log 走宿主日志，probe 可注入以便测试。 */
+    constructor({ log = (_level, _message) => { }, probe = probeAdb } = {}) {
+        this.log = log;
+        this.#probe = probe;
     }
-
-    // fresh 原本每次都重新探测；普通并发查询才复用在途工作。
-    if (fresh) this.#inflight.invalidate("adb");
-    return this.#inflight.run("adb", () => this.#probe(), {
-      onValue: (value) => { this.#cached = { at: Date.now(), value }; },
-    });
-  }
-
-  /** 清掉缓存（装完 adb、重启 daemon 后调用）。 */
-  invalidate() {
-    this.#cached = null;
-    this.#inflight.clear();
-  }
+    /**
+     * 取体检结果（可能命中缓存）。
+     * @param {object} [options]
+     * @param {boolean} [options.fresh] 绕过缓存
+     * @returns {Promise<Awaited<ReturnType<typeof probeAdb>>>}
+     */
+    async get({ fresh = false } = {}) {
+        const now = Date.now();
+        if (!fresh && this.#cached !== null) {
+            // 一切正常时缓存久一点；有问题时短一点，便于用户装完 adb / 重启后
+            // 立刻看到变化（"装完还要等 30 秒"会让人以为没生效）
+            const ttl = this.#cached.value.reason === "ok" ? PROBE_TTL_MS : 5_000;
+            if (now - this.#cached.at < ttl)
+                return this.#cached.value;
+        }
+        // fresh 原本每次都重新探测；普通并发查询才复用在途工作。
+        if (fresh)
+            this.#inflight.invalidate("adb");
+        return this.#inflight.run("adb", () => this.#probe(), {
+            onValue: (value) => { this.#cached = { at: Date.now(), value }; },
+        });
+    }
+    /** 清掉缓存（装完 adb、重启 daemon 后调用）。 */
+    invalidate() {
+        this.#cached = null;
+        this.#inflight.clear();
+    }
 }
+//# sourceMappingURL=android-toolchain.js.map

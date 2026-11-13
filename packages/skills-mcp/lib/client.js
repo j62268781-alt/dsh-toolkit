@@ -26,10 +26,10 @@ window.__ModuleLoader__.load({
       mod
     ));
 
-    // src/modules/skills-mcp/host/identity.js
+    // src/modules/skills-mcp/host/identity.ts
     var NAME = "dsh-skills-mcp-manager";
 
-    // src/client/config.js
+    // src/client/config.ts
     var ROOT_ENTRIES = ["shell-kit", "dsh-toolkit", "dsh-shell-kit"];
     function moduleEntryId(namespace) {
       const module2 = { judgement: "judgment", skillsMcp: "skills-mcp" }[namespace] ?? namespace;
@@ -82,7 +82,7 @@ window.__ModuleLoader__.load({
       return { form: void 0, entryId: moduleEntryId(namespace) };
     }
 
-    // src/client/settings-icon.jsx
+    // src/client/ui/components/settings-icon/index.tsx
     var import_react = __toESM(require("react"), 1);
     globalThis.__dshReact ??= import_react.default;
     var SHAPES = {
@@ -141,7 +141,7 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // src/modules/skills-mcp/client/config.js
+    // src/modules/skills-mcp/client/config.ts
     function snapshotOf(form) {
       const snapshot = form?.getSnapshot?.() ?? form?.store?.getSnapshot?.() ?? form?.snapshot;
       return snapshot?.value ?? snapshot ?? {};
@@ -151,7 +151,7 @@ window.__ModuleLoader__.load({
       return snapshot?.status ?? "ready";
     }
 
-    // src/modules/skills-mcp/client/components/filterRow.jsx
+    // src/modules/skills-mcp/client/components/filterRow.tsx
     function filterRow({ query, onQuery, placeholder, actions = null }) {
       return /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-filterRow", key: "filter" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-search", key: "search" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-searchIcon", key: "i" }, /* @__PURE__ */ __dshReact.createElement("svg", { width: 16, height: 16, viewBox: "0 0 16 16", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement(
         "path",
@@ -173,7 +173,7 @@ window.__ModuleLoader__.load({
       )), actions);
     }
 
-    // src/modules/skills-mcp/client/components/filters.js
+    // src/modules/skills-mcp/client/components/filters.ts
     function matchesName(name, query) {
       const needle = (query ?? "").trim().toLowerCase();
       if (needle === "") return true;
@@ -184,7 +184,7 @@ window.__ModuleLoader__.load({
       return `${title}（${count}）`;
     }
 
-    // src/modules/skills-mcp/client/components/tabs.jsx
+    // src/modules/skills-mcp/client/components/tabs.tsx
     var TAB_ITEMS = [
       { id: "mcp", title: "MCP" },
       { id: "skills", title: "Skills" }
@@ -202,14 +202,14 @@ window.__ModuleLoader__.load({
       )));
     }
 
-    // src/modules/skills-mcp/client/components/head.jsx
+    // src/modules/skills-mcp/client/components/head.tsx
     var PAGE_TITLE = "Skills & MCP";
     var PAGE_INTRO = "全局与项目级分层管理；保存后立即生效。";
     function pageHead() {
       return /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-pageHead", key: "head" }, /* @__PURE__ */ __dshReact.createElement("div", { key: "text" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "smp-pageTitle", key: "h" }, PAGE_TITLE), /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-pageIntro", key: "p" }, PAGE_INTRO)));
     }
 
-    // src/modules/skills-mcp/client/components/scopeOrder.js
+    // src/modules/skills-mcp/client/components/scopeOrder.ts
     function scopeKey(scope) {
       if (typeof scope !== "string" || scope === "" || scope === "global") return "";
       return scope;
@@ -244,7 +244,7 @@ window.__ModuleLoader__.load({
       return groups;
     }
 
-    // src/modules/skills-mcp/client/crud/inflight.js
+    // src/modules/skills-mcp/client/crud/inflight.ts
     var DEFAULT_TIMEOUT = 15e3;
     var UPDATE_GRACE = 4e3;
     function pendingLabel(info) {
@@ -296,7 +296,7 @@ window.__ModuleLoader__.load({
       return Object.entries(map).filter(([entryId, info]) => info.kind === "add" && !known.has(bareId(entryId)));
     }
 
-    // src/modules/skills-mcp/client/components/sections.js
+    // src/modules/skills-mcp/client/components/sections.ts
     function emptySkillText(label) {
       const name = typeof label === "string" ? label.trim() : "";
       if (name === "") return "还没有技能 —— 点上面「添加技能」，保存后写入磁盘。";
@@ -308,14 +308,23 @@ window.__ModuleLoader__.load({
       return `${name} 还没有 MCP 服务器 —— 可以点「添加服务器」，或用「导入 MCP」从其他工具导入。`;
     }
 
-    // src/client/ui/menu.js
-    function measureMenuAnchor({ rect, itemCount, viewportWidth, viewportHeight } = {}) {
+    // src/client/ui/components/menu/index.ts
+    function measureMenuAnchor({
+      rect,
+      itemCount,
+      viewportWidth,
+      viewportHeight
+    } = {}) {
       if (rect == null) return null;
-      const top = Number(rect.top), bottom = Number(rect.bottom), right = Number(rect.right);
-      const width = Number(viewportWidth), height = Number(viewportHeight);
+      const top = Number(rect.top);
+      const bottom = Number(rect.bottom);
+      const right = Number(rect.right);
+      const width = Number(viewportWidth);
+      const height = Number(viewportHeight);
       if (![top, bottom, right, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
       const estimated = Math.max(0, Number(itemCount) || 0) * 30 + 10;
-      const spaceBelow = height - bottom - 8, spaceAbove = top - 8;
+      const spaceBelow = height - bottom - 8;
+      const spaceAbove = top - 8;
       const placement = spaceBelow >= estimated || spaceBelow >= spaceAbove ? "down" : "up";
       return {
         right: Math.max(8, width - right),
@@ -338,7 +347,8 @@ window.__ModuleLoader__.load({
     function listenMenuDismiss(close) {
       if (typeof document === "undefined") return () => {
       };
-      const page = document, view = globalThis.window;
+      const page = document;
+      const view = globalThis.window;
       const onKey = (event) => {
         if (event.key === "Escape") close();
       };
@@ -352,10 +362,13 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/client/poll.js
+    // src/client/poll.ts
     function startPolling(task, { intervalMs, onError = () => {
     } }) {
-      let stopped = false, timer, pending, controller;
+      let stopped = false;
+      let timer;
+      let pending;
+      let controller;
       const delay = () => typeof intervalMs === "function" ? intervalMs() : intervalMs;
       function refresh() {
         if (stopped) return Promise.resolve();
@@ -373,7 +386,7 @@ window.__ModuleLoader__.load({
         });
         return pending;
       }
-      refresh();
+      void refresh();
       return {
         refresh,
         stop() {
@@ -384,7 +397,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/skills-mcp/client/hooks/useFormRefresh.js
+    // src/modules/skills-mcp/client/hooks/useFormRefresh.ts
     function useFormSnapshot(React2, form) {
       const { useState, useEffect } = React2;
       const [tick, setTick] = useState(0);
@@ -406,7 +419,7 @@ window.__ModuleLoader__.load({
       }, [form]);
     }
 
-    // src/modules/skills-mcp/client/hooks/useInventory.js
+    // src/modules/skills-mcp/client/hooks/useInventory.ts
     function useInventory(React2, inventory) {
       const { useState, useEffect } = React2;
       const [inventoryRows, setInventoryRows] = useState([]);
@@ -430,11 +443,11 @@ window.__ModuleLoader__.load({
       return inventoryRows;
     }
 
-    // src/modules/skills-mcp/host/mcp/oauth/channel.js
+    // src/modules/skills-mcp/host/mcp/oauth/channel.ts
     var AUTH_CHANNEL = "dsh-skills-mcp-manager/oauth";
     var AUTH_DONE = "authorized";
 
-    // src/client/http.js
+    // src/client/http.ts
     async function fetchJson(url, { json, ...options } = {}) {
       const headers = new Headers(options.headers);
       if (json !== void 0) headers.set("content-type", "application/json");
@@ -469,7 +482,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/skills-mcp/client/hooks/useRuntime.js
+    // src/modules/skills-mcp/client/hooks/useRuntime.ts
     function useRuntime(React2, tab, expanded) {
       const { useState, useEffect } = React2;
       const [runtime, setRuntime] = useState({
@@ -548,7 +561,7 @@ window.__ModuleLoader__.load({
       return { runtime, setRuntime, bumpRefresh };
     }
 
-    // src/modules/skills-mcp/client/commands.js
+    // src/modules/skills-mcp/client/commands.ts
     var bareRowId = (entryId) => String(entryId).replace(/^include:/, "").replace(/^[a-z-]+:/i, "");
     var postJson = (path, json, signal) => fetchJson(`/${NAME}/${path}`, {
       method: "POST",
@@ -674,7 +687,7 @@ window.__ModuleLoader__.load({
       }
     };
 
-    // src/modules/skills-mcp/client/hooks/useOAuth.js
+    // src/modules/skills-mcp/client/hooks/useOAuth.ts
     function useOAuth(React2, projection) {
       const { useState } = React2;
       const oauthState = projection ?? {};
@@ -744,7 +757,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/client/ui/confirm-dialog.jsx
+    // src/client/ui/components/confirm-dialog/index.tsx
     function confirmDialog({
       primitives,
       title,
@@ -773,7 +786,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    // src/modules/skills-mcp/client/components/dialog.jsx
+    // src/modules/skills-mcp/client/components/dialog.tsx
     function deleteConfirmDialog({ dialog, primitives, onCancel, onConfirm, pending = false, error = "" }) {
       if (dialog === null || dialog === void 0) return null;
       return confirmDialog({
@@ -786,7 +799,7 @@ window.__ModuleLoader__.load({
       });
     }
 
-    // src/modules/skills-mcp/client/components/skillPreview.jsx
+    // src/modules/skills-mcp/client/components/skillPreview.tsx
     function skillPreviewDialog({ skill, body = "", pending = false, primitives, onClose }) {
       if (skill === null || skill === void 0) return null;
       const Modal = primitives?.Modal;
@@ -805,12 +818,12 @@ window.__ModuleLoader__.load({
       );
     }
 
-    // src/modules/skills-mcp/client/components/field.jsx
+    // src/modules/skills-mcp/client/components/field.tsx
     function field(label, control, wide) {
       return /* @__PURE__ */ __dshReact.createElement("label", { className: "smp-field", key: label, "data-wide": Boolean(wide) }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-label", key: "l" }, label), control);
     }
 
-    // src/modules/skills-mcp/client/components/skillDialog.jsx
+    // src/modules/skills-mcp/client/components/skillDialog.tsx
     function skillDialogView({
       dialog,
       draft,
@@ -920,7 +933,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    // src/modules/skills-mcp/client/crud/skills.js
+    // src/modules/skills-mcp/client/crud/skills.ts
     function removalTargetOf(skill = {}) {
       const name = String(skill?.name ?? "");
       const scope = typeof skill?.scope === "string" && skill.scope !== "" ? skill.scope : "global";
@@ -940,7 +953,7 @@ window.__ModuleLoader__.load({
       return [...removedKeys, key];
     }
 
-    // src/modules/skills-mcp/client/crud/servers.js
+    // src/modules/skills-mcp/client/crud/servers.ts
     function rowEntryId(serverName) {
       return `mcp-${serverName}`;
     }
@@ -1062,7 +1075,7 @@ window.__ModuleLoader__.load({
     // src/modules/skills-mcp/client/styles/panel.css
     var panel_default = "/*\n * Panel styles. Kept in its own file and inlined into lib/client.js by\n * esbuild (`loader: { \".css\": \"text\" }`), because DSH's ModuleLoader evaluates\n * exactly one file per client bundle.\n */\n.smp-page{box-sizing:border-box;width:100%;color:var(--dsw-alias-label-primary);flex-direction:column;align-items:center;gap:14px;display:flex}\n.smp-pageHead{box-sizing:border-box;justify-content:space-between;align-items:flex-start;gap:16px;display:flex}\n.smp-toolbar{justify-content:flex-end;align-items:center;gap:8px;display:flex;flex:none}\n.smp-input,.smp-select,.smp-textarea{box-sizing:border-box;font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);padding:0 10px;height:32px;font-size:13px}\n.smp-textarea{height:auto;min-height:84px;padding:8px 10px;line-height:1.55;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}\n.smp-input:focus-visible,.smp-select:focus-visible,.smp-textarea:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}\n/* 作用域选择器（表单内）：下拉 + 自定义路径输入并排，跟随表单字段宽度。 */\n.smp-scopePick{display:flex;flex-direction:column;gap:6px;min-width:0}\n.smp-scopePick .smp-select{width:100%}\n.smp-scopePick .smp-input{width:100%}\n.smp-group{flex-direction:column;gap:10px;display:flex;border-top:.5px solid var(--dsw-alias-border-l2);padding-top:0}\n.smp-group:first-of-type{border-top:0;padding-top:0}\n.smp-groupTitleRow{align-items:center;gap:8px;min-height:36px;display:flex}\n.smp-groupToggle{color:inherit;font:inherit;text-align:left;cursor:pointer;background:none;border:0;flex:none;align-items:center;gap:8px;padding:0;display:flex}\n.smp-groupTitle{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:400;line-height:22px}\n.smp-groupSub{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;flex-wrap:wrap;row-gap:4px;margin:-6px 0 0 20px;font-size:12px;line-height:18px;display:flex}\n.smp-summaryAbove{margin:0}\n/* Rows follow the Models settings page: one column list, head row with the\n   actions pinned right, and an open body that can hold arbitrarily long text. */\n/* 卡片分两列：左列是「标题行 + 描述」，右列是操作区。整行垂直居中对齐，\n   这样开关/菜单与两行内容居中，而不是只跟标题那一行居中（那会偏上）。\n   展开的详情在 cardRow 之外，占满整行宽度。 */\n.smp-cardMain{flex:1 1 auto;min-width:0;flex-direction:column;gap:4px;display:flex}\n.smp-cardHead+.smp-cardDescription{margin-top:0}\n.smp-cardHead{align-items:center;gap:10px;min-width:0;display:flex}\n.smp-cardToggle{box-sizing:border-box;color:inherit;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;align-items:center;gap:8px;min-width:0;padding:0;display:inline-flex}\n.smp-cardActions{align-items:center;gap:4px;margin-left:auto;flex:none;display:inline-flex}\n.smp-cardActions .smp-actionsRow{margin:0;gap:4px}\n.smp-cardActions .smp-button{box-sizing:border-box;height:28px;padding:0 10px;font-size:12px;line-height:18px;border-radius:var(--dsw-radius-sm)}\n.smp-cardDescription{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}\n.smp-formGrid:first-child{margin-top:0}\n.smp-cardDetails .smp-details{margin:0}\n.smp-details{grid-template-columns:76px minmax(0,1fr);gap:6px 10px;margin:8px 0 0;display:grid;font-size:12px;line-height:18px}\n.smp-detailsKey{color:var(--dsw-alias-label-tertiary)}\n/* 值是**数据**，键才是说明。两者都用灰时整块读起来是一片低对比文字，\n   分不清哪个是标签、哪个是内容 —— 值用主色（正文黑），键保留三级灰。 */\n.smp-detailsValue{color:var(--dsw-alias-label-primary);word-break:break-all;font-weight:400}\n/* 连接状态标签的三档语气。\n   danger 一档必须真的显眼：它出现的场景正是「这个 MCP 已经永久失效、要用户动手」，\n   而这个问题以前在界面上完全不可见（工具凭空消失，没有任何说明）。\n   主题里没有 error-tertiary 背景，所以用描边而不是填色来拉开对比。 */\n.smp-tag[data-tone=warn]{background:var(--dsw-alias-state-warn-tertiary,var(--dsw-alias-bg-module-platform));color:var(--dsw-alias-state-warn-primary,#b54708)}\n.smp-tag[data-tone=danger]{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-state-error-primary,#d92d20);box-shadow:inset 0 0 0 1px var(--dsw-alias-state-error-primary,#d92d20)}\n/* 连接状态：小圆点 + 小号文字（照 Chrome 扩展列表那种形态）。\n   取代了原来的药丸标签：药丸的视觉重量与卡片自己的标签一样重，\n   于是「一切正常」看起来也像个警告，而真正的警告反而混进了装饰里。\n   圆点承担颜色，文字承担含义，权重让开 —— 所以文字取 10px，比正文小一档。 */\n.smp-status{display:inline-flex;align-items:center;gap:5px;font-size:10px;line-height:16px;white-space:nowrap}\n.smp-dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-label-tertiary,currentColor)}\n.smp-dot[data-dot=ok]{background:var(--dsw-alias-state-success-primary,#067647)}\n.smp-dot[data-dot=warn]{background:var(--dsw-alias-state-warn-primary,#b54708)}\n.smp-dot[data-dot=danger]{background:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-dot[data-dot=neutral]{background:var(--dsw-alias-label-tertiary,#9aa4b2)}\n.smp-statusText{color:var(--dsw-alias-label-secondary)}\n/* 数字（工具数 / 剩余时间）退到第三层：它们是佐证，不是状态本身。 */\n.smp-statusMeta{color:var(--dsw-alias-label-tertiary,var(--dsw-alias-label-secondary))}\n/* danger 一档的文字要跟上圆点：它出现的场景正是「这个 MCP 已经永久失效、要用户动手」，\n   而这个问题以前在界面上完全不可见（工具凭空消失，没有任何说明）。\n   黄一档不上色：「连接中」是常态，「需要授权」也不是故障，加重它们只会制造噪音。 */\n.smp-status:has(.smp-dot[data-dot=danger]) .smp-statusText{color:var(--dsw-alias-state-error-primary,#d92d20)}\n/* 小号开关：替代「启用 / 停用」两个按钮。\n   按钮只说「点了我做什么」，开关同时说「现在是哪一档」—— 一列卡片扫下来能直接看出\n   哪些是开着的。竖直居中，与它所在行的文字基线对齐。 */\n.smp-switch{box-sizing:border-box;flex:none;width:26px;height:15px;border-radius:999px;border:0;padding:0;cursor:pointer;position:relative;background:var(--dsw-alias-border-l3,#cbd2d9);transition:background .12s ease}\n.smp-switch[data-on=true]{background:var(--dsw-alias-state-success-primary,#067647)}\n.smp-switch:disabled{opacity:.5;cursor:default}\n.smp-switchKnob{position:absolute;top:1.5px;left:1.5px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .12s ease}\n.smp-switch[data-on=true] .smp-switchKnob{transform:translateX(11px)}\n.smp-switch:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}\n/* 「…」+ 竖向菜单：把 重连/编辑/删除 收进一个 popup。\n   三个按钮并排时操作区比它所属的名字还宽，两列网格下会把服务器名挤出视野。\n   菜单让这一行保持安静，而「删除」这种很少用的动作本来就该多一次点击。 */\n.smp-more{position:relative;display:inline-flex;flex:none}\n.smp-moreTrigger{box-sizing:border-box;width:22px;height:22px;border:0;border-radius:var(--dsw-radius-sm);background:0 0;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center;padding:0}\n.smp-moreTrigger:hover{background:var(--dsw-alias-interactive-bg-hover)}\n.smp-moreTrigger:disabled{opacity:.5;cursor:default}\n/* 遮罩挡住页面其余部分的点击：菜单不该在一次无关点击后还开着，\n   否则下一次点击会落在用户没打算打开的菜单项上。 */\n.smp-menuScrim{position:fixed;inset:0;z-index:40}\n/* 弹出菜单。\n   默认这一套是**兜底**：量不到触发按钮位置时（离线渲染、没有布局）就向下展开。\n   真实运行时会由 menuAnchor.js 算出视口坐标，用内联样式改成 `position:fixed` ——\n   这样才能既不被面板滚动容器的 overflow 裁剪，又能在下方放不下时翻转向上。\n   `min-width` 保证即使只有「授权」两个字也不会挤成一条。 */\n.smp-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:41;min-width:104px;padding:4px;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-1,#fff);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);box-shadow:0 6px 20px rgba(0,0,0,.12);box-sizing:border-box}\n.smp-menuItem{box-sizing:border-box;width:100%;text-align:left;border:0;background:0 0;border-radius:var(--dsw-radius-sm);padding:6px 10px;font-size:13px;line-height:18px;color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap}\n.smp-menuItem:hover{background:var(--dsw-alias-interactive-bg-hover)}\n.smp-menuItem:disabled{opacity:.5;cursor:default}\n.smp-menuItem[data-variant=danger]{color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-menuError{display:block;padding:4px 10px;font-size:11px;line-height:16px;color:var(--dsw-alias-state-error-primary,#d92d20);white-space:normal;max-width:220px}\n.smp-reconnect{display:inline-flex;align-items:center;gap:6px}\n.smp-reconnect .smp-error{max-width:280px;white-space:normal}\n/* 展开区里的工具清单：数据来自 harness 工具注册表，只读展示。\n   分隔线与间距挂在标题上而不是包裹层：空清单与「不可读」两种状态只渲染标题，\n   挂在包裹层会让它们紧贴字段表，看起来像表格的一部分。 */\n.smp-tools{margin:0}\n.smp-toolHead{display:flex;align-items:center;gap:6px;font-size:12px;line-height:18px;\n  margin-top:10px;border-top:.5px solid var(--dsw-alias-border-l3);padding-top:8px}\n.smp-toolTitle{color:var(--dsw-alias-label-tertiary)}\n.smp-toolCount{color:var(--dsw-alias-label-secondary)}\n.smp-toolCount[data-tone=muted]{color:var(--dsw-alias-label-caption)}\n/* 工具过滤：标题行的模式选择器，与每行的勾选框。 */\n.smp-toolModes{margin-left:auto;display:inline-flex;gap:2px}\n.smp-toolMode{appearance:none;background:none;border:.5px solid transparent;border-radius:var(--dsw-radius-sm);padding:1px 7px;font:inherit;font-size:11px;line-height:17px;color:var(--dsw-alias-label-tertiary);cursor:pointer}\n.smp-toolMode:hover{background:var(--dsw-alias-interactive-bg-hover)}\n.smp-toolMode[data-active=true]{background:var(--dsw-alias-bg-module-platform);border-color:var(--dsw-alias-border-l3);color:var(--dsw-alias-label-primary)}\n.smp-toolPick{display:flex;align-items:center;gap:6px;min-width:0;cursor:pointer}\n.smp-toolPick input{margin:0;flex:none;accent-color:var(--dsw-alias-state-business-primary,#4176e6)}\n/* 开启过滤后，不会被注册的行淡化——一眼看出「这个工具模型看不到」。\n   判据是「是否保留」而非「是否勾选」：deny 模式下两者恰好相反。 */\n.smp-tool[data-kept=false] .smp-toolName{color:var(--dsw-alias-label-tertiary);font-weight:400}\n.smp-tool[data-kept=false] .smp-toolDesc{opacity:.7}\n.smp-toolList{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:2px}\n.smp-tool{display:flex;flex-direction:column;gap:1px;padding:3px 0;min-width:0}\n/* 工具名是这一行的「标题」，描述是「副标题」，所以两者要有层级差：\n   名字 13px + 500 字重 + 主色，描述 11px + 三级色。\n   行高走面板已有的阶梯（13px→20px，与 .smp-empty 一致；11px→16px）。 */\n.smp-toolName{font-family:var(--dsw-font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:13px;line-height:20px;font-weight:500;color:var(--dsw-alias-label-primary);word-break:break-all}\n/* 描述完整展示，只在极端长的少数情况下折行封顶。\n   实测 35 个真实 MCP 工具：中位 74 字符、p75 151、p90 318、最长 2006——\n   绝大多数只占一两行，所以不按字符数截断（那会白白砍掉大多数），\n   只给长尾一个上限，完整文本仍通过 title 属性可查。 */\n.smp-toolDesc{font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;line-clamp:4;overflow:hidden}\n.smp-empty{color:var(--dsw-alias-label-tertiary);margin:0;font-size:13px;line-height:20px;list-style:none}\n.smp-note{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;margin:0;list-style:none}\n/* 环境变量字段：文本框 + 自动注入说明。说明里的 code 用等宽字体点出关键名。 */\n.smp-envField{display:flex;flex-direction:column;gap:6px;min-width:0}\n.smp-envField code{font-family:var(--dsw-font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:11px;background:var(--dsw-alias-bg-module-platform);border-radius:var(--dsw-radius-xs,4px);padding:0 4px}\n.smp-field{display:flex;flex-direction:column;gap:6px;min-width:0}\n.smp-field[data-wide=true]{grid-column:1 / -1}\n/* 技能对话框里「将写入 <路径>」那一行：它不属于任何字段，但要跨满两列。 */\n.smp-skillPath{grid-column:1 / -1}\n/* MCP「需要授权」块：一枚主操作 + 可选的次要操作，下面是授权链接。 */\n.smp-oauthRow{display:flex;align-items:center;gap:8px;margin-top:6px}\n/* 授权链接是只读输入框而不是纯文本：链接很长，纯文本选中会把相邻文字一起带上，\n   而它必须能被完整复制（用户要粘到浏览器里）。 */\n.smp-oauthUrl{box-sizing:border-box;flex:1 1 auto;min-width:0;height:32px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-l1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.smp-oauthLinkRow{display:flex;align-items:center;gap:8px;margin-top:2px}\n/* 失败文案用错误色，但**不加粗、不放大**：它不是故障警报，只是这次操作没成功。 */\n.smp-oauthError{color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-label{font-size:12px;line-height:19px;color:var(--dsw-alias-label-secondary)}\n.smp-button[data-variant=danger]{color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-cardActions .smp-button[data-variant=danger]{border-color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-spinner{display:inline-block;width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--dsw-alias-border-l3);border-top-color:var(--dsw-alias-label-secondary);border-radius:50%;animation:smp-spin .72s linear infinite;flex:none}\n@keyframes smp-spin{to{transform:rotate(360deg)}}\n.smp-pending{display:inline-flex;align-items:center;gap:6px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}\n.smp-segment{align-self:flex-start;display:inline-flex;align-items:center;gap:2px;padding:2px;background:var(--dsw-alias-bg-module-platform);border-radius:var(--dsw-radius-md);width:fit-content}\n.smp-segment>button{box-sizing:border-box;height:28px;padding:0 12px;font:inherit;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);background:0 0;border:0;border-radius:var(--dsw-radius-sm);cursor:pointer}\n.smp-segment>button[data-active=true]{background:var(--dsw-alias-settings-card-fill);color:var(--dsw-alias-label-primary);font-weight:500}\n.smp-cardDetails .smp-input{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);padding:0 10px}\n.smp-cardDetails .smp-select,.smp-select{box-sizing:border-box;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);appearance:none;-webkit-appearance:none;padding:0 30px 0 10px;background-image:url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;background-size:14px}\n.smp-cardDetails .smp-input[readonly]{color:var(--dsw-alias-label-secondary)}\n.smp-actionsRow{display:flex;align-items:center;gap:8px;margin-top:10px}\n.smp-error{color:var(--dsw-alias-state-error-primary,var(--dsw-alias-label-primary));font-size:12px;line-height:18px}\n\n/* Card description (the subtitle under a title): always exactly two lines at\n   most, with an ellipsis — long skill descriptions used to push the layout. */\n.smp-cardDescription {\n  display: -webkit-box;\n  -webkit-line-clamp: 2;\n  -webkit-box-orient: vertical;\n  overflow: hidden;\n  overflow-wrap: anywhere;\n  text-overflow: ellipsis;\n}\n\n/* Visible progress while a save is in flight (the button also reads 保存中…). */\n.smp-pendingHint {\n  margin-top: 8px;\n  font-size: 12px;\n  opacity: 0.75;\n}\n\n/* The skill dialog body already lands on the description's box (274→1166) once\n   the dialog is widened, so it needs no side padding — adding one only squeezed\n   the form fields 48px narrower than the header text. */\n.smp-skillDialogBody {\n  width: auto;\n  max-width: 100%;\n  min-width: 0;\n  padding: 6px 0 10px;\n  box-sizing: border-box;\n}\n\n/* Skill preview.\n   The official modal must be widened itself — forcing a min-width on the inner\n   wrapper just clipped the text against the modal's own overflow. `:has()` lets\n   us reach the dialog that contains the preview. */\ndiv:has(> .smp-previewWrap),\ndiv[role='dialog']:has(.smp-previewWrap),\n[class*='modal']:has(.smp-previewWrap),\n[class*='Modal']:has(.smp-previewWrap),\n/* Add/edit skill dialog: same width as the preview. */\ndiv[role='dialog']:has(.smp-skillDialogBody),\n[class*='modal']:has(.smp-skillDialogBody),\n[class*='Modal']:has(.smp-skillDialogBody) {\n  width: min(940px, 92vw) !important;\n  max-width: 92vw !important;\n}\n\n.smp-previewWrap {\n  /* Measured geometry inside the official modal (dialog 250→1190):\n       description slot  274 → 1166  (892 wide, padded 24 on both sides)\n       children slot     274 → 1214  (940 wide, no right gutter)\n     The preview lives in the children slot, so it only needs the difference\n     trimmed on the right: 940 − 892 = 48px. No left padding. */\n  width: auto;\n  max-width: 100%;\n  min-width: 0;\n  padding: 6px 48px 10px 0;\n  box-sizing: border-box;\n}\n\n/* Description + file path: the path is long, so it gets its own wrapped line. */\n.smp-previewMeta { display: block; }\n.smp-previewDesc { margin-bottom: 6px; overflow-wrap: anywhere; }\n.smp-previewPath {\n  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;\n  font-size: 12px;\n  opacity: 0.75;\n  overflow-wrap: anywhere;\n  word-break: break-all;\n}\n\n.smp-preview {\n  margin: 0;\n  padding: 14px 16px;\n  background: var(--dsh-bg-secondary, rgba(127, 127, 127, 0.07));\n  border-radius: 10px;\n  /* The cap must leave room for the modal's own chrome (title + description +\n     footer) or a long body pushes the dialog past the window. Measured chrome is\n     ~180-210px, so subtract it from the viewport rather than using a bare vh. */\n  min-height: min(46vh, calc(100vh - 260px));\n  max-height: min(70vh, calc(100vh - 210px));\n  width: auto;\n  max-width: 100%;\n  box-sizing: border-box;\n  /* Wrap at the padding edge; vertical scroll only, never silently clipped. */\n  overflow-y: auto;\n  white-space: pre-wrap;\n  overflow-wrap: anywhere;\n  word-break: break-word;\n  min-width: 0;\n  /* Equal gutters on both sides for every wrapped line. */\n  text-align: left;\n  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;\n  font-size: 13px;\n  line-height: 1.65;\n  color: var(--dsh-text-secondary, inherit);\n}\n\n/* Skill source tag sits next to the name: give it the same breathing room the\n   MCP rows' \"配置文件\" tag has in smp-cardEnd. */\n.smp-cardIdentity .smp-tag {\n  margin-left: 6px;\n}\n\n/* Horizontal rule between two independent settings in the form grid.\n\n   The grid is two columns, so the rule has to span both. Zero height plus the grid's own\n   `gap` gives the separation — no margins, which would add to the gap and make the two\n   sides look like different sections rather than siblings. */\n.smp-divider {\n  grid-column: 1 / -1;\n  /* `1px` rather than the `.5px` used for card borders: a hairline that disappears on a\n     non-retina display is worse than a slightly heavier rule here, and this one is the only\n     thing separating two settings that would otherwise read as one group. */\n  border-top: 1px solid var(--dsw-alias-border-l2);\n  height: 0;\n}\n\n/* Boolean setting inside a form field: a switch plus its explanatory text.\n\n   The old checkbox row had a **fixed `height: 32px`**, which was fine for a one-line label and\n   wrong the moment the text wrapped: two lines of 13px/18px need 36px, so the second line was\n   squeezed against the first and the row looked clipped. Almost every one of these labels is a\n   full sentence, so wrapping is the normal case, not the exception — the fixed height was the\n   bug, not the text.\n\n   So: no fixed height (let it grow), `flex-start` so the switch lines up with the **first** line\n   of text instead of floating in the middle of a two-line block, and a line-height that matches\n   the switch's own height so the first line and the thumb share a baseline. */\n.smp-switchRow {\n  display: flex;\n  /* 文字在左、开关固定贴右：整张表单的布尔设置都读成「这一项叫什么 → 它是哪一档」，\n     开关位置不再随文字长度左右浮动。 */\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  padding: 2px 0;\n  color: var(--dsw-alias-label-primary);\n}\n\n/* The control slot.\n\n   A wrapper rather than a rule on the control itself, because the control is either the Host's\n   `primitives.Switch` **or** our own `.smp-switch` fallback button — different elements with\n   different class names. Targeting a slot keeps `flex: none` applying to both, instead of\n   silently working only on whichever one the current Host happens to render. */\n.smp-switchRow > .smp-switchSlot {\n  flex: none;\n  display: flex;\n  align-items: center;\n  /* `min-content` keeps the pill from being squeezed when the text column grows; the row's\n     `space-between` then does the positioning, so no magic left/right value is needed. */\n  min-width: min-content;\n}\n\n/* Wrapping text column. `min-width: 0` is what actually allows it to wrap inside a flex row —\n   without it the column takes its max-content width and overflows the dialog. */\n.smp-switchRowText {\n  display: flex;\n  flex-direction: column;\n  flex: 1 1 auto;\n  gap: 3px;\n  min-width: 0;\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* The consequence sentence. Deliberately a separate line from the title: a warning that is\n   appended to the label reads as part of the name and gets skimmed past. */\n.smp-switchRowHint {\n  font-size: 12px;\n  line-height: 17px;\n  color: var(--dsw-alias-label-secondary);\n}\n";
 
-    // src/modules/skills-mcp/client/components/form.js
+    // src/modules/skills-mcp/client/components/form.ts
     var HINTS = {
       serverName: "例如 context7，最多 32 字符",
       command: "npx",
@@ -1073,7 +1086,7 @@ window.__ModuleLoader__.load({
       project: "请选择项目"
     };
 
-    // src/modules/skills-mcp/host/mcp/connection.js
+    // src/modules/skills-mcp/host/mcp/connection.ts
     var CONNECTION_BOUNDS = Object.freeze({
       initialDelayMs: Object.freeze({ min: 1, max: 2147483647 }),
       maxDelayMs: Object.freeze({ min: 1, max: 2147483647 }),
@@ -1104,7 +1117,7 @@ window.__ModuleLoader__.load({
       reconnectMaxAttempts: "maxAttempts"
     });
 
-    // src/modules/skills-mcp/client/components/card.jsx
+    // src/modules/skills-mcp/client/components/card.tsx
     function maskEnv(env) {
       if (typeof env !== "string" || env.trim() === "") return "—";
       return env.replace(/=.*/g, "=***");
@@ -1227,7 +1240,7 @@ window.__ModuleLoader__.load({
       return inventory?.detail ? `${text2}：${inventory.detail}` : text2;
     }
 
-    // src/modules/skills-mcp/client/views/serverForm.jsx
+    // src/modules/skills-mcp/client/views/serverForm.tsx
     function serverFormView({
       tier,
       editing,
@@ -1434,7 +1447,7 @@ window.__ModuleLoader__.load({
       ), /* @__PURE__ */ __dshReact.createElement("button", { className: "smp-button", "data-variant": "outline", key: "cancel", onClick: onCancel }, "取消"))));
     }
 
-    // src/modules/skills-mcp/client/importSources.js
+    // src/modules/skills-mcp/client/importSources.ts
     var IMPORT_CHOICES = [
       ["claude", "Claude"],
       ["codex", "Codex"],
@@ -1466,7 +1479,7 @@ window.__ModuleLoader__.load({
       ["vscode", "VS Code"]
     ];
 
-    // src/modules/skills-mcp/client/crud/import.js
+    // src/modules/skills-mcp/client/crud/import.ts
     function takenNames({ scope, target, profileRows = [], servers = [] }) {
       if (scope === "global") return new Set(profileRows.map((row) => row.serverName));
       return new Set(
@@ -1483,7 +1496,7 @@ window.__ModuleLoader__.load({
       return scope === "global" ? `导入 ${fresh} 个到配置文件${suffix}` : `导入 ${fresh} 个${suffix}`;
     }
 
-    // src/modules/skills-mcp/client/views/importCard.jsx
+    // src/modules/skills-mcp/client/views/importCard.tsx
     function importCardView({
       scope,
       importProject,
@@ -1570,7 +1583,7 @@ window.__ModuleLoader__.load({
       ) : null));
     }
 
-    // src/modules/skills-mcp/client/components/chevron.jsx
+    // src/modules/skills-mcp/client/components/chevron.tsx
     function Chevron({ open }) {
       return /* @__PURE__ */ __dshReact.createElement(
         "svg",
@@ -1596,7 +1609,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    // src/modules/skills-mcp/client/views/listCard.jsx
+    // src/modules/skills-mcp/client/views/listCard.tsx
     function listCardView({ key, identity, description, enabled, details, pending, statusNode, authNote, isOpen, onToggle, menu, error }) {
       return /* @__PURE__ */ __dshReact.createElement("li", { className: "smp-card", key }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardRow", key: "row" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardMain", key: "main" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardHead", key: "head" }, /* @__PURE__ */ __dshReact.createElement(
         "button",
@@ -1611,7 +1624,7 @@ window.__ModuleLoader__.load({
       ), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardEnd", key: "end" }, enabled === false ? null : statusNode ?? null)), description ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDescription", key: "desc" }, description) : null), pending ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "pending" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-pending", key: "p" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-spinner", key: "s" }), pending)) : /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "actions" }, menu)), isOpen ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDetails", key: "details" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-details", key: "grid" }, detailNodes(details, "k")), authNote ?? null, error ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-error", key: "err", style: { marginTop: 8 } }, error) : null) : null);
     }
 
-    // src/modules/skills-mcp/client/components/toolList.jsx
+    // src/modules/skills-mcp/client/components/toolList.tsx
     function normalizeDescription(text2) {
       return String(text2 ?? "").replace(/\s+/g, " ").trim();
     }
@@ -1655,7 +1668,7 @@ window.__ModuleLoader__.load({
       })));
     }
 
-    // src/modules/skills-mcp/client/views/profileCard.jsx
+    // src/modules/skills-mcp/client/views/profileCard.tsx
     function profileCardView({
       row,
       tier,
@@ -1748,7 +1761,7 @@ window.__ModuleLoader__.load({
     .boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}
     `;
 
-    // src/client/styles/settings.js
+    // src/client/styles/settings.ts
     function settingsStyles(namespace) {
       return settings_default.replace(/\/\*[\s\S]*?\*\//g, "").replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors, declarations) => {
         const scoped = selectors.split(",").map((selector) => selector.trim()).filter((selector) => selector.startsWith(`.${namespace}-`));
@@ -1756,7 +1769,7 @@ window.__ModuleLoader__.load({
       });
     }
 
-    // src/client/latest-task.js
+    // src/client/latest-task.ts
     function createLatestTask() {
       let current;
       return {
@@ -1773,14 +1786,14 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/client/config-write.js
+    // src/client/config-write.ts
     async function acceptConfigWrite(write, field2) {
       const accepted = await write();
       if (accepted === false) throw new Error(`宿主拒绝了这次写入（${field2}）：配置可能未通过校验，或当前文档不可写`);
       return accepted;
     }
 
-    // src/modules/skills-mcp/client/panel.jsx
+    // src/modules/skills-mcp/client/panel.tsx
     function createPanel(React2, primitives) {
       const switchControl = (checked, onChange, label, disabled = false) => primitives?.Switch !== void 0 ? /* @__PURE__ */ __dshReact.createElement(primitives.Switch, { key: "switch", checked, disabled, label, onChange }) : /* @__PURE__ */ __dshReact.createElement(
         "button",
@@ -2914,7 +2927,7 @@ window.__ModuleLoader__.load({
       return Panel;
     }
 
-    // src/modules/skills-mcp/client/client.js
+    // src/modules/skills-mcp/client/client.ts
     function createClient(require2) {
       const React2 = require2("react");
       globalThis.__dshReact = React2;

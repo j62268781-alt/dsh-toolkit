@@ -16,24 +16,19 @@
  *
  * 第二、三种的区分是关键：前者是「连不上」，后者是「实例不在」，两者要给的提示完全不同。
  */
-
 /** 探测默认超时：够慢服务器回话，又不至于拖住整个 tick。 */
-const DEFAULT_PROBE_TIMEOUT_MS = 8000
-
+const DEFAULT_PROBE_TIMEOUT_MS = 8000;
 /** 客户端未连接时抛出的原文（见 dsh-mcp-client 的 connection.resources.request）。 */
-const DISCONNECTED_MARKER = 'is disconnected'
-
+const DISCONNECTED_MARKER = 'is disconnected';
 /** 服务里查不到这个服务器的 provider（见 dsh-mcp-resources 的 request）。 */
-const UNAVAILABLE_MARKER = 'is unavailable in this agent'
-
+const UNAVAILABLE_MARKER = 'is unavailable in this agent';
 /** 探测结果取值。 */
 export const PROBE_STATE = Object.freeze({
-  connected: 'connected',
-  down: 'down',
-  absent: 'absent',
-  unknown: 'unknown',
-})
-
+    connected: 'connected',
+    down: 'down',
+    absent: 'absent',
+    unknown: 'unknown',
+});
 /**
  * 建一个探测器。
  *
@@ -44,51 +39,57 @@ export const PROBE_STATE = Object.freeze({
  *   面板会显示「状态未知」，这比猜一个状态诚实。
  */
 export function createConnectionProbe(ctx, log) {
-  /** 当前的服务实例；解析不到就返回 null。 */
-  const resolve = () => {
-    try {
-      const service = ctx.get?.('mcpResources') ?? null
-      if (service === null || service === undefined) return null
-      return typeof service.request === 'function' ? service : null
-    } catch {
-      // 裸访问服务在 cordis 注入之前会抛。
-      return null
-    }
-  }
-
-  return {
-    /** 观测机制现在可用吗。 */
-    available: () => resolve() !== null,
-    reason: () => (resolve() === null ? 'mcpResources service unavailable' : ''),
-    /**
-     * 问一次「这台服务器现在什么状态」。
-     *
-     * @param serverName - MCP 服务器名。
-     * @param options.agent - 该项目级服务器所在 agent 的 scope；全局行不需要。
-     * @param options.timeoutMs - 超时。
-     * @returns `{ state, detail }`，`state` 取 {@link PROBE_STATE} 之一。
-     */
-    probe: async (serverName, options = {}) => {
-      const service = resolve()
-      if (service === null) return { state: PROBE_STATE.unknown, detail: 'mcpResources service unavailable' }
-      const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : DEFAULT_PROBE_TIMEOUT_MS
-      const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
-        ? AbortSignal.timeout(timeoutMs)
-        : undefined
-      try {
-        await service.request(serverName, { method: 'resources/list' }, { agent: options.agent, signal, timeout: timeoutMs })
-        return { state: PROBE_STATE.connected, detail: '' }
-      } catch (error) {
-        const detail = String(error?.message ?? error)
-        // 顺序有讲究：未连接时客户端在发出请求前就抛，所以这两个标记不会同时出现，
-        // 但「unavailable」必须优先判，否则会把「没有 provider」误读成别的东西。
-        if (detail.includes(UNAVAILABLE_MARKER)) return { state: PROBE_STATE.absent, detail }
-        if (detail.includes(DISCONNECTED_MARKER)) return { state: PROBE_STATE.down, detail }
-        // 任何别的回答（方法不支持、超时、协议错误）都说明 provider 存在且请求发出去了
-        // —— 客户端未连接时根本走不到这一步。
-        log?.warn?.(`dsh-skills-mcp-manager: probe of ${serverName} returned an unexpected error, treating it as connected: ${detail}`)
-        return { state: PROBE_STATE.connected, detail }
-      }
-    },
-  }
+    /** 当前的服务实例；解析不到就返回 null。 */
+    const resolve = () => {
+        try {
+            const service = ctx.get?.('mcpResources') ?? null;
+            if (service === null || service === undefined)
+                return null;
+            return typeof service.request === 'function' ? service : null;
+        }
+        catch {
+            // 裸访问服务在 cordis 注入之前会抛。
+            return null;
+        }
+    };
+    return {
+        /** 观测机制现在可用吗。 */
+        available: () => resolve() !== null,
+        reason: () => (resolve() === null ? 'mcpResources service unavailable' : ''),
+        /**
+         * 问一次「这台服务器现在什么状态」。
+         *
+         * @param serverName - MCP 服务器名。
+         * @param options.agent - 该项目级服务器所在 agent 的 scope；全局行不需要。
+         * @param options.timeoutMs - 超时。
+         * @returns `{ state, detail }`，`state` 取 {@link PROBE_STATE} 之一。
+         */
+        probe: async (serverName, options = {}) => {
+            const service = resolve();
+            if (service === null)
+                return { state: PROBE_STATE.unknown, detail: 'mcpResources service unavailable' };
+            const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : DEFAULT_PROBE_TIMEOUT_MS;
+            const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+                ? AbortSignal.timeout(timeoutMs)
+                : undefined;
+            try {
+                await service.request(serverName, { method: 'resources/list' }, { agent: options.agent, signal, timeout: timeoutMs });
+                return { state: PROBE_STATE.connected, detail: '' };
+            }
+            catch (error) {
+                const detail = String(error?.message ?? error);
+                // 顺序有讲究：未连接时客户端在发出请求前就抛，所以这两个标记不会同时出现，
+                // 但「unavailable」必须优先判，否则会把「没有 provider」误读成别的东西。
+                if (detail.includes(UNAVAILABLE_MARKER))
+                    return { state: PROBE_STATE.absent, detail };
+                if (detail.includes(DISCONNECTED_MARKER))
+                    return { state: PROBE_STATE.down, detail };
+                // 任何别的回答（方法不支持、超时、协议错误）都说明 provider 存在且请求发出去了
+                // —— 客户端未连接时根本走不到这一步。
+                log?.warn?.(`dsh-skills-mcp-manager: probe of ${serverName} returned an unexpected error, treating it as connected: ${detail}`);
+                return { state: PROBE_STATE.connected, detail };
+            }
+        },
+    };
 }
+//# sourceMappingURL=probe.js.map

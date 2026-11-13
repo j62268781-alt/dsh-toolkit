@@ -33,17 +33,20 @@ export declare class JudgmentService extends TypertRemoteService implements Judg
     private readonly config;
     static inject: string[];
     static Config: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
-        connections: import("@deepseek-ai/schemastery").default<NoInfer<import("@deepseek-ai/cosmokit").Dict<{
-            protocol?: string | null | undefined;
-            baseUrl?: string | null | undefined;
-            model?: string | null | undefined;
-            credentialRef?: string | null | undefined;
-            timeoutMs?: number | null | undefined;
-            quota?: ({
-                callsPerHour?: number | null | undefined;
-                inputTokensPerHour?: number | null | undefined;
-            } & import("@deepseek-ai/cosmokit").Dict) | null | undefined;
-        } & import("@deepseek-ai/cosmokit").Dict, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
+        connections: import("@deepseek-ai/schemastery").default<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
+            protocol: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            baseUrl: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            model: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            credentialRef: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            timeoutMs: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            quota: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+                callsPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+                inputTokensPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            }>>, Schemastery.ObjectT<NoInfer<{
+                callsPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+                inputTokensPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            }>>, "defined">;
+        }>>, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
             protocol: import("@deepseek-ai/schemastery").default<string, string, "defined">;
             baseUrl: import("@deepseek-ai/schemastery").default<string, string, "defined">;
             model: import("@deepseek-ai/schemastery").default<string, string, "defined">;
@@ -57,13 +60,16 @@ export declare class JudgmentService extends TypertRemoteService implements Judg
                 inputTokensPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
             }>>, "defined">;
         }>>, string>>, "volatile-defined">;
-        purposes: import("@deepseek-ai/schemastery").default<NoInfer<import("@deepseek-ai/cosmokit").Dict<{
-            connection?: string | null | undefined;
-            quota?: ({
-                callsPerHour?: number | null | undefined;
-                inputTokensPerHour?: number | null | undefined;
-            } & import("@deepseek-ai/cosmokit").Dict) | null | undefined;
-        } & import("@deepseek-ai/cosmokit").Dict, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
+        purposes: import("@deepseek-ai/schemastery").default<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
+            connection: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            quota: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+                callsPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+                inputTokensPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            }>>, Schemastery.ObjectT<NoInfer<{
+                callsPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+                inputTokensPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            }>>, "defined">;
+        }>>, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
             connection: import("@deepseek-ai/schemastery").default<string, string, "defined">;
             quota: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
                 callsPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
@@ -82,17 +88,20 @@ export declare class JudgmentService extends TypertRemoteService implements Judg
             path: import("@deepseek-ai/schemastery").default<string, string, "defined">;
         }>>>, "volatile-defined">;
     }>>, Schemastery.ObjectT<NoInfer<{
-        connections: import("@deepseek-ai/schemastery").default<NoInfer<import("@deepseek-ai/cosmokit").Dict<{
-            protocol?: string | null | undefined;
-            baseUrl?: string | null | undefined;
-            model?: string | null | undefined;
-            credentialRef?: string | null | undefined;
-            timeoutMs?: number | null | undefined;
-            quota?: ({
-                callsPerHour?: number | null | undefined;
-                inputTokensPerHour?: number | null | undefined;
-            } & import("@deepseek-ai/cosmokit").Dict) | null | undefined;
-        } & import("@deepseek-ai/cosmokit").Dict, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
+        connections: import("@deepseek-ai/schemastery").default<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
+            protocol: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            baseUrl: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            model: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            credentialRef: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            timeoutMs: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            quota: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+                callsPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+                inputTokensPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            }>>, Schemastery.ObjectT<NoInfer<{
+                callsPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+                inputTokensPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            }>>, "defined">;
+        }>>, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
             protocol: import("@deepseek-ai/schemastery").default<string, string, "defined">;
             baseUrl: import("@deepseek-ai/schemastery").default<string, string, "defined">;
             model: import("@deepseek-ai/schemastery").default<string, string, "defined">;
@@ -106,13 +115,16 @@ export declare class JudgmentService extends TypertRemoteService implements Judg
                 inputTokensPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
             }>>, "defined">;
         }>>, string>>, "volatile-defined">;
-        purposes: import("@deepseek-ai/schemastery").default<NoInfer<import("@deepseek-ai/cosmokit").Dict<{
-            connection?: string | null | undefined;
-            quota?: ({
-                callsPerHour?: number | null | undefined;
-                inputTokensPerHour?: number | null | undefined;
-            } & import("@deepseek-ai/cosmokit").Dict) | null | undefined;
-        } & import("@deepseek-ai/cosmokit").Dict, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
+        purposes: import("@deepseek-ai/schemastery").default<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
+            connection: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            quota: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+                callsPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+                inputTokensPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            }>>, Schemastery.ObjectT<NoInfer<{
+                callsPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+                inputTokensPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            }>>, "defined">;
+        }>>, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
             connection: import("@deepseek-ai/schemastery").default<string, string, "defined">;
             quota: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
                 callsPerHour: import("@deepseek-ai/schemastery").default<number, number, "defined">;

@@ -15,17 +15,29 @@
 import type { Volatile } from '@deepseek-ai/cordis';
 import s from '@deepseek-ai/schemastery';
 export declare const Config: s<Schemastery.ObjectS<NoInfer<{
-    connections: s<NoInfer<import("@deepseek-ai/cosmokit").Dict<{
-        protocol?: string | null | undefined;
-        baseUrl?: string | null | undefined;
-        model?: string | null | undefined;
-        credentialRef?: string | null | undefined;
-        timeoutMs?: number | null | undefined;
-        quota?: ({
-            callsPerHour?: number | null | undefined;
-            inputTokensPerHour?: number | null | undefined;
-        } & import("@deepseek-ai/cosmokit").Dict) | null | undefined;
-    } & import("@deepseek-ai/cosmokit").Dict, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
+    connections: s<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
+        /** 协议身份，显式选择；不由 URL 推断（§12.6）。 */
+        protocol: s<string, string, "defined">;
+        /** 规范化 endpoint。空字符串表示尚未配置。 */
+        baseUrl: s<string, string, "defined">;
+        /** 必须 pin 到具体版本并记录响应快照，不要用 `jev-latest` 这类移动别名（§13.4）。 */
+        model: s<string, string, "defined">;
+        /**
+         * 凭据引用名。**默认留空**：一个写死的默认值会让多条连接共用一个引用名而互相覆盖，
+         * 所以引用名由配置页自动分配（JUDGMENT_API_KEY_{序号}）（`typesafe-main` → `TYPESAFE_MAIN_API_KEY`），
+         * 手写配置时也可以自己填。空字符串表示这个连接还没有密钥。
+         */
+        credentialRef: s<string, string, "defined">;
+        timeoutMs: s<number, number, "defined">;
+        /** 这条连接的逐小时配额。 */
+        quota: s<Schemastery.ObjectS<NoInfer<{
+            callsPerHour: s<number, number, "defined">;
+            inputTokensPerHour: s<number, number, "defined">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            callsPerHour: s<number, number, "defined">;
+            inputTokensPerHour: s<number, number, "defined">;
+        }>>, "defined">;
+    }>>, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
         /** 协议身份，显式选择；不由 URL 推断（§12.6）。 */
         protocol: s<string, string, "defined">;
         /** 规范化 endpoint。空字符串表示尚未配置。 */
@@ -49,13 +61,18 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         }>>, "defined">;
     }>>, string>>, "volatile-defined">;
     /** 用途名 → 连接。消费者只报用途名（`mobile.action` / `browser.action` / `compaction.retain` …）。 */
-    purposes: s<NoInfer<import("@deepseek-ai/cosmokit").Dict<{
-        connection?: string | null | undefined;
-        quota?: ({
-            callsPerHour?: number | null | undefined;
-            inputTokensPerHour?: number | null | undefined;
-        } & import("@deepseek-ai/cosmokit").Dict) | null | undefined;
-    } & import("@deepseek-ai/cosmokit").Dict, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
+    purposes: s<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
+        /** 指向 `connections` 的键；空字符串表示用 `defaultConnection`。 */
+        connection: s<string, string, "defined">;
+        /** 这个用途的逐小时配额（与连接层配额各自独立，两个都要过）。 */
+        quota: s<Schemastery.ObjectS<NoInfer<{
+            callsPerHour: s<number, number, "defined">;
+            inputTokensPerHour: s<number, number, "defined">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            callsPerHour: s<number, number, "defined">;
+            inputTokensPerHour: s<number, number, "defined">;
+        }>>, "defined">;
+    }>>, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
         /** 指向 `connections` 的键；空字符串表示用 `defaultConnection`。 */
         connection: s<string, string, "defined">;
         /** 这个用途的逐小时配额（与连接层配额各自独立，两个都要过）。 */
@@ -86,17 +103,29 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         path: s<string, string, "defined">;
     }>>>, "volatile-defined">;
 }>>, Schemastery.ObjectT<NoInfer<{
-    connections: s<NoInfer<import("@deepseek-ai/cosmokit").Dict<{
-        protocol?: string | null | undefined;
-        baseUrl?: string | null | undefined;
-        model?: string | null | undefined;
-        credentialRef?: string | null | undefined;
-        timeoutMs?: number | null | undefined;
-        quota?: ({
-            callsPerHour?: number | null | undefined;
-            inputTokensPerHour?: number | null | undefined;
-        } & import("@deepseek-ai/cosmokit").Dict) | null | undefined;
-    } & import("@deepseek-ai/cosmokit").Dict, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
+    connections: s<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
+        /** 协议身份，显式选择；不由 URL 推断（§12.6）。 */
+        protocol: s<string, string, "defined">;
+        /** 规范化 endpoint。空字符串表示尚未配置。 */
+        baseUrl: s<string, string, "defined">;
+        /** 必须 pin 到具体版本并记录响应快照，不要用 `jev-latest` 这类移动别名（§13.4）。 */
+        model: s<string, string, "defined">;
+        /**
+         * 凭据引用名。**默认留空**：一个写死的默认值会让多条连接共用一个引用名而互相覆盖，
+         * 所以引用名由配置页自动分配（JUDGMENT_API_KEY_{序号}）（`typesafe-main` → `TYPESAFE_MAIN_API_KEY`），
+         * 手写配置时也可以自己填。空字符串表示这个连接还没有密钥。
+         */
+        credentialRef: s<string, string, "defined">;
+        timeoutMs: s<number, number, "defined">;
+        /** 这条连接的逐小时配额。 */
+        quota: s<Schemastery.ObjectS<NoInfer<{
+            callsPerHour: s<number, number, "defined">;
+            inputTokensPerHour: s<number, number, "defined">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            callsPerHour: s<number, number, "defined">;
+            inputTokensPerHour: s<number, number, "defined">;
+        }>>, "defined">;
+    }>>, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
         /** 协议身份，显式选择；不由 URL 推断（§12.6）。 */
         protocol: s<string, string, "defined">;
         /** 规范化 endpoint。空字符串表示尚未配置。 */
@@ -120,13 +149,18 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         }>>, "defined">;
     }>>, string>>, "volatile-defined">;
     /** 用途名 → 连接。消费者只报用途名（`mobile.action` / `browser.action` / `compaction.retain` …）。 */
-    purposes: s<NoInfer<import("@deepseek-ai/cosmokit").Dict<{
-        connection?: string | null | undefined;
-        quota?: ({
-            callsPerHour?: number | null | undefined;
-            inputTokensPerHour?: number | null | undefined;
-        } & import("@deepseek-ai/cosmokit").Dict) | null | undefined;
-    } & import("@deepseek-ai/cosmokit").Dict, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
+    purposes: s<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
+        /** 指向 `connections` 的键；空字符串表示用 `defaultConnection`。 */
+        connection: s<string, string, "defined">;
+        /** 这个用途的逐小时配额（与连接层配额各自独立，两个都要过）。 */
+        quota: s<Schemastery.ObjectS<NoInfer<{
+            callsPerHour: s<number, number, "defined">;
+            inputTokensPerHour: s<number, number, "defined">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            callsPerHour: s<number, number, "defined">;
+            inputTokensPerHour: s<number, number, "defined">;
+        }>>, "defined">;
+    }>>, string>>, NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectT<NoInfer<{
         /** 指向 `connections` 的键；空字符串表示用 `defaultConnection`。 */
         connection: s<string, string, "defined">;
         /** 这个用途的逐小时配额（与连接层配额各自独立，两个都要过）。 */

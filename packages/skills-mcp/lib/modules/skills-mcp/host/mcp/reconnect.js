@@ -13,16 +13,13 @@
  * time. It is a **write** endpoint (it toggles a profile row twice), so it gets the same
  * treatment as the row route.
  */
-import { NAME } from '../identity.js'
-import { readBody, sendJson } from '../../../../host/http.js'
-import { registerAuthenticatedRoute } from '../../../../host/routes.js'
-import { createSerialQueue } from '../../../../host/serial.js'
-
-export const RECONNECT_PATH = `/${NAME}/reconnect`
-
+import { NAME } from '../identity.js';
+import { readBody, sendJson } from '../../../../host/http.js';
+import { registerAuthenticatedRoute } from '../../../../host/routes.js';
+import { createSerialQueue } from '../../../../host/serial.js';
+export const RECONNECT_PATH = `/${NAME}/reconnect`;
 /** Largest command body accepted, in bytes. */
-const MAX_BODY = 8 * 1024
-
+const MAX_BODY = 8 * 1024;
 /**
  * Register the reconnect route.
  *
@@ -32,44 +29,43 @@ const MAX_BODY = 8 * 1024
  * command's duration, not a queue delay.
  */
 export function registerReconnectRoute(ctx, { schema, run }) {
-  const queue = createSerialQueue()
-
-  registerAuthenticatedRoute(ctx, {
-    kind: 'exact',
-    path: RECONNECT_PATH,
-    handler: async (req, res) => {
-      res.setHeader('cache-control', 'no-store')
-      if (req.method !== 'POST') {
-        res.statusCode = 405
-        res.setHeader('allow', 'POST')
-        res.end()
-        return
-      }
-      const type = String(req.headers?.['content-type'] ?? '')
-      if (!type.includes('application/json')) {
-        res.statusCode = 415
-        res.end(JSON.stringify({ ok: false, reason: 'content-type must be application/json' }))
-        return
-      }
-
-      const send = (status, payload) => sendJson(res, status, payload)
-
-      let request
-      try {
-        request = schema(JSON.parse(await readBody(req, MAX_BODY)))
-      } catch (error) {
-        send(400, { ok: false, reason: String(error?.message ?? error) })
-        return
-      }
-
-      await queue.run(async () => {
-        try {
-          send(200, await run(request))
-        } catch (error) {
-          ctx.logger.warn('dsh-skills-mcp-manager: reconnect command failed: %s', String(error?.message ?? error))
-          send(200, { ok: false, reason: String(error?.message ?? error) })
-        }
-      })
-    },
-  })
+    const queue = createSerialQueue();
+    registerAuthenticatedRoute(ctx, {
+        kind: 'exact',
+        path: RECONNECT_PATH,
+        handler: async (req, res) => {
+            res.setHeader('cache-control', 'no-store');
+            if (req.method !== 'POST') {
+                res.statusCode = 405;
+                res.setHeader('allow', 'POST');
+                res.end();
+                return;
+            }
+            const type = String(req.headers?.['content-type'] ?? '');
+            if (!type.includes('application/json')) {
+                res.statusCode = 415;
+                res.end(JSON.stringify({ ok: false, reason: 'content-type must be application/json' }));
+                return;
+            }
+            const send = (status, payload) => sendJson(res, status, payload);
+            let request;
+            try {
+                request = schema(JSON.parse(await readBody(req, MAX_BODY)));
+            }
+            catch (error) {
+                send(400, { ok: false, reason: String(error?.message ?? error) });
+                return;
+            }
+            await queue.run(async () => {
+                try {
+                    send(200, await run(request));
+                }
+                catch (error) {
+                    ctx.logger.warn('dsh-skills-mcp-manager: reconnect command failed: %s', String(error?.message ?? error));
+                    send(200, { ok: false, reason: String(error?.message ?? error) });
+                }
+            });
+        },
+    });
 }
+//# sourceMappingURL=reconnect.js.map

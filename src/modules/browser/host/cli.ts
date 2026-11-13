@@ -645,7 +645,7 @@ export class AgentBrowser {
 
     // 兜底：极少数情况下 open 仍停在 about:blank（上一个会话的守护进程正在退出）。
     // 关掉、等它真的退出、再打开一次；仍然不行就**明确报错**，不静默留在空白页。
-    await this.json(['close'], run).catch(() => undefined)
+    await this.json(['close'], run).catch((): undefined => undefined)
     await sleep(CLOSE_SETTLE_MS)
     await this.json(['open', url], run)
     if (await this.waitUntilNavigated(run)) return

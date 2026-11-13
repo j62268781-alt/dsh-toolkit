@@ -3,7 +3,7 @@ window.__ModuleLoader__.load({
   id: "dsh-toolkit-mobile",
   factory(require) {
     const module = { exports: {} };
-    // src/client/http.js
+    // src/client/http.ts
     async function fetchJson(url, { json, ...options } = {}) {
       const headers = new Headers(options.headers);
       if (json !== void 0) headers.set("content-type", "application/json");
@@ -38,7 +38,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/mobile/client/stream/adaptive.js
+    // src/modules/mobile/client/stream/adaptive.ts
     var REGRANT_UPSCALE_RATIO = 1.02;
     var REGRANT_DOWNSCALE_RATIO = 1.05;
     var REGRANT_UPSCALE_HOLD_MS = 600;
@@ -106,7 +106,7 @@ window.__ModuleLoader__.load({
       return Math.min(raw, limit);
     }
 
-    // src/modules/mobile/client/stream/canvas.js
+    // src/modules/mobile/client/stream/canvas.ts
     var CHASSIS_INSET = 6;
     function createCanvasRuntime() {
       const stageLayout = /* @__PURE__ */ new WeakMap();
@@ -243,7 +243,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/mobile/client/stream/annexb.js
+    // src/modules/mobile/client/stream/annexb.ts
     function codecStringFromSps(nal) {
       let offset = 0;
       if (nal[2] === 1) offset = 3;
@@ -297,7 +297,7 @@ window.__ModuleLoader__.load({
       return out;
     }
 
-    // src/modules/mobile/client/stream/use-h264-canvas.js
+    // src/modules/mobile/client/stream/use-h264-canvas.ts
     var TARGET_RENDER_FPS = 60;
     var VSYNC_SLACK_MS = 4;
     function createUseH264Canvas(React, canvasRuntime) {
@@ -587,7 +587,7 @@ window.__ModuleLoader__.load({
       return useH264Canvas;
     }
 
-    // src/modules/mobile/client/presentation.js
+    // src/modules/mobile/client/presentation.ts
     function deviceKindLabel(type) {
       if (type === "real") return "真机";
       if (type === "simulator" || type === "emulator") return "模拟器";
@@ -633,7 +633,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/mobile/client/components/icons.jsx
+    // src/modules/mobile/client/components/icons.tsx
     function createIcons(React) {
       const h = React.createElement;
       const ARTWORK_BLUE = "#539CFA";
@@ -727,7 +727,7 @@ window.__ModuleLoader__.load({
       return { MobileArtwork, IconHome, IconBack, IconRotate, IconRefresh, IconFrame, IconFrameNone };
     }
 
-    // src/modules/mobile/client/components/device-options.jsx
+    // src/modules/mobile/client/components/device-options.tsx
     function createDeviceOptions(React) {
       const h = React.createElement;
       function renderDeviceOptions(devices) {
@@ -746,7 +746,7 @@ window.__ModuleLoader__.load({
       return renderDeviceOptions;
     }
 
-    // src/modules/mobile/client/components/stream-view.jsx
+    // src/modules/mobile/client/components/stream-view.tsx
     var MIN_SWIPE_DURATION_MS = 80;
     var MAX_SWIPE_DURATION_MS = 600;
     function createStreamView(React, { api, prefix: PREFIX, useH264Canvas }) {
@@ -1034,10 +1034,13 @@ window.__ModuleLoader__.load({
       return StreamView;
     }
 
-    // src/client/poll.js
+    // src/client/poll.ts
     function startPolling(task, { intervalMs, onError = () => {
     } }) {
-      let stopped = false, timer, pending, controller;
+      let stopped = false;
+      let timer;
+      let pending;
+      let controller;
       const delay = () => typeof intervalMs === "function" ? intervalMs() : intervalMs;
       function refresh() {
         if (stopped) return Promise.resolve();
@@ -1055,7 +1058,7 @@ window.__ModuleLoader__.load({
         });
         return pending;
       }
-      refresh();
+      void refresh();
       return {
         refresh,
         stop() {
@@ -1066,7 +1069,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/mobile/client/panel.jsx
+    // src/modules/mobile/client/panel.tsx
     function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, StreamView, icons, renderDeviceOptions }) {
       const h = React.createElement;
       const { useState, useEffect, useRef, useCallback, useMemo } = React;
@@ -1361,7 +1364,7 @@ window.__ModuleLoader__.load({
       return MobilePanel;
     }
 
-    // src/modules/mobile/client/index.jsx
+    // src/modules/mobile/client/index.tsx
     function createClient(require2) {
       const React = require2("react");
       globalThis.__dshReact = React;

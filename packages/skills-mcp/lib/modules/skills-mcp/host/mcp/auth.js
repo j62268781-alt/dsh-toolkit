@@ -33,15 +33,13 @@
  *
  * 纯函数、不 import 宿主，便于直接单测。
  */
-
 /** 两类鉴权挑战。语义不同，但对用户的动作都是「去补授权」。 */
 export const AUTH_KIND = Object.freeze({
-  /** 401 + Bearer 挑战：尚未授权（或凭据失效）。 */
-  required: 'required',
-  /** 403 + `error="insufficient_scope"`：已授权但范围不够，需要 step-up。 */
-  insufficientScope: 'insufficient-scope',
-})
-
+    /** 401 + Bearer 挑战：尚未授权（或凭据失效）。 */
+    required: 'required',
+    /** 403 + `error="insufficient_scope"`：已授权但范围不够，需要 step-up。 */
+    insufficientScope: 'insufficient-scope',
+});
 /**
  * 解析 `WWW-Authenticate` 挑战头。
  *
@@ -53,24 +51,25 @@ export const AUTH_KIND = Object.freeze({
  * @returns `{ scheme, resourceMetadataUrl, scope, error, errorDescription }` 或 null。
  */
 export function parseWwwAuthenticate(value) {
-  if (typeof value !== 'string' || value.trim() === '') return null
-  const [type, scheme] = value.trim().split(/\s+/)
-  if (String(type ?? '').toLowerCase() !== 'bearer' || !scheme) return null
-  const field = (name) => {
-    const match = value.match(new RegExp(`${name}=(?:"([^"]+)"|([^\\s,]+))`))
-    const result = match?.[1] || match?.[2]
-    return typeof result === 'string' && result !== '' ? result : ''
-  }
-  const resourceMetadataUrl = field('resource_metadata')
-  return {
-    scheme: String(scheme),
-    resourceMetadataUrl,
-    scope: field('scope'),
-    error: field('error'),
-    errorDescription: field('error_description'),
-  }
+    if (typeof value !== 'string' || value.trim() === '')
+        return null;
+    const [type, scheme] = value.trim().split(/\s+/);
+    if (String(type ?? '').toLowerCase() !== 'bearer' || !scheme)
+        return null;
+    const field = (name) => {
+        const match = value.match(new RegExp(`${name}=(?:"([^"]+)"|([^\\s,]+))`));
+        const result = match?.[1] || match?.[2];
+        return typeof result === 'string' && result !== '' ? result : '';
+    };
+    const resourceMetadataUrl = field('resource_metadata');
+    return {
+        scheme: String(scheme),
+        resourceMetadataUrl,
+        scope: field('scope'),
+        error: field('error'),
+        errorDescription: field('error_description'),
+    };
 }
-
 /**
  * 把一次 HTTP 响应判成鉴权挑战。
  *
@@ -79,33 +78,32 @@ export function parseWwwAuthenticate(value) {
  * @returns `{ kind, scope, resourceMetadataUrl, error, errorDescription }` 或 null。
  */
 export function classifyAuthChallenge(input) {
-  const status = Number(input?.status)
-  const challenge = parseWwwAuthenticate(input?.wwwAuthenticate)
-  if (status === 401) {
-    // 401 而没有可解析的 Bearer 挑战：仍然是一次鉴权拒绝，但拿不到 scope/元数据。
-    // 保留为 required，因为状态码本身已经是协议级的明确信号。
-    return {
-      kind: AUTH_KIND.required,
-      scope: challenge?.scope ?? '',
-      resourceMetadataUrl: challenge?.resourceMetadataUrl ?? '',
-      error: challenge?.error ?? '',
-      errorDescription: challenge?.errorDescription ?? '',
+    const status = Number(input?.status);
+    const challenge = parseWwwAuthenticate(input?.wwwAuthenticate);
+    if (status === 401) {
+        // 401 而没有可解析的 Bearer 挑战：仍然是一次鉴权拒绝，但拿不到 scope/元数据。
+        // 保留为 required，因为状态码本身已经是协议级的明确信号。
+        return {
+            kind: AUTH_KIND.required,
+            scope: challenge?.scope ?? '',
+            resourceMetadataUrl: challenge?.resourceMetadataUrl ?? '',
+            error: challenge?.error ?? '',
+            errorDescription: challenge?.errorDescription ?? '',
+        };
     }
-  }
-  // 注意 `insufficient_scope` 是**下划线**的协议取值，而 {@link AUTH_KIND} 用连字符做面板
-  // 取值；两者不能混用，所以这里比对协议原文，转换只发生在返回的结构里。
-  if (status === 403 && challenge?.error === 'insufficient_scope') {
-    return {
-      kind: AUTH_KIND.insufficientScope,
-      scope: challenge.scope,
-      resourceMetadataUrl: challenge.resourceMetadataUrl,
-      error: challenge.error,
-      errorDescription: challenge.errorDescription,
+    // 注意 `insufficient_scope` 是**下划线**的协议取值，而 {@link AUTH_KIND} 用连字符做面板
+    // 取值；两者不能混用，所以这里比对协议原文，转换只发生在返回的结构里。
+    if (status === 403 && challenge?.error === 'insufficient_scope') {
+        return {
+            kind: AUTH_KIND.insufficientScope,
+            scope: challenge.scope,
+            resourceMetadataUrl: challenge.resourceMetadataUrl,
+            error: challenge.error,
+            errorDescription: challenge.errorDescription,
+        };
     }
-  }
-  return null
+    return null;
 }
-
 /**
  * 给用户看的一句话说明。
  *
@@ -117,14 +115,17 @@ export function classifyAuthChallenge(input) {
  * @returns 中文说明文本。
  */
 export function authDetailText(kind, info) {
-  const scope = typeof info?.scope === 'string' && info.scope !== '' ? info.scope : ''
-  const described = typeof info?.errorDescription === 'string' && info.errorDescription !== '' ? info.errorDescription : ''
-  if (kind === AUTH_KIND.insufficientScope) {
-    const base = '已连接但授权范围不足，需要补充授权（不是故障）'
-    if (described !== '') return `${base}：${described}`
-    return scope === '' ? base : `${base}：需要 ${scope}`
-  }
-  const base = '服务器要求先授权（OAuth）才能连接，这不是故障'
-  if (described !== '') return `${base}：${described}`
-  return scope === '' ? base : `${base}：需要 ${scope} 范围`
+    const scope = typeof info?.scope === 'string' && info.scope !== '' ? info.scope : '';
+    const described = typeof info?.errorDescription === 'string' && info.errorDescription !== '' ? info.errorDescription : '';
+    if (kind === AUTH_KIND.insufficientScope) {
+        const base = '已连接但授权范围不足，需要补充授权（不是故障）';
+        if (described !== '')
+            return `${base}：${described}`;
+        return scope === '' ? base : `${base}：需要 ${scope}`;
+    }
+    const base = '服务器要求先授权（OAuth）才能连接，这不是故障';
+    if (described !== '')
+        return `${base}：${described}`;
+    return scope === '' ? base : `${base}：需要 ${scope} 范围`;
 }
+//# sourceMappingURL=auth.js.map

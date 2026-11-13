@@ -23,16 +23,13 @@
  * `read` (fetching a body for the editor/preview) stays on the settings channel. It is a read, it
  * already shows 「正在读取正文…」 while it runs, and leaving it alone keeps this change small.
  */
-import { NAME } from '../identity.js'
-import { readBody, sendJson } from '../../../../host/http.js'
-import { registerAuthenticatedRoute } from '../../../../host/routes.js'
-import { createSerialQueue } from '../../../../host/serial.js'
-
-export const SKILLS_PATH = `/${NAME}/skills`
-
+import { NAME } from '../identity.js';
+import { readBody, sendJson } from '../../../../host/http.js';
+import { registerAuthenticatedRoute } from '../../../../host/routes.js';
+import { createSerialQueue } from '../../../../host/serial.js';
+export const SKILLS_PATH = `/${NAME}/skills`;
 /** Largest request body accepted, in bytes. A skill body is text; 256 KB is generous. */
-const MAX_BODY = 256 * 1024
-
+const MAX_BODY = 256 * 1024;
 /**
  * Register the skill-write route.
  *
@@ -42,46 +39,45 @@ const MAX_BODY = 256 * 1024
  * produces, so the client handles both identically.
  */
 export function registerSkillRoute(ctx, { schema, apply }) {
-  const queue = createSerialQueue()
-
-  registerAuthenticatedRoute(ctx, {
-    kind: 'exact',
-    path: SKILLS_PATH,
-    handler: async (req, res) => {
-      res.setHeader('cache-control', 'no-store')
-      if (req.method !== 'POST') {
-        res.statusCode = 405
-        res.setHeader('allow', 'POST')
-        res.end()
-        return
-      }
-      // Required, not merely accepted: a cross-site HTML form cannot send this type, so
-      // demanding it turns "same-origin script" into a precondition of the write path.
-      const type = String(req.headers?.['content-type'] ?? '')
-      if (!type.includes('application/json')) {
-        res.statusCode = 415
-        res.end(JSON.stringify({ ok: false, reason: 'content-type must be application/json' }))
-        return
-      }
-
-      const send = (status, payload) => sendJson(res, status, payload)
-
-      let request
-      try {
-        request = schema(JSON.parse(await readBody(req, MAX_BODY)))
-      } catch (error) {
-        send(400, { ok: false, reason: String(error?.message ?? error) })
-        return
-      }
-
-      await queue.run(async () => {
-        try {
-          send(200, await apply(request))
-        } catch (error) {
-          ctx.logger.warn('dsh-skills-mcp-manager: skill command failed: %s', String(error?.message ?? error))
-          send(200, { ok: false, reason: String(error?.message ?? error) })
-        }
-      })
-    },
-  })
+    const queue = createSerialQueue();
+    registerAuthenticatedRoute(ctx, {
+        kind: 'exact',
+        path: SKILLS_PATH,
+        handler: async (req, res) => {
+            res.setHeader('cache-control', 'no-store');
+            if (req.method !== 'POST') {
+                res.statusCode = 405;
+                res.setHeader('allow', 'POST');
+                res.end();
+                return;
+            }
+            // Required, not merely accepted: a cross-site HTML form cannot send this type, so
+            // demanding it turns "same-origin script" into a precondition of the write path.
+            const type = String(req.headers?.['content-type'] ?? '');
+            if (!type.includes('application/json')) {
+                res.statusCode = 415;
+                res.end(JSON.stringify({ ok: false, reason: 'content-type must be application/json' }));
+                return;
+            }
+            const send = (status, payload) => sendJson(res, status, payload);
+            let request;
+            try {
+                request = schema(JSON.parse(await readBody(req, MAX_BODY)));
+            }
+            catch (error) {
+                send(400, { ok: false, reason: String(error?.message ?? error) });
+                return;
+            }
+            await queue.run(async () => {
+                try {
+                    send(200, await apply(request));
+                }
+                catch (error) {
+                    ctx.logger.warn('dsh-skills-mcp-manager: skill command failed: %s', String(error?.message ?? error));
+                    send(200, { ok: false, reason: String(error?.message ?? error) });
+                }
+            });
+        },
+    });
 }
+//# sourceMappingURL=route.js.map

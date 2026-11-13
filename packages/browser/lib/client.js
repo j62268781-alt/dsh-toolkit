@@ -39,11 +39,11 @@ window.__ModuleLoader__.load({
     });
     module.exports = __toCommonJS(browser_package_entry_exports);
 
-    // src/modules/browser/client/react.js
+    // src/modules/browser/client/react.ts
     var import_react = __toESM(require("react"), 1);
     globalThis.__dshReact = import_react.default;
 
-    // src/modules/browser/client/browser-remote.js
+    // src/modules/browser/client/browser-remote.ts
     var PACKAGE = "@j62268781-alt/dsh-agent-browser";
     var SERVICE = "browser";
     function codec(typeSymbol) {
@@ -81,7 +81,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/client/config.js
+    // src/client/config.ts
     var ROOT_ENTRIES = ["shell-kit", "dsh-toolkit", "dsh-shell-kit"];
     function moduleEntryId(namespace) {
       const module2 = { judgement: "judgment", skillsMcp: "skills-mcp" }[namespace] ?? namespace;
@@ -134,7 +134,7 @@ window.__ModuleLoader__.load({
       return { form: void 0, entryId: moduleEntryId(namespace) };
     }
 
-    // src/modules/browser/client/primitives.js
+    // src/modules/browser/client/primitives.ts
     var primitives = (() => {
       try {
         return require("@deepseek-ai/dsh-client-ui-primitives");
@@ -143,7 +143,7 @@ window.__ModuleLoader__.load({
       }
     })();
 
-    // src/client/settings-icon.jsx
+    // src/client/ui/components/settings-icon/index.tsx
     var import_react2 = __toESM(require("react"), 1);
     globalThis.__dshReact ??= import_react2.default;
     var SHAPES = {
@@ -202,10 +202,10 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // src/modules/browser/client/panel.jsx
+    // src/modules/browser/client/panel.tsx
     var import_react4 = require("react");
 
-    // src/modules/browser/client/config.js
+    // src/modules/browser/client/config.ts
     function snapshotOf(form) {
       const snapshot = form?.getSnapshot?.() ?? form?.store?.getSnapshot?.() ?? form?.snapshot;
       return snapshot?.value ?? snapshot ?? {};
@@ -277,7 +277,7 @@ window.__ModuleLoader__.load({
     .boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}
     `;
 
-    // src/client/styles/settings.js
+    // src/client/styles/settings.ts
     function settingsStyles(namespace) {
       return settings_default.replace(/\/\*[\s\S]*?\*\//g, "").replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors, declarations) => {
         const scoped = selectors.split(",").map((selector) => selector.trim()).filter((selector) => selector.startsWith(`.${namespace}-`));
@@ -285,14 +285,14 @@ window.__ModuleLoader__.load({
       });
     }
 
-    // src/client/config-write.js
+    // src/client/config-write.ts
     async function acceptConfigWrite(write, field) {
       const accepted = await write();
       if (accepted === false) throw new Error(`宿主拒绝了这次写入（${field}）：配置可能未通过校验，或当前文档不可写`);
       return accepted;
     }
 
-    // src/modules/browser/client/panel.jsx
+    // src/modules/browser/client/panel.tsx
     var CSS = `${settingsStyles("ab")}
     ${styles_default}`;
     function Panel(props) {
@@ -855,7 +855,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    // src/modules/browser/client/index.jsx
+    // src/modules/browser/client/index.tsx
     var inject = ["slots", "configForms", "remote"];
     async function apply(ctx) {
       const { form, entryId } = findScopedForm(ctx, "browser", ["agent-browser", "dsh-agent-browser"]);

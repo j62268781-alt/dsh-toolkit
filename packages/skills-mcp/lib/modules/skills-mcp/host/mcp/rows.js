@@ -40,16 +40,13 @@
  * lock, but serialising here keeps the *responses* in the order the user acted and makes the
  * last write win in a predictable way.
  */
-import { NAME } from '../identity.js'
-import { readBody, sendJson } from '../../../../host/http.js'
-import { registerAuthenticatedRoute } from '../../../../host/routes.js'
-import { createSerialQueue } from '../../../../host/serial.js'
-
-export const ROWS_PATH = `/${NAME}/rows`
-
+import { NAME } from '../identity.js';
+import { readBody, sendJson } from '../../../../host/http.js';
+import { registerAuthenticatedRoute } from '../../../../host/routes.js';
+import { createSerialQueue } from '../../../../host/serial.js';
+export const ROWS_PATH = `/${NAME}/rows`;
 /** Largest command body accepted, in bytes. A row op is a few hundred bytes. */
-const MAX_BODY = 32 * 1024
-
+const MAX_BODY = 32 * 1024;
 /**
  * Register the command route.
  *
@@ -58,50 +55,49 @@ const MAX_BODY = 32 * 1024
  * **already validated** op.
  */
 export function registerRowRoute(ctx, { schema, apply }) {
-  const queue = createSerialQueue()
-
-  registerAuthenticatedRoute(ctx, {
-    kind: 'exact',
-    path: ROWS_PATH,
-    handler: async (req, res) => {
-      res.setHeader('cache-control', 'no-store')
-      if (req.method !== 'POST') {
-        res.statusCode = 405
-        res.setHeader('allow', 'POST')
-        res.end()
-        return
-      }
-      // Required, not merely accepted: a cross-site HTML form cannot send this type, so
-      // demanding it turns "same-origin script" into a precondition of the write path.
-      const type = String(req.headers?.['content-type'] ?? '')
-      if (!type.includes('application/json')) {
-        res.statusCode = 415
-        res.end(JSON.stringify({ ok: false, reason: 'content-type must be application/json' }))
-        return
-      }
-
-      const send = (status, payload) => sendJson(res, status, payload)
-
-      let op
-      try {
-        // The **same schema** the settings channel validated with, so the two paths cannot
-        // drift and an unknown field never reaches the patch writer. Calling it applies the
-        // documented defaults and throws on anything malformed.
-        op = schema(JSON.parse(await readBody(req, MAX_BODY)))
-      } catch (error) {
-        send(400, { ok: false, reason: String(error?.message ?? error) })
-        return
-      }
-
-      await queue.run(async () => {
-        try {
-          const result = await apply(op)
-          send(200, result)
-        } catch (error) {
-          ctx.logger.warn('dsh-skills-mcp-manager: row command failed: %s', String(error?.message ?? error))
-          send(200, { ok: false, reason: String(error?.message ?? error) })
-        }
-      })
-    },
-  })
+    const queue = createSerialQueue();
+    registerAuthenticatedRoute(ctx, {
+        kind: 'exact',
+        path: ROWS_PATH,
+        handler: async (req, res) => {
+            res.setHeader('cache-control', 'no-store');
+            if (req.method !== 'POST') {
+                res.statusCode = 405;
+                res.setHeader('allow', 'POST');
+                res.end();
+                return;
+            }
+            // Required, not merely accepted: a cross-site HTML form cannot send this type, so
+            // demanding it turns "same-origin script" into a precondition of the write path.
+            const type = String(req.headers?.['content-type'] ?? '');
+            if (!type.includes('application/json')) {
+                res.statusCode = 415;
+                res.end(JSON.stringify({ ok: false, reason: 'content-type must be application/json' }));
+                return;
+            }
+            const send = (status, payload) => sendJson(res, status, payload);
+            let op;
+            try {
+                // The **same schema** the settings channel validated with, so the two paths cannot
+                // drift and an unknown field never reaches the patch writer. Calling it applies the
+                // documented defaults and throws on anything malformed.
+                op = schema(JSON.parse(await readBody(req, MAX_BODY)));
+            }
+            catch (error) {
+                send(400, { ok: false, reason: String(error?.message ?? error) });
+                return;
+            }
+            await queue.run(async () => {
+                try {
+                    const result = await apply(op);
+                    send(200, result);
+                }
+                catch (error) {
+                    ctx.logger.warn('dsh-skills-mcp-manager: row command failed: %s', String(error?.message ?? error));
+                    send(200, { ok: false, reason: String(error?.message ?? error) });
+                }
+            });
+        },
+    });
 }
+//# sourceMappingURL=rows.js.map

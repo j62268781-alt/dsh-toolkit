@@ -24,16 +24,13 @@
  *   · 请求体用 zod schema 校验，未知字段进不来；
  *   · **绝不返回令牌本体**，只返回「有/没有、何时过期」。
  */
-import { NAME } from '../../identity.js'
-import { readBody, sendJson } from '../../../../../host/http.js'
-import { registerAuthenticatedRoute } from '../../../../../host/routes.js'
-import { createSerialQueue } from '../../../../../host/serial.js'
-
-export const OAUTH_PATH = `/${NAME}/oauth`
-
+import { NAME } from '../../identity.js';
+import { readBody, sendJson } from '../../../../../host/http.js';
+import { registerAuthenticatedRoute } from '../../../../../host/routes.js';
+import { createSerialQueue } from '../../../../../host/serial.js';
+export const OAUTH_PATH = `/${NAME}/oauth`;
 /** 命令体上限。一次命令就几百字节。 */
-const MAX_BODY = 8 * 1024
-
+const MAX_BODY = 8 * 1024;
 /**
  * 注册 OAuth 命令路由。
  *
@@ -42,41 +39,43 @@ const MAX_BODY = 8 * 1024
  * @param options.run - `(op) => Promise<object>`，已校验的命令交给它执行。
  */
 export function registerOAuthRoute(ctx, { schema, run }) {
-  const queue = createSerialQueue()
-
-  registerAuthenticatedRoute(ctx, {
-    kind: 'exact',
-    path: OAUTH_PATH,
-    handler: async (req, res) => {
-      res.setHeader('cache-control', 'no-store')
-      if (req.method !== 'POST') {
-        res.statusCode = 405
-        res.setHeader('allow', 'POST')
-        res.end()
-        return
-      }
-      const type = String(req.headers?.['content-type'] ?? '')
-      if (!type.includes('application/json')) {
-        res.statusCode = 415
-        res.end(JSON.stringify({ ok: false, reason: 'content-type must be application/json' }))
-        return
-      }
-      const send = (status, payload) => sendJson(res, status, payload)
-      let op
-      try {
-        op = schema(JSON.parse(await readBody(req, MAX_BODY)))
-      } catch (error) {
-        send(400, { ok: false, reason: String(error?.message ?? error) })
-        return
-      }
-      await queue.run(async () => {
-        try {
-          send(200, await run(op))
-        } catch (error) {
-          ctx.logger.warn('dsh-skills-mcp-manager: oauth command failed: %s', String(error?.message ?? error))
-          send(200, { ok: false, reason: String(error?.message ?? error) })
-        }
-      })
-    },
-  })
+    const queue = createSerialQueue();
+    registerAuthenticatedRoute(ctx, {
+        kind: 'exact',
+        path: OAUTH_PATH,
+        handler: async (req, res) => {
+            res.setHeader('cache-control', 'no-store');
+            if (req.method !== 'POST') {
+                res.statusCode = 405;
+                res.setHeader('allow', 'POST');
+                res.end();
+                return;
+            }
+            const type = String(req.headers?.['content-type'] ?? '');
+            if (!type.includes('application/json')) {
+                res.statusCode = 415;
+                res.end(JSON.stringify({ ok: false, reason: 'content-type must be application/json' }));
+                return;
+            }
+            const send = (status, payload) => sendJson(res, status, payload);
+            let op;
+            try {
+                op = schema(JSON.parse(await readBody(req, MAX_BODY)));
+            }
+            catch (error) {
+                send(400, { ok: false, reason: String(error?.message ?? error) });
+                return;
+            }
+            await queue.run(async () => {
+                try {
+                    send(200, await run(op));
+                }
+                catch (error) {
+                    ctx.logger.warn('dsh-skills-mcp-manager: oauth command failed: %s', String(error?.message ?? error));
+                    send(200, { ok: false, reason: String(error?.message ?? error) });
+                }
+            });
+        },
+    });
 }
+//# sourceMappingURL=route.js.map

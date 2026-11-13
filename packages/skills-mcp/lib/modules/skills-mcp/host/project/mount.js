@@ -5,20 +5,17 @@
  * The MCP client itself is injected (`setMountClient`) so scope matching and the
  * mount config shapes can be unit-tested without the app runtime.
  */
-import { join } from 'node:path'
-import { bundledRuntime, commandEnv, loginPath, parseEnv, resolveCommand } from '../runtime/env.js'
-import { connectionFields } from '../mcp/connection.js'
-
+import { join } from 'node:path';
+import { bundledRuntime, commandEnv, loginPath, parseEnv, resolveCommand } from '../runtime/env.js';
+import { connectionFields } from '../mcp/connection.js';
 /** The host MCP client (name + scope mount entry points). */
-let client = { name: '@deepseek-ai/dsh-mcp-client' }
-
+let client = { name: '@deepseek-ai/dsh-mcp-client' };
 /** Inject the host's mcp-client module. */
 export function setMountClient(next) {
-  client = { ...client, ...next }
+    client = { ...client, ...next };
 }
-
 export function mountedKeyOf(servers) {
-  return JSON.stringify(servers.filter((server) => server.scope === 'global' && server.enabled !== false))
+    return JSON.stringify(servers.filter((server) => server.scope === 'global' && server.enabled !== false));
 }
 /**
  * A mount field (`env` / `headers`) as a plain object, whichever shape it arrives in.
@@ -40,18 +37,22 @@ export function mountedKeyOf(servers) {
  * YAML reader would, so a numeric value does not become `"[object Object]"`-style garbage.
  */
 export function envObject(value) {
-  if (value === null || value === undefined) return {}
-  if (typeof value === 'string') return parseEnv(value)
-  if (typeof value !== 'object' || Array.isArray(value)) return {}
-  const out = {}
-  for (const [key, raw] of Object.entries(value)) {
-    if (key === '') continue
-    if (raw === null || raw === undefined) continue
-    out[key] = typeof raw === 'string' ? raw : String(raw)
-  }
-  return out
+    if (value === null || value === undefined)
+        return {};
+    if (typeof value === 'string')
+        return parseEnv(value);
+    if (typeof value !== 'object' || Array.isArray(value))
+        return {};
+    const out = {};
+    for (const [key, raw] of Object.entries(value)) {
+        if (key === '')
+            continue;
+        if (raw === null || raw === undefined)
+            continue;
+        out[key] = typeof raw === 'string' ? raw : String(raw);
+    }
+    return out;
 }
-
 /**
  * stdio mount config.
  *
@@ -60,45 +61,45 @@ export function envObject(value) {
  * Anything else resolves through the login shell.
  */
 export function stdioMountConfig(server) {
-  const raw = String(server.command ?? '')
-  const args = Array.isArray(server.args) ? server.args : []
-  const userEnv = envObject(server.env)
-  const base = raw.split('/').pop() ?? ''
-  const npmFamily = /^(npx|npm|pnpx|pnpm)(-cli)?(\.(js|cjs|mjs))?$/.test(base)
-  /**
-   * 用哪个 npm 家族。
-   *
-   * **默认用系统 `npx`**，内置 pnpx 只做兜底 —— 这个默认值原先反了，真机上炸得很彻底：
-   * `npx -y @modelcontextprotocol/server-filesystem` 被换成「内置 node + pnpx.mjs」之后，
-   * 解析到的是 pnpm store 里那份包，而它的依赖没有被链接进 store 的 links 目录，于是
-   * `Cannot find package 'zod'` 直接退出。`server-memory` 同样失败，`server-everything`
-   * 却正常 —— 说明这不是个别包的毛病，而是「用 pnpx 跑第三方包」在 pnpm 严格布局下的通病。
-   *
-   * 内置 runtime 的**存在理由仍然成立**：桌面启动的 Host `PATH` 里可能没有 node。所以它
-   * 保留为兜底 —— 只有当系统找不到 `npx` 时才用它。顺序反过来的代价是「默认路径不可靠」，
-   * 而用户根本看不到这个开关（`runtime` 既不在 schema 也不在面板上，只能手改 yml）。
-   *
-   * 显式写 `runtime: auto` 仍可强制走内置（保留旧行为），`system` 强制走系统。
-   */
-  const systemHasNpx = resolveCommand(raw) !== raw
-  const preferBundled = server.runtime === 'auto' || (server.runtime !== 'system' && !systemHasNpx)
-  const runtime = preferBundled ? bundledRuntime() : null
-  if (runtime !== null && npmFamily) {
-    // `npx -y <pkg> …` → `<node> <pnpx.mjs> <pkg> …`
-    const cleaned = args.filter((arg) => arg !== '-y' && arg !== '--yes')
-    return {
-      transport: 'stdio', serverName: server.serverName,
-      command: runtime.node,
-      args: [runtime.pnpx, ...cleaned],
-      // the shims run `exec node …`, so the runtime's bin dir must be on PATH
-      env: { PATH: `${runtime.binDir}:${loginPath() || '/usr/bin:/bin'}`, ...userEnv },
+    const raw = String(server.command ?? '');
+    const args = Array.isArray(server.args) ? server.args : [];
+    const userEnv = envObject(server.env);
+    const base = raw.split('/').pop() ?? '';
+    const npmFamily = /^(npx|npm|pnpx|pnpm)(-cli)?(\.(js|cjs|mjs))?$/.test(base);
+    /**
+     * 用哪个 npm 家族。
+     *
+     * **默认用系统 `npx`**，内置 pnpx 只做兜底 —— 这个默认值原先反了，真机上炸得很彻底：
+     * `npx -y @modelcontextprotocol/server-filesystem` 被换成「内置 node + pnpx.mjs」之后，
+     * 解析到的是 pnpm store 里那份包，而它的依赖没有被链接进 store 的 links 目录，于是
+     * `Cannot find package 'zod'` 直接退出。`server-memory` 同样失败，`server-everything`
+     * 却正常 —— 说明这不是个别包的毛病，而是「用 pnpx 跑第三方包」在 pnpm 严格布局下的通病。
+     *
+     * 内置 runtime 的**存在理由仍然成立**：桌面启动的 Host `PATH` 里可能没有 node。所以它
+     * 保留为兜底 —— 只有当系统找不到 `npx` 时才用它。顺序反过来的代价是「默认路径不可靠」，
+     * 而用户根本看不到这个开关（`runtime` 既不在 schema 也不在面板上，只能手改 yml）。
+     *
+     * 显式写 `runtime: auto` 仍可强制走内置（保留旧行为），`system` 强制走系统。
+     */
+    const systemHasNpx = resolveCommand(raw) !== raw;
+    const preferBundled = server.runtime === 'auto' || (server.runtime !== 'system' && !systemHasNpx);
+    const runtime = preferBundled ? bundledRuntime() : null;
+    if (runtime !== null && npmFamily) {
+        // `npx -y <pkg> …` → `<node> <pnpx.mjs> <pkg> …`
+        const cleaned = args.filter((arg) => arg !== '-y' && arg !== '--yes');
+        return {
+            transport: 'stdio', serverName: server.serverName,
+            command: runtime.node,
+            args: [runtime.pnpx, ...cleaned],
+            // the shims run `exec node …`, so the runtime's bin dir must be on PATH
+            env: { PATH: `${runtime.binDir}:${loginPath() || '/usr/bin:/bin'}`, ...userEnv },
+        };
     }
-  }
-  const resolved = resolveCommand(raw)
-  return {
-    transport: 'stdio', serverName: server.serverName, command: resolved, args,
-    env: { ...commandEnv(resolved), ...userEnv },
-  }
+    const resolved = resolveCommand(raw);
+    return {
+        transport: 'stdio', serverName: server.serverName, command: resolved, args,
+        env: { ...commandEnv(resolved), ...userEnv },
+    };
 }
 /**
  * Project-level MCP config files, per tool, as those tools document them.
@@ -107,32 +108,35 @@ export function stdioMountConfig(server) {
  * their MCP servers in user-level config, which is out of scope for this import.
  */
 export function serverMountConfig(server) {
-  if (!server?.serverName) return null
-  const mountConfig = server.transport === 'stdio'
-    ? stdioMountConfig(server)
-    : {
-        transport: 'streamable-http', serverName: server.serverName, url: server.url,
-        // Same shape problem as `env` above — and here the stakes are an Authorization header
-        // silently going missing, which shows up as 「需要授权」 on a server whose row carries
-        // the credential.
-        headers: envObject(server.headers),
-      }
-  const missing = mountConfig.transport === 'stdio' ? !mountConfig.command : !mountConfig.url
-  if (missing) return null
-  try {
-    // failOnStartupError + reconnect.* ride along, so a mounted server reconnects
-    // exactly like a configured row.
-    return { ...mountConfig, ...connectionFields(server) }
-  } catch {
-    // A malformed number must never take the mount (or the reconcile loop) down:
-    // the client's own defaults apply and the panel reports the field itself.
-    return mountConfig
-  }
+    if (!server?.serverName)
+        return null;
+    const mountConfig = server.transport === 'stdio'
+        ? stdioMountConfig(server)
+        : {
+            transport: 'streamable-http', serverName: server.serverName, url: server.url,
+            // Same shape problem as `env` above — and here the stakes are an Authorization header
+            // silently going missing, which shows up as 「需要授权」 on a server whose row carries
+            // the credential.
+            headers: envObject(server.headers),
+        };
+    const missing = mountConfig.transport === 'stdio' ? !mountConfig.command : !mountConfig.url;
+    if (missing)
+        return null;
+    try {
+        // failOnStartupError + reconnect.* ride along, so a mounted server reconnects
+        // exactly like a configured row.
+        return { ...mountConfig, ...connectionFields(server) };
+    }
+    catch {
+        // A malformed number must never take the mount (or the reconcile loop) down:
+        // the client's own defaults apply and the panel reports the field itself.
+        return mountConfig;
+    }
 }
 /** The agent's working directory, tolerating the Session shapes in play. */
 export function workingDirectoryOf(agent) {
-  const session = agent?.session
-  return session?.cwd ?? session?.header?.cwd ?? agent?.cwd ?? agent?.options?.cwd ?? null
+    const session = agent?.session;
+    return session?.cwd ?? session?.header?.cwd ?? agent?.cwd ?? agent?.options?.cwd ?? null;
 }
 /**
  * Project-scoped servers that apply to a working directory.
@@ -141,11 +145,14 @@ export function workingDirectoryOf(agent) {
  * started anywhere inside the project — not only at its root — gets the servers.
  */
 export function projectServersFor(servers, cwd) {
-  if (typeof cwd !== 'string' || cwd === '') return []
-  return servers.filter((server) => {
-    const scope = server.scope
-    if (!scope || scope === 'global' || server.enabled === false) return false
-    const base = scope.replace(/\/+$/, '')
-    return cwd === base || cwd.startsWith(`${base}/`)
-  })
+    if (typeof cwd !== 'string' || cwd === '')
+        return [];
+    return servers.filter((server) => {
+        const scope = server.scope;
+        if (!scope || scope === 'global' || server.enabled === false)
+            return false;
+        const base = scope.replace(/\/+$/, '');
+        return cwd === base || cwd.startsWith(`${base}/`);
+    });
 }
+//# sourceMappingURL=mount.js.map

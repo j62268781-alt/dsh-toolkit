@@ -18,9 +18,8 @@
  *
  * 它是纯字符串，不是凭据：频道只在同源页面之间可见，消息内容也只是一个「刷一下」的信号。
  */
-
 /** BroadcastChannel 名。改动它等于同时改两端，所以不要各写各的。 */
-export const AUTH_CHANNEL = 'dsh-skills-mcp-manager/oauth'
-
+export const AUTH_CHANNEL = 'dsh-skills-mcp-manager/oauth';
 /** 回调页发、面板收的信号。只有一个含义：授权流程刚刚走完了。 */
-export const AUTH_DONE = 'authorized'
+export const AUTH_DONE = 'authorized';
+//# sourceMappingURL=channel.js.map

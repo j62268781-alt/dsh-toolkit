@@ -39,11 +39,11 @@ window.__ModuleLoader__.load({
     });
     module.exports = __toCommonJS(judgment_package_entry_exports);
 
-    // src/modules/judgment/client/react.js
+    // src/modules/judgment/client/react.ts
     var import_react = __toESM(require("react"), 1);
     globalThis.__dshReact = import_react.default;
 
-    // src/client/config.js
+    // src/client/config.ts
     var ROOT_ENTRIES = ["shell-kit", "dsh-toolkit", "dsh-shell-kit"];
     function moduleEntryId(namespace) {
       const module2 = { judgement: "judgment", skillsMcp: "skills-mcp" }[namespace] ?? namespace;
@@ -96,7 +96,7 @@ window.__ModuleLoader__.load({
       return { form: void 0, entryId: moduleEntryId(namespace) };
     }
 
-    // src/modules/judgment/client/judgment-remote.js
+    // src/modules/judgment/client/judgment-remote.ts
     var PACKAGE = "dsh-judgment";
     var SERVICE = "judgment";
     function codec(typeSymbol) {
@@ -132,7 +132,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/judgment/client/primitives.js
+    // src/modules/judgment/client/primitives.ts
     var primitives = (() => {
       try {
         return require("@deepseek-ai/dsh-client-ui-primitives");
@@ -141,7 +141,7 @@ window.__ModuleLoader__.load({
       }
     })();
 
-    // src/client/settings-icon.jsx
+    // src/client/ui/components/settings-icon/index.tsx
     var import_react2 = __toESM(require("react"), 1);
     globalThis.__dshReact ??= import_react2.default;
     var SHAPES = {
@@ -200,10 +200,10 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // src/modules/judgment/client/panel.jsx
+    // src/modules/judgment/client/panel.tsx
     var import_react7 = require("react");
 
-    // src/modules/judgment/client/config.js
+    // src/modules/judgment/client/config.ts
     function snapshotOf(form) {
       const snapshot = form?.getSnapshot?.() ?? form?.store?.getSnapshot?.() ?? form?.snapshot;
       return snapshot?.value ?? snapshot ?? {};
@@ -379,17 +379,26 @@ window.__ModuleLoader__.load({
       return Object.entries(purposes).filter(([, purpose]) => (purpose?.connection ?? "") === connectionId).map(([name]) => name).concat(defaultConnection === connectionId ? ["（默认连接）"] : []);
     }
 
-    // src/modules/judgment/client/components.jsx
+    // src/modules/judgment/client/components.tsx
     var import_react4 = require("react");
 
-    // src/client/ui/menu.js
-    function measureMenuAnchor({ rect, itemCount, viewportWidth, viewportHeight } = {}) {
+    // src/client/ui/components/menu/index.ts
+    function measureMenuAnchor({
+      rect,
+      itemCount,
+      viewportWidth,
+      viewportHeight
+    } = {}) {
       if (rect == null) return null;
-      const top = Number(rect.top), bottom = Number(rect.bottom), right = Number(rect.right);
-      const width = Number(viewportWidth), height = Number(viewportHeight);
+      const top = Number(rect.top);
+      const bottom = Number(rect.bottom);
+      const right = Number(rect.right);
+      const width = Number(viewportWidth);
+      const height = Number(viewportHeight);
       if (![top, bottom, right, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
       const estimated = Math.max(0, Number(itemCount) || 0) * 30 + 10;
-      const spaceBelow = height - bottom - 8, spaceAbove = top - 8;
+      const spaceBelow = height - bottom - 8;
+      const spaceAbove = top - 8;
       const placement = spaceBelow >= estimated || spaceBelow >= spaceAbove ? "down" : "up";
       return {
         right: Math.max(8, width - right),
@@ -412,7 +421,8 @@ window.__ModuleLoader__.load({
     function listenMenuDismiss(close) {
       if (typeof document === "undefined") return () => {
       };
-      const page = document, view = globalThis.window;
+      const page = document;
+      const view = globalThis.window;
       const onKey = (event) => {
         if (event.key === "Escape") close();
       };
@@ -426,7 +436,7 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/judgment/client/components.jsx
+    // src/modules/judgment/client/components.tsx
     function Field({ label, hint, wide, children }) {
       return /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-field", "data-wide": wide === true ? "true" : void 0 }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-label" }, label), children, hint ? /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-hint" }, hint) : null);
     }
@@ -505,7 +515,7 @@ window.__ModuleLoader__.load({
       return /* @__PURE__ */ __dshReact.createElement("svg", { width: 14, height: 14, viewBox: "0 0 16 16", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "7", cy: "7", r: "4.2", stroke: "currentColor", strokeWidth: "1.4" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M10.2 10.2 13.5 13.5", stroke: "currentColor", strokeWidth: "1.4", strokeLinecap: "round" }));
     }
 
-    // src/client/ui/confirm-dialog.jsx
+    // src/client/ui/components/confirm-dialog/index.tsx
     function confirmDialog({
       primitives: primitives2,
       title,
@@ -534,7 +544,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    // src/modules/judgment/client/dialog.jsx
+    // src/modules/judgment/client/dialog.tsx
     function ConfirmDialog({ dialog, primitives: primitives2, onCancel, onConfirm, pending = false, error = "" }) {
       if (dialog === null || dialog === void 0) return null;
       return confirmDialog({
@@ -668,7 +678,7 @@ window.__ModuleLoader__.load({
     .boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}
     `;
 
-    // src/client/styles/settings.js
+    // src/client/styles/settings.ts
     function settingsStyles(namespace) {
       return settings_default.replace(/\/\*[\s\S]*?\*\//g, "").replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors, declarations) => {
         const scoped = selectors.split(",").map((selector) => selector.trim()).filter((selector) => selector.startsWith(`.${namespace}-`));
@@ -676,14 +686,14 @@ window.__ModuleLoader__.load({
       });
     }
 
-    // src/client/config-write.js
+    // src/client/config-write.ts
     async function acceptConfigWrite(write, field) {
       const accepted = await write();
       if (accepted === false) throw new Error(`宿主拒绝了这次写入（${field}）：配置可能未通过校验，或当前文档不可写`);
       return accepted;
     }
 
-    // src/modules/judgment/client/panel.jsx
+    // src/modules/judgment/client/panel.tsx
     var CSS = `${settingsStyles("jdg")}
     ${styles_default}`;
     var EMPTY2 = {};
@@ -1201,7 +1211,7 @@ window.__ModuleLoader__.load({
       ));
     }
 
-    // src/modules/judgment/client/index.jsx
+    // src/modules/judgment/client/index.tsx
     var inject = ["slots", "configForms", "remote", "remote.credentials"];
     async function apply(ctx) {
       const { form, entryId } = findScopedForm(ctx, "judgement", ["judgment/provider", "dsh-judgment"]);
