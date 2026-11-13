@@ -11,3 +11,6 @@ __pycache__/
 
 # 本地联调用的 DSH_HOME（repro profile 指向本仓库），不入库
 .tmp-web/
+
+# 本地产物：asar 抽取脚本与抽出的 DSH 源码、临时图/实验脚本
+.gen/
