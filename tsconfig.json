@@ -6,6 +6,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
+    "noImplicitAny": true,
     "noImplicitOverride": true,
     "verbatimModuleSyntax": true,
     "declaration": true,
@@ -15,5 +16,5 @@
     "rootDir": "src",
     "skipLibCheck": true
   },
-  "include": ["src/modules/browser/host/**/*.ts", "src/modules/judgment/host/**/*.ts"]
+  "include": ["src/index.ts", "src/host/**/*.ts", "src/modules/*/host/**/*.ts"]
 }

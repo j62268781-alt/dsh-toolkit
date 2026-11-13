@@ -12,14 +12,14 @@ import { configuredPlugin, configuredService } from './host/plugins.js'
 
 export { Config }
 export const name = 'dsh-toolkit'
-export const inject = []
+export const inject: string[] = []
 
-const Browser = configuredService(AgentBrowserService)
-const Judgment = configuredService(JudgmentService)
+const Browser = configuredService(AgentBrowserService as any)
+const Judgment = configuredService(JudgmentService as any)
 const SkillsMcp = configuredPlugin(skillsMcp)
 const Boot = configuredPlugin(boot)
 
-export function apply(ctx, config) {
+export function apply(ctx: any, config: any): void {
   // Each child retains its own inject requirements; one unavailable service
   // must not stop unrelated panels and tools from loading.
   ctx.plugin(Boot, config.boot)

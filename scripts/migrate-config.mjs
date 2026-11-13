@@ -6,7 +6,7 @@ import { resolve, extname, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { parseDocument } from 'yaml'
-import { migratePatch, ROOT_IDS } from '../src/host/migration.js'
+import { migratePatch, ROOT_IDS } from '../src/host/migration.ts'
 
 export function migrateYaml(source) {
   const document = parseDocument(source, { uniqueKeys: true, schema: 'core' })

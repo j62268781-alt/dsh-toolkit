@@ -25,21 +25,31 @@ async function walk(directory) {
 
 export async function collectHostOutputs() {
   const outputs = new Map()
-  const configPath = join(ROOT, 'tsconfig.json')
+  // The emit program is deliberately looser than `tsconfig.json`: every module host
+  // directory must compile here, while the strict program only covers the modules
+  // that have finished their typing pass. Module-specific strictness is tracked in
+  // `tsconfig.json`'s `include`, so a module graduates by moving into that list.
+  const configPath = join(ROOT, 'tsconfig.build.json')
   const loaded = ts.readConfigFile(configPath, ts.sys.readFile)
   if (loaded.error) throw new Error(ts.flattenDiagnosticMessageText(loaded.error.messageText, '\n'))
   const parsed = ts.parseJsonConfigFileContent(loaded.config, ts.sys, ROOT)
   const program = ts.createProgram(parsed.fileNames, { ...parsed.options, noEmit: false })
   const diagnostics = [...parsed.errors, ...ts.getPreEmitDiagnostics(program)]
-  if (diagnostics.length) throw new Error(ts.formatDiagnosticsWithColorAndContext(diagnostics, {
-    getCanonicalFileName: (path) => path, getCurrentDirectory: () => ROOT, getNewLine: () => '\n',
-  }))
+  if (diagnostics.length) {
+    const sample = ts.formatDiagnostics(diagnostics.slice(0, 20), {
+      getCanonicalFileName: (path) => path, getCurrentDirectory: () => ROOT, getNewLine: () => '\n',
+    })
+    throw new Error(`${diagnostics.length} TypeScript diagnostics in the host emit program:\n${sample}`)
+  }
   const emitted = program.emit(undefined, (path, contents) => outputs.set(toSlash(relative(ROOT, path)), contents))
   if (emitted.emitSkipped) throw new Error('TypeScript host emit was skipped')
 
   const copy = async (path) => outputs.set(`lib/${toSlash(relative(join(ROOT, 'src'), path))}`, await readFile(path))
-  await copy(join(ROOT, 'src/index.js'))
-  for (const path of await walk(join(ROOT, 'src/host'))) await copy(path)
+  for (const path of await walk(join(ROOT, 'src/host'))) {
+    // `.ts` sources are emitted by the program above; copying them would ship
+    // TypeScript into lib/ next to the compiled JavaScript.
+    if (!path.endsWith('.ts')) await copy(path)
+  }
   for (const entry of await readdir(join(ROOT, 'src/modules'), { withFileTypes: true })) {
     if (!entry.isDirectory()) continue
     for (const path of await walk(join(ROOT, 'src/modules', entry.name, 'host'))) {

@@ -1,11 +1,35 @@
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { createOperation } from './operation.js'
 
 const DEFAULT_MAX_OUTPUT_BYTES = 8 * 1024 * 1024
 const DEFAULT_KILL_GRACE_MS = 1000
 
+export interface ProcessOptions {
+  cwd?: string
+  env?: NodeJS.ProcessEnv
+  stdin?: string | Uint8Array
+  signal?: AbortSignal
+  timeoutMs?: number
+  /** Combined stdout+stderr byte limit, default 8 MiB. */
+  maxOutputBytes?: number
+  killSignal?: NodeJS.Signals
+  /** Time before SIGKILL escalation after another signal, default 1000 ms. */
+  killGraceMs?: number
+}
+
+export interface ProcessResult {
+  readonly code: number | null
+  readonly signal: NodeJS.Signals | null
+  readonly stdout: string
+  readonly stderr: string
+  readonly timedOut: boolean
+  readonly aborted: boolean
+  readonly outputLimitExceeded: boolean
+  readonly spawnError?: Error
+}
+
 /** Run a child with one deadline, bounded combined output, and close-confirmed cancellation. */
-export function runProcess(command, args = [], options = {}) {
+export function runProcess(command: string, args: readonly string[] = [], options: ProcessOptions = {}): Promise<ProcessResult> {
   const {
     cwd,
     env = process.env,
@@ -24,17 +48,17 @@ export function runProcess(command, args = [], options = {}) {
       operation.dispose()
       return
     }
-    const stdout = []
-    const stderr = []
+    const stdout: Buffer[] = []
+    const stderr: Buffer[] = []
     const outputLimit = Math.max(0, maxOutputBytes)
     let outputBytes = 0
     let outputLimitExceeded = false
-    let spawnError
-    let child
-    let killTimer
+    let spawnError: Error | undefined
+    let child: ChildProcess | undefined
+    let killTimer: ReturnType<typeof setTimeout> | undefined
     let settled = false
 
-    const finish = (code, closeSignal) => {
+    const finish = (code: number | null, closeSignal: NodeJS.Signals | null): void => {
       if (settled) return
       settled = true
       if (killTimer !== undefined) clearTimeout(killTimer)
@@ -52,19 +76,19 @@ export function runProcess(command, args = [], options = {}) {
       operation.dispose()
     }
 
-    const closePipes = () => {
+    const closePipes = (): void => {
       child?.stdout?.destroy()
       child?.stderr?.destroy()
       child?.stdin?.destroy()
     }
 
-    const terminate = () => {
+    const terminate = (): void => {
       if (child === undefined) return
       if (child.exitCode === null && child.signalCode === null) {
         try { child.kill(killSignal) } catch { /* The child may already be exiting. */ }
         if (killSignal !== 'SIGKILL' && killGraceMs >= 0 && killTimer === undefined) {
           killTimer = setTimeout(() => {
-            if (child.exitCode === null && child.signalCode === null) {
+            if (child !== undefined && child.exitCode === null && child.signalCode === null) {
               try { child.kill('SIGKILL') } catch { /* The child may already be exiting. */ }
             }
             closePipes()
@@ -75,7 +99,7 @@ export function runProcess(command, args = [], options = {}) {
       closePipes()
     }
 
-    const capture = (target, chunk) => {
+    const capture = (target: Buffer[], chunk: Buffer | string): void => {
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
       const remaining = Math.max(0, outputLimit - outputBytes)
       const kept = Math.min(remaining, buffer.length)
@@ -101,8 +125,8 @@ export function runProcess(command, args = [], options = {}) {
       return
     }
 
-    child.stdout.on('data', (chunk) => capture(stdout, chunk))
-    child.stderr.on('data', (chunk) => capture(stderr, chunk))
+    child.stdout?.on('data', (chunk: Buffer | string) => capture(stdout, chunk))
+    child.stderr?.on('data', (chunk: Buffer | string) => capture(stderr, chunk))
     child.stdin?.on('error', () => {})
     child.on('error', (error) => { spawnError = error })
     child.on('close', (code, closeSignal) => finish(code, closeSignal))

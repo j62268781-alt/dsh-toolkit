@@ -28,6 +28,7 @@
     "build:client": "node scripts/build-client.mjs",
     "build:check": "node scripts/build.mjs --check",
     "typecheck": "tsc --noEmit",
+    "typecheck:modules": "tsc -p tsconfig.build.json --noEmit",
     "test": "node scripts/test.mjs",
     "check": "node scripts/check.mjs",
     "verify": "node scripts/build.mjs && tsc --noEmit && node scripts/check.mjs && node scripts/test.mjs && node scripts/build.mjs --check",

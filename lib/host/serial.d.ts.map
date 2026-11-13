@@ -1,0 +1,1 @@
+{"version":3,"file":"serial.d.ts","sourceRoot":"","sources":["../../src/host/serial.ts"],"names":[],"mappings":"AAAA,mFAAmF;AACnF,MAAM,WAAW,WAAW;IAC1B,GAAG,CAAC,CAAC,EAAE,IAAI,EAAE,MAAM,CAAC,GAAG,WAAW,CAAC,CAAC,CAAC,GAAG,OAAO,CAAC,CAAC,CAAC,CAAA;CACnD;AAED,wBAAgB,iBAAiB,IAAI,WAAW,CAU/C"}

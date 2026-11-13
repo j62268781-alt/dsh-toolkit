@@ -1,13 +1,19 @@
 /** Offline JSON-safe patch conversion. No profile or runtime state is accessed. */
-export const ROOT_IDS = ['shell-kit', 'dsh-toolkit', 'dsh-shell-kit']
+
+/** Everything `validate` accepts; rows are plain JSON records after that check. */
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
+
+export const ROOT_IDS: readonly string[] = ['shell-kit', 'dsh-toolkit', 'dsh-shell-kit']
 export const MODULE_NAMESPACES = Object.freeze({
   boot: 'boot', theme: 'theme', archived: 'archived', browser: 'browser',
   judgement: 'judgment', mobile: 'mobile', skillsMcp: 'skills-mcp', notification: 'notification', pet: 'pet',
 })
-const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key)
-const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 
-function validate(value, path = 'patch') {
+const own = (value: object, key: string): boolean => Object.prototype.hasOwnProperty.call(value, key)
+const object = (value: unknown): value is Record<string, any> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+
+function validate(value: unknown, path = 'patch'): void {
   if (value === null || ['string', 'boolean'].includes(typeof value)) return
   if (typeof value === 'number' && Number.isFinite(value)) return
   if (Array.isArray(value)) return value.forEach((item, index) => validate(item, `${path}[${index}]`))
@@ -19,11 +25,17 @@ function validate(value, path = 'patch') {
 }
 
 /** Existing module values win recursively; arrays and scalar values replace whole values. */
-function merge(defaults, existing) {
+function merge(defaults: unknown, existing: unknown): any {
   if (!object(defaults) || !object(existing)) return structuredClone(existing)
-  const result = structuredClone(defaults)
+  const result: Record<string, any> = structuredClone(defaults)
   for (const [key, value] of Object.entries(existing)) result[key] = own(result, key) ? merge(result[key], value) : structuredClone(value)
   return result
+}
+
+export interface MigrationResult {
+  patches: any[]
+  changed: boolean
+  migratedModules: string[]
 }
 
 /**
@@ -32,12 +44,12 @@ function merge(defaults, existing) {
  * therefore use the final config, not a deep merge of previous override records.
  * New module overrides require the matching module bundle to be installed.
  */
-export function migratePatch(input) {
+export function migratePatch(input: unknown): MigrationResult {
   validate(input)
   if (!Array.isArray(input)) throw new TypeError('patch: expected a top-level array')
-  const patches = structuredClone(input)
-  const records = []
-  const visit = (rows, path, entries = false, inheritedDisabled = false) => {
+  const patches: any[] = structuredClone(input)
+  const records: { row: any; at: string; inheritedDisabled: boolean }[] = []
+  const visit = (rows: any[], path: string, entries = false, inheritedDisabled = false): void => {
     for (const [index, row] of rows.entries()) {
       const at = `${path}[${index}]`
       if (!object(row)) throw new TypeError(`${at}: expected an entry or patch object`)
@@ -57,8 +69,8 @@ export function migratePatch(input) {
     }
   }
   visit(patches, 'patch')
-  const roots = new Map()
-  const modules = new Map()
+  const roots = new Map<string, any>()
+  const modules = new Map<string, any>()
   for (const record of records) {
     const { row, at, inheritedDisabled } = record
     const relevant = ROOT_IDS.includes(row.id) || Object.values(MODULE_NAMESPACES).some((name) => row.id === `dsh-toolkit-${name}`)
@@ -71,7 +83,7 @@ export function migratePatch(input) {
     if (own(row, 'disabled')) current.disabled = row.disabled
     map.set(row.id, current)
   }
-  const defaults = new Map()
+  const defaults = new Map<string, any>()
   // Separate historical root aliases may coexist. Conflicting values cannot be
   // ordered reliably without the complete profile, so refuse rather than guess.
   for (const [id, root] of roots) {
@@ -90,12 +102,12 @@ export function migratePatch(input) {
     row.disabled = true
     changed = true
   }
-  const migratedModules = []
+  const migratedModules: string[] = []
   for (const [id, legacy] of defaults) {
     const existing = modules.get(id) ?? {}
     const config = legacy.config === undefined ? existing.config : existing.config === undefined ? legacy.config : merge(legacy.config, existing.config)
     const disabled = existing.disabled ?? legacy.disabled
-    const update = { id }
+    const update: any = { id }
     if (config !== undefined && JSON.stringify(config) !== JSON.stringify(existing.config)) update.config = structuredClone(config)
     if (disabled !== undefined && disabled !== existing.disabled) update.disabled = disabled
     if (Object.keys(update).length > 1) {
