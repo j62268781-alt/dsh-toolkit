@@ -20,7 +20,7 @@ function primitivesFor() {
   }
 }
 
-async function boot(t) {
+async function boot(t, options = {}) {
   const dom = new JSDOM('<html><head></head><body><div id="root"></div></body></html>')
   const saved = new Map()
   for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, IS_REACT_ACT_ENVIRONMENT: true })) {
@@ -40,7 +40,9 @@ async function boot(t) {
   })
 
   const primitives = primitivesFor()
-  let fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({ ok: true }) })
+  // A page reads its startup snapshot (which ids were already deleted) as soon as the
+  // client installs, so a reload test has to seed the transport before this point.
+  let fetchImpl = options.fetch ?? (async () => ({ ok: true, status: 200, json: async () => ({ ok: true }) }))
   let spec
   vm.runInNewContext(await readFile(new URL('../../lib/modules/archived/client.js', import.meta.url), 'utf8'), {
     window: { __ModuleLoader__: { load(value) { spec = value } } }, document: dom.window.document, Headers,
@@ -85,6 +87,9 @@ async function boot(t) {
     },
   }
   client.apply(ctx)
+  // Let the startup snapshot land before the caller starts rendering and replacing
+  // the transport, so the two never race for the same first answer.
+  await new Promise((resolve) => setTimeout(resolve, 0))
 
   const sections = registrations.get('archived-chats')
   const removalDialog = registrations.get('dsh-toolkit.archived.delete-confirm')
@@ -249,7 +254,7 @@ test('confirming a bulk delete closes the dialog at once and loads the button in
     }
   })
   await app.render(app.overlay(h(app.sections)))
-  assert.equal(lookups, 1, 'one pending lookup when the page mounts')
+  assert.equal(lookups, 0, 'the page does not re-read what the client already read at startup')
 
   await app.click('全部删除')
   assert.match(app.dialog().textContent, /永久删除 4 个会话？/)
@@ -275,7 +280,7 @@ test('confirming a bulk delete closes the dialog at once and loads the button in
   assert.equal(app.dialog(), null)
   assert.equal(document.querySelector('.sk-arch__spinner'), null, 'the ring clears with the batch')
   assert.equal(document.querySelector('.sk-arch__removeAll').getAttribute('aria-busy'), null)
-  assert.equal(lookups, 2, 'one lookup at mount, one after the batch')
+  assert.equal(lookups, 1, 'one lookup at startup, one after the batch')
   assert.equal(document.querySelectorAll('.sk-arch__row').length, 0)
   assert.equal(app.calls.unarchive, 4)
   assert.equal(app.calls.unpin, 4)
@@ -314,20 +319,56 @@ test('a session the host still holds keeps its archive entry until the restart c
   assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 0)
 })
 
-test('a reload hides the sessions whose files are already deleted but still registered', async (t) => {
+test('a retained deletion hides its sidebar row without hiding the rows the Workspace released', async (t) => {
   const app = await boot(t)
   seed(app.workspace, app.sessions)
+  app.setFetch(async (_input, options) => {
+    if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: [] }) }
+    const { sessionIds } = JSON.parse(options.body)
+    return {
+      ok: true, status: 200, json: async () => ({
+        ok: true,
+        results: sessionIds.map((sessionId) => (
+          sessionId === 'loose'
+            ? { sessionId, status: 200, ok: true, retained: true }
+            : { sessionId, status: 200, ok: true }
+        )),
+      }),
+    }
+  })
+  await app.render(app.overlay(h(app.sections)))
+
+  const sheet = () => app.dom.window.document.querySelector('style[data-plugin="toolkit-archived-hidden"]')
+  assert.ok(sheet(), 'the row hider installs a stylesheet with the client')
+  assert.equal(sheet().textContent, '', 'nothing is hidden before a delete')
+
+  await app.click('全部删除')
+  await app.click('永久删除')
+
+  // The core keeps listing a session the host still holds, and the archive tombstone
+  // only grays it out: the row itself has to be taken out of the sidebar here.
+  assert.match(sheet().textContent, /\[data-row-key="session:loose"\]\{display:none !important\}/)
+  assert.doesNotMatch(sheet().textContent, /session:a1/, 'a row the Workspace released comes back as a normal row')
+})
+
+test('a reload hides the sessions whose files are already deleted but still registered', async (t) => {
   // The host kept the archive registration as a tombstone for 'loose'; after a
   // restart the page must not list it again as an unreadable row.
-  app.setFetch(async (_input, options) => {
-    if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: ['loose'] }) }
-    return { ok: true, status: 200, json: async () => ({ ok: true }) }
+  const app = await boot(t, {
+    fetch: async (_input, options) => {
+      if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: ['loose'] }) }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) }
+    },
   })
+  seed(app.workspace, app.sessions)
   await app.render(app.overlay(h(app.sections)))
 
   const titles = [...app.dom.window.document.querySelectorAll('.sk-arch__rowTitle')].map((node) => node.textContent)
   assert.deepEqual(titles, ['第一条', '第二条', '无法读取的会话'])
   assert.equal(app.dom.window.document.querySelector('.sk-arch__removeAll').disabled, false)
+  // The sidebar lookup uses the same markers: a tombstone is not drawn again either.
+  const sheet = app.dom.window.document.querySelector('style[data-plugin="toolkit-archived-hidden"]')
+  assert.match(sheet.textContent, /\[data-row-key="session:loose"\]\{display:none !important\}/)
 
   // Everything archived is pending: no rows left, so the bulk action has nothing to do.
   app.workspace.archivedSessionIds = ['loose']

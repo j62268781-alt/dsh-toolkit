@@ -1,6 +1,6 @@
 import React from "react";
 import { ARCH_NS } from "./locale.js";
-import { removeSessionViaHost, removeSessionsViaHost } from "./deletion.js";
+import { removeSessionViaHost, removeSessionsViaHost, readPendingDeletions } from "./deletion.js";
 
 const primitives = (() => {
   try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; }
@@ -43,7 +43,13 @@ export function createRemoval(ctx) {
     busyKind: null,
     error: "",
     note: "",
+    // Rows the archived page must stop listing: everything this page deleted, plus
+    // the tombstones the host reported after a reload.
     removed: new Set(),
+    // Rows the sidebar must stop drawing. Narrower than `removed`: a session the
+    // Workspace released comes back as an ordinary row, and hiding that would make
+    // a healthy session disappear.
+    hidden: new Set(),
     pending: new Set(),
   };
   const listeners = new Set();
@@ -51,9 +57,30 @@ export function createRemoval(ctx) {
     state = { ...state, ...patch };
     for (const listener of listeners) listener();
   };
+  /**
+   * Fold the host's pending markers into `removed` and `hidden`.
+   *
+   * A marker names a session whose files moved while the host still held it: the
+   * archive registration survives as a tombstone until a restart, so the archived
+   * page and the sidebar both have to keep hiding it. Read once at start, then once
+   * per batch, because a marker only ever appears because of a delete.
+   */
+  const syncTombstones = async () => {
+    const markers = await readPendingDeletions();
+    if (markers.size === 0) return;
+    const removed = new Set(state.removed);
+    const hidden = new Set(state.hidden);
+    const patch = {};
+    for (const id of markers) {
+      if (!removed.has(id)) { removed.add(id); patch.removed = removed; }
+      if (!hidden.has(id)) { hidden.add(id); patch.hidden = hidden; }
+    }
+    if (Object.keys(patch).length > 0) update(patch);
+  };
   const controller = {
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     snapshot: () => state,
+    syncTombstones,
     request(row) {
       if (!state.busy) update({ request: { kind: "one", rows: [row] }, error: "" });
     },
@@ -118,6 +145,8 @@ export function createRemoval(ctx) {
       // of the list collapsing row by row while the host answers.
       const removed = new Set(before);
       for (const id of doneIds) removed.add(id);
+      const hidden = new Set(state.hidden);
+      for (const id of retainedIds) hidden.add(id);
       // Deleting archived sessions never touches the Workspace: the workspace
       // registry, its directory, and any unarchived sessions stay as they are.
       update({
@@ -125,12 +154,17 @@ export function createRemoval(ctx) {
         busyKind: null,
         pending: new Set(),
         removed,
+        hidden,
         note: retainedIds.size === 0 ? "" : t("deleteRetained").replace("{t}", String(retainedIds.size)),
         request: failed.length === 0 ? null : { kind: request.kind, rows: failed },
         error: errors.join("；"),
       });
+      // The markers the host wrote for this batch: another page opened later has to
+      // hide the same rows, and this page may have missed a receipt the markers know.
+      void syncTombstones();
     },
   };
+  void syncTombstones();
   return controller;
 }
 

@@ -2,7 +2,6 @@ import React from "react";
 import { ARCH_NS } from "./locale.js";
 import { readArchived } from "./model.js";
 import { DeleteButton, useRemoval } from "./removal.jsx";
-import { readPendingDeletions } from "./deletion.js";
 
 const primitives = (() => {
   try { return require("@deepseek-ai/dsh-client-ui-primitives"); } catch { return {}; }
@@ -61,26 +60,8 @@ function createArchivedSection(ctx, removal) {
     // row's buttons for one row's round trip is what read as a flash.
     const [busyId, setBusyId] = React.useState(null);
     const [error, setError] = React.useState("");
-    // Deleted while the host still held them: their files are gone, but the archive
-    // registration lives on until a restart, so the list has to keep hiding them.
-    const [pending, setPending] = React.useState(() => new Set());
 
     const removalState = useRemoval(removal);
-
-    React.useEffect(() => {
-      // Read once per batch, not once per row: every successful deletion used to
-      // change `removed`, and each of those changes fired another GET (whose server
-      // side prunes tombstones over the whole marker set). Waiting for the batch to
-      // end keeps the same end state for one request instead of N.
-      if (removalState.busy) return undefined;
-      let live = true;
-      void readPendingDeletions().then((ids) => {
-        if (live) setPending(ids);
-      });
-      return () => {
-        live = false;
-      };
-    }, [removalState.busy]);
 
     React.useEffect(() => {
       const rerender = () => bump((n) => n + 1);
@@ -108,7 +89,6 @@ function createArchivedSection(ctx, removal) {
         ...group,
         rows: group.rows.filter((row) => {
           if (removalState.removed.has(row.id)) return false;
-          if (pending.has(row.id)) return false;
           if (needle === "") return true;
           return (
             (row.title || "").toLowerCase().includes(needle) ||
@@ -180,8 +160,8 @@ function createArchivedSection(ctx, removal) {
 
         {visible.length === 0 ? (
           <div className="sk-arch__empty">
-            <p className="sk-arch__emptyTitle">{shown === 0 && total <= pending.size ? t("empty") : t("noMatch")}</p>
-            {total <= pending.size ? <p className="sk-arch__emptyHint">{t("emptyHint")}</p> : null}
+            <p className="sk-arch__emptyTitle">{shown === 0 && total <= removalState.removed.size ? t("empty") : t("noMatch")}</p>
+            {total <= removalState.removed.size ? <p className="sk-arch__emptyHint">{t("emptyHint")}</p> : null}
           </div>
         ) : (
           visible.map((group) => (

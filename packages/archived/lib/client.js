@@ -266,6 +266,20 @@ window.__ModuleLoader__.load({
       (document.head ?? document.documentElement).appendChild(tag);
       return () => tag.remove();
     }
+    function installMutableStylesheet(id) {
+      const tag = document.createElement("style");
+      tag.dataset.plugin = id;
+      tag.dataset.pluginCss = `${id}/runtime.css`;
+      (document.head ?? document.documentElement).appendChild(tag);
+      return {
+        set(css) {
+          if (tag.textContent !== css) tag.textContent = css;
+        },
+        dispose() {
+          tag.remove();
+        }
+      };
+    }
 
     // src/client/styles/settings.css
     var settings_default = `/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */
@@ -574,7 +588,13 @@ window.__ModuleLoader__.load({
         busyKind: null,
         error: "",
         note: "",
+        // Rows the archived page must stop listing: everything this page deleted, plus
+        // the tombstones the host reported after a reload.
         removed: /* @__PURE__ */ new Set(),
+        // Rows the sidebar must stop drawing. Narrower than `removed`: a session the
+        // Workspace released comes back as an ordinary row, and hiding that would make
+        // a healthy session disappear.
+        hidden: /* @__PURE__ */ new Set(),
         pending: /* @__PURE__ */ new Set()
       };
       const listeners = /* @__PURE__ */ new Set();
@@ -582,12 +602,31 @@ window.__ModuleLoader__.load({
         state = { ...state, ...patch };
         for (const listener of listeners) listener();
       };
+      const syncTombstones = async () => {
+        const markers = await readPendingDeletions();
+        if (markers.size === 0) return;
+        const removed = new Set(state.removed);
+        const hidden = new Set(state.hidden);
+        const patch = {};
+        for (const id of markers) {
+          if (!removed.has(id)) {
+            removed.add(id);
+            patch.removed = removed;
+          }
+          if (!hidden.has(id)) {
+            hidden.add(id);
+            patch.hidden = hidden;
+          }
+        }
+        if (Object.keys(patch).length > 0) update(patch);
+      };
       const controller = {
         subscribe(listener) {
           listeners.add(listener);
           return () => listeners.delete(listener);
         },
         snapshot: () => state,
+        syncTombstones,
         request(row) {
           if (!state.busy) update({ request: { kind: "one", rows: [row] }, error: "" });
         },
@@ -634,17 +673,22 @@ window.__ModuleLoader__.load({
           }
           const removed = new Set(before);
           for (const id of doneIds) removed.add(id);
+          const hidden = new Set(state.hidden);
+          for (const id of retainedIds) hidden.add(id);
           update({
             busy: false,
             busyKind: null,
             pending: /* @__PURE__ */ new Set(),
             removed,
+            hidden,
             note: retainedIds.size === 0 ? "" : t("deleteRetained").replace("{t}", String(retainedIds.size)),
             request: failed.length === 0 ? null : { kind: request.kind, rows: failed },
             error: errors.join("；")
           });
+          void syncTombstones();
         }
       };
+      void syncTombstones();
       return controller;
     }
     async function collectReceipts(request, ids) {
@@ -793,18 +837,7 @@ window.__ModuleLoader__.load({
         const [project, setProject] = import_react2.default.useState("");
         const [busyId, setBusyId] = import_react2.default.useState(null);
         const [error, setError] = import_react2.default.useState("");
-        const [pending, setPending] = import_react2.default.useState(() => /* @__PURE__ */ new Set());
         const removalState = useRemoval(removal);
-        import_react2.default.useEffect(() => {
-          if (removalState.busy) return void 0;
-          let live = true;
-          void readPendingDeletions().then((ids) => {
-            if (live) setPending(ids);
-          });
-          return () => {
-            live = false;
-          };
-        }, [removalState.busy]);
         import_react2.default.useEffect(() => {
           const rerender = () => bump((n) => n + 1);
           const offs = [];
@@ -831,7 +864,6 @@ window.__ModuleLoader__.load({
           ...group,
           rows: group.rows.filter((row) => {
             if (removalState.removed.has(row.id)) return false;
-            if (pending.has(row.id)) return false;
             if (needle === "") return true;
             return (row.title || "").toLowerCase().includes(needle) || group.title.toLowerCase().includes(needle);
           })
@@ -878,7 +910,7 @@ window.__ModuleLoader__.load({
             onClick: () => removal.requestAll(visible)
           },
           t("removeAll")
-        )), error !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("restoreFailed").replace("{reason}", error)) : null, removalState.note !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__note", role: "status" }, removalState.note) : null, visible.length === 0 ? /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__empty" }, /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyTitle" }, shown === 0 && total <= pending.size ? t("empty") : t("noMatch")), total <= pending.size ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyHint" }, t("emptyHint")) : null) : visible.map((group) => /* @__PURE__ */ import_react2.default.createElement("section", { className: "sk-arch__group", key: group.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__groupHead" }, /* @__PURE__ */ import_react2.default.createElement(ArchivedFolderIcon, null), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupTitle" }, group.title || t("ungrouped")), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupCount" }, `${group.rows.length} ${t("chats")}`)), group.rows.map((row) => /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__row", key: row.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__rowMain" }, /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTitle", title: row.missing ? row.id : row.title || t("untitled") }, row.title || (row.missing ? t("missing") : t("untitled"))), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTime" }, row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : "")), /* @__PURE__ */ import_react2.default.createElement(
+        )), error !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("restoreFailed").replace("{reason}", error)) : null, removalState.note !== "" ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__note", role: "status" }, removalState.note) : null, visible.length === 0 ? /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__empty" }, /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyTitle" }, shown === 0 && total <= removalState.removed.size ? t("empty") : t("noMatch")), total <= removalState.removed.size ? /* @__PURE__ */ import_react2.default.createElement("p", { className: "sk-arch__emptyHint" }, t("emptyHint")) : null) : visible.map((group) => /* @__PURE__ */ import_react2.default.createElement("section", { className: "sk-arch__group", key: group.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__groupHead" }, /* @__PURE__ */ import_react2.default.createElement(ArchivedFolderIcon, null), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupTitle" }, group.title || t("ungrouped")), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__groupCount" }, `${group.rows.length} ${t("chats")}`)), group.rows.map((row) => /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__row", key: row.id }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "sk-arch__rowMain" }, /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTitle", title: row.missing ? row.id : row.title || t("untitled") }, row.title || (row.missing ? t("missing") : t("untitled"))), /* @__PURE__ */ import_react2.default.createElement("span", { className: "sk-arch__rowTime" }, row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : "")), /* @__PURE__ */ import_react2.default.createElement(
           RestoreButton,
           {
             busy: busyId === row.id,
@@ -974,6 +1006,33 @@ window.__ModuleLoader__.load({
       } catch {
         return void 0;
       }
+    }
+
+    // src/modules/archived/client/hidden-rows.js
+    var SELECTOR_SAFE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+    function hiddenRowsCss(ids) {
+      const rules = [];
+      for (const id of ids) {
+        if (typeof id !== "string" || !SELECTOR_SAFE.test(id)) continue;
+        rules.push(`[data-row-key="session:${id}"]{display:none !important}`);
+      }
+      return rules.join("\n");
+    }
+    function installHiddenRows(removal) {
+      const sheet = installMutableStylesheet("toolkit-archived-hidden");
+      let written;
+      const render = () => {
+        const css = hiddenRowsCss(removal.snapshot().hidden);
+        if (css === written) return;
+        written = css;
+        sheet.set(css);
+      };
+      const unsubscribe = removal.subscribe(render);
+      render();
+      return () => {
+        unsubscribe();
+        sheet.dispose();
+      };
     }
 
     // src/modules/archived/client/archive-confirm.jsx
@@ -1094,6 +1153,7 @@ window.__ModuleLoader__.load({
     ${styles_default}`, "toolkit-archived"), "toolkit-archived:stylesheet");
       ctx.effect(() => ctx.locale.register(ARCH_NS, ARCH_COPY), "toolkit-archived:dictionary");
       ctx.effect(() => installRemoval(ctx, removal), "toolkit-archived:removal");
+      ctx.effect(() => installHiddenRows(removal), "toolkit-archived:hidden-rows");
       ctx.effect(() => installArchiveConfirm(ctx, archiveConfirm), "toolkit-archived:archive-confirm");
       ctx.effect(() => installArchivedSection(ctx, removal), "toolkit-archived:section");
       ctx.effect(() => registerSettingsIcon(ctx, "archived-chats", "archive"), "toolkit-archived:settings-icon");
