@@ -613,7 +613,10 @@ export class PairingService {
     try {
       const hostDescriptor = toStoreDescriptor(session.host)
       const mobileDescriptor = toStoreDescriptor(mobile)
-      const [hostTokens, mobileTokens] = this.store.registerPairing([hostDescriptor, mobileDescriptor])
+      const [hostTokens, mobileTokens] = this.store.registerPairing(
+        [hostDescriptor, mobileDescriptor],
+        [session.host.deviceId, mobile.deviceId],
+      )
       if (!hostTokens || !mobileTokens) throw new ApiError('INTERNAL_ERROR', 500)
       const account = `dsh-device:${randomUUID()}`
       session.credentials = {

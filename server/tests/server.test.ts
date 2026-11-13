@@ -335,7 +335,8 @@ describe('control authorization and relay routing', () => {
     expect((await request('/devices/self', 'DELETE', undefined, second.accessToken)).status).toBe(200)
     await closed
     expect(await ctx.host.next('error')).toMatchObject({ connectionId: incoming.connectionId })
-    expect((await request('/devices', 'GET', undefined, second.accessToken)).status).toBe(401)
+    // The revoked device keeps a dead token so it can be told why it is gone.
+    expect((await request('/devices', 'GET', undefined, second.accessToken)).status).toBe(403)
   })
 })
 

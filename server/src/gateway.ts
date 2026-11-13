@@ -35,6 +35,18 @@ export interface GatewayOptions extends GatewayTimingOptions {
  */
 type ConnectionState = 'awaiting_hello' | 'authenticated' | 'closing' | 'closed'
 
+/**
+ * WebSocket close code for a semantic control error. The official Host maps
+ * `4004` to `DEVICE_REVOKED` and only then clears its local authorization, so a
+ * revoked device must not be closed with the generic `4001` (which it reads as a
+ * retryable transport failure and would keep retrying forever).
+ */
+function closeCodeFor(code: string): number {
+  if (code === 'CONNECTION_REPLACED') return 4003
+  if (code === 'DEVICE_REVOKED') return 4004
+  return 4001
+}
+
 type Peer = { ws: WebSocket; id: string; role: 'host' | 'client'; capabilities: string[]; version: string; lastPong: number; nonce?: string; evictedTombstoneUntil?: number }
 type Link = { id: string; host: string; client: string; stage: 'pending' | 'accepted' | 'handshake' | 'ready'; created: number; counters: Map<string, number>; preferredTransports: TransportName[]; iceCandidates: number }
 type DroppedLink = { host: string; client: string; expiresAt: number; droppedFrames: number }
@@ -133,7 +145,7 @@ export class Gateway {
     this.logger = options.logger ?? new Logger('gateway', options.logLevel ?? 'info')
     this.turnEnabled = options.turnEnabled === true
 
-    store.onInvalidate = id => this.disconnect(id, 'AUTH_INVALID')
+    store.onInvalidate = (id, reason) => this.disconnect(id, reason)
     server.on('upgrade', (req, socket, head) => {
       const path = requestPath(req.url)
       // The route still requires an exact match: a query string is rejected
@@ -276,7 +288,7 @@ export class Gateway {
     if (!peer) return
     this.logger.info('ws_peer_disconnected', { peerId: id, code })
     try {
-      peer.ws.close(code === 'CONNECTION_REPLACED' ? 4003 : 4001, code)
+      peer.ws.close(closeCodeFor(code), code)
     } catch {
       // Socket already closing: the grace below still forces termination.
     }
@@ -485,7 +497,7 @@ export class Gateway {
         }
         if (peer) this.disconnect(peer.id, code)
         else {
-          try { ws.close(4001, code) } catch { /* terminate below */ }
+          try { ws.close(closeCodeFor(code), code) } catch { /* terminate below */ }
           terminateSoon(ws)
         }
       }

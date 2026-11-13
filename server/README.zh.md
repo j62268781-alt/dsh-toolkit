@@ -85,6 +85,8 @@ npm start
 | POST | `/api/v1/device-pairing/sessions/{id}/host/cancel` | 取消会话。 |
 | POST | `/api/v1/device-pairing/sessions/{id}/mobile/cancel` | 取消会话。 |
 
+解绑联动：配对成功时，服务器会把「Host ↔ 手机」这条关系记进状态文件（`pairs`）。任何一端调用 `DELETE /api/v1/devices/self` 都会把另一端一起撤销——否则手机在 DSH-Go 里点「移除设备」后，桌面端会一直显示「已绑定」。撤销后宿主收到 `4004 DEVICE_REVOKED`，会清掉本地凭据并在面板上提示「授权已被移除」；重新扫码即可再次配对（同一身份可以重新占用被撤销的设备槽）。
+
 账号 / 设备（沿用上游）：
 
 | 方法 | 路径 | 认证 |
@@ -96,7 +98,7 @@ npm start
 | POST | `/api/v1/devices/register` | 账号 token，注册一台设备。 |
 | POST | `/api/v1/devices/register-owned-role` | 设备 token，以相反角色注册自己的另一台设备。 |
 | POST | `/api/v1/auth/refresh` | `{deviceId, refreshToken}`，轮换并可从丢失的响应中恢复。 |
-| DELETE | `/api/v1/devices/self` | 设备 token，撤销自己并断开其 socket。 |
+| DELETE | `/api/v1/devices/self` | 设备 token，解除配对：撤销自己**与配对的另一侧**，两侧 socket 均以 `4004 DEVICE_REVOKED` 关闭，响应 `{status:'revoked',peers:[...]}`。 |
 | GET | `/api/v1/me` | 设备 token，返回自己的描述。 |
 | GET | `/api/v1/devices` | Client 设备 token，列出可用 Host。 |
 | GET | `/api/v1/devices/{id}`、`/presence` | 订阅自己的设备或查询同账号设备的在线状态。 |

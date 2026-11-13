@@ -85,6 +85,8 @@ Pairing session actions (all require `X-DSH-Pairing-Proof` except creation and `
 | POST | `/api/v1/device-pairing/sessions/{id}/host/cancel` | Cancel the session. |
 | POST | `/api/v1/device-pairing/sessions/{id}/mobile/cancel` | Cancel the session. |
 
+Unbind propagation: a successful pairing records the Host ↔ phone relation in the state file (`pairs`). `DELETE /api/v1/devices/self` on either end revokes the other end too — without it, removing the device in DSH-Go would leave the desktop showing "connected". The Host sees `4004 DEVICE_REVOKED`, clears its local credentials and its panel reports that authorization was removed; scanning a fresh QR pairs again (a revoked slot can be re-claimed by the same identity).
+
 Account and device routes (unchanged from upstream):
 
 | Method | Path | Auth |
@@ -96,7 +98,7 @@ Account and device routes (unchanged from upstream):
 | POST | `/api/v1/devices/register` | Account token; registers a device. |
 | POST | `/api/v1/devices/register-owned-role` | Device token; registers the counterpart device with the opposite role. |
 | POST | `/api/v1/auth/refresh` | `{deviceId, refreshToken}`; rotates and recovers from a lost response. |
-| DELETE | `/api/v1/devices/self` | Device token; revokes itself and drops its socket. |
+| DELETE | `/api/v1/devices/self` | Device token; ends the pairing: revokes itself **and its paired peer**, closing both sockets with `4004 DEVICE_REVOKED` and returning `{status:'revoked',peers:[...]}`. |
 | GET | `/api/v1/me` | Device token; returns its own descriptor. |
 | GET | `/api/v1/devices` | Client device token; lists available Hosts. |
 | GET | `/api/v1/devices/{id}`, `/presence` | Subscribe to its own device, or read presence of same-account devices. |

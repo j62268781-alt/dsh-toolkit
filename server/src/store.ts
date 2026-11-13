@@ -19,7 +19,22 @@ const tokenSchema = z.object({
   recovery: z.object({ nonce: z.string().regex(/^[A-Za-z0-9_-]{43}$/), accessExpires: z.number().int().positive() }).optional(),
 })
 const savedDeviceSchema = z.object({ descriptor: accountDeviceDescriptorSchema, revoked: z.boolean(), lastSeenAt: z.number() })
-const stateSchema = z.object({ version: z.literal(1), account: z.string(), salt: z.string(), verifier: z.string(), devices: z.record(z.string(), savedDeviceSchema), tokens: z.record(z.string(), tokenSchema) })
+/**
+ * `pairs` records the host/client link created by a successful device pairing.
+ * Unbinding one side has to reach the other side, and the pairing session is
+ * long gone by then, so the relation needs to live on disk.
+ */
+const pairSchema = z.tuple([z.string(), z.string()])
+const stateSchema = z.object({
+  version: z.literal(1),
+  account: z.string(),
+  salt: z.string(),
+  verifier: z.string(),
+  devices: z.record(z.string(), savedDeviceSchema),
+  tokens: z.record(z.string(), tokenSchema),
+  // Added after the first release: absent in older state files.
+  pairs: pairSchema.array().default([]),
+})
 type SavedDevice = z.infer<typeof savedDeviceSchema>
 type SavedToken = z.infer<typeof tokenSchema>
 type StoreState = z.infer<typeof stateSchema>
@@ -62,13 +77,17 @@ function issueTokensInto(
 /** Single-process store. Only token digests and public identities reach disk. */
 export class Store {
   private state: StoreState
-  onInvalidate: (id: string) => void = () => {}
+  /** `reason` is the disconnect code surfaced to the peer's control connection. */
+  onInvalidate: (id: string, reason: string) => void = () => {}
   constructor(private readonly file: string, readonly account: string, password: string) {
     const previous = existsSync(file) ? stateSchema.parse(JSON.parse(readFileSync(file, 'utf8'))) : undefined
     const salt = previous?.salt ?? secret()
     const verifier = scryptSync(password, salt, 32).toString('hex')
-    this.state = previous ?? { version: 1, account, salt, verifier, devices: {}, tokens: {} }
-    if (this.state.account !== account) this.state.devices = {}
+    this.state = previous ?? { version: 1, account, salt, verifier, devices: {}, tokens: {}, pairs: [] }
+    if (this.state.account !== account) {
+      this.state.devices = {}
+      this.state.pairs = []
+    }
     if (this.state.account !== account || !equal(this.state.verifier, verifier)) this.state.tokens = {}
     Object.assign(this.state, { account, verifier })
     this.save()
@@ -88,7 +107,7 @@ export class Store {
   list(): SavedDevice[] { return Object.values(this.state.devices).filter(d => !d.revoked) }
   register(descriptor: AccountDeviceDescriptor): DeviceTokenPair {
     this.reserveDevice(this.state, descriptor)
-    this.invalidate(descriptor.deviceId)
+    this.invalidate(descriptor.deviceId, 'AUTH_INVALID')
     return this.issue(descriptor.deviceId)
   }
   /**
@@ -97,7 +116,8 @@ export class Store {
    */
   private reserveDevice(state: StoreState, descriptor: AccountDeviceDescriptor): void {
     const old = state.devices[descriptor.deviceId]
-    if (old?.revoked) throw new ApiError('DEVICE_REVOKED', 403)
+    // A revoked slot may be claimed again by the SAME identity: revocation ends
+    // the authorization, not the device identity, and re-pairing proves the key.
     if (old && (old.descriptor.identityKey !== descriptor.identityKey || old.descriptor.role !== descriptor.role)) throw new ApiError('PEER_IDENTITY_MISMATCH', 409)
     if (!old && Object.keys(state.devices).length >= 256) throw new ApiError('RATE_LIMITED', 429)
     state.devices[descriptor.deviceId] = { descriptor, revoked: false, lastSeenAt: old?.lastSeenAt ?? 0 }
@@ -107,7 +127,7 @@ export class Store {
    * accepted and every token pair is minted and persisted, or nothing changes.
    * Device pairing needs this so a half-issued credential can never be observed.
    */
-  registerPairing(descriptors: readonly AccountDeviceDescriptor[]): DeviceTokenPair[] {
+  registerPairing(descriptors: readonly AccountDeviceDescriptor[], pair?: readonly [string, string]): DeviceTokenPair[] {
     if (descriptors.length === 0) return []
     const previous = this.state
     const draft = structuredClone(previous)
@@ -118,14 +138,33 @@ export class Store {
         for (const [key, value] of Object.entries(draft.tokens)) if (value.deviceId === descriptor.deviceId) delete draft.tokens[key]
         tokens.push(issueTokensInto(draft, descriptor.deviceId))
       }
+      if (pair) {
+        // Every device belongs to at most one active pair: the newest pairing
+        // supersedes an older link for either end.
+        const [hostId, clientId] = pair
+        draft.pairs = draft.pairs.filter(([h, c]) => h !== hostId && c !== clientId && h !== clientId && c !== hostId)
+        draft.pairs.push([hostId, clientId])
+      }
       this.state = draft
       this.save()
     } catch (error) {
       this.state = previous
       throw error
     }
-    for (const descriptor of descriptors) this.onInvalidate(descriptor.deviceId)
+    for (const descriptor of descriptors) this.onInvalidate(descriptor.deviceId, 'AUTH_INVALID')
     return tokens
+  }
+
+  /** Devices paired with `id` (the opposite side of a device pairing). */
+  peersOf(id: string): string[] {
+    const peers: string[] = []
+    for (const [hostId, clientId] of this.state.pairs) {
+      const peer = hostId === id ? clientId : clientId === id ? hostId : undefined
+      // Tokens and links can outlive a device slot (account change, manual
+      // cleanup); only revoke peers that still have a record.
+      if (peer !== undefined && peer !== id && Object.hasOwn(this.state.devices, peer)) peers.push(peer)
+    }
+    return peers
   }
   private issue(deviceId: string, refreshTokenExpiresAt = Date.now() + 30 * 86400_000, previous?: { token: string; record: SavedToken }): DeviceTokenPair {
     const before = this.state.tokens
@@ -163,12 +202,22 @@ export class Store {
     // recovered, still-valid refresh token can then rotate normally.
     return { ...pair, accessTokenExpiresAt: record.recovery.accessExpires, refreshTokenExpiresAt: next.expires }
   }
-  invalidate(deviceId: string): void {
+  invalidate(deviceId: string, reason = 'AUTH_INVALID'): void {
     for (const [key, value] of Object.entries(this.state.tokens)) if (value.deviceId === deviceId) delete this.state.tokens[key]
-    this.onInvalidate(deviceId)
+    this.onInvalidate(deviceId, reason)
     this.save()
   }
-  revoke(id: string): void { this.get(id).revoked = true; this.invalidate(id) }
+  /**
+   * Revoke a device: the slot keeps its (now dead) token records on purpose.
+   * A revoked device that tries again must be told `DEVICE_REVOKED`, not
+   * `AUTH_INVALID` — the Host only clears its local authorization on the
+   * former, so dropping the tokens here would silence the revocation.
+   */
+  revoke(id: string, reason = 'DEVICE_REVOKED'): void {
+    this.get(id).revoked = true
+    this.onInvalidate(id, reason)
+    this.save()
+  }
   rename(id: string, name: string): void {
     this.get(id).descriptor.name = name
     this.save()

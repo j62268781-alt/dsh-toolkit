@@ -294,7 +294,16 @@ export function createRemoteServer(config: Config) {
       json(res, 200, store.refresh(data.deviceId, data.refreshToken)); return
     }
     if (method === 'DELETE' && path === '/api/v1/devices/self') {
-      store.revoke(deviceAuth(req).descriptor.deviceId); json(res, 200, { status: 'revoked' }); return
+      // Unbinding is symmetric: the phone revoking itself is the user saying
+      // "this pairing is over", so the paired desktop must learn about it too.
+      // Revoking the peer closes its control connection with reason
+      // DEVICE_REVOKED, which is how the official Host learns to drop its
+      // credentials and show "authorization removed" instead of staying silent.
+      const self = deviceAuth(req).descriptor.deviceId
+      const peers = store.peersOf(self)
+      store.revoke(self)
+      for (const peer of peers) store.revoke(peer, 'DEVICE_REVOKED')
+      json(res, 200, { status: 'revoked', peers }); return
     }
     if (method === 'GET' && path === '/api/v1/me') { json(res, 200, descriptor(deviceAuth(req))); return }
     if (method === 'GET' && path === '/api/v1/turn/credentials') {
