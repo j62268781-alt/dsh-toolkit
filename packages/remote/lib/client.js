@@ -398,6 +398,9 @@ window.__ModuleLoader__.load({
         pairAuthInvalid: "本机在配对服务器上的登录状态已失效，需要重新配对。",
         pairAuthFailed: "本机在配对服务器上的授权已失效（{reason}），需要重新配对。",
         pairUnbind: "解绑并重试",
+        pairUnbindNow: "解除绑定",
+        pairUnbindConfirm: "解除后这台手机会被断开，需要重新扫码才能再连。",
+        pairUnbindNowConfirm: "确认解除",
         failed: "操作失败：{reason}",
         loading: "正在读取状态…",
         close: "关闭",
@@ -502,6 +505,9 @@ window.__ModuleLoader__.load({
         pairAuthInvalid: "This computer is no longer signed in on the pairing server. Pair again to restore it.",
         pairAuthFailed: "This computer is no longer authorized on the pairing server ({reason}). Pair again.",
         pairUnbind: "Unbind and retry",
+        pairUnbindNow: "Unbind",
+        pairUnbindConfirm: "The phone will be disconnected and must scan a new QR code to connect again.",
+        pairUnbindNowConfirm: "Unbind now",
         failed: "Action failed: {reason}",
         loading: "Reading state…",
         close: "Close",
@@ -990,6 +996,12 @@ window.__ModuleLoader__.load({
       }
       return snapshot;
     }
+    function forgetPaired() {
+      try {
+        storage()?.removeItem(LAST_PAIRED_KEY);
+      } catch {
+      }
+    }
     var PAIRING_CODE_LENGTH = 8;
     var ACTIVE_STATES = /* @__PURE__ */ new Set(["created", "claimed", "approved"]);
     function isPairingActive(view) {
@@ -1226,9 +1238,12 @@ window.__ModuleLoader__.load({
             } catch {
             }
             set({ view: void 0, halted: false });
+            forgetPaired();
+            set({ lastPaired: void 0, peers: [] });
             await settings();
             const next = await refresh();
-            if (next !== void 0 || value.error !== void 0) return next;
+            if (next !== void 0 && next !== null) return next;
+            if (value.error !== void 0) return void 0;
             const view = await control("host.pairing.start");
             set({ view });
             return view;
@@ -1574,6 +1589,7 @@ window.__ModuleLoader__.load({
         const state = view?.state;
         const busy = value.busy;
         const [code, setCode] = useState("");
+        const [unbindAsk, setUnbindAsk] = useState(false);
         const codeRef = useRef(null);
         const seconds = useCountdown(view?.expiresAt);
         useEffect(() => {
@@ -1617,6 +1633,46 @@ window.__ModuleLoader__.load({
           const next = await pairing.confirm(code);
           if (next !== void 0) setCode("");
         };
+        useEffect(() => {
+          setUnbindAsk(false);
+        }, [state, value.binding]);
+        const unbind = () => void pairing.unbind();
+        const boundHint = (key) => h(
+          "div",
+          { className: "wc-hint" },
+          t(unbindAsk === true ? "pairUnbindConfirm" : key)
+        );
+        const boundActions = () => unbindAsk === true ? h(
+          "div",
+          { className: "wc-actions wc-actions--full" },
+          h("button", {
+            type: "button",
+            className: "wc-button wc-button--half",
+            disabled: busy,
+            onClick: () => setUnbindAsk(false)
+          }, t("cancel")),
+          h("button", {
+            type: "button",
+            className: "wc-button wc-button--half wc-button--danger-solid",
+            disabled: busy,
+            onClick: unbind
+          }, t("pairUnbindNowConfirm"))
+        ) : h(
+          "div",
+          { className: "wc-actions wc-actions--full" },
+          h("button", {
+            type: "button",
+            className: "wc-button wc-button--half",
+            disabled: busy,
+            onClick: start
+          }, t("pairAgain")),
+          h("button", {
+            type: "button",
+            className: "wc-button wc-button--half wc-button--danger",
+            disabled: busy,
+            onClick: () => setUnbindAsk(true)
+          }, t("pairUnbindNow"))
+        );
         const body = (() => {
           if (value.loaded !== true) {
             return h(
@@ -1680,12 +1736,8 @@ window.__ModuleLoader__.load({
                   h("span", { className: "wc-info__value wc-info__value--muted", title: view.serverUrl }, view.serverUrl ?? "—")
                 )
               ),
-              h("div", { className: "wc-hint" }, t("pairCompletedHint")),
-              h(
-                "div",
-                { className: "wc-actions" },
-                h("button", { type: "button", className: "wc-button", disabled: busy, onClick: start }, t("pairAgain"))
-              )
+              boundHint("pairCompletedHint"),
+              boundActions()
             );
           }
           if (state === "claimed") {
@@ -1794,12 +1846,8 @@ window.__ModuleLoader__.load({
                   h("span", { className: "wc-info__value" }, shortFingerprint(fingerprint))
                 )
               ),
-              h("div", { className: "wc-hint" }, t(value.clients.length > 0 ? "pairBoundOnline" : "pairBoundOffline")),
-              h(
-                "div",
-                { className: "wc-actions" },
-                h("button", { type: "button", className: "wc-button", disabled: busy, onClick: start }, t("pairAgain"))
-              ),
+              boundHint(value.clients.length > 0 ? "pairBoundOnline" : "pairBoundOffline"),
+              boundActions(),
               h(ServerRow, {
                 serverUrl: value.serverUrl,
                 busy,

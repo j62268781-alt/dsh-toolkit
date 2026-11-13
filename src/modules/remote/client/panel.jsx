@@ -363,6 +363,8 @@ export function createPanel(React, { t, connection, portal }) {
     const state = view?.state
     const busy = value.busy
     const [code, setCode] = useState('')
+    // 「解除绑定」是破坏性动作：先就地确认一次，避免误触把正在用的手机踢掉。
+    const [unbindAsk, setUnbindAsk] = useState(false)
     const codeRef = useRef(null)
     const seconds = useCountdown(view?.expiresAt)
 
@@ -420,6 +422,46 @@ export function createPanel(React, { t, connection, portal }) {
       const next = await pairing.confirm(code)
       if (next !== undefined) setCode('')
     }
+    // 分支一变（配对完成、解绑成功、授权失效），确认态就该归零，别把红按钮留在新卡片上。
+    useEffect(() => {
+      setUnbindAsk(false)
+    }, [state, value.binding])
+
+    const unbind = () => void pairing.unbind()
+    /**
+     * 已绑定卡片的动作行：重新配对 + 解除绑定。
+     * 解除绑定必须真的把服务器上的设备撤销掉，否则手机会以为自己还连着——
+     * 这正是用户报过的「电脑端取消了，手机照样能连」。
+     */
+    const boundHint = (key) => h('div', { className: 'wc-hint' },
+      t(unbindAsk === true ? 'pairUnbindConfirm' : key))
+    const boundActions = () => unbindAsk === true
+      ? h('div', { className: 'wc-actions wc-actions--full' },
+        h('button', {
+          type: 'button',
+          className: 'wc-button wc-button--half',
+          disabled: busy,
+          onClick: () => setUnbindAsk(false),
+        }, t('cancel')),
+        h('button', {
+          type: 'button',
+          className: 'wc-button wc-button--half wc-button--danger-solid',
+          disabled: busy,
+          onClick: unbind,
+        }, t('pairUnbindNowConfirm')))
+      : h('div', { className: 'wc-actions wc-actions--full' },
+        h('button', {
+          type: 'button',
+          className: 'wc-button wc-button--half',
+          disabled: busy,
+          onClick: start,
+        }, t('pairAgain')),
+        h('button', {
+          type: 'button',
+          className: 'wc-button wc-button--half wc-button--danger',
+          disabled: busy,
+          onClick: () => setUnbindAsk(true),
+        }, t('pairUnbindNow')))
 
     const body = (() => {
       // 首次状态还没读回来：先占住位置转圈。
@@ -462,9 +504,8 @@ export function createPanel(React, { t, connection, portal }) {
             h('div', { className: 'wc-info__row' },
               h('span', { className: 'wc-info__key' }, t('pairServer')),
               h('span', { className: 'wc-info__value wc-info__value--muted', title: view.serverUrl }, view.serverUrl ?? '—'))),
-          h('div', { className: 'wc-hint' }, t('pairCompletedHint')),
-          h('div', { className: 'wc-actions' },
-            h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('pairAgain'))))
+          boundHint('pairCompletedHint'),
+          boundActions())
       }
       if (state === 'claimed') {
         // 说明和倒计时归一组，输入框独占一行，按钮再占一行：视线路径是「读说明 → 填码 → 提交」。
@@ -555,9 +596,8 @@ export function createPanel(React, { t, connection, portal }) {
               : h('div', { className: 'wc-info__row' },
                 h('span', { className: 'wc-info__key' }, t('pairFingerprint')),
                 h('span', { className: 'wc-info__value' }, shortFingerprint(fingerprint)))),
-          h('div', { className: 'wc-hint' }, t(value.clients.length > 0 ? 'pairBoundOnline' : 'pairBoundOffline')),
-          h('div', { className: 'wc-actions' },
-            h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('pairAgain'))),
+          boundHint(value.clients.length > 0 ? 'pairBoundOnline' : 'pairBoundOffline'),
+          boundActions(),
           h(ServerRow, {
             serverUrl: value.serverUrl,
             busy,

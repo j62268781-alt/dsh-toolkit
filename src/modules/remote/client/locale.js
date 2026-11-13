@@ -108,6 +108,9 @@ export const WC_COPY = {
     pairAuthInvalid: '本机在配对服务器上的登录状态已失效，需要重新配对。',
     pairAuthFailed: '本机在配对服务器上的授权已失效（{reason}），需要重新配对。',
     pairUnbind: '解绑并重试',
+    pairUnbindNow: '解除绑定',
+    pairUnbindConfirm: '解除后这台手机会被断开，需要重新扫码才能再连。',
+    pairUnbindNowConfirm: '确认解除',
 
     failed: '操作失败：{reason}',
     loading: '正在读取状态…',
@@ -219,6 +222,9 @@ export const WC_COPY = {
     pairAuthInvalid: 'This computer is no longer signed in on the pairing server. Pair again to restore it.',
     pairAuthFailed: 'This computer is no longer authorized on the pairing server ({reason}). Pair again.',
     pairUnbind: 'Unbind and retry',
+    pairUnbindNow: 'Unbind',
+    pairUnbindConfirm: 'The phone will be disconnected and must scan a new QR code to connect again.',
+    pairUnbindNowConfirm: 'Unbind now',
 
     failed: 'Action failed: {reason}',
     loading: 'Reading state…',

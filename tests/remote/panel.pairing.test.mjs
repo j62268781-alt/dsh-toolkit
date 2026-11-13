@@ -834,3 +834,57 @@ test('配对：授权失效后点「重新配对」，扫码完成不再闪一�
     await panel.unmount()
   }
 })
+
+test('配对：已绑定卡能「解除绑定」，确认后走 settings.logout 并回到二维码', async () => {
+  // 用户报过：桌面端以为解绑了，手机照样能连。原因是面板只有「重新配对」，
+  // 用户点的「取消」只取消二维码会话。解绑必须真的调 settings.logout
+  // （服务器据此撤销 Host 与手机两侧），并清掉本地快照。
+  let settingsCalls = 0
+  const panel = await mount({
+    'settings.get': () => {
+      settingsCalls += 1
+      return settingsCalls === 1
+        ? { config: { serverUrl: SERVER }, associations: { host: { method: 'device-pairing', account: 'dsh-device:abc' } } }
+        : { config: { serverUrl: SERVER }, associations: {} }
+    },
+    'host.pairing.status': null,
+    'settings.logout': {},
+    'host.pairing.start': CREATED,
+    status: {
+      mode: 'local',
+      host: { online: true, connectedClients: [{ deviceId: 'phone-1', name: 'Pixel 9', mode: 'remote' }] },
+    },
+  }, {
+    lastPaired: { deviceId: 'phone-1', name: 'Pixel 9', fingerprint: 'c'.repeat(64), serverUrl: SERVER },
+  })
+  try {
+    await panel.flush()
+    const popover = panel.popover()
+    const ask = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairUnbindNow')
+    assert.ok(ask !== undefined, '已绑定卡要有「解除绑定」按钮')
+    assert.ok(ask.classList.contains('wc-button--danger'), '解绑按钮用危险色')
+
+    await panel.click(ask)
+    assert.ok(popover.textContent.includes('pairUnbindConfirm'), '先就地确认，而不是立刻断开')
+    assert.equal(popover.textContent.includes('pairBoundOnline'), false, '确认时说明换成解绑说明')
+
+    const confirm = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairUnbindNowConfirm')
+    assert.ok(confirm !== undefined, '确认行要有「确认解除」')
+    await panel.click(confirm)
+    await panel.flush()
+    await panel.flush()
+    await panel.flush()
+
+    const endpoints = panel.control.calls.map((call) => call.endpoint)
+    assert.ok(endpoints.includes('settings.logout'), '必须真的解绑（服务器两侧撤销）')
+    assert.ok(endpoints.includes('host.pairing.start'), `解绑后自动开一张新二维码: ${JSON.stringify(endpoints)} ${popover.textContent}`)
+    assert.ok(popover.textContent.includes('pairScanHint'), '回到扫码态')
+    assert.equal(
+      panel.dom.window.localStorage.getItem('dsh-toolkit-remote/last-paired.v1'),
+      null,
+      '解绑要忘掉本地快照，避免待机态继续显示旧手机',
+    )
+  } finally {
+    await panel.unmount()
+  }
+})

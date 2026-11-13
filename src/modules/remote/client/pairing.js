@@ -121,6 +121,15 @@ function savePaired(snapshot) {
   return snapshot
 }
 
+/** 解绑时忘掉这台手机：快照留着会让待机态假装它还连着。 */
+function forgetPaired() {
+  try {
+    storage()?.removeItem(LAST_PAIRED_KEY)
+  } catch {
+    // 存储不可用不该影响解绑本身。
+  }
+}
+
 /** 手机上进码固定 8 位（服务器只接受 /^[0-9]{8}$/）。 */
 export const PAIRING_CODE_LENGTH = 8
 
@@ -414,9 +423,15 @@ export function createPairing() {
           // 凭据已被清空，继续重读配对状态。
         }
         set({ view: undefined, halted: false })
+        // 解绑是「忘掉这台手机」：本地快照与 trusted-peers 兜底缓存都清掉，
+        // 否则待机态还会把已经解除的手机名/指纹画回来。
+        forgetPaired()
+        set({ lastPaired: undefined, peers: [] })
         await settings()
         const next = await refresh()
-        if (next !== undefined || value.error !== undefined) return next
+        // refresh() 在没有会话时返回 null：那是「确认已经解绑」，继续开新二维码。
+        if (next !== undefined && next !== null) return next
+        if (value.error !== undefined) return undefined
         // 解绑会连会话一起清掉，这时直接开一张新二维码，省得用户再点一次。
         const view = await control('host.pairing.start')
         set({ view })
