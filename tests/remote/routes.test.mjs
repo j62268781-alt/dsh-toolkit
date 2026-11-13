@@ -3,7 +3,9 @@
  */
 
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import vm from 'node:vm'
 import { Context, Service } from '@deepseek-ai/cordis'
@@ -78,6 +80,7 @@ const PATHS = [
   ['POST', 'monitor'],
   ['POST', 'bridge/test'],
   ['POST', 'bridge/access'],
+  ['GET', 'peers'],
 ]
 
 test('插件声明与其依赖', () => {
@@ -111,7 +114,7 @@ test('对外状态：凭据还在但监听断了就报 reconnecting，不能继�
   assert.equal(plugin.deriveConnectionState({ connected: false, loginState: { state: 'expired' }, monitorState: { running: true, connected: false, phase: 'error' } }), 'expired')
 })
 
-test('十条路由全部注册为 exact 且挂在独立前缀下', async (t) => {
+test('十一条路由全部注册为 exact 且挂在独立前缀下', async (t) => {
   const ctx = new Context()
   await ctx.plugin(WebServer)
   await ctx.plugin(Connection)
@@ -164,8 +167,9 @@ test('方法不匹配时返回 404，且不泄露任何状态', async (t) => {
   const fiber2 = ctx2.plugin(plugin, {})
   t.after(() => fiber2.dispose())
   await fiber2
+  const expected = new Map(PATHS.map(([method, suffix]) => [`/api/plugins/dsh-toolkit/remote/${suffix}`, method]))
   for (const route of ctx2.get('webServer').routes) {
-    const wrong = route.path.endsWith('/status') || route.path.endsWith('/poll') ? 'POST' : 'GET'
+    const wrong = expected.get(route.path) === 'GET' ? 'POST' : 'GET'
     // 绕过鉴权：这些路由的 handler 先鉴权，所以用一个放行的 connection。
     const response = reply()
     const request = { method: wrong, url: route.path }
@@ -199,6 +203,49 @@ test('status 在未连接时给出稳定结构且不含 token', async (t) => {
   assert.equal(payload.credentialRef, 'WEIXIN_CLAWBOT_CREDENTIAL')
   assert.equal(payload.account, undefined)
   assert.equal(payload.qr, undefined)
+})
+
+test('peers：读本机 trusted-peers.json，按最近信任排序；缺参数返回 400', async (t) => {
+  const homeDir = await mkdtemp(join(tmpdir(), 'dsh-routes-peers-'))
+  const SERVER_URL = 'https://dsh.r2049.cn'
+  const file = join(homeDir, 'ds-harness-remote', 'servers', 'e9988d504cda7c1541adafcc', 'host', 'trusted-peers.json')
+  await mkdir(join(file, '..'), { recursive: true })
+  await writeFile(file, JSON.stringify({
+    peers: [
+      { deviceId: 'phone-old', name: 'Old', fingerprint: 'AAAA', trustedAt: 1 },
+      { deviceId: 'phone-new', name: 'DSH App (Android)', fingerprint: '7F2C 4CE8 0A33', trustedAt: 2, publicKey: 'secret' },
+    ],
+  }))
+  const previousHome = process.env.DSH_HOME
+  process.env.DSH_HOME = homeDir
+  t.after(() => {
+    if (previousHome === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = previousHome
+  })
+
+  const ctx = new Context()
+  await ctx.plugin(WebServer)
+  await ctx.plugin(Connection)
+  await ctx.plugin(Credentials)
+  const fiber = ctx.plugin(plugin, {})
+  t.after(() => fiber.dispose())
+  await fiber
+  ctx.get('connection').requestRejection = () => undefined
+  const route = ctx.get('webServer').routes.find(({ path }) => path.endsWith('/peers'))
+
+  const response = reply()
+  await route.handler({ method: 'GET', url: `/api/plugins/dsh-toolkit/remote/peers?serverUrl=${encodeURIComponent(SERVER_URL)}` }, response)
+  assert.equal(response.statusCode, 200)
+  const payload = JSON.parse(response.body)
+  assert.equal(payload.ok, true)
+  assert.deepEqual(payload.peers.map((peer) => peer.deviceId), ['phone-new', 'phone-old'], '最近配对成功的排前面')
+  assert.equal(payload.peers[0].fingerprint, '7F2C 4CE8 0A33')
+  assert.equal(response.body.includes('secret'), false, '公钥不该出现在响应里')
+
+  const missing = reply()
+  await route.handler({ method: 'GET', url: '/api/plugins/dsh-toolkit/remote/peers' }, missing)
+  assert.equal(missing.statusCode, 400)
+  assert.match(missing.body, /serverUrl/)
 })
 
 test('已有凭据时 status 只暴露掩码账号与 host', async (t) => {
@@ -248,7 +295,7 @@ test('logout 清空凭据；取消不写凭据', async (t) => {
   assert.equal(JSON.parse(response.body).connected, false)
 })
 
-test('enabled 为 false 时不注册任何路由', async (t) => {
+test('enabled 为 false 时只留配对身份兜底路由，不注册任何 ClawBot 路由', async (t) => {
   const ctx = new Context()
   await ctx.plugin(WebServer)
   await ctx.plugin(Connection)
@@ -256,7 +303,12 @@ test('enabled 为 false 时不注册任何路由', async (t) => {
   const fiber = ctx.plugin(plugin, { enabled: false })
   t.after(() => fiber.dispose())
   await fiber
-  assert.deepEqual(ctx.get('webServer').routes, [])
+  // peers 是「手机连接」的身份兜底（只读盘上的 trusted-peers.json），
+  // 和微信登录无关，所以关掉 ClawBot 也要留着。
+  assert.deepEqual(
+    ctx.get('webServer').routes.map(({ kind, path }) => [kind, path]),
+    [['exact', '/api/plugins/dsh-toolkit/remote/peers']],
+  )
 })
 
 test('登录路由在无网络时会返回结构化的 400 而不是挂住', async (t) => {

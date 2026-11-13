@@ -58,6 +58,28 @@ function authErrorOf(host) {
  */
 const LAST_PAIRED_KEY = 'dsh-toolkit-remote/last-paired.v1'
 
+/**
+ * 插件自己的 host 路由：把本机落盘的 trusted-peers.json 读出来。
+ * 配对会话记录过期、localStorage 又随端口换 origin 之后，只有它还记得手机是谁。
+ */
+const PLUGIN_API_PATH = '/api/plugins/dsh-toolkit/remote'
+
+async function loadTrustedPeers(serverUrl) {
+  if (typeof serverUrl !== 'string' || serverUrl.trim() === '') return []
+  try {
+    const response = await fetch(`${PLUGIN_API_PATH}/peers?serverUrl=${encodeURIComponent(serverUrl)}`, {
+      headers: { accept: 'application/json' },
+      credentials: 'same-origin',
+    })
+    if (response.ok !== true) return []
+    const body = await response.json()
+    return Array.isArray(body?.peers) ? body.peers : []
+  } catch {
+    // 老版本插件没有这条路由：身份兜底失败不该影响配对本身。
+    return []
+  }
+}
+
 function storage() {
   try {
     return globalThis.window?.localStorage ?? globalThis.localStorage
@@ -205,6 +227,11 @@ export function createPairing() {
     clients: [],
     /** 最近一次配对成功的手机快照（本地持久化）：会话记录被回收后仍能显示它是谁。 */
     lastPaired: readLastPaired(),
+    /**
+     * 本机落盘的已信任手机（trusted-peers.json，经插件 host 路由读取）。
+     * 快照缺失时（配对早于快照版本、或 localStorage 随端口换了 origin）用它兜底。
+     */
+    peers: [],
     /** 宿主授权已失效的错误码（见 AUTH_ERRORS）：有值时面板要给出「重新配对」的出口。 */
     authError: undefined,
     /** 致命错误时停掉自动轮询：否则每 2.5 秒重试一次，错误行会不停闪。 */
@@ -249,8 +276,11 @@ export function createPairing() {
       const view = await control('settings.get')
       const associations = view?.associations
       const host = associations?.host
+      const nextServerUrl = view?.config?.serverUrl ?? value.serverUrl
       set({
-        serverUrl: view?.config?.serverUrl ?? value.serverUrl,
+        serverUrl: nextServerUrl,
+        // 换了服务器，上一台的手机身份就不作数了。
+        ...nextServerUrl === value.serverUrl ? {} : { peers: [] },
         // 宿主没给 associations 时保持 undefined（未知），不要误判成「未绑定」。
         ...associations === undefined || associations === null
           ? {}
@@ -274,6 +304,12 @@ export function createPairing() {
       if (host === undefined || host === null) return undefined
       const clients = Array.isArray(host.connectedClients) ? host.connectedClients : []
       set({ clients, authError: authErrorOf(host) })
+      // 已绑定时顺手读一次本机 trusted peers：会话记录被回收后，手机名/指纹只剩这里还有。
+      if (value.binding === true) {
+        set({ peers: await loadTrustedPeers(value.serverUrl) })
+      } else if (value.binding === false) {
+        set({ peers: [] })
+      }
       return host
     } catch {
       return undefined

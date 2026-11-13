@@ -11,8 +11,12 @@ import {
 
 /** 指纹按 4 字符分组，方便人眼比对（与 ds-harness-remote 自己的面板一致）。 */
 function shortFingerprint(value) {
-  if (typeof value !== 'string' || value === '') return '—'
-  return (value.slice(0, 16).match(/.{1,4}/g) ?? []).join(' ')
+  if (typeof value !== 'string') return '—'
+  // trusted-peers.json 里存的是上游的展示格式（'7F2C 4CE8 0A33'，带空格、可能大写、
+  // 长度也不固定）；会话记录给的是 64 位十六进制。统一去掉空白再分组，别让空格错位。
+  const compact = value.replace(/\s+/g, '').toLowerCase()
+  if (compact === '') return '—'
+  return (compact.slice(0, 16).match(/.{1,4}/g) ?? []).join(' ')
 }
 
 // 连接方式（宿主 status 里的 mode）：LAN/P2P/TURN/Relay 决定这条链路的快慢，
@@ -533,18 +537,24 @@ export function createPanel(React, { t, connection, portal }) {
           || snapshot.serverUrl === value.serverUrl
           ? snapshot
           : undefined
-        const phoneName = phone?.name ?? last?.name ?? t('pairPhoneFallback')
+        // 最后一道兜底：本机 trusted-peers.json（host 只读路由读出来的 value.peers）。
+        // 配对早于快照版本、或 localStorage 随端口换了 origin 时，只有它还记得手机是谁。
+        const peers = Array.isArray(value.peers) ? value.peers : []
+        const peer = peers.find((item) => typeof item?.fingerprint === 'string' && item.fingerprint.trim() !== '')
+          ?? peers[0]
+        const phoneName = phone?.name ?? last?.name ?? peer?.name ?? t('pairPhoneFallback')
+        const fingerprint = last?.fingerprint ?? peer?.fingerprint
         return h('div', { className: 'wc-body' },
           h('div', { className: 'wc-info' },
             h('div', { className: 'wc-info__row' },
               h('span', { className: 'wc-info__key' }, t('pairPhone')),
               h('span', { className: 'wc-info__value' }, phoneName,
                 h(ModeTag, { mode: clients[0]?.mode, t, h }))),
-            last?.fingerprint === undefined
+            fingerprint === undefined
               ? null
               : h('div', { className: 'wc-info__row' },
                 h('span', { className: 'wc-info__key' }, t('pairFingerprint')),
-                h('span', { className: 'wc-info__value' }, shortFingerprint(last.fingerprint)))),
+                h('span', { className: 'wc-info__value' }, shortFingerprint(fingerprint)))),
           h('div', { className: 'wc-hint' }, t(value.clients.length > 0 ? 'pairBoundOnline' : 'pairBoundOffline')),
           h('div', { className: 'wc-actions' },
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: start }, t('pairAgain'))),

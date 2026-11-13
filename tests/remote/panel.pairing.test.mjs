@@ -90,8 +90,18 @@ function fakeConnection() {
 function fakeControl(replies) {
   const calls = []
   const fetch = async (url, init = {}) => {
-    const endpoint = String(url).replace('/ds-harness-remote/', '')
+    const raw = String(url)
     const body = init.body === undefined ? undefined : JSON.parse(init.body)
+    // 插件自己的只读路由（例如 /peers）走普通 HTTP，不套控制通道的信封。
+    const PLUGIN_PREFIX = '/api/plugins/dsh-toolkit/remote/'
+    if (raw.startsWith(PLUGIN_PREFIX)) {
+      const endpoint = raw.slice(PLUGIN_PREFIX.length).split('?')[0]
+      calls.push({ endpoint: `plugin:${endpoint}`, body, init })
+      const reply = replies[`plugin:${endpoint}`]
+      if (reply === undefined) return new Response('not found', { status: 404 })
+      return new Response(JSON.stringify(reply), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+    const endpoint = raw.replace('/ds-harness-remote/', '')
     calls.push({ endpoint, body, init })
     const reply = replies[endpoint]
     if (reply === undefined) {
@@ -356,9 +366,77 @@ test('配对：重启后会话记录被回收，仍按本地快照显示手机�
     const popover = panel.popover()
     assert.ok(popover.textContent.includes('DSH App (Android)'), '手机名来自本地快照')
     assert.ok(popover.textContent.includes('pairFingerprint'), '显示设备指纹行')
-    assert.ok(popover.textContent.includes('7f2c 4ce8 0a33 af0b'), '指纹按四位分组展示')
+    assert.ok(popover.textContent.includes('7f2c 4ce8 0a33'), '指纹统一小写、每四位一组，空格不错位')
     assert.ok(popover.textContent.includes('pairBoundOffline'), '宿主说手机没连着时标成离线')
     assert.equal(popover.textContent.includes('pairGenerate'), false)
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('配对：本地没有快照时，用本机 trusted-peers.json 兜底显示手机名与指纹', async () => {
+  // 真实场景：配对早于快照版本、或 DSH 重启换了端口（localStorage 按 origin 隔离），
+  // 快照没了。这时身份只剩本机落盘的 trusted-peers.json，由插件 host 路由读出来。
+  const panel = await mount({
+    'settings.get': {
+      config: { serverUrl: SERVER },
+      associations: { host: { method: 'device-pairing', account: 'dsh-device:abc' } },
+    },
+    'host.pairing.status': undefined,
+    status: { mode: 'local', host: { online: true, connectedClients: [] } },
+    'plugin:peers': {
+      ok: true,
+      peers: [{
+        deviceId: 'phone-2',
+        name: 'DSH App (Android)',
+        platform: 'dsh-app-android',
+        // 真实 trusted-peers.json 的格式：带空格、大写、长度不固定。
+        fingerprint: '7F2C 4CE8 0A33',
+        trustedAt: 1_794_552_934_189,
+      }],
+    },
+  })
+  try {
+    await panel.flush()
+    const popover = panel.popover()
+    assert.ok(panel.control.calls.some((call) => call.endpoint === 'plugin:peers'), '应去读本机已信任设备')
+    assert.ok(popover.textContent.includes('DSH App (Android)'), '手机名来自 trusted peers')
+    assert.ok(popover.textContent.includes('pairFingerprint'), '补出设备指纹行')
+    assert.ok(popover.textContent.includes('7f2c 4ce8 0a33'), '指纹统一小写、每四位一组，空格不错位')
+    assert.ok(popover.textContent.includes('pairBoundOffline'), '手机没连着时仍标成离线')
+    assert.equal(popover.textContent.includes('pairPhoneFallback'), false, '不再退回兜底文案')
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('配对：本地快照优先于 trusted peers', async () => {
+  const panel = await mount({
+    'settings.get': {
+      config: { serverUrl: SERVER },
+      associations: { host: { method: 'device-pairing', account: 'dsh-device:abc' } },
+    },
+    'host.pairing.status': undefined,
+    status: { mode: 'local', host: { online: true, connectedClients: [] } },
+    'plugin:peers': {
+      ok: true,
+      peers: [{ deviceId: 'phone-old', name: 'DSH App (Android)', fingerprint: 'ffffffffffffffff', trustedAt: 1 }],
+    },
+  }, {
+    lastPaired: {
+      deviceId: 'phone-1',
+      name: 'Pixel 9',
+      fingerprint: 'aabbccdd11223344',
+      serverUrl: SERVER,
+      savedAt: Date.now(),
+    },
+  })
+  try {
+    await panel.flush()
+    const popover = panel.popover()
+    assert.ok(popover.textContent.includes('Pixel 9'), '最近一次成功配对的名字优先')
+    assert.ok(popover.textContent.includes('aabb ccdd 1122 3344'), '快照里的指纹优先')
+    assert.equal(popover.textContent.includes('ffff ffff ffff ffff'), false, '别拿更早的 peer 覆盖快照')
   } finally {
     await panel.unmount()
   }

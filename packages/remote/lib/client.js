@@ -939,6 +939,21 @@ window.__ModuleLoader__.load({
       return void 0;
     }
     var LAST_PAIRED_KEY = "dsh-toolkit-remote/last-paired.v1";
+    var PLUGIN_API_PATH = "/api/plugins/dsh-toolkit/remote";
+    async function loadTrustedPeers(serverUrl) {
+      if (typeof serverUrl !== "string" || serverUrl.trim() === "") return [];
+      try {
+        const response = await fetch(`${PLUGIN_API_PATH}/peers?serverUrl=${encodeURIComponent(serverUrl)}`, {
+          headers: { accept: "application/json" },
+          credentials: "same-origin"
+        });
+        if (response.ok !== true) return [];
+        const body = await response.json();
+        return Array.isArray(body?.peers) ? body.peers : [];
+      } catch {
+        return [];
+      }
+    }
     function storage() {
       try {
         return globalThis.window?.localStorage ?? globalThis.localStorage;
@@ -1056,6 +1071,11 @@ window.__ModuleLoader__.load({
         clients: [],
         /** 最近一次配对成功的手机快照（本地持久化）：会话记录被回收后仍能显示它是谁。 */
         lastPaired: readLastPaired(),
+        /**
+         * 本机落盘的已信任手机（trusted-peers.json，经插件 host 路由读取）。
+         * 快照缺失时（配对早于快照版本、或 localStorage 随端口换了 origin）用它兜底。
+         */
+        peers: [],
         /** 宿主授权已失效的错误码（见 AUTH_ERRORS）：有值时面板要给出「重新配对」的出口。 */
         authError: void 0,
         /** 致命错误时停掉自动轮询：否则每 2.5 秒重试一次，错误行会不停闪。 */
@@ -1096,8 +1116,11 @@ window.__ModuleLoader__.load({
           const view = await control("settings.get");
           const associations = view?.associations;
           const host = associations?.host;
+          const nextServerUrl = view?.config?.serverUrl ?? value.serverUrl;
           set({
-            serverUrl: view?.config?.serverUrl ?? value.serverUrl,
+            serverUrl: nextServerUrl,
+            // 换了服务器，上一台的手机身份就不作数了。
+            ...nextServerUrl === value.serverUrl ? {} : { peers: [] },
             // 宿主没给 associations 时保持 undefined（未知），不要误判成「未绑定」。
             ...associations === void 0 || associations === null ? {} : { binding: host !== void 0 && host !== null }
           });
@@ -1113,6 +1136,11 @@ window.__ModuleLoader__.load({
           if (host === void 0 || host === null) return void 0;
           const clients = Array.isArray(host.connectedClients) ? host.connectedClients : [];
           set({ clients, authError: authErrorOf(host) });
+          if (value.binding === true) {
+            set({ peers: await loadTrustedPeers(value.serverUrl) });
+          } else if (value.binding === false) {
+            set({ peers: [] });
+          }
           return host;
         } catch {
           return void 0;
@@ -1223,8 +1251,10 @@ window.__ModuleLoader__.load({
 
     // src/modules/remote/client/panel.jsx
     function shortFingerprint(value) {
-      if (typeof value !== "string" || value === "") return "—";
-      return (value.slice(0, 16).match(/.{1,4}/g) ?? []).join(" ");
+      if (typeof value !== "string") return "—";
+      const compact = value.replace(/\s+/g, "").toLowerCase();
+      if (compact === "") return "—";
+      return (compact.slice(0, 16).match(/.{1,4}/g) ?? []).join(" ");
     }
     var MODE_KEYS = {
       LAN: "pairModeLan",
@@ -1736,7 +1766,10 @@ window.__ModuleLoader__.load({
             const phone = clients.find((client) => typeof client?.name === "string" && client.name.trim() !== "");
             const snapshot = value.lastPaired;
             const last = snapshot === void 0 || snapshot.serverUrl === void 0 || value.serverUrl === void 0 || snapshot.serverUrl === value.serverUrl ? snapshot : void 0;
-            const phoneName = phone?.name ?? last?.name ?? t("pairPhoneFallback");
+            const peers = Array.isArray(value.peers) ? value.peers : [];
+            const peer = peers.find((item) => typeof item?.fingerprint === "string" && item.fingerprint.trim() !== "") ?? peers[0];
+            const phoneName = phone?.name ?? last?.name ?? peer?.name ?? t("pairPhoneFallback");
+            const fingerprint = last?.fingerprint ?? peer?.fingerprint;
             return h(
               "div",
               { className: "wc-body" },
@@ -1754,11 +1787,11 @@ window.__ModuleLoader__.load({
                     h(ModeTag, { mode: clients[0]?.mode, t, h })
                   )
                 ),
-                last?.fingerprint === void 0 ? null : h(
+                fingerprint === void 0 ? null : h(
                   "div",
                   { className: "wc-info__row" },
                   h("span", { className: "wc-info__key" }, t("pairFingerprint")),
-                  h("span", { className: "wc-info__value" }, shortFingerprint(last.fingerprint))
+                  h("span", { className: "wc-info__value" }, shortFingerprint(fingerprint))
                 )
               ),
               h("div", { className: "wc-hint" }, t(value.clients.length > 0 ? "pairBoundOnline" : "pairBoundOffline")),
