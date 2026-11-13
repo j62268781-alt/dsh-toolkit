@@ -291,6 +291,48 @@ test('配对：首次状态读取完成前只转圈，不先画「生成配对�
   }
 })
 
+test('配对：有本地快照时也先转圈，校验完再出卡片', async () => {
+  // 快照只负责「看起来像上次那台手机」，能不能连必须等宿主状态回来。
+  let release
+  const gate = new Promise((resolve) => { release = resolve })
+  const lastPaired = {
+    deviceId: 'phone-1',
+    name: 'Pixel 9',
+    fingerprint: 'aabbccdd11223344',
+    serverUrl: SERVER,
+    savedAt: Date.now(),
+  }
+  const panel = await mount({
+    'settings.get': {
+      config: { serverUrl: SERVER },
+      associations: { host: { method: 'device-pairing' } },
+    },
+    'host.pairing.status': async () => {
+      await gate
+      return undefined
+    },
+    status: async () => {
+      await gate
+      return { mode: 'local', host: { online: true, connectedClients: [] } }
+    },
+  }, { lastPaired })
+  try {
+    const popover = panel.popover()
+    assert.ok(popover.querySelector('.wc-spinner') !== null, '校验完成前只转圈，即使有快照')
+    assert.equal(popover.textContent.includes('pairBoundOffline'), false, '校验完成前不画已绑定卡')
+    assert.equal(popover.textContent.includes('aabb ccdd'), false)
+
+    release()
+    await panel.flush()
+
+    assert.equal(popover.querySelector('.wc-spinner'), null, '校验完占位消失')
+    assert.ok(popover.textContent.includes('Pixel 9'), '按快照显示手机名')
+    assert.ok(popover.textContent.includes('aabb ccdd 1122 3344'), '按快照显示指纹')
+  } finally {
+    await panel.unmount()
+  }
+})
+
 test('配对：重启后会话记录被回收，仍按本地快照显示手机名与设备指纹', async () => {
   // 会话记录只活到过期后 5 分钟；重启往往已经超出。本地快照记住「上次连的是谁」，
   // 判定能不能连仍由宿主状态（settings 凭据 + connectedClients）负责。
@@ -343,7 +385,7 @@ test('配对：刷新拿到 completed 时把手机快照落进本地存储', asy
     assert.equal(saved.deviceId, 'phone-1')
     assert.equal(saved.name, 'Pixel 9')
     assert.equal(saved.fingerprint, 'aabbccdd11223344')
-    assert.equal(saved.mode, 'LAN', '连上时把连接方式一并记住')
+    assert.equal(saved.mode, undefined, '连接方式是实时状态，不写进快照')
   } finally {
     await panel.unmount()
   }

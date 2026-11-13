@@ -420,7 +420,7 @@ export function createPanel(React, { t, connection, portal }) {
     const body = (() => {
       // 首次状态还没读回来：先占住位置转圈。
       // 否则面板会先画「生成配对二维码」（未绑定态），再被真实的「手机已连接」替换，闪一下很难看。
-      if (value.loaded !== true && view === undefined) {
+      if (value.loaded !== true) {
         return h('div', { className: 'wc-body wc-pending', 'aria-busy': 'true' },
           h('div', { className: 'wc-spinner', 'aria-hidden': 'true' }))
       }
@@ -539,7 +539,7 @@ export function createPanel(React, { t, connection, portal }) {
             h('div', { className: 'wc-info__row' },
               h('span', { className: 'wc-info__key' }, t('pairPhone')),
               h('span', { className: 'wc-info__value' }, phoneName,
-                h(ModeTag, { mode: clients[0]?.mode ?? last?.mode, t, h }))),
+                h(ModeTag, { mode: clients[0]?.mode, t, h }))),
             last?.fingerprint === undefined
               ? null
               : h('div', { className: 'wc-info__row' },

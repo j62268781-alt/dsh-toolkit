@@ -78,17 +78,13 @@ function readLastPaired() {
   }
 }
 
-function rememberPaired(view, clients) {
+function rememberPaired(view) {
   if (view?.state !== 'completed' || typeof view.mobile?.deviceId !== 'string') return undefined
-  const live = Array.isArray(clients)
-    ? clients.find((client) => client?.deviceId === view.mobile.deviceId)
-    : undefined
   const snapshot = {
     deviceId: view.mobile.deviceId,
     ...view.mobile.name === undefined ? {} : { name: view.mobile.name },
     ...view.mobile.fingerprint === undefined ? {} : { fingerprint: view.mobile.fingerprint },
     ...view.serverUrl === undefined ? {} : { serverUrl: view.serverUrl },
-    ...live?.mode === undefined ? {} : { mode: live.mode },
     savedAt: Date.now(),
   }
   return savePaired(snapshot)
@@ -101,16 +97,6 @@ function savePaired(snapshot) {
     // 存不进去不影响配对本身，只是重启后少展示一份快照。
   }
   return snapshot
-}
-
-/** 手机重新连上时补记连接方式（refresh 时宿主状态还没到，只能在这里补）。 */
-function syncPairedMode(snapshot, clients) {
-  if (snapshot === undefined) return undefined
-  const live = Array.isArray(clients)
-    ? clients.find((client) => client?.deviceId === snapshot.deviceId)
-    : undefined
-  if (live?.mode === undefined || live.mode === snapshot.mode) return undefined
-  return savePaired({ ...snapshot, mode: live.mode })
 }
 
 /** 手机上进码固定 8 位（服务器只接受 /^[0-9]{8}$/）。 */
@@ -245,16 +231,15 @@ export function createPairing() {
     set({ loading: value.view === undefined, error: undefined })
     try {
       const view = await control('host.pairing.status')
-      const paired = rememberPaired(view, value.clients)
+      const paired = rememberPaired(view)
       set({
         view: view ?? undefined,
         loading: false,
-        loaded: true,
         ...paired === undefined ? {} : { lastPaired: paired },
       })
       return view
     } catch (error) {
-      set({ error: fail(error), loading: false, loaded: true })
+      set({ error: fail(error), loading: false })
       return undefined
     }
   }
@@ -289,8 +274,6 @@ export function createPairing() {
       if (host === undefined || host === null) return undefined
       const clients = Array.isArray(host.connectedClients) ? host.connectedClients : []
       set({ clients, authError: authErrorOf(host) })
-      const paired = syncPairedMode(value.lastPaired, clients)
-      if (paired !== undefined) set({ lastPaired: paired })
       return host
     } catch {
       return undefined
@@ -330,7 +313,8 @@ export function createPairing() {
         await hostStatus()
         return view
       } finally {
-        set({ loading: false })
+        // 快照与会话/授权状态都读完了才算「可显示」：读之前只给转圈，避免先亮出旧视图再翻牌。
+        set({ loading: false, loaded: true })
       }
     },
 
@@ -360,7 +344,7 @@ export function createPairing() {
         if (next?.state === 'completed') {
           // 配对成功就证明当前授权是好的，别让上一轮的错误卡再跳出来；
           // 同时把手机名/指纹落一份，重启后会话记录被回收也能显示它是谁。
-          const paired = rememberPaired(next, value.clients)
+          const paired = rememberPaired(next)
           set({ view: next, authError: undefined, ...paired === undefined ? {} : { lastPaired: paired } })
         } else {
           set({ view: next })

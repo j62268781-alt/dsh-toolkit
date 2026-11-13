@@ -957,15 +957,13 @@ window.__ModuleLoader__.load({
         return void 0;
       }
     }
-    function rememberPaired(view, clients) {
+    function rememberPaired(view) {
       if (view?.state !== "completed" || typeof view.mobile?.deviceId !== "string") return void 0;
-      const live = Array.isArray(clients) ? clients.find((client) => client?.deviceId === view.mobile.deviceId) : void 0;
       const snapshot = {
         deviceId: view.mobile.deviceId,
         ...view.mobile.name === void 0 ? {} : { name: view.mobile.name },
         ...view.mobile.fingerprint === void 0 ? {} : { fingerprint: view.mobile.fingerprint },
         ...view.serverUrl === void 0 ? {} : { serverUrl: view.serverUrl },
-        ...live?.mode === void 0 ? {} : { mode: live.mode },
         savedAt: Date.now()
       };
       return savePaired(snapshot);
@@ -976,12 +974,6 @@ window.__ModuleLoader__.load({
       } catch {
       }
       return snapshot;
-    }
-    function syncPairedMode(snapshot, clients) {
-      if (snapshot === void 0) return void 0;
-      const live = Array.isArray(clients) ? clients.find((client) => client?.deviceId === snapshot.deviceId) : void 0;
-      if (live?.mode === void 0 || live.mode === snapshot.mode) return void 0;
-      return savePaired({ ...snapshot, mode: live.mode });
     }
     var PAIRING_CODE_LENGTH = 8;
     var ACTIVE_STATES = /* @__PURE__ */ new Set(["created", "claimed", "approved"]);
@@ -1087,16 +1079,15 @@ window.__ModuleLoader__.load({
         set({ loading: value.view === void 0, error: void 0 });
         try {
           const view = await control("host.pairing.status");
-          const paired = rememberPaired(view, value.clients);
+          const paired = rememberPaired(view);
           set({
             view: view ?? void 0,
             loading: false,
-            loaded: true,
             ...paired === void 0 ? {} : { lastPaired: paired }
           });
           return view;
         } catch (error) {
-          set({ error: fail(error), loading: false, loaded: true });
+          set({ error: fail(error), loading: false });
           return void 0;
         }
       }
@@ -1122,8 +1113,6 @@ window.__ModuleLoader__.load({
           if (host === void 0 || host === null) return void 0;
           const clients = Array.isArray(host.connectedClients) ? host.connectedClients : [];
           set({ clients, authError: authErrorOf(host) });
-          const paired = syncPairedMode(value.lastPaired, clients);
-          if (paired !== void 0) set({ lastPaired: paired });
           return host;
         } catch {
           return void 0;
@@ -1158,7 +1147,7 @@ window.__ModuleLoader__.load({
             await hostStatus();
             return view;
           } finally {
-            set({ loading: false });
+            set({ loading: false, loaded: true });
           }
         },
         refresh,
@@ -1180,7 +1169,7 @@ window.__ModuleLoader__.load({
               verificationCode: code
             });
             if (next?.state === "completed") {
-              const paired = rememberPaired(next, value.clients);
+              const paired = rememberPaired(next);
               set({ view: next, authError: void 0, ...paired === void 0 ? {} : { lastPaired: paired } });
             } else {
               set({ view: next });
@@ -1599,7 +1588,7 @@ window.__ModuleLoader__.load({
           if (next !== void 0) setCode("");
         };
         const body = (() => {
-          if (value.loaded !== true && view === void 0) {
+          if (value.loaded !== true) {
             return h(
               "div",
               { className: "wc-body wc-pending", "aria-busy": "true" },
@@ -1762,7 +1751,7 @@ window.__ModuleLoader__.load({
                     "span",
                     { className: "wc-info__value" },
                     phoneName,
-                    h(ModeTag, { mode: clients[0]?.mode ?? last?.mode, t, h })
+                    h(ModeTag, { mode: clients[0]?.mode, t, h })
                   )
                 ),
                 last?.fingerprint === void 0 ? null : h(
