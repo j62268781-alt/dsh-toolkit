@@ -40,12 +40,12 @@
  * lock, but serialising here keeps the *responses* in the order the user acted and makes the
  * last write win in a predictable way.
  */
-import { NAME } from '../identity.js'
+import { API_PREFIX } from '../identity.js'
 import { readBody, sendJson } from '../../../../host/http.js'
 import { registerAuthenticatedRoute } from '../../../../host/routes.js'
 import { createSerialQueue } from '../../../../host/serial.js'
 
-export const ROWS_PATH = `/${NAME}/rows`
+export const ROWS_PATH = `${API_PREFIX}/rows`
 
 /** Largest command body accepted, in bytes. A row op is a few hundred bytes. */
 const MAX_BODY = 32 * 1024

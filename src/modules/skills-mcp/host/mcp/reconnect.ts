@@ -13,12 +13,12 @@
  * time. It is a **write** endpoint (it toggles a profile row twice), so it gets the same
  * treatment as the row route.
  */
-import { NAME } from '../identity.js'
+import { API_PREFIX } from '../identity.js'
 import { readBody, sendJson } from '../../../../host/http.js'
 import { registerAuthenticatedRoute } from '../../../../host/routes.js'
 import { createSerialQueue } from '../../../../host/serial.js'
 
-export const RECONNECT_PATH = `/${NAME}/reconnect`
+export const RECONNECT_PATH = `${API_PREFIX}/reconnect`
 
 /** Largest command body accepted, in bytes. */
 const MAX_BODY = 8 * 1024

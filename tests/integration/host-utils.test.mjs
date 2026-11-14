@@ -283,7 +283,7 @@ test('Skills host split activates routes, adopts agents, reconnects projects and
   assert.equal(host.apply(ctx, { toolFilters: {} }), undefined, 'Host apply stays synchronous')
   await Promise.resolve()
   await Promise.resolve()
-  const prefix = '/dsh-toolkit-skills-mcp'
+  const prefix = '/api/plugins/toolkit/skills-mcp'
   assert.deepEqual([...routes.keys()].sort(), [
     '/import', '/oauth', '/oauth/callback', '/reconnect', '/rows', '/runtime', '/skill', '/skills',
   ].map((suffix) => prefix + suffix).sort())

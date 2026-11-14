@@ -362,7 +362,7 @@ test('需要授权：OAuth 不可用时给手贴 header 的建议 + 原因，且
 test('需要授权：OAuth 可用时给授权按钮与授权链接', { skip: skipWithoutBundle() }, async () => {
   const panel = await bootPanel(emptyDoc({
     profileServers: [profileServer()], rowOpsReady: true, reconnectReady: true,
-    oauthState: { ready: true, reason: '', detail: '', sdkVersion: '2.2.0', redirectUri: 'http://127.0.0.1:3080/dsh-toolkit-skills-mcp/oauth/callback' },
+    oauthState: { ready: true, reason: '', detail: '', sdkVersion: '2.2.0', redirectUri: 'http://127.0.0.1:3080/api/plugins/toolkit/skills-mcp/oauth/callback' },
     // 这台服务器正等着用户去授权：Host 已经把链接记下来了
     oauthServers: {
       protected: {
@@ -497,7 +497,7 @@ test('需要授权：已有凭据但服务器仍拒绝时，按钮说「重新�
    */
   const panel = await bootPanel(emptyDoc({
     profileServers: [profileServer()], rowOpsReady: true, reconnectReady: true,
-    oauthState: { ready: true, reason: '', detail: '', sdkVersion: '2.2.0', redirectUri: 'http://127.0.0.1:3080/dsh-toolkit-skills-mcp/oauth/callback' },
+    oauthState: { ready: true, reason: '', detail: '', sdkVersion: '2.2.0', redirectUri: 'http://127.0.0.1:3080/api/plugins/toolkit/skills-mcp/oauth/callback' },
     oauthServers: {
       protected: {
         present: true, refreshable: true, waiting: false, authorizeUrl: '',

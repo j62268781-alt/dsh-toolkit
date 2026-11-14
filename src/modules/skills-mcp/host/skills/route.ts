@@ -23,12 +23,12 @@
  * `read` (fetching a body for the editor/preview) stays on the settings channel. It is a read, it
  * already shows 「正在读取正文…」 while it runs, and leaving it alone keeps this change small.
  */
-import { NAME } from '../identity.js'
+import { API_PREFIX } from '../identity.js'
 import { readBody, sendJson } from '../../../../host/http.js'
 import { registerAuthenticatedRoute } from '../../../../host/routes.js'
 import { createSerialQueue } from '../../../../host/serial.js'
 
-export const SKILLS_PATH = `/${NAME}/skills`
+export const SKILLS_PATH = `${API_PREFIX}/skills`
 
 /** Largest request body accepted, in bytes. A skill body is text; 256 KB is generous. */
 const MAX_BODY = 256 * 1024

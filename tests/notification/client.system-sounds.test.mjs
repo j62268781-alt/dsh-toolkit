@@ -26,7 +26,7 @@ test('system audio uses the selected authenticated file and exact current volume
   const player = new SystemSoundPlayer(() => 1)
   t.after(() => player.dispose())
   assert.equal(await player.preview('system'), true)
-  assert.equal(env.requests[0].url, '/api/plugins/dsh-toolkit/notification/sound?id=system')
+  assert.equal(env.requests[0].url, '/api/plugins/toolkit/notification/sound?id=system')
   assert.equal(env.requests[0].options.credentials, 'same-origin')
   assert.equal(env.gains[0].gain.value, 1)
   assert.equal(env.sources[0].started, true)

@@ -1442,7 +1442,7 @@ export function validateInput(action, body) {
  *
  * @param {object} ctx 插件上下文（需要 webServer、connection 与 effect）
  * @param {StreamRoutes} routes
- * @param {string} prefix 形如 /_dsh/dsh-toolkit-mobile
+ * @param {string} prefix 形如 /api/plugins/toolkit/mobile
  * @returns {(() => void)|null} disposer；null 表示环境没有 webServer
  */
 export function mountRoutes(ctx, routes, prefix) {

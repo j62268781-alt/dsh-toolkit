@@ -1,1 +1,1 @@
-{"version":3,"file":"identity.d.ts","sourceRoot":"","sources":["../../../../src/modules/skills-mcp/host/identity.ts"],"names":[],"mappings":"AAAA,yFAAyF;AACzF,eAAO,MAAM,IAAI,2BAA2B,CAAA;AAC5C,eAAO,MAAM,WAAW,qBAAqB,CAAA"}
+{"version":3,"file":"identity.d.ts","sourceRoot":"","sources":["../../../../src/modules/skills-mcp/host/identity.ts"],"names":[],"mappings":"AAEA,yFAAyF;AACzF,eAAO,MAAM,IAAI,2BAA2B,CAAA;AAC5C,eAAO,MAAM,WAAW,qBAAqB,CAAA;AAE7C;;;;GAIG;AACH,eAAO,MAAM,UAAU,QAA8B,CAAA"}

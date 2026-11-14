@@ -21,6 +21,7 @@ import { settingsStyles } from '../../../client/styles/settings.js'
 import { findScopedForm } from '../../../client/config.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
 import { fetchJson } from '../../../client/http.js'
+import { RAISE_PATH } from '../host/constants.js'
 import { NOTIFICATION_NS, NOTIFICATION_COPY, createTranslator } from './locale.js'
 import { CONFIG_NS, readSettings, safeSnapshot } from './model.js'
 import { displayTitleOf, sessionDetailOf } from './detail.js'
@@ -58,7 +59,7 @@ function warn(message, error) {
 }
 
 /** host 侧的提窗路由（见 src/modules/notification/host/raise.js）。 */
-const RAISE_URL = '/api/plugins/dsh-toolkit/notification/raise'
+const RAISE_URL = RAISE_PATH
 
 /**
  * 待交互快照 → 引擎需要的形状。

@@ -1,15 +1,16 @@
 import { sendJson } from '../../../host/http.js'
 import { registerAuthenticatedRoute } from '../../../host/routes.js'
+import { RAISE_PATH, SOUND_PATH, SOUNDS_PATH } from './constants.js'
 import type { RaiseWindowOptions } from './raise.js'
 import { raiseWindow } from './raise.js'
 import type { SoundService } from './sounds.js'
 import { createSoundService } from './sounds.js'
 
+// 路径的唯一来源是 ./constants.ts；这里转出只是为了让既有调用方少改一处。
+export { RAISE_PATH, SOUND_PATH, SOUNDS_PATH } from './constants.js'
+
 export const name = 'dsh-toolkit-notification'
 export const inject = ['webServer', 'connection']
-export const SOUNDS_PATH = '/api/plugins/dsh-toolkit/notification/sounds'
-export const SOUND_PATH = '/api/plugins/dsh-toolkit/notification/sound'
-export const RAISE_PATH = '/api/plugins/dsh-toolkit/notification/raise'
 
 /**
  * 提示音目录与音频文件两条只读路由。

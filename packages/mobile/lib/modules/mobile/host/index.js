@@ -32,6 +32,7 @@ import { ROUTES, StreamAccessController, parseTrustedAuthority, prepareStreamAcc
 import { StreamRoutes, mountRoutes } from "./stream/routes.js";
 import { DaemonRpc, isSafeCliFallbackError, rpcForInput } from "./device/daemon-rpc.js";
 import { MOBILE_LOOP_PURPOSE, MOBILE_LOOP_TOOL_NAME } from "./agent/mobile-loop.js";
+import { API_PREFIX } from "./constants.js";
 import { TOOL_NAMES, createMobileLoopTool, createTools } from "./agent/tools.js";
 /** Cordis 插件名，也是挂载 id。 */
 export const name = "dsh-toolkit-mobile";
@@ -43,8 +44,8 @@ export const name = "dsh-toolkit-mobile";
  * profile 没有它们，但工具本身仍然可用。
  */
 export const inject = ["tools"];
-/** 默认路由前缀。与 cordis.patch.yml 的 routePrefix 保持一致。 */
-const DEFAULT_ROUTE_PREFIX = "/_dsh/dsh-toolkit-mobile";
+/** 默认路由前缀：`/api/plugins/toolkit/mobile`（配置里的 routePrefix 可覆盖）。 */
+const DEFAULT_ROUTE_PREFIX = API_PREFIX;
 /**
  * 码率上限（bps）。mobilecli 允许的范围是 100000–10000000，这里取到顶。
  *

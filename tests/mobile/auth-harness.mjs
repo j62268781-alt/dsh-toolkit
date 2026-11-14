@@ -16,7 +16,7 @@ import {
 import { StreamRoutes, mountRoutes } from "../../src/modules/mobile/host/stream/routes.ts";
 
 export const TEST_SESSION_COOKIE = "dsh-mobile-test=authenticated";
-const PREFIX = "/_dsh/dsh-toolkit-mobile";
+const PREFIX = "/api/plugins/toolkit/mobile";
 const key = Buffer.alloc(32, 42);
 const devices = ["A", "B"].map((id) => ({ id, state: "online", platform: "android", type: "device" }));
 

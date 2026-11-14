@@ -66,7 +66,7 @@ function makeFlow({ home, sdk, t, onRedirect }) {
     store,
     getSdk: () => ({ ok: true, sdk }),
     makeProvider: (serverName, url) => createOAuthProvider({
-      store, serverName, url, redirectUri: 'http://127.0.0.1:1/dsh-toolkit-skills-mcp/oauth/callback', onRedirect, log: noopLog,
+      store, serverName, url, redirectUri: 'http://127.0.0.1:1/api/plugins/toolkit/skills-mcp/oauth/callback', onRedirect, log: noopLog,
     }),
     log: noopLog,
   })
@@ -413,7 +413,7 @@ test('callback：路由路径带插件前缀，且只接受 GET', async (t) => {
   assert.equal(ctx.routes.length, 1)
   assert.equal(ctx.routes[0].kind, 'exact')
   assert.equal(ctx.routes[0].path, CALLBACK_PATH)
-  assert.match(CALLBACK_PATH, /^\/dsh-toolkit-skills-mcp\/oauth\/callback$/)
+  assert.match(CALLBACK_PATH, /^\/api\/plugins\/toolkit\/skills-mcp\/oauth\/callback$/)
 
   const posted = await callRoute(ctx.routes[0], { method: 'POST', url: `${CALLBACK_PATH}?code=c&state=s` })
   assert.equal(posted.statusCode, 405)

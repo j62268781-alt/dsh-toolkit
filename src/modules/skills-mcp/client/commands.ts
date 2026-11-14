@@ -1,9 +1,9 @@
-import { NAME as NS } from '../host/identity.js'
+import { API_PREFIX as NS } from '../host/identity.js'
 import { fetchJson } from '../../../client/http.js'
 
 const bareRowId = (entryId) => String(entryId).replace(/^include:/, '').replace(/^[a-z-]+:/i, '')
 
-const postJson = (path, json, signal) => fetchJson(`/${NS}/${path}`, {
+const postJson = (path, json, signal) => fetchJson(`${NS}/${path}`, {
   method: 'POST', json, ...(signal === undefined ? {} : { signal }),
 })
 
@@ -69,7 +69,7 @@ export const readSkillBody = async (path, { signal } = {}) => {
   if (typeof fetch !== 'function') return { ok: false, reason: '当前环境没有 fetch' }
   if (typeof path !== 'string' || path === '') return { ok: false, reason: '没有文件路径' }
   try {
-    const response = await fetchJson(`/${NS}/skill?path=${encodeURIComponent(path)}`, { signal })
+    const response = await fetchJson(`${NS}/skill?path=${encodeURIComponent(path)}`, { signal })
     if (response.status === 404 || response.status === 405) {
       return { ok: false, reason: '这个 Host 没有技能读取路由（Host 侧改动需要重启一次 DSH）' }
     }

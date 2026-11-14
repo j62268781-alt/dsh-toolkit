@@ -24,12 +24,12 @@
  *   · 请求体用 zod schema 校验，未知字段进不来；
  *   · **绝不返回令牌本体**，只返回「有/没有、何时过期」。
  */
-import { NAME } from '../../identity.js'
+import { API_PREFIX } from '../../identity.js'
 import { readBody, sendJson } from '../../../../../host/http.js'
 import { registerAuthenticatedRoute } from '../../../../../host/routes.js'
 import { createSerialQueue } from '../../../../../host/serial.js'
 
-export const OAUTH_PATH = `/${NAME}/oauth`
+export const OAUTH_PATH = `${API_PREFIX}/oauth`
 
 /** 命令体上限。一次命令就几百字节。 */
 const MAX_BODY = 8 * 1024

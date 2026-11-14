@@ -308,13 +308,22 @@ window.__ModuleLoader__.load({
     body.tk-dialogDragging { cursor: nwse-resize; user-select: none; }
     `;
 
+    // src/host/paths.ts
+    var PLUGIN_API_ROOT = "/api/plugins/toolkit";
+    function pluginApiPath(moduleName) {
+      return `${PLUGIN_API_ROOT}/${moduleName}`;
+    }
+
+    // src/modules/pet/host/constants.ts
+    var API_PREFIX = pluginApiPath("pet");
+    var API_PATH = API_PREFIX;
+
     // src/modules/pet/client/connection.ts
-    var PREFIX = "/api/plugins/dsh-toolkit/pet";
     function petPreviewUrl(slug) {
-      return `${PREFIX}/asset?slug=${encodeURIComponent(String(slug || ""))}`;
+      return `${API_PATH}/asset?slug=${encodeURIComponent(String(slug || ""))}`;
     }
     async function request(path, options = {}) {
-      const response = await fetch(`${PREFIX}${path}`, { credentials: "same-origin", ...options });
+      const response = await fetch(`${API_PATH}${path}`, { credentials: "same-origin", ...options });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const value = await response.json();
       if (value?.ok === false) throw new Error(value.error ?? "Request rejected");
@@ -389,7 +398,7 @@ window.__ModuleLoader__.load({
         if (disposed) return;
         controller = new AbortController();
         try {
-          const response = await fetch(`${PREFIX}/events`, { credentials: "same-origin", headers: { Accept: "text/event-stream" }, signal: controller.signal });
+          const response = await fetch(`${API_PATH}/events`, { credentials: "same-origin", headers: { Accept: "text/event-stream" }, signal: controller.signal });
           if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
           publish({ connected: true });
           delay = 1e3;

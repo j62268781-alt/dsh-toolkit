@@ -1,10 +1,8 @@
 import type { RaiseWindowOptions } from './raise.js';
 import type { SoundService } from './sounds.js';
+export { RAISE_PATH, SOUND_PATH, SOUNDS_PATH } from './constants.js';
 export declare const name = "dsh-toolkit-notification";
 export declare const inject: string[];
-export declare const SOUNDS_PATH = "/api/plugins/dsh-toolkit/notification/sounds";
-export declare const SOUND_PATH = "/api/plugins/dsh-toolkit/notification/sound";
-export declare const RAISE_PATH = "/api/plugins/dsh-toolkit/notification/raise";
 /**
  * 提示音目录与音频文件两条只读路由。
  * @param ctx - 宿主上下文。

@@ -10,12 +10,12 @@
  * profile patch, a 600 ms Host poll, and the answer written back into the patch. Both are
  * gone; the patch only holds the panel's durable preferences now.
  */
-import { NAME } from '../identity.js'
+import { API_PREFIX } from '../identity.js'
 import { readBody, sendJson } from '../../../../host/http.js'
 import { registerAuthenticatedRoute } from '../../../../host/routes.js'
 import { createSerialQueue } from '../../../../host/serial.js'
 
-export const IMPORT_PATH = `/${NAME}/import`
+export const IMPORT_PATH = `${API_PREFIX}/import`
 
 /** Largest request body accepted, in bytes. */
 const MAX_BODY = 16 * 1024

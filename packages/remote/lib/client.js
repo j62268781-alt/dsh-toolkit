@@ -39,8 +39,18 @@ window.__ModuleLoader__.load({
       return () => tag.remove();
     }
 
+    // src/host/paths.ts
+    var PLUGIN_API_ROOT = "/api/plugins/toolkit";
+    function pluginApiPath(moduleName) {
+      return `${PLUGIN_API_ROOT}/${moduleName}`;
+    }
+
+    // src/modules/remote/host/constants.ts
+    var API_PREFIX = pluginApiPath("remote");
+    var API_PATH = API_PREFIX;
+
     // src/modules/remote/client/wechat/model.ts
-    var API_PREFIX = "/api/plugins/dsh-toolkit/remote";
+    var API_PREFIX2 = API_PATH;
     var STATES = Object.freeze({
       closed: "closed",
       idle: "idle",
@@ -175,7 +185,7 @@ window.__ModuleLoader__.load({
       async function request(path, { method = "GET", json } = {}) {
         let response;
         try {
-          response = await fetch(`${API_PREFIX}/${path}`, {
+          response = await fetch(`${API_PREFIX2}/${path}`, {
             method,
             credentials: "same-origin",
             cache: "no-store",
@@ -984,7 +994,7 @@ window.__ModuleLoader__.load({
       return void 0;
     }
     var LAST_PAIRED_KEY = "dsh-toolkit-remote/last-paired.v1";
-    var PLUGIN_API_PATH = "/api/plugins/dsh-toolkit/remote";
+    var PLUGIN_API_PATH = API_PATH;
     async function loadTrustedPeers(serverUrl) {
       if (typeof serverUrl !== "string" || serverUrl.trim() === "") return [];
       try {

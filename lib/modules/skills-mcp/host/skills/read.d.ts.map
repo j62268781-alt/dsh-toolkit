@@ -1,1 +1,1 @@
-{"version":3,"file":"read.d.ts","sourceRoot":"","sources":["../../../../../src/modules/skills-mcp/host/skills/read.ts"],"names":[],"mappings":"AAcA,eAAO,MAAM,eAAe,kCAAmB,CAAA;AAE/C,wBAAgB,sBAAsB,CAAC,GAAG,EAAE,GAAG,EAAE,EAAE,OAAO,EAAE,EAAE,GAAG,QAgChE"}
+{"version":3,"file":"read.d.ts","sourceRoot":"","sources":["../../../../../src/modules/skills-mcp/host/skills/read.ts"],"names":[],"mappings":"AAcA,eAAO,MAAM,eAAe,QAAwB,CAAA;AAEpD,wBAAgB,sBAAsB,CAAC,GAAG,EAAE,GAAG,EAAE,EAAE,OAAO,EAAE,EAAE,GAAG,QAgChE"}

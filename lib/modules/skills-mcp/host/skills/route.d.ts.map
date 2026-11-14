@@ -1,1 +1,1 @@
-{"version":3,"file":"route.d.ts","sourceRoot":"","sources":["../../../../../src/modules/skills-mcp/host/skills/route.ts"],"names":[],"mappings":"AA8BA,eAAO,MAAM,WAAW,mCAAoB,CAAA;AAK5C;;;;;;;GAOG;AACH,wBAAgB,kBAAkB,CAAC,GAAG,EAAE,GAAG,EAAE,EAAE,MAAM,EAAE,KAAK,EAAE,EAAE,GAAG,QA2ClE"}
+{"version":3,"file":"route.d.ts","sourceRoot":"","sources":["../../../../../src/modules/skills-mcp/host/skills/route.ts"],"names":[],"mappings":"AA8BA,eAAO,MAAM,WAAW,QAAyB,CAAA;AAKjD;;;;;;;GAOG;AACH,wBAAgB,kBAAkB,CAAC,GAAG,EAAE,GAAG,EAAE,EAAE,MAAM,EAAE,KAAK,EAAE,EAAE,GAAG,QA2ClE"}

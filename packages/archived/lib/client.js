@@ -253,10 +253,17 @@ window.__ModuleLoader__.load({
       }
     };
 
+    // src/host/paths.ts
+    var PLUGIN_API_ROOT = "/api/plugins/toolkit";
+    function pluginApiPath(moduleName) {
+      return `${PLUGIN_API_ROOT}/${moduleName}`;
+    }
+
     // src/modules/archived/host/constants.ts
-    var DELETE_SESSION_PATH = "/_dsh/dsh-toolkit/archived/delete-session";
-    var DELETE_SESSIONS_PATH = "/_dsh/dsh-toolkit/archived/delete-sessions";
-    var PENDING_DELETIONS_PATH = "/_dsh/dsh-toolkit/archived/pending-deletions";
+    var API_PREFIX = pluginApiPath("archived");
+    var DELETE_SESSION_PATH = `${API_PREFIX}/delete-session`;
+    var DELETE_SESSIONS_PATH = `${API_PREFIX}/delete-sessions`;
+    var PENDING_DELETIONS_PATH = `${API_PREFIX}/pending-deletions`;
 
     // src/client/http.ts
     async function fetchJson(url, { json, ...options } = {}) {

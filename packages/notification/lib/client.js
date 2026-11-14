@@ -186,6 +186,18 @@ window.__ModuleLoader__.load({
       };
     }
 
+    // src/host/paths.ts
+    var PLUGIN_API_ROOT = "/api/plugins/toolkit";
+    function pluginApiPath(moduleName) {
+      return `${PLUGIN_API_ROOT}/${moduleName}`;
+    }
+
+    // src/modules/notification/host/constants.ts
+    var API_PREFIX = pluginApiPath("notification");
+    var SOUNDS_PATH = `${API_PREFIX}/sounds`;
+    var SOUND_PATH = `${API_PREFIX}/sound`;
+    var RAISE_PATH = `${API_PREFIX}/raise`;
+
     // src/modules/notification/client/locale.ts
     var NOTIFICATION_NS = "dsh-toolkit.notification";
     var NOTIFICATION_COPY = {
@@ -1163,8 +1175,8 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/notification/client/system-sounds.ts
-    var SOUND_CATALOG_URL = "/api/plugins/dsh-toolkit/notification/sounds";
-    var SOUND_AUDIO_URL = "/api/plugins/dsh-toolkit/notification/sound";
+    var SOUND_CATALOG_URL = SOUNDS_PATH;
+    var SOUND_AUDIO_URL = SOUND_PATH;
     var MAX_AUDIO_BYTES = 8 * 1024 * 1024;
     async function loadSystemSounds() {
       const response = await fetchJson(SOUND_CATALOG_URL);
@@ -1531,7 +1543,7 @@ window.__ModuleLoader__.load({
       } catch {
       }
     }
-    var RAISE_URL = "/api/plugins/dsh-toolkit/notification/raise";
+    var RAISE_URL = RAISE_PATH;
     function pendingFactsOf(statuses) {
       const facts = /* @__PURE__ */ new Map();
       for (const [id, status] of statuses ?? []) {

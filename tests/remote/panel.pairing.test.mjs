@@ -93,7 +93,7 @@ function fakeControl(replies) {
     const raw = String(url)
     const body = init.body === undefined ? undefined : JSON.parse(init.body)
     // 插件自己的只读路由（例如 /peers）走普通 HTTP，不套控制通道的信封。
-    const PLUGIN_PREFIX = '/api/plugins/dsh-toolkit/remote/'
+    const PLUGIN_PREFIX = '/api/plugins/toolkit/remote/'
     if (raw.startsWith(PLUGIN_PREFIX)) {
       const endpoint = raw.slice(PLUGIN_PREFIX.length).split('?')[0]
       calls.push({ endpoint: `plugin:${endpoint}`, body, init })

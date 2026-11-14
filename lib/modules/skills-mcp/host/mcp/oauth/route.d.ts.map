@@ -1,1 +1,1 @@
-{"version":3,"file":"route.d.ts","sourceRoot":"","sources":["../../../../../../src/modules/skills-mcp/host/mcp/oauth/route.ts"],"names":[],"mappings":"AA+BA,eAAO,MAAM,UAAU,kCAAmB,CAAA;AAK1C;;;;;;GAMG;AACH,wBAAgB,kBAAkB,CAAC,GAAG,EAAE,GAAG,EAAE,EAAE,MAAM,EAAE,GAAG,EAAE,EAAE,GAAG,QAsChE"}
+{"version":3,"file":"route.d.ts","sourceRoot":"","sources":["../../../../../../src/modules/skills-mcp/host/mcp/oauth/route.ts"],"names":[],"mappings":"AA+BA,eAAO,MAAM,UAAU,QAAwB,CAAA;AAK/C;;;;;;GAMG;AACH,wBAAgB,kBAAkB,CAAC,GAAG,EAAE,GAAG,EAAE,EAAE,MAAM,EAAE,GAAG,EAAE,EAAE,GAAG,QAsChE"}

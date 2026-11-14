@@ -1,5 +1,5 @@
 /** 回调路径。`redirect_uri` 由 Host 用 `webServer.getOrigin()` + 它拼出。 */
-export declare const CALLBACK_PATH = "/dsh-toolkit-skills-mcp/oauth/callback";
+export declare const CALLBACK_PATH: string;
 /**
  * 注册回调路由。
  *

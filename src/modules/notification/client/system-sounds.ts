@@ -1,8 +1,9 @@
 import { fetchJson } from '../../../client/http.js'
+import { SOUND_PATH, SOUNDS_PATH } from '../host/constants.js'
 import { SoundPlayer, SOUND_IDS, audioSupported, clampVolume } from './sounds.js'
 
-export const SOUND_CATALOG_URL = '/api/plugins/dsh-toolkit/notification/sounds'
-export const SOUND_AUDIO_URL = '/api/plugins/dsh-toolkit/notification/sound'
+export const SOUND_CATALOG_URL = SOUNDS_PATH
+export const SOUND_AUDIO_URL = SOUND_PATH
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024
 
 export async function loadSystemSounds() {

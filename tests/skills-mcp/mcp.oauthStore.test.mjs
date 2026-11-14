@@ -177,10 +177,10 @@ test('provider：redirectUrl 与 clientMetadata 是 getter，不是方法', () =
     store: createOAuthStore({ dshHome: '/tmp/does-not-matter' }),
     serverName: 'github',
     url: 'https://api.example.com/mcp',
-    redirectUri: 'http://127.0.0.1:3080/dsh-toolkit-skills-mcp/oauth/callback',
+    redirectUri: 'http://127.0.0.1:3080/api/plugins/toolkit/skills-mcp/oauth/callback',
   })
   assert.equal(typeof provider.redirectUrl, 'string')
-  assert.equal(provider.redirectUrl, 'http://127.0.0.1:3080/dsh-toolkit-skills-mcp/oauth/callback')
+  assert.equal(provider.redirectUrl, 'http://127.0.0.1:3080/api/plugins/toolkit/skills-mcp/oauth/callback')
   const metadata = provider.clientMetadata
   assert.equal(typeof metadata, 'object')
   assert.deepEqual(metadata.redirect_uris, [provider.redirectUrl])

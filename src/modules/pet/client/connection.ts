@@ -1,4 +1,4 @@
-const PREFIX = '/api/plugins/dsh-toolkit/pet'
+import { API_PATH as PREFIX } from '../host/constants.js'
 
 /** 宠物预览图走插件自己的受认证路由，页面因此不需要直连 Petdex。 */
 export function petPreviewUrl(slug) {

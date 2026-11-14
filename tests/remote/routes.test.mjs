@@ -125,11 +125,11 @@ test('十二条路由全部注册为 exact 且挂在独立前缀下', async (t) 
   await fiber
   const routes = ctx.get('webServer').routes
   assert.deepEqual(
-    routes.map(({ kind, path }) => [kind, path.replace('/api/plugins/dsh-toolkit/remote/', '')]).sort(),
+    routes.map(({ kind, path }) => [kind, path.replace('/api/plugins/toolkit/remote/', '')]).sort(),
     PATHS.map(([method, suffix]) => ['exact', suffix]).sort(),
   )
   for (const route of routes) {
-    assert.ok(route.path.startsWith('/api/plugins/dsh-toolkit/remote/'), route.path)
+    assert.ok(route.path.startsWith('/api/plugins/toolkit/remote/'), route.path)
   }
 })
 
@@ -168,7 +168,7 @@ test('方法不匹配时返回 404，且不泄露任何状态', async (t) => {
   const fiber2 = ctx2.plugin(plugin, {})
   t.after(() => fiber2.dispose())
   await fiber2
-  const expected = new Map(PATHS.map(([method, suffix]) => [`/api/plugins/dsh-toolkit/remote/${suffix}`, method]))
+  const expected = new Map(PATHS.map(([method, suffix]) => [`/api/plugins/toolkit/remote/${suffix}`, method]))
   for (const route of ctx2.get('webServer').routes) {
     const wrong = expected.get(route.path) === 'GET' ? 'POST' : 'GET'
     // 绕过鉴权：这些路由的 handler 先鉴权，所以用一个放行的 connection。
@@ -235,7 +235,7 @@ test('peers：读本机 trusted-peers.json，按最近信任排序；缺参数�
   const route = ctx.get('webServer').routes.find(({ path }) => path.endsWith('/peers'))
 
   const response = reply()
-  await route.handler({ method: 'GET', url: `/api/plugins/dsh-toolkit/remote/peers?serverUrl=${encodeURIComponent(SERVER_URL)}` }, response)
+  await route.handler({ method: 'GET', url: `/api/plugins/toolkit/remote/peers?serverUrl=${encodeURIComponent(SERVER_URL)}` }, response)
   assert.equal(response.statusCode, 200)
   const payload = JSON.parse(response.body)
   assert.equal(payload.ok, true)
@@ -244,7 +244,7 @@ test('peers：读本机 trusted-peers.json，按最近信任排序；缺参数�
   assert.equal(response.body.includes('secret'), false, '公钥不该出现在响应里')
 
   const missing = reply()
-  await route.handler({ method: 'GET', url: '/api/plugins/dsh-toolkit/remote/peers' }, missing)
+  await route.handler({ method: 'GET', url: '/api/plugins/toolkit/remote/peers' }, missing)
   assert.equal(missing.statusCode, 400)
   assert.match(missing.body, /serverUrl/)
 })
@@ -276,7 +276,7 @@ test('local-state/purge：解绑后删掉 hostOnly 策略与旧 client 目录；
   const route = ctx.get('webServer').routes.find(({ path }) => path.endsWith('/local-state/purge'))
 
   const response = reply()
-  await route.handler({ method: 'POST', url: `/api/plugins/dsh-toolkit/remote/local-state/purge?serverUrl=${encodeURIComponent(SERVER_URL)}` }, response)
+  await route.handler({ method: 'POST', url: `/api/plugins/toolkit/remote/local-state/purge?serverUrl=${encodeURIComponent(SERVER_URL)}` }, response)
   assert.equal(response.statusCode, 200)
   const payload = JSON.parse(response.body)
   assert.equal(payload.ok, true)
@@ -287,7 +287,7 @@ test('local-state/purge：解绑后删掉 hostOnly 策略与旧 client 目录；
   assert.equal(await readFile(join(dir, 'host', 'device.json'), 'utf8'), '{"deviceId":"host-1"}')
 
   const missing = reply()
-  await route.handler({ method: 'POST', url: '/api/plugins/dsh-toolkit/remote/local-state/purge' }, missing)
+  await route.handler({ method: 'POST', url: '/api/plugins/toolkit/remote/local-state/purge' }, missing)
   assert.equal(missing.statusCode, 400)
   assert.match(missing.body, /serverUrl/)
 })
@@ -352,8 +352,8 @@ test('enabled 为 false 时只留配对相关的兜底路由，不注册任何 C
   assert.deepEqual(
     ctx.get('webServer').routes.map(({ kind, path }) => [kind, path]).sort(),
     [
-      ['exact', '/api/plugins/dsh-toolkit/remote/local-state/purge'],
-      ['exact', '/api/plugins/dsh-toolkit/remote/peers'],
+      ['exact', '/api/plugins/toolkit/remote/local-state/purge'],
+      ['exact', '/api/plugins/toolkit/remote/peers'],
     ],
   )
 })

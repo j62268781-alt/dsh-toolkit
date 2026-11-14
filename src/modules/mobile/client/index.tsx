@@ -1,4 +1,5 @@
 import { fetchJson } from "../../../client/http.js";
+import { API_PREFIX as PREFIX } from "../host/constants.js";
 import { createCanvasRuntime } from "./stream/canvas.js";
 import { createUseH264Canvas } from "./stream/use-h264-canvas.js";
 import { REGRANT_UPSCALE_RATIO, REGRANT_DOWNSCALE_RATIO, REGRANT_UPSCALE_HOLD_MS, REGRANT_DOWNSCALE_HOLD_MS, REGRANT_MIN_INTERVAL_MS, REGRANT_COOLDOWN_MAX_MS, REGRANT_TICK_MS, REGRANT_STABLE_PX, DEVICE_WIDTH_FALLBACK, newRegrantStreak, nextCooldownMs, nextCooldownAfterGrant, decideRegrant, shouldAttemptRegrant, widthIsUnsettled, tickRegrant, neededPixelWidth } from "./stream/adaptive.js";
@@ -15,7 +16,6 @@ export default function createClient(require) {
   const Fragment = React.Fragment;
   const primitives = require("@deepseek-ai/dsh-client-ui-primitives");
   const TAB_ID = "@j62268781-alt/dsh-sidebar-mobile";
-  const PREFIX = "/_dsh/dsh-toolkit-mobile";
   const ROUTE_PANEL_OPEN = "panel-open";
   const ROUTE_PANEL_OPEN_ACK = "panel-open-ack";
   const SHORTCUT_ID = "sidebar.mobile";

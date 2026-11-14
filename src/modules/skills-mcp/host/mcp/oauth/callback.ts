@@ -25,14 +25,14 @@
  *     实现的经典手法；
  *   · 永远不会把 `code` 或任何令牌写进响应体或日志。
  */
-import { NAME } from '../../identity.js'
+import { API_PREFIX } from '../../identity.js'
 import { AUTH_CHANNEL, AUTH_DONE } from './channel.js'
 import { flowReasonText } from './flow.js'
 import { singleParams } from './state.js'
 import { registerRoute } from '../../../../../host/routes.js'
 
 /** 回调路径。`redirect_uri` 由 Host 用 `webServer.getOrigin()` + 它拼出。 */
-export const CALLBACK_PATH = `/${NAME}/oauth/callback`
+export const CALLBACK_PATH = `${API_PREFIX}/oauth/callback`
 
 /** 回调页的极小内联样式：不引外部资源，离线也能看。 */
 const PAGE_STYLE = 'body{font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;padding:48px;color:#1f2328;background:#fff}' +

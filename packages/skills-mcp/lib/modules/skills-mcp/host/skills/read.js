@@ -9,9 +9,9 @@
  * injected `resolve` enforces that; see `src/index.js`). This route is read-only and carries
  * no body.
  */
-import { NAME } from '../identity.js';
+import { API_PREFIX } from '../identity.js';
 import { registerAuthenticatedRoute } from '../../../../host/routes.js';
-export const SKILL_READ_PATH = `/${NAME}/skill`;
+export const SKILL_READ_PATH = `${API_PREFIX}/skill`;
 export function registerSkillReadRoute(ctx, { resolve }) {
     registerAuthenticatedRoute(ctx, {
         kind: 'exact',

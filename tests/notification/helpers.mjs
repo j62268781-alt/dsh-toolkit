@@ -119,14 +119,14 @@ export function createSoundFetchStub({ sounds = [{ id: 'system', label: 'System 
   Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: async (input, options = {}) => {
     const url = new URL(typeof input === 'string' ? input : input.url, 'https://dsh.example.test')
     requests.push({ url, options })
-    if (url.pathname === '/api/plugins/dsh-toolkit/notification/sounds') {
+    if (url.pathname === '/api/plugins/toolkit/notification/sounds') {
       return new Response(JSON.stringify({ platform: 'darwin', sounds }), { status, headers: { 'content-type': 'application/json' } })
     }
-    if (url.pathname === '/api/plugins/dsh-toolkit/notification/sound') {
+    if (url.pathname === '/api/plugins/toolkit/notification/sound') {
       return new Response(new Uint8Array([82, 73, 70, 70, 4, 0, 0, 0, 87, 65, 86, 69]), { headers: { 'content-type': 'audio/wav' } })
     }
     // 点击通知时 client 会请求提窗路由；测试里只需成功应答，断言看 requests。
-    if (url.pathname === '/api/plugins/dsh-toolkit/notification/raise') {
+    if (url.pathname === '/api/plugins/toolkit/notification/raise') {
       return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } })
     }
     throw new Error(`unexpected notification request ${url.pathname}`)

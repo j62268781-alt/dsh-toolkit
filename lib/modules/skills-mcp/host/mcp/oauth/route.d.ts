@@ -1,4 +1,4 @@
-export declare const OAUTH_PATH = "/dsh-toolkit-skills-mcp/oauth";
+export declare const OAUTH_PATH: string;
 /**
  * 注册 OAuth 命令路由。
  *

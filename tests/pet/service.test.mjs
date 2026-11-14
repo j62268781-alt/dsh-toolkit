@@ -59,7 +59,7 @@ test('the preview route answers JSON 404 for ids it will not resolve, without to
   const asset = new Response()
   const previous = globalThis.fetch
   globalThis.fetch = async () => { throw new Error('the preview route must not fetch for an empty id') }
-  try { await f.service.asset({ url: '/api/plugins/dsh-toolkit/pet/asset?slug=' }, asset) } finally { globalThis.fetch = previous }
+  try { await f.service.asset({ url: '/api/plugins/toolkit/pet/asset?slug=' }, asset) } finally { globalThis.fetch = previous }
   assert.equal(asset.status, 404)
   assert.match(asset.chunks.join(''), /Pet preview unavailable/)
   assert.equal(asset.headers['content-type'], 'application/json; charset=utf-8')

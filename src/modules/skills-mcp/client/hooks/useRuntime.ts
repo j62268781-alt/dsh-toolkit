@@ -1,4 +1,4 @@
-import { NAME as NS } from '../../host/identity.js'
+import { API_PREFIX as NS } from '../../host/identity.js'
 import { AUTH_CHANNEL, AUTH_DONE } from '../../host/mcp/oauth/channel.js'
 import { startPolling } from '../../../../client/poll.js'
 import { fetchJson } from '../../../../client/http.js'
@@ -40,7 +40,7 @@ export function useRuntime(React, tab, expanded) {
       const abort = () => controller.abort()
       signal.addEventListener('abort', abort, { once: true })
       try {
-        const response = await fetchJson(`/${NS}/runtime`, { signal: controller.signal })
+        const response = await fetchJson(`${NS}/runtime`, { signal: controller.signal })
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const payload = await response.json()
         if (signal.aborted || controller.signal.aborted) return

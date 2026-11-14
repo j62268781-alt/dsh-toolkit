@@ -1,7 +1,7 @@
 /** Read-only runtime transport. Uses the same request guard as built-in Host routes. */
-import { NAME } from '../identity.js';
+import { API_PREFIX } from '../identity.js';
 import { registerAuthenticatedRoute } from '../../../../host/routes.js';
-export const RUNTIME_PATH = `/${NAME}/runtime`;
+export const RUNTIME_PATH = `${API_PREFIX}/runtime`;
 export function registerRuntimeRoute(ctx, readRuntime) {
     registerAuthenticatedRoute(ctx, {
         kind: 'exact',

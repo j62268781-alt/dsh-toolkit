@@ -52,7 +52,7 @@ function stubFetch(handlers) {
         headers: { 'content-type': 'application/json' },
       })
     }
-    if (text.includes('/api/plugins/dsh-toolkit/remote/peers')) {
+    if (text.includes('/api/plugins/toolkit/remote/peers')) {
       calls.push({ kind: 'peers', url: text })
       return new Response(JSON.stringify({ ok: true, peers: [] }), {
         status: 200,

@@ -1,9 +1,13 @@
+import { pluginApiPath } from "../../../host/paths.js";
+
 /**
  * Route paths shared by the host route table and the client that calls them.
  *
- * No imports on purpose: the client bundle evaluates this file as well, so a
- * Node-only import here would be bundled into the browser and fail there.
+ * Only `/api/plugins/toolkit/<module>/…` is generated here; the client bundle
+ * evaluates this file too, so a Node-only import would break the browser.
  */
-export const DELETE_SESSION_PATH = "/_dsh/dsh-toolkit/archived/delete-session";
-export const DELETE_SESSIONS_PATH = "/_dsh/dsh-toolkit/archived/delete-sessions";
-export const PENDING_DELETIONS_PATH = "/_dsh/dsh-toolkit/archived/pending-deletions";
+const API_PREFIX = pluginApiPath("archived");
+
+export const DELETE_SESSION_PATH = `${API_PREFIX}/delete-session`;
+export const DELETE_SESSIONS_PATH = `${API_PREFIX}/delete-sessions`;
+export const PENDING_DELETIONS_PATH = `${API_PREFIX}/pending-deletions`;

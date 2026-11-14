@@ -215,14 +215,14 @@ test('notification child waits for both webServer and connection, mounts authent
   await fiber
   await settle(ctx)
   const server = ctx.get('webServer')
-  const soundRoutes = () => server.routes.filter(({ path }) => path.startsWith('/api/plugins/dsh-toolkit/notification/'))
+  const soundRoutes = () => server.routes.filter(({ path }) => path.startsWith('/api/plugins/toolkit/notification/'))
   assert.deepEqual(soundRoutes(), [], 'webServer alone cannot activate the authenticated notification child')
   await ctx.plugin(Connection)
   await settle(ctx)
   assert.deepEqual(soundRoutes().map(({ kind, path }) => [kind, path]), [
-    ['exact', '/api/plugins/dsh-toolkit/notification/sounds'],
-    ['exact', '/api/plugins/dsh-toolkit/notification/sound'],
-    ['exact', '/api/plugins/dsh-toolkit/notification/raise'],
+    ['exact', '/api/plugins/toolkit/notification/sounds'],
+    ['exact', '/api/plugins/toolkit/notification/sound'],
+    ['exact', '/api/plugins/toolkit/notification/raise'],
   ])
   for (const route of soundRoutes()) {
     // 提窗路由只认 POST，GET 会被预取/缓存命中，等于用户没点也提窗。

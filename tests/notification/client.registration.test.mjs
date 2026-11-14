@@ -133,7 +133,7 @@ test('页面：四张分组卡片、全局声音与四种类型开关，无最�
   assert.equal(document.querySelectorAll('select').length, 2, 'global timing + sound selectors; no per-type sound or scope selectors')
   assert.equal(document.querySelectorAll('[role="switch"]').length, 6)
   assert.equal(fetch.requests.length, 1)
-  assert.equal(fetch.requests[0].url.pathname, '/api/plugins/dsh-toolkit/notification/sounds')
+  assert.equal(fetch.requests[0].url.pathname, '/api/plugins/toolkit/notification/sounds')
   assert.equal(fetch.requests[0].options.method ?? 'GET', 'GET')
 
   const master = switchFor(document, '启用通知')

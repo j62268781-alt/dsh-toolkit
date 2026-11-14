@@ -16,6 +16,8 @@
  * 这里不做轮询：轮询节奏由面板按当前会话状态决定（和微信面板一样，只在活动态走）。
  */
 
+import { API_PATH } from '../../host/constants.js'
+
 /** 与 ds-harness-remote 的本地控制路由前缀一致。 */
 export const PAIRING_PREFIX = '/ds-harness-remote'
 
@@ -62,7 +64,7 @@ const LAST_PAIRED_KEY = 'dsh-toolkit-remote/last-paired.v1'
  * 插件自己的 host 路由：把本机落盘的 trusted-peers.json 读出来。
  * 配对会话记录过期、localStorage 又随端口换 origin 之后，只有它还记得手机是谁。
  */
-const PLUGIN_API_PATH = '/api/plugins/dsh-toolkit/remote'
+const PLUGIN_API_PATH = API_PATH
 
 async function loadTrustedPeers(serverUrl) {
   if (typeof serverUrl !== 'string' || serverUrl.trim() === '') return []

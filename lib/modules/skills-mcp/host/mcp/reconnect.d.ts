@@ -1,4 +1,4 @@
-export declare const RECONNECT_PATH = "/dsh-toolkit-skills-mcp/reconnect";
+export declare const RECONNECT_PATH: string;
 /**
  * Register the reconnect route.
  *

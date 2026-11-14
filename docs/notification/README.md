@@ -190,7 +190,7 @@ var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层�
 的 `NotificationClicked`）。桌面壳里唯一被系统允许的做法是**再启动一次本应用**：第二个实例拿不到
 单实例锁立刻退出，第一个实例收到 `second-instance` 后执行 `focusPrimaryWindow()`
 （`window.restore() + show() + focus()`，见 `app.asar/lib/main.js`）。所以 client 点击时 `POST`
-`/api/plugins/dsh-toolkit/notification/raise`，host 侧用
+`/api/plugins/toolkit/notification/raise`，host 侧用
 `spawn(process.execPath, [], { detached: true, stdio: 'ignore', env: 去掉 ELECTRON_RUN_AS_NODE })`
 起一个新实例（`src/modules/notification/host/raise.js`）。实测从「最小化 + 被记事本遮挡」到拿到
 前台约 400ms；浏览器部署下这条路由如实返回 `unsupported`，提窗静默跳过。

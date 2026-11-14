@@ -38,6 +38,15 @@ window.__ModuleLoader__.load({
       };
     }
 
+    // src/host/paths.ts
+    var PLUGIN_API_ROOT = "/api/plugins/toolkit";
+    function pluginApiPath(moduleName) {
+      return `${PLUGIN_API_ROOT}/${moduleName}`;
+    }
+
+    // src/modules/mobile/host/constants.ts
+    var API_PREFIX = pluginApiPath("mobile");
+
     // src/modules/mobile/client/stream/adaptive.ts
     var REGRANT_UPSCALE_RATIO = 1.02;
     var REGRANT_DOWNSCALE_RATIO = 1.05;
@@ -1372,14 +1381,13 @@ window.__ModuleLoader__.load({
       const Fragment = React.Fragment;
       const primitives = require2("@deepseek-ai/dsh-client-ui-primitives");
       const TAB_ID = "@j62268781-alt/dsh-sidebar-mobile";
-      const PREFIX = "/_dsh/dsh-toolkit-mobile";
       const ROUTE_PANEL_OPEN = "panel-open";
       const ROUTE_PANEL_OPEN_ACK = "panel-open-ack";
       const SHORTCUT_ID = "sidebar.mobile";
       async function api(route, body, { signal } = {}) {
         let response;
         try {
-          response = await fetchJson(`${PREFIX}/${route}`, {
+          response = await fetchJson(`${API_PREFIX}/${route}`, {
             method: "POST",
             json: body ?? {},
             signal
@@ -1407,7 +1415,7 @@ window.__ModuleLoader__.load({
       const { MobileArtwork } = icons;
       const renderDeviceOptions = createDeviceOptions(React);
       const useH264Canvas = createUseH264Canvas(React, canvasRuntime);
-      const StreamView = createStreamView(React, { api, prefix: PREFIX, useH264Canvas });
+      const StreamView = createStreamView(React, { api, prefix: API_PREFIX, useH264Canvas });
       const MobilePanel = createMobilePanel(React, { primitives, api, CSS, canvasRuntime, StreamView, icons, renderDeviceOptions });
       function MobileTitle({ useTabInfo }) {
         const { tab } = useTabInfo();
@@ -1475,7 +1483,7 @@ window.__ModuleLoader__.load({
                   let seq = null;
                   let healthy = false;
                   try {
-                    const response = await fetch(`${PREFIX}/${ROUTE_PANEL_OPEN}`, { method: "GET", signal: controller.signal });
+                    const response = await fetch(`${API_PREFIX}/${ROUTE_PANEL_OPEN}`, { method: "GET", signal: controller.signal });
                     if (stopped) return;
                     if (response.ok) {
                       const payload = await response.json().catch(() => null);

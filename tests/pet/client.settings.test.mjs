@@ -336,7 +336,7 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   assert.ok(thumb, 'each tile shows the pet artwork')
   assert.ok(row.querySelector('.pet-tileCopy .pet-desc'), 'the subtitle (pet id) is rendered under the title')
   assert.ok(row.querySelector('.pet-tileActions button'), 'the install action sits in its own row under the copy')
-  assert.match(thumb.getAttribute('style'), /\/api\/plugins\/dsh-toolkit\/pet\/asset\?slug=boba/)
+  assert.match(thumb.getAttribute('style'), /\/api\/plugins\/toolkit\/pet\/asset\?slug=boba/)
   const install = [...row.querySelectorAll('button')].find((button) => button.textContent === 'Install')
   const catalogCalls = () => calls.filter((call) => call.action === 'catalog').length
   const catalogBefore = catalogCalls()

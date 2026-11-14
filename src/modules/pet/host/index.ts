@@ -12,10 +12,11 @@ import { HelperManager } from './helper.js'
 import { createActivityFeed, type ActivityFeed } from './activity.js'
 import { createCatalog, filterCatalog, installPet, listInstalled, removePet, resolveAssetUrl, type InstallProgress, type InstallResult } from './petdex.js'
 import { createPreviewStore } from './preview.js'
+import { API_PATH } from './constants.js'
 
 export const name = 'dsh-toolkit-pet'
 export const inject = ['webServer', 'connection', 'sessionController', 'sessionProjections', 'sessions', 'settings']
-export const API_PATH = '/api/plugins/dsh-toolkit/pet'
+export { API_PATH } from './constants.js'
 const PET_IDS = ['deepseek-whale']
 const PETDEX_PREFIX = 'petdex:'
 

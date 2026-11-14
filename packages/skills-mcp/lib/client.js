@@ -26,8 +26,15 @@ window.__ModuleLoader__.load({
       mod
     ));
 
+    // src/host/paths.ts
+    var PLUGIN_API_ROOT = "/api/plugins/toolkit";
+    function pluginApiPath(moduleName) {
+      return `${PLUGIN_API_ROOT}/${moduleName}`;
+    }
+
     // src/modules/skills-mcp/host/identity.ts
     var NAME = "dsh-toolkit-skills-mcp";
+    var API_PREFIX = pluginApiPath("skills-mcp");
 
     // src/client/config.ts
     var ROOT_ENTRIES = ["shell-kit", "dsh-toolkit", "dsh-shell-kit"];
@@ -528,7 +535,7 @@ window.__ModuleLoader__.load({
           const abort = () => controller.abort();
           signal.addEventListener("abort", abort, { once: true });
           try {
-            const response = await fetchJson(`/${NAME}/runtime`, { signal: controller.signal });
+            const response = await fetchJson(`${API_PREFIX}/runtime`, { signal: controller.signal });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const payload = await response.json();
             if (signal.aborted || controller.signal.aborted) return;
@@ -563,7 +570,7 @@ window.__ModuleLoader__.load({
 
     // src/modules/skills-mcp/client/commands.ts
     var bareRowId = (entryId) => String(entryId).replace(/^include:/, "").replace(/^[a-z-]+:/i, "");
-    var postJson = (path, json, signal) => fetchJson(`/${NAME}/${path}`, {
+    var postJson = (path, json, signal) => fetchJson(`${API_PREFIX}/${path}`, {
       method: "POST",
       json,
       ...signal === void 0 ? {} : { signal }
@@ -627,7 +634,7 @@ window.__ModuleLoader__.load({
       if (typeof fetch !== "function") return { ok: false, reason: "当前环境没有 fetch" };
       if (typeof path !== "string" || path === "") return { ok: false, reason: "没有文件路径" };
       try {
-        const response = await fetchJson(`/${NAME}/skill?path=${encodeURIComponent(path)}`, { signal });
+        const response = await fetchJson(`${API_PREFIX}/skill?path=${encodeURIComponent(path)}`, { signal });
         if (response.status === 404 || response.status === 405) {
           return { ok: false, reason: "这个 Host 没有技能读取路由（Host 侧改动需要重启一次 DSH）" };
         }

@@ -9,18 +9,18 @@
  *   · 二维码 URL 是短生命周期凭据，只在 start() 的响应里回给前端，不打印。
  *
  * 路由（全部同源 fetch，无需 CORS）：
- *   GET  /api/plugins/dsh-toolkit/remote/status       当前状态（含 bridge）
- *   POST /api/plugins/dsh-toolkit/remote/login/start  发起扫码
- *   GET  /api/plugins/dsh-toolkit/remote/login/poll   前端轮询
- *   POST /api/plugins/dsh-toolkit/remote/login/code   回传数字校验码
- *   POST /api/plugins/dsh-toolkit/remote/login/cancel 取消扫码
- *   POST /api/plugins/dsh-toolkit/remote/logout       断开并清空凭据
- *   POST /api/plugins/dsh-toolkit/remote/probe        单次通道探测
- *   POST /api/plugins/dsh-toolkit/remote/monitor      开启/关闭常驻监听
- *   POST /api/plugins/dsh-toolkit/remote/bridge/test  发一条测试消息
- *   POST /api/plugins/dsh-toolkit/remote/bridge/access 改访问策略/白名单
- *   GET  /api/plugins/dsh-toolkit/remote/peers?serverUrl= 已信任手机的身份（重启后兜底）
- *   POST /api/plugins/dsh-toolkit/remote/local-state/purge?serverUrl= 解绑后清本机配对残留
+ *   GET  /api/plugins/toolkit/remote/status       当前状态（含 bridge）
+ *   POST /api/plugins/toolkit/remote/login/start  发起扫码
+ *   GET  /api/plugins/toolkit/remote/login/poll   前端轮询
+ *   POST /api/plugins/toolkit/remote/login/code   回传数字校验码
+ *   POST /api/plugins/toolkit/remote/login/cancel 取消扫码
+ *   POST /api/plugins/toolkit/remote/logout       断开并清空凭据
+ *   POST /api/plugins/toolkit/remote/probe        单次通道探测
+ *   POST /api/plugins/toolkit/remote/monitor      开启/关闭常驻监听
+ *   POST /api/plugins/toolkit/remote/bridge/test  发一条测试消息
+ *   POST /api/plugins/toolkit/remote/bridge/access 改访问策略/白名单
+ *   GET  /api/plugins/toolkit/remote/peers?serverUrl= 已信任手机的身份（重启后兜底）
+ *   POST /api/plugins/toolkit/remote/local-state/purge?serverUrl= 解绑后清本机配对残留
  */
 
 import { sendJson, readBody } from '../../../host/http.js'
@@ -32,6 +32,7 @@ import { createMonitor } from './wechat/monitor.js'
 import { maskId, normalizeBaseUrl } from './wechat/ilink.js'
 import { readTrustedPeers } from './mobile/peers.js'
 import { purgePairingState } from './mobile/local-state.js'
+import { API_PATH } from './constants.js'
 
 export const name = 'dsh-toolkit-remote'
 /**
@@ -52,7 +53,7 @@ const BRIDGE_SERVICES = [
   'llm',
 ]
 
-export const API_PATH = '/api/plugins/dsh-toolkit/remote'
+export { API_PATH } from './constants.js'
 
 /** 单条路由的最大请求体（这些接口只有小 JSON）。 */
 const MAX_BODY = 4 * 1024

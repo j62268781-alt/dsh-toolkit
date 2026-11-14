@@ -97,7 +97,7 @@ test('点击通知：聚焦窗口、请求提窗并跳转到对应会话', async
   assert.deepEqual(app.runtime.openedSessions, ['s1'])
   // window.focus() 在 Windows 上会被前台锁忽略，必须再让 host 侧启动一次应用实例；
   // 这条请求就是「真的把窗口提到前台」的那一步。
-  const raise = app.fetch.requests.filter(({ url }) => url.pathname === '/api/plugins/dsh-toolkit/notification/raise')
+  const raise = app.fetch.requests.filter(({ url }) => url.pathname === '/api/plugins/toolkit/notification/raise')
   assert.equal(raise.length, 1, 'clicking a notification must ask the host to raise the desktop window')
   assert.equal(raise[0].options.method, 'POST')
 })
@@ -311,7 +311,7 @@ test('系统音播放在事件发生后异步获取音频，通知和会话跳�
   assert.equal(app.stub.instances.length, 1)
   assert.equal(played.length, 0, 'notification display does not wait for audio decoding')
   assert.equal(app.fetch.requests.length, 1, 'an event fetches only its audio; catalogue loading stays panel-lazy')
-  assert.equal(app.fetch.requests[0].url.pathname, '/api/plugins/dsh-toolkit/notification/sound')
+  assert.equal(app.fetch.requests[0].url.pathname, '/api/plugins/toolkit/notification/sound')
   assert.equal(app.fetch.requests[0].url.searchParams.get('id'), 'system')
   assert.equal(app.fetch.requests[0].options.credentials, 'same-origin')
   app.stub.instances[0].onclick()
@@ -452,6 +452,6 @@ test('灵动岛在线时前台不再响提示音：标记消失后恢复', async
   app.runtime.setRunning('s2', false)
   await flush()
   assert.equal(app.stub.instances.length, 0, '前台仍然不弹横幅')
-  const audio = app.fetch.requests.filter(({ url }) => url.pathname === '/api/plugins/dsh-toolkit/notification/sound')
+  const audio = app.fetch.requests.filter(({ url }) => url.pathname === '/api/plugins/toolkit/notification/sound')
   assert.equal(audio.length, 1, '没有岛时前台回到提示音反馈')
 })

@@ -7,7 +7,9 @@
  *   - 所有失败都收敛成 { state: 'failed', error }，不向上抛，避免面板整块崩溃。
  */
 
-export const API_PREFIX = '/api/plugins/dsh-toolkit/remote'
+import { API_PATH } from '../../host/constants.js'
+
+export const API_PREFIX = API_PATH
 
 /** 前端状态机（与 host 的登录状态机一一对应，外加 closed 与 reconnecting）。 */
 export const STATES = Object.freeze({
