@@ -5,13 +5,17 @@
  * 每一处调用都做特性探测与 try/catch —— 非浏览器环境、被拒绝的权限、构造失败都不能让
  * 会话观察链路跟着崩掉；被抑制的通知会打一条 warn，方便在控制台诊断「为什么没弹」。
  *
- * 关于「点击通知打开 DSH 并跳转会话」：
- *   - 跳转由 `ctx.uiWorkspace.openSession(sessionId)` 完成（见 index.jsx）；
- *   - 把窗口带到前台没有官方 API：rc.5 的 `globalThis.dshDesktop` 只暴露 browser/deviceInfo/
- *     keyboard/shortcuts/updates，没有任何 focus/activate 通道。点击系统通知时，Web 浏览器会
- *     聚焦来源标签页、Electron/Windows 会把应用窗口激活到前台，这是平台行为；这里再补一次
- *     `window.focus()` 作为尽力而为的兜底。
+ * 通知的发送有两条路：
+ *   - 有 Service Worker 时交给 `registration.showNotification()`：页面刷新/关闭后通知仍在
+ *     通知中心，点击由 SW 的 `notificationclick` 接住（见 host/service-worker.ts）。
+ *   - 否则退回 `new Notification()`：生命周期绑在页面，但兼容性最好。
+ *
+ * 关于「点击通知打开 DSH 并跳转会话」：跳转由 `ctx.uiWorkspace.openSession(sessionId)` 完成
+ * （见 index.tsx）；把窗口带到前台没有官方 API——rc.5 的 `globalThis.dshDesktop` 只暴露
+ * browser/deviceInfo/keyboard/shortcuts/updates，没有任何 focus/activate 通道。SW 那条路
+ * 用 `clients.matchAll()` + `focus()`，比页面级的 `window.focus()` 靠谱得多。
  */
+import { ensureNotificationServiceWorker, serviceWorkerSupported } from './service-worker.js'
 
 /** 权限状态；`unsupported` 表示当前环境没有 Notification API。 */
 export const PERMISSIONS = ['granted', 'denied', 'default', 'unsupported']
@@ -89,6 +93,45 @@ function clampTag(requested) {
  * 用户回到前台、正在看那个会话时，卡片再挂着就是噪音。
  */
 const live = new Map()
+
+/**
+ * SW 通道发出的通知只留得下 tag：通知对象在 SW 那边，页面拿不到引用。
+ * 回收时按 tag 去 `registration.getNotifications()` 里找。
+ */
+const liveTags = new Set()
+
+/** 页面 URL（含 token）拼上要进入的会话，供 SW 在没有窗口时新开一个。 */
+function launchUrl(sessionId) {
+  try {
+    if (typeof window === 'undefined' || !window.location) return ''
+    const { origin, pathname, search } = window.location
+    const fragment = sessionId === '' ? '' : `#dsh-toolkit-session=${encodeURIComponent(sessionId)}`
+    return `${origin}${pathname}${search}${fragment}`
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * 交给 Service Worker 发一条通知。
+ * @param title - 标题。
+ * @param options - `showNotification` 的选项（tag/silent/icon 等）。
+ * @param data - 点击时要用的载荷（会话与启动 URL）。
+ * @returns 是否由 SW 真正发出；false 时调用方应退回构造器路径。
+ */
+async function showViaServiceWorker(title, options, data) {
+  const registration = await ensureNotificationServiceWorker()
+  if (registration === undefined) return false
+  try {
+    await registration.showNotification(title, { ...options, data })
+    if (typeof options.tag === 'string' && options.tag !== '') liveTags.add(options.tag)
+    return true
+  } catch (error) {
+    // 常见原因：worker 还没 active、scope 不对、通知权限其实没给。退回页面级通知。
+    warn('service worker could not show the notification', error)
+    return false
+  }
+}
 
 /** 当前环境的 Notification 构造器（不存在时 undefined）。 */
 function notificationCtor() {
@@ -243,6 +286,10 @@ export function showBrowserNotification(options: BrowserNotificationOptions = {}
     requireInteraction: STICKY_KINDS.includes(kind),
   }
   const icon = pageIconUrl()
+  const shown = icon === undefined ? base : { ...base, icon }
+  // 点回会话要能落到具体会话上：SW 里点击时只剩 notification.data，所以把启动 URL 一起存进去
+  // （含 token —— 没有它打开的是一个未登录页面）。
+  const data = { sessionId, kind, tag, url: launchUrl(sessionId) }
 
   /** 接上点击回调并保持引用，直到通知关闭。 */
   const activate = (notification) => {
@@ -255,7 +302,6 @@ export function showBrowserNotification(options: BrowserNotificationOptions = {}
     }
     // 原生层「构造成功但没上屏」只能从这里看：Chromium 把平台层的失败（例如 WinRT 的
     // Toast 被拒）经 `error` 事件交回渲染进程，`new Notification(...)` 本身不抛错。
-    // 之前这条通道没接，所以 tag 超长导致的通知丢失在外面看起来完全无迹可寻。
     try {
       if (typeof notification.addEventListener === 'function') {
         notification.addEventListener('error', () => {
@@ -282,26 +328,45 @@ export function showBrowserNotification(options: BrowserNotificationOptions = {}
     }
   }
 
-  try {
-    activate(new Ctor(title, icon === undefined ? base : { ...base, icon }))
-    return true
-  } catch (error) {
-    // 图标被拒绝不能让通知消失：去掉图标重试一次。
-    if (icon !== undefined) {
-      try {
-        activate(new Ctor(title, base))
-        warn('page icon was rejected; notification shown without it', error)
-        return true
-      } catch (second) {
-        fail('Notification constructor failed; check the browser/OS notification settings', second)
-        return false
+  /**
+   * 构造器路径：页面级通知，页面关了它也没了，但兼容性最好（也是所有失败路径的兜底）。
+   * @returns 是否真的弹出了通知。
+   */
+  const viaConstructor = () => {
+    try {
+      activate(new Ctor(title, shown))
+      return true
+    } catch (error) {
+      // 图标被拒绝不能让通知消失：去掉图标重试一次。
+      if (icon !== undefined) {
+        try {
+          activate(new Ctor(title, base))
+          warn('page icon was rejected; notification shown without it', error)
+          return true
+        } catch (second) {
+          fail('Notification constructor failed; check the browser/OS notification settings', second)
+          return false
+        }
       }
+      fail('Notification constructor failed; check the browser/OS notification settings', error)
+      return false
     }
-    fail('Notification constructor failed; check the browser/OS notification settings', error)
-    return false
   }
-}
 
+  // 优先交给 Service Worker：页面刷新/关闭后通知仍留在通知中心，点击还能被 `notificationclick`
+  // 接住并聚焦窗口。不支持或没准备好（jsdom、非安全上下文、注册被拦）就同步退回构造器。
+  if (serviceWorkerSupported()) {
+    void showViaServiceWorker(title, shown, data)
+      .then((delivered) => {
+        if (!delivered) viaConstructor()
+      })
+      .catch(() => {
+        viaConstructor()
+      })
+    return true
+  }
+  return viaConstructor()
+}
 /**
  * 关掉仍然挂着的通知。
  *
@@ -331,12 +396,47 @@ export function dismissLiveNotifications(predicate) {
       // 已经关掉 / 环境不支持：忽略。
     }
   }
+  // SW 通道的通知对象在 worker 那边，页面只能按 tag 回查再关（异步，失败不影响返回值）。
+  void dismissServiceWorkerNotifications(predicate)
   return closed
+}
+
+/**
+ * 按 tag 回查并关掉 SW 发出的通知。
+ * @param predicate - 与 `dismissLiveNotifications` 同一个筛选器（收到的是 `notification.data`）。
+ */
+async function dismissServiceWorkerNotifications(predicate) {
+  if (liveTags.size === 0) return
+  try {
+    const registration = await ensureNotificationServiceWorker()
+    if (registration === undefined) return
+    const shown = await registration.getNotifications()
+    for (const notification of shown) {
+      const entry = notification.data ?? {}
+      if (typeof predicate === 'function') {
+        let selected = false
+        try {
+          selected = predicate(entry) === true
+        } catch {
+          selected = false
+        }
+        if (!selected) continue
+      }
+      liveTags.delete(notification.tag)
+      try {
+        notification.close()
+      } catch {
+        // 可能已经被系统收掉了。
+      }
+    }
+  } catch (error) {
+    warn('could not dismiss service worker notifications', error)
+  }
 }
 
 /** 当前还挂着的通知数量（诊断与测试用）。 */
 export function liveNotificationCount() {
-  return live.size
+  return live.size + liveTags.size
 }
 
 /** 发一条测试通知，用来验证通道（权限已授予时才有意义）。 */

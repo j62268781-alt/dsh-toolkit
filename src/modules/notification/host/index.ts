@@ -3,6 +3,7 @@ import { registerAuthenticatedRoute, asHttpFailure } from '../../../host/routes.
 import { RAISE_PATH, SOUND_PATH, SOUNDS_PATH } from './constants.js'
 import type { RaiseWindowOptions } from './raise.js'
 import { raiseWindow } from './raise.js'
+import { registerNotificationServiceWorkerRoute } from './service-worker.js'
 import type { SoundService } from './sounds.js'
 import { createSoundService } from './sounds.js'
 
@@ -77,6 +78,7 @@ export function apply(ctx: any): void {
   if (typeof ctx.webServer?.register !== 'function' || typeof ctx.connection?.requestRejection !== 'function') return
   registerNotificationSoundRoutes(ctx)
   registerRaiseRoute(ctx)
+  registerNotificationServiceWorkerRoute(ctx)
 }
 
 export default { name, inject, apply }

@@ -197,6 +197,8 @@ window.__ModuleLoader__.load({
     var SOUNDS_PATH = `${API_PREFIX}/sounds`;
     var SOUND_PATH = `${API_PREFIX}/sound`;
     var RAISE_PATH = `${API_PREFIX}/raise`;
+    var SERVICE_WORKER_PATH = `${API_PREFIX}/sw.js`;
+    var SERVICE_WORKER_SCOPE = "/";
 
     // src/modules/notification/client/locale.ts
     var NOTIFICATION_NS = "dsh-toolkit.notification";
@@ -685,8 +687,8 @@ window.__ModuleLoader__.load({
        * 插件加载前就在等回答的会话不该补发一条提醒（和空闲会话同理）。
        * @param {ReadonlyMap<string, {key: string}>} pending 当前待交互。
        */
-      seedPending(pending) {
-        for (const [id, facts] of pending ?? []) {
+      seedPending(pending2) {
+        for (const [id, facts] of pending2 ?? []) {
           if (this.silenced(id)) continue;
           if (typeof facts?.key === "string") this.pendingKeys.set(id, facts.key);
         }
@@ -695,8 +697,8 @@ window.__ModuleLoader__.load({
        * 处理一次待交互快照。
        * @param {ReadonlyMap<string, {key: string, kind: 'question'|'permission', detail: string}>} pending 每个会话当前待交互。
        */
-      observePending(pending) {
-        for (const [id, facts] of pending ?? []) {
+      observePending(pending2) {
+        for (const [id, facts] of pending2 ?? []) {
           if (this.silenced(id)) {
             this.pendingKeys.delete(id);
             continue;
@@ -708,7 +710,7 @@ window.__ModuleLoader__.load({
           this.pendingKeys.set(id, facts.key);
         }
         for (const id of [...this.pendingKeys.keys()]) {
-          if (!pending || !pending.has(id)) this.pendingKeys.delete(id);
+          if (!pending2 || !pending2.has(id)) this.pendingKeys.delete(id);
         }
       }
       /** 开跑：记下失败基线；新一轮会作废上一轮还 hold 着的完成通知。 */
@@ -782,6 +784,41 @@ window.__ModuleLoader__.load({
       }
     };
 
+    // src/modules/notification/client/service-worker.ts
+    var OPEN_MESSAGE = "dsh-toolkit:notification:open";
+    var pending;
+    function serviceWorkerSupported() {
+      try {
+        if (typeof navigator === "undefined" || !navigator.serviceWorker) return false;
+        if (typeof navigator.serviceWorker.register !== "function") return false;
+        if (typeof window !== "undefined" && window.isSecureContext === false) return false;
+        return typeof globalThis.Notification === "function";
+      } catch {
+        return false;
+      }
+    }
+    function ensureNotificationServiceWorker(timeoutMs = 4e3) {
+      if (pending !== void 0) return pending;
+      if (!serviceWorkerSupported()) {
+        pending = Promise.resolve(void 0);
+        return pending;
+      }
+      pending = (async () => {
+        try {
+          const registered = await navigator.serviceWorker.register(SERVICE_WORKER_PATH, { scope: SERVICE_WORKER_SCOPE });
+          const ready = navigator.serviceWorker.ready;
+          const activated = await Promise.race([
+            ready,
+            new Promise((resolve) => setTimeout(() => resolve(void 0), timeoutMs))
+          ]);
+          return activated ?? registered;
+        } catch {
+          return void 0;
+        }
+      })();
+      return pending;
+    }
+
     // src/modules/notification/client/browser-notify.ts
     var TAG_PREFIX = "dsh-toolkit:notification";
     var TAG_LIMIT = 44;
@@ -806,6 +843,29 @@ window.__ModuleLoader__.load({
       return `${TAG_PREFIX}:${digest(tag)}`;
     }
     var live = /* @__PURE__ */ new Map();
+    var liveTags = /* @__PURE__ */ new Set();
+    function launchUrl(sessionId) {
+      try {
+        if (typeof window === "undefined" || !window.location) return "";
+        const { origin, pathname, search } = window.location;
+        const fragment = sessionId === "" ? "" : `#dsh-toolkit-session=${encodeURIComponent(sessionId)}`;
+        return `${origin}${pathname}${search}${fragment}`;
+      } catch {
+        return "";
+      }
+    }
+    async function showViaServiceWorker(title, options, data) {
+      const registration = await ensureNotificationServiceWorker();
+      if (registration === void 0) return false;
+      try {
+        await registration.showNotification(title, { ...options, data });
+        if (typeof options.tag === "string" && options.tag !== "") liveTags.add(options.tag);
+        return true;
+      } catch (error) {
+        warn("service worker could not show the notification", error);
+        return false;
+      }
+    }
     function notificationCtor() {
       try {
         return typeof globalThis.Notification === "function" ? globalThis.Notification : void 0;
@@ -892,6 +952,8 @@ window.__ModuleLoader__.load({
         requireInteraction: STICKY_KINDS.includes(kind)
       };
       const icon = pageIconUrl();
+      const shown = icon === void 0 ? base : { ...base, icon };
+      const data = { sessionId, kind, tag, url: launchUrl(sessionId) };
       const activate = (notification) => {
         live.set(notification, { sessionId, kind });
         const forget = () => live.delete(notification);
@@ -922,23 +984,34 @@ window.__ModuleLoader__.load({
           }
         };
       };
-      try {
-        activate(new Ctor(title, icon === void 0 ? base : { ...base, icon }));
-        return true;
-      } catch (error) {
-        if (icon !== void 0) {
-          try {
-            activate(new Ctor(title, base));
-            warn("page icon was rejected; notification shown without it", error);
-            return true;
-          } catch (second) {
-            fail("Notification constructor failed; check the browser/OS notification settings", second);
-            return false;
+      const viaConstructor = () => {
+        try {
+          activate(new Ctor(title, shown));
+          return true;
+        } catch (error) {
+          if (icon !== void 0) {
+            try {
+              activate(new Ctor(title, base));
+              warn("page icon was rejected; notification shown without it", error);
+              return true;
+            } catch (second) {
+              fail("Notification constructor failed; check the browser/OS notification settings", second);
+              return false;
+            }
           }
+          fail("Notification constructor failed; check the browser/OS notification settings", error);
+          return false;
         }
-        fail("Notification constructor failed; check the browser/OS notification settings", error);
-        return false;
+      };
+      if (serviceWorkerSupported()) {
+        void showViaServiceWorker(title, shown, data).then((delivered) => {
+          if (!delivered) viaConstructor();
+        }).catch(() => {
+          viaConstructor();
+        });
+        return true;
       }
+      return viaConstructor();
     }
     function dismissLiveNotifications(predicate) {
       let closed = 0;
@@ -959,7 +1032,35 @@ window.__ModuleLoader__.load({
         } catch {
         }
       }
+      void dismissServiceWorkerNotifications(predicate);
       return closed;
+    }
+    async function dismissServiceWorkerNotifications(predicate) {
+      if (liveTags.size === 0) return;
+      try {
+        const registration = await ensureNotificationServiceWorker();
+        if (registration === void 0) return;
+        const shown = await registration.getNotifications();
+        for (const notification of shown) {
+          const entry = notification.data ?? {};
+          if (typeof predicate === "function") {
+            let selected = false;
+            try {
+              selected = predicate(entry) === true;
+            } catch {
+              selected = false;
+            }
+            if (!selected) continue;
+          }
+          liveTags.delete(notification.tag);
+          try {
+            notification.close();
+          } catch {
+          }
+        }
+      } catch (error) {
+        warn("could not dismiss service worker notifications", error);
+      }
     }
     function showTestNotification(t) {
       return showBrowserNotification({
@@ -1431,7 +1532,7 @@ window.__ModuleLoader__.load({
         const [soundStatus, setSoundStatus] = React2.useState("loading");
         const [volume, setVolume] = React2.useState(snapshot.volume);
         const volumeWrites = React2.useRef({ pending: 0, tail: Promise.resolve() });
-        const [pending, setPending] = React2.useState({});
+        const [pending2, setPending] = React2.useState({});
         const writeQueue = React2.useRef(Promise.resolve());
         const fieldInflight = React2.useRef({});
         React2.useEffect(() => {
@@ -1463,7 +1564,7 @@ window.__ModuleLoader__.load({
           };
         }, []);
         const readOnly = actions.isWritable?.() !== true;
-        const valueOf = (field) => field in pending ? pending[field] : savedFieldValue(snapshot, field);
+        const valueOf = (field) => field in pending2 ? pending2[field] : savedFieldValue(snapshot, field);
         const enabled = valueOf("enabled") === true;
         const soundEnabled = valueOf("soundEnabled") === true;
         const inactive = readOnly || !enabled;
@@ -1991,6 +2092,31 @@ window.__ModuleLoader__.load({
             for (const event of events) window.addEventListener(event, unlock, true);
             return detach;
           }, "dsh-toolkit-notification:audio-unlock");
+          install(() => {
+            const openFromNotification = (sessionId) => {
+              if (typeof sessionId !== "string" || sessionId === "") return;
+              void Promise.resolve(openSession(sessionId)).catch((error) => warn2("notification navigation failed", error));
+            };
+            void ensureNotificationServiceWorker();
+            const worker = typeof navigator === "undefined" ? void 0 : navigator.serviceWorker;
+            if (worker === void 0 || worker === null) return void 0;
+            const onMessage = (event) => {
+              const data = event?.data;
+              if (!data || data.type !== OPEN_MESSAGE) return;
+              openFromNotification(data.sessionId);
+            };
+            worker.addEventListener("message", onMessage);
+            try {
+              const match = /#dsh-toolkit-session=([^&]+)/.exec(window.location.hash);
+              if (match) {
+                window.history.replaceState(null, "", window.location.pathname + window.location.search);
+                openFromNotification(decodeURIComponent(match[1]));
+              }
+            } catch (error) {
+              warn2("could not read the launch session from the url", error);
+            }
+            return () => worker.removeEventListener("message", onMessage);
+          }, "dsh-toolkit-notification:sw-clicks");
           install(() => () => player.dispose(), "dsh-toolkit-notification:sounds");
           install(() => {
             if (typeof window === "undefined" || typeof document === "undefined") return void 0;

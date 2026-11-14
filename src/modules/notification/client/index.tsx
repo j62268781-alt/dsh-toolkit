@@ -34,6 +34,7 @@ import {
   showBrowserNotification, showTestNotification,
 } from './browser-notify.js'
 import { createRecentStore } from './recent.js'
+import { OPEN_MESSAGE, ensureNotificationServiceWorker } from './service-worker.js'
 import { createNotificationPanel } from './panel.jsx'
 import { registerSettingsIcon } from '../../../client/ui/components/settings-icon/index.jsx'
 
@@ -572,6 +573,36 @@ export default function createNotification(require) {
         for (const event of events) window.addEventListener(event, unlock, true)
         return detach
       }, 'dsh-toolkit-notification:audio-unlock')
+
+      // 点击通知后由 SW 发消息回来（它先聚焦窗口再 postMessage）；页面若是被点通知新开出来的，
+      // 会带 `#dsh-toolkit-session=<id>` 片段。两条路都归到 openSession。
+      install(() => {
+        const openFromNotification = (sessionId) => {
+          if (typeof sessionId !== 'string' || sessionId === '') return
+          void Promise.resolve(openSession(sessionId)).catch((error) => warn('notification navigation failed', error))
+        }
+        // 提前注册：第一条通知往往比用户操作来得还早，等到发通知那一刻再注册就来不及接管页面。
+        void ensureNotificationServiceWorker()
+        const worker = typeof navigator === 'undefined' ? undefined : navigator.serviceWorker
+        if (worker === undefined || worker === null) return undefined
+        const onMessage = (event) => {
+          const data = event?.data
+          if (!data || data.type !== OPEN_MESSAGE) return
+          openFromNotification(data.sessionId)
+        }
+        worker.addEventListener('message', onMessage)
+        try {
+          const match = /#dsh-toolkit-session=([^&]+)/.exec(window.location.hash)
+          if (match) {
+            // 读走就清掉：否则刷新一次又会跳一遍。
+            window.history.replaceState(null, '', window.location.pathname + window.location.search)
+            openFromNotification(decodeURIComponent(match[1]))
+          }
+        } catch (error) {
+          warn('could not read the launch session from the url', error)
+        }
+        return () => worker.removeEventListener('message', onMessage)
+      }, 'dsh-toolkit-notification:sw-clicks')
 
       install(() => () => player.dispose(), 'dsh-toolkit-notification:sounds')
 

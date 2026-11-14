@@ -223,8 +223,13 @@ test('notification child waits for both webServer and connection, mounts authent
     ['exact', '/api/plugins/toolkit/notification/sounds'],
     ['exact', '/api/plugins/toolkit/notification/sound'],
     ['exact', '/api/plugins/toolkit/notification/raise'],
+    // SW 脚本是唯一不带鉴权的通知路由：浏览器注册 worker 时自己发请求，带不上页面 token。
+    ['exact', '/api/plugins/toolkit/notification/sw.js'],
   ])
-  for (const route of soundRoutes()) {
+  // SW 脚本是唯一例外：注册 worker 时浏览器自己发脚本请求，带不上页面 token，
+  // 所以它必须在不鉴权的情况下也能取到（见 sw 路由的单独断言）。
+  const serviceWorkerRoute = soundRoutes().find(({ path }) => path.endsWith('/sw.js'))
+  for (const route of soundRoutes().filter((entry) => entry !== serviceWorkerRoute)) {
     // 提窗路由只认 POST，GET 会被预取/缓存命中，等于用户没点也提窗。
     const request = { method: route.path.endsWith('/raise') ? 'POST' : 'GET', url: route.path }
     const response = { statusCode: 0, ended: false, end() { this.ended = true } }
@@ -233,6 +238,16 @@ test('notification child waits for both webServer and connection, mounts authent
     assert.equal(response.ended, true)
     assert.equal(ctx.get('connection').requests.at(-1), request, 'routes use the injected host authentication boundary')
   }
+  const swResponse = {
+    statusCode: 0,
+    headers: {},
+    setHeader(name, value) { this.headers[name] = value },
+    end(value) { this.body = value },
+  }
+  await serviceWorkerRoute.handler({ method: 'GET', url: serviceWorkerRoute.path }, swResponse)
+  assert.equal(swResponse.statusCode, 200)
+  assert.equal(swResponse.headers['service-worker-allowed'], '/')
+  assert.equal(String(swResponse.body).includes('notificationclick'), true)
   await fiber.dispose()
   assert.deepEqual(soundRoutes(), [])
 })

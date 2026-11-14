@@ -81,7 +81,7 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
     'dsh-toolkit-notification:dictionary', 'dsh-toolkit-notification:stylesheet',
     'dsh-toolkit-notification:settings', 'dsh-toolkit-notification:sessions',
     'dsh-toolkit-notification:pending', 'dsh-toolkit-notification:audio-unlock',
-    'dsh-toolkit-notification:sounds',
+    'dsh-toolkit-notification:sw-clicks', 'dsh-toolkit-notification:sounds',
     'dsh-toolkit-notification:dismiss-visible',
     'dsh-toolkit-notification:section',
     'dsh-toolkit-notification:settings-icon',

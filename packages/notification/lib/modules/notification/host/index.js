@@ -2,6 +2,7 @@ import { sendJson } from '../../../host/http.js';
 import { registerAuthenticatedRoute, asHttpFailure } from '../../../host/routes.js';
 import { RAISE_PATH, SOUND_PATH, SOUNDS_PATH } from './constants.js';
 import { raiseWindow } from './raise.js';
+import { registerNotificationServiceWorkerRoute } from './service-worker.js';
 import { createSoundService } from './sounds.js';
 // 路径的唯一来源是 ./constants.ts；这里转出只是为了让既有调用方少改一处。
 export { RAISE_PATH, SOUND_PATH, SOUNDS_PATH } from './constants.js';
@@ -75,6 +76,7 @@ export function apply(ctx) {
         return;
     registerNotificationSoundRoutes(ctx);
     registerRaiseRoute(ctx);
+    registerNotificationServiceWorkerRoute(ctx);
 }
 export default { name, inject, apply };
 //# sourceMappingURL=index.js.map
