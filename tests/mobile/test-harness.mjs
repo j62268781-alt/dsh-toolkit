@@ -3346,15 +3346,16 @@ await test("移动客户端构建保留 utf8、h 调用与宿主注入依赖", (
   );
 });
 
-await test("host 按职责分目录，且只有 index.js 留在根下", () => {
+await test("host 按职责分目录，且只有入口留在根下", () => {
   // fs 直接接受 URL 对象，省掉 dirname(fileURLToPath(...)) 那串转换
   const loose = readdirSync(new URL("../../src/modules/mobile/host", import.meta.url), { withFileTypes: true })
     .filter((e) => e.isFile())
     .map((e) => e.name);
-  assert.deepEqual(
-    loose, ["index.js"],
-    "host/ 根下只应有入口 index.js；其余模块按 device/ stream/ agent/ 归位",
-  );
+  // 根下只允许 AGENTS.md §5.1 的固定槽位：入口 + 配置 + 常量（+ 可选单例服务），
+  // 其余一律按 device/ stream/ agent/ 归位。扩展名不锁死：资产型 .js 与源码型 .ts 都可能合法。
+  const allowed = /^(index|config|constants|service)\.(ts|tsx|js)$/;
+  assert.deepEqual(loose.filter((name) => !allowed.test(name)), [],
+    `host/ 根下只应有 index/config/constants/service，实际是 ${loose.join(", ")}`);
   for (const dir of ["device", "stream", "agent"]) {
     assert.ok(existsSync(new URL(`../../src/modules/mobile/host/${dir}`, import.meta.url)), `缺少 host/${dir}/`);
   }

@@ -25,10 +25,11 @@ await run(['--import', './scripts/jsx-register.mjs', '--test', '--test-reporter=
 
 // Isolate the optional local CLI checks from the user's DSH/mobilecli state.
 // macOS's per-user TMPDIR can exceed Unix socket path limits in the RPC tests.
+// --import jsx-register：harness 直接 import 的源码入口是 .ts，靠 resolve 钩子把 .js 说明符映射过去。
 const temporaryRoot = await realpath(process.platform === 'darwin' ? '/tmp' : tmpdir())
 const home = await mkdtemp(join(temporaryRoot, 'dsh-toolkit-tests-'))
 try {
-  await run(['tests/mobile/test-harness.mjs'], {
+  await run(['--import', './scripts/jsx-register.mjs', 'tests/mobile/test-harness.mjs'], {
     ...process.env,
     TMPDIR: temporaryRoot,
     DSH_HOME: join(home, 'dsh'),
