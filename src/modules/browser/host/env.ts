@@ -7,7 +7,7 @@
  */
 
 import { runProcess } from '../../../host/process.js'
-import { findExecutableOnPath } from '../../../host/executable.js'
+import { findCommandOnPath } from '../../../host/executable.js'
 
 export interface CommandResult {
   readonly code: number | null
@@ -31,9 +31,13 @@ export function runCommand(
   }))
 }
 
-/** PATH 上按名字找可执行文件（与 cli.ts 的同名逻辑一致：不做 shell 展开）。 */
+/**
+ * PATH 上按名字找可执行文件（与 cli.ts 的同名逻辑一致）。
+ * 用 `findCommandOnPath` 而不是 `findExecutableOnPath`：Windows 上 npm 只发 `.cmd` shim，
+ * 只认 `.exe` 会把装好的 agent-browser 报成「本机没安装」。
+ */
 export function whichOnPath(name: string): string | undefined {
-  return findExecutableOnPath(name) ?? undefined
+  return findCommandOnPath(name) ?? undefined
 }
 
 /**

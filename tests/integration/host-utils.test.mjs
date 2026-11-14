@@ -10,7 +10,7 @@ import { dshHome } from '../../src/host/dsh-home.ts'
 import { readBody, sendJson } from '../../src/host/http.ts'
 import { sleep } from '../../src/host/time.ts'
 import { findOnPath } from '../../src/modules/mobile/host/device/path.ts'
-import { findExecutableOnPath } from '../../src/host/executable.ts'
+import { findExecutableOnPath, findCommandOnPath, isWindowsShim, resolveSpawnTarget, windowsExecutableExtensions } from '../../src/host/executable.ts'
 import { registerImportRoute } from '../../src/modules/skills-mcp/host/import/route.ts'
 import { registerSkillRoute } from '../../src/modules/skills-mcp/host/skills/route.ts'
 import { registerRowRoute } from '../../src/modules/skills-mcp/host/mcp/rows.ts'
@@ -144,6 +144,32 @@ test('mobile PATH helper keeps native executable ordering, empty entries and Win
   const windowsOptions = { platform: 'win32', exists: (file) => windowsFiles.has(file) }
   assert.equal(findExecutableOnPath('tool', { ...windowsOptions, pathValue: 'C:\\first;;D:\\second' }), 'D:\\second\\tool.exe')
   assert.equal(findExecutableOnPath('tool', { ...windowsOptions, pathValue: 'C:\\first' }), null)
+})
+
+test('Windows 上 npm 的 .cmd shim 既能被找到，也能被翻译成 cmd.exe 调用', () => {
+  // PATHEXT 的顺序即优先级，但原生映像永远先试：同名 shim 不能盖掉真正的二进制。
+  assert.deepEqual(windowsExecutableExtensions({ PATHEXT: '.COM;.EXE;.BAT;.CMD' }), ['.com', '.exe', '.bat', '.cmd'])
+  assert.deepEqual(windowsExecutableExtensions({ PATHEXT: '.EXE;.CMD' }), ['.exe', '.cmd'])
+  assert.deepEqual(windowsExecutableExtensions({}), ['.com', '.exe', '.bat', '.cmd'])
+
+  const shims = new Set(['C:\\npm\\agent-browser.cmd', 'C:\\npm\\agent-browser.ps1'])
+  const options = { platform: 'win32', pathValue: 'C:\\npm', exists: (file) => shims.has(file) }
+  // 只认 .exe/.com 时会得出「本机没安装」的错结论 —— 这正是 agent-browser 自检踩到的坑。
+  assert.equal(findExecutableOnPath('agent-browser', options), null)
+  assert.equal(findCommandOnPath('agent-browser', options), 'C:\\npm\\agent-browser.cmd')
+
+  assert.equal(isWindowsShim('C:\\npm\\agent-browser.cmd'), true)
+  assert.equal(isWindowsShim('C:\\npm\\agent-browser.BAT'), true)
+  assert.equal(isWindowsShim('C:\\npm\\agent-browser.exe'), false)
+
+  const target = resolveSpawnTarget('C:\\npm\\agent-browser.cmd', ['--version', 'a b'], 'win32', { ComSpec: 'C:\\WINDOWS\\system32\\cmd.exe' })
+  assert.equal(target.command, 'C:\\WINDOWS\\system32\\cmd.exe')
+  assert.deepEqual(target.args, ['/d', '/s', '/c', 'C:\\npm\\agent-browser.cmd --version "a b"'])
+  assert.equal(target.windowsVerbatimArguments, true)
+
+  // 原生 .exe 与 posix 命令都必须原样传，不能被包进 shell。
+  assert.deepEqual(resolveSpawnTarget('C:\\tools\\x.exe', ['--a'], 'win32', {}), { command: 'C:\\tools\\x.exe', args: ['--a'] })
+  assert.deepEqual(resolveSpawnTarget('/usr/bin/x', ['--a'], 'linux', {}), { command: '/usr/bin/x', args: ['--a'] })
 })
 
 async function bundleModule(contents, plugins = []) {

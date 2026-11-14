@@ -9,7 +9,7 @@
  *   更新版本放行，不写上限——上限只会把可用的新版本误判成故障。
  */
 import { runProcess } from '../../../host/process.js';
-import { findExecutableOnPath, createExecutableResolver } from '../../../host/executable.js';
+import { findCommandOnPath, createExecutableResolver, isWindowsShim } from '../../../host/executable.js';
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { EXTRACT_SCRIPT, parseExtracted } from './extract.js';
@@ -78,9 +78,13 @@ export class CliError extends Error {
 }
 /** `close` 之后等守护进程真正退出的时间（实测 300ms 足够；见 `AgentBrowser.close`）。 */
 const CLOSE_SETTLE_MS = 300;
-/** PATH 里按名字找可执行文件（不做 shell 展开，也不需要 shell）。 */
+/**
+ * PATH 里按名字找可执行文件。**Windows 上连 `.cmd` 一起找**：npm / pnpm 全局装的 CLI
+ * 只有 shim（`agent-browser` + `.cmd` + `.ps1`），只认 `.exe` 会得出「本机没安装」的错结论；
+ * shim 本身由 `resolveSpawnTarget` 经 cmd.exe 执行。
+ */
 function which(name, platform = process.platform) {
-    return findExecutableOnPath(name, {
+    return findCommandOnPath(name, {
         platform,
         exists: (candidate) => {
             try {
@@ -174,6 +178,10 @@ export function resolveCommand(configured, platform = process.platform, arch = p
         if (native !== undefined)
             return { command: native, kind: 'native', detail: `${native}（跳过 ${real} 的 Node 包装层）` };
         return { command: real, kind: 'wrapper', detail: `${real}（JS 包装层；同目录没有原生二进制，将多付一份 Node 启动）` };
+    }
+    // npm 在 Windows 上只发 shim，没有原生映像：跑得起来，但每次都会多一层 cmd.exe + Node。
+    if (isWindowsShim(real)) {
+        return { command: real, kind: 'wrapper', detail: `${real}（Windows 命令行 shim，经 cmd.exe 执行）` };
     }
     return { command: real, kind: 'native', detail: real };
 }

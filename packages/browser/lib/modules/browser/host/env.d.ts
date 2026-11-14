@@ -15,7 +15,11 @@ export interface CommandResult {
 export declare function runCommand(command: string, args: readonly string[], timeoutMs: number, options?: {
     signal?: AbortSignal;
 }): Promise<CommandResult>;
-/** PATH 上按名字找可执行文件（与 cli.ts 的同名逻辑一致：不做 shell 展开）。 */
+/**
+ * PATH 上按名字找可执行文件（与 cli.ts 的同名逻辑一致）。
+ * 用 `findCommandOnPath` 而不是 `findExecutableOnPath`：Windows 上 npm 只发 `.cmd` shim，
+ * 只认 `.exe` 会把装好的 agent-browser 报成「本机没安装」。
+ */
 export declare function whichOnPath(name: string): string | undefined;
 /**
  * 安装 agent-browser 的计划：Homebrew 优先（macOS 上最不容易踩权限坑），

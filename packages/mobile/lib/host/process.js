@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createOperation } from './operation.js';
+import { resolveSpawnTarget } from './executable.js';
 const DEFAULT_MAX_OUTPUT_BYTES = 8 * 1024 * 1024;
 const DEFAULT_KILL_GRACE_MS = 1000;
 /** Run a child with one deadline, bounded combined output, and close-confirmed cancellation. */
@@ -81,11 +82,15 @@ export function runProcess(command, args = [], options = {}) {
             }
         };
         try {
-            child = spawn(command, [...args], {
+            // Windows 上 `.cmd` / `.bat`（npm 装的 CLI 都是这种）不能被 CreateProcess 直接
+            // 执行，得经 cmd.exe；`resolveSpawnTarget` 只对这两种后缀动手，其余原样传。
+            const target = resolveSpawnTarget(command, args, process.platform, env ?? process.env);
+            child = spawn(target.command, target.args, {
                 cwd,
                 env,
                 stdio: [stdin === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
                 windowsHide: true,
+                ...(target.windowsVerbatimArguments === undefined ? {} : { windowsVerbatimArguments: target.windowsVerbatimArguments }),
             });
         }
         catch (error) {

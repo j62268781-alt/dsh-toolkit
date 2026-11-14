@@ -10,7 +10,7 @@
  */
 
 import { runProcess } from '../../../host/process.js'
-import { findExecutableOnPath, createExecutableResolver } from '../../../host/executable.js'
+import { findCommandOnPath, createExecutableResolver, isWindowsShim } from '../../../host/executable.js'
 import { existsSync, realpathSync, statSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { EXTRACT_SCRIPT, parseExtracted, type ExtractedItem } from './extract.js'
@@ -164,9 +164,13 @@ export interface ResolvedCommand {
   readonly detail: string
 }
 
-/** PATH 里按名字找可执行文件（不做 shell 展开，也不需要 shell）。 */
+/**
+ * PATH 里按名字找可执行文件。**Windows 上连 `.cmd` 一起找**：npm / pnpm 全局装的 CLI
+ * 只有 shim（`agent-browser` + `.cmd` + `.ps1`），只认 `.exe` 会得出「本机没安装」的错结论；
+ * shim 本身由 `resolveSpawnTarget` 经 cmd.exe 执行。
+ */
 function which(name: string, platform = process.platform): string | undefined {
-  return findExecutableOnPath(name, {
+  return findCommandOnPath(name, {
     platform,
     exists: (candidate) => {
       try { return statSync(candidate).isFile() } catch { return false }
@@ -256,6 +260,10 @@ export function resolveCommand(configured: string, platform = process.platform, 
     const native = nativeSiblingOf(real, platform, arch)
     if (native !== undefined) return { command: native, kind: 'native', detail: `${native}（跳过 ${real} 的 Node 包装层）` }
     return { command: real, kind: 'wrapper', detail: `${real}（JS 包装层；同目录没有原生二进制，将多付一份 Node 启动）` }
+  }
+  // npm 在 Windows 上只发 shim，没有原生映像：跑得起来，但每次都会多一层 cmd.exe + Node。
+  if (isWindowsShim(real)) {
+    return { command: real, kind: 'wrapper', detail: `${real}（Windows 命令行 shim，经 cmd.exe 执行）` }
   }
   return { command: real, kind: 'native', detail: real }
 }
