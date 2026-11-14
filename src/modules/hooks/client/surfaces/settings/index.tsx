@@ -240,17 +240,30 @@ function createHooksSection(ctx: any) {
 
     const renderHistoryRow = (run: HookRunRow) => {
       const problem = runProblem(run, { timedOut: t("timedOut"), exit: (code) => t("exit", { code }) });
+      const eventLabel = HOOK_EVENTS.find((event) => event.id === run.event)?.label ?? run.event;
       return (
-        <li className="sk-hooks__run" key={run.id}>
-          <span className="sk-hooks__runTime">{run.at > 0 ? timeFormat.format(new Date(run.at)) : "—"}</span>
-          <span className={`sk-hooks__badge sk-hooks__badge--${run.source}`}>{sourceLabel(run.source)}</span>
-          <code className="sk-hooks__runCommand" title={run.command}>{run.command}</code>
-          <span className={`sk-hooks__decision is-${run.decision}`}>{t(decisionKeys[run.decision] ?? "decisionAllow")}</span>
-          {problem.text === "" ? null : (
-            <span className={`sk-hooks__runNote is-${problem.tone}`} title={problem.text}>{problem.text}</span>
-          )}
-          <span className="sk-hooks__runMs">{formatDuration(run.durationMs)}</span>
-        </li>
+        <div className="sk-hooks__run" key={run.id}>
+          <div className="sk-hooks__runText">
+            <code className="sk-hooks__runCommand" title={run.command}>{run.command}</code>
+            <div className="sk-hooks__runHint">
+              <span className="sk-hooks__runTime">{run.at > 0 ? timeFormat.format(new Date(run.at)) : "—"}</span>
+              <span className="sk-hooks__dot" aria-hidden="true" />
+              <span>{eventLabel}</span>
+              <span className="sk-hooks__dot" aria-hidden="true" />
+              <span className={`sk-hooks__badge sk-hooks__badge--${run.source}`}>{sourceLabel(run.source)}</span>
+              {problem.text === "" ? null : (
+                <>
+                  <span className="sk-hooks__dot" aria-hidden="true" />
+                  <span className={`sk-hooks__runNote is-${problem.tone}`} title={problem.text}>{problem.text}</span>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="sk-hooks__runSide">
+            <span className={`sk-hooks__decision is-${run.decision}`}>{t(decisionKeys[run.decision] ?? "decisionAllow")}</span>
+            <span className="sk-hooks__runMs">{formatDuration(run.durationMs)}</span>
+          </div>
+        </div>
       );
     };
 
@@ -311,7 +324,7 @@ function createHooksSection(ctx: any) {
           <p className="sk-hooks__hint">{t("historyEmpty")}</p>
         ) : (
           <div className="sk-hooks__history">
-            <ul className="sk-hooks__runs">{history.map(renderHistoryRow)}</ul>
+            <div className="sk-hooks__card">{history.map(renderHistoryRow)}</div>
             {snapshot.history.length > 8 && !showAllHistory ? (
               <button type="button" className="sk-hooks__link" onClick={() => setShowAllHistory(true)}>
                 {t("showMore")}

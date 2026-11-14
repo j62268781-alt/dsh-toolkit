@@ -336,39 +336,83 @@
   border-radius: var(--dsw-radius-md);
 }
 
-.sk-hooks__runs {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* 最近执行：与上面事件卡组同一套行结构（同一边框卡片、16px 行距、行间 0.5px 分隔线）。 */
+.sk-hooks__run {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 0;
+}
+
+.sk-hooks__run + .sk-hooks__run {
+  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
+}
+
+.sk-hooks__runText {
+  min-width: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.sk-hooks__run {
+.sk-hooks__runCommand {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  color: var(--dsw-alias-label-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-hooks__runHint {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   min-width: 0;
   font-size: 12px;
-  line-height: 20px;
-  color: var(--dsw-alias-label-secondary);
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
 }
 
 .sk-hooks__runTime,
 .sk-hooks__runMs {
   flex: none;
   font-variant-numeric: tabular-nums;
-  color: var(--dsw-alias-label-tertiary);
 }
 
-.sk-hooks__runCommand {
+.sk-hooks__runNote {
   min-width: 0;
-  flex: 1;
-  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sk-hooks__runNote.is-error {
+  color: var(--dsw-alias-state-danger-primary, #d0453f);
+}
+
+.sk-hooks__runSide {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.sk-hooks__dot {
+  flex: none;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  corner-shape: round;
+  background-color: currentColor;
+  opacity: 0.6;
 }
 
 .sk-hooks__decision.is-deny {
@@ -378,21 +422,6 @@
 .sk-hooks__decision.is-ask {
   color: var(--dsw-alias-state-warning-primary, #b7791f);
 }
-
-.sk-hooks__runNote {
-  min-width: 0;
-  flex: 0 1 auto;
-  max-width: 46%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.sk-hooks__runNote.is-error {
-  color: var(--dsw-alias-state-danger-primary, #d0453f);
-}
-
 .sk-hooks__btn {
   padding: 0 10px;
   height: 28px;
