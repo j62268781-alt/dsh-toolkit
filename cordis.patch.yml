@@ -20,6 +20,8 @@
       name: dsh-toolkit-notification
     - id: dsh-toolkit-pet
       name: dsh-toolkit-pet
+    - id: dsh-toolkit-hooks
+      name: dsh-toolkit-hooks
     - id: dsh-toolkit-remote
       name: dsh-toolkit-remote
     - id: ds-harness-remote

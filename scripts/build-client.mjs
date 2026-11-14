@@ -73,6 +73,7 @@ const clients = [
   ['mobile', '@j62268781-alt/dsh-sidebar-mobile', 'src/modules/mobile/client/index', true],
   ['skills-mcp', '@j62268781-alt/dsh-skills-mcp-manager', 'src/modules/skills-mcp/client/client', true],
   ['boot', 'dsh-toolkit/boot', 'src/modules/boot/client/index', false],
+  ['hooks', 'dsh-toolkit/hooks', 'src/modules/hooks/client/index', false],
 ]
 
 /** Import specifier for an extension-less entry, resolved through the probe order. */

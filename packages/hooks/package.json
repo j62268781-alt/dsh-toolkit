@@ -1,0 +1,36 @@
+{
+  "name": "dsh-toolkit-hooks",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "在任务的关键节点运行你自己的命令，并提供只读的钩子配置面板。",
+  "license": "MIT",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json",
+    "./client": "./lib/client.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ]
+}

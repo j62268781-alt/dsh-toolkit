@@ -32,5 +32,6 @@ export const PACKAGE_MODULES = Object.freeze([
   { name: 'skills-mcp', client: { entry: 'src/modules/skills-mcp/client/client', factory: true }, skills: [] },
   { name: 'notification', client: { entry: 'src/modules/notification/client/index', factory: true }, skills: [] },
   { name: 'pet', client: { entry: 'src/modules/pet/client/index', factory: true }, skills: [] },
+  { name: 'hooks', client: { entry: 'src/modules/hooks/client/index', factory: false }, skills: [] },
   { name: 'remote', client: { entry: 'src/modules/remote/client/index', factory: true }, skills: [] },
 ].map((module) => Object.freeze({ ...module, packageName: `dsh-toolkit-${module.name}` })))

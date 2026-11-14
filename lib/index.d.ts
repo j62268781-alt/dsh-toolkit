@@ -307,6 +307,21 @@ declare const _default: {
             islandHeight: import("@deepseek-ai/schemastery").default<number, number, "volatile-defined">;
             electronPath: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
         }>>, "defined">;
+        hooks: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            userFile: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            includeProject: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            projectDir: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            defaultTimeoutMs: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            maxHistory: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            userFile: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            includeProject: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            projectDir: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            defaultTimeoutMs: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            maxHistory: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+        }>>, "defined">;
         remote: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
             enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
             credentialRef: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
@@ -634,6 +649,21 @@ declare const _default: {
             islandWidth: import("@deepseek-ai/schemastery").default<number, number, "volatile-defined">;
             islandHeight: import("@deepseek-ai/schemastery").default<number, number, "volatile-defined">;
             electronPath: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
+        }>>, "defined">;
+        hooks: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            userFile: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            includeProject: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            projectDir: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            defaultTimeoutMs: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            maxHistory: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            userFile: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            includeProject: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            projectDir: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            defaultTimeoutMs: import("@deepseek-ai/schemastery").default<number, number, "defined">;
+            maxHistory: import("@deepseek-ai/schemastery").default<number, number, "defined">;
         }>>, "defined">;
         remote: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
             enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;

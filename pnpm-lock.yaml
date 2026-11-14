@@ -40,6 +40,9 @@ importers:
       dsh-toolkit-browser:
         specifier: workspace:^
         version: link:packages/browser
+      dsh-toolkit-hooks:
+        specifier: workspace:^
+        version: link:packages/hooks
       dsh-toolkit-judgment:
         specifier: workspace:^
         version: link:packages/judgment
@@ -180,6 +183,8 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: ^3.18.5
         version: 3.18.5
+
+  packages/hooks: {}
 
   packages/judgment:
     dependencies:

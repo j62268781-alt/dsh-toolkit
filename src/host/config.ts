@@ -6,6 +6,7 @@ import { Config as NotificationConfig } from '../modules/notification/host/confi
 import { Config as PetConfig } from '../modules/pet/host/config.js'
 import { Config as BootConfig } from '../modules/boot/host/config.js'
 import { Config as ThemeConfig } from '../modules/theme/host/config.js'
+import { Config as HooksConfig } from '../modules/hooks/host/config.js'
 import { Config as RemoteConfig } from '../modules/remote/host/wechat/config.js'
 
 // Compatibility schema for legacy composition tests and configuration migration.
@@ -21,5 +22,6 @@ export const Config = s.object({
   skillsMcp: SkillsMcpConfig.default({}),
   notification: NotificationConfig.default({}),
   pet: PetConfig.default({}),
+  hooks: HooksConfig.default({}),
   remote: RemoteConfig.default({}),
 })

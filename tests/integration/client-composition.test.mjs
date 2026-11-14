@@ -16,6 +16,7 @@ const EXPECTED_INJECT = {
   'dsh-toolkit-boot-client': ['slots', 'configForms'],
   'dsh-toolkit-pet-client': ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces', 'sessions'],
   'dsh-toolkit-remote-client': ['locale'],
+  'dsh-toolkit-hooks-client': ['slots', 'locale'],
 }
 const ALL_SERVICES = new Set([
   ...Object.values(EXPECTED_INJECT).flat(), 'sidebarRight', 'shortcuts', 'uiSession', 'uiConversation', 'uiWorkspace',
@@ -33,6 +34,9 @@ const IMMEDIATE_EFFECTS = new Set([
   'dsh-toolkit-mobile:tab-type',
   'dsh-toolkit-mobile:tab-body',
   'dsh-toolkit-mobile:tab-title',
+  // 钩子页只读配置：注册 section 与图标都不需要 DOM 或网络。
+  'dsh-toolkit-hooks:settings',
+  'dsh-toolkit-hooks:settings-icon',
 ])
 
 async function loadClient() {
@@ -94,7 +98,11 @@ async function boot({ missing = [] } = {}) {
   const credentials = { marker: 'credentials' }
   const locale = {
     register() { return () => {} },
-    bind(namespace) { return (key) => namespace === 'shell-kit.archived' ? ({ nav: '已归档的聊天', title: '已归档的聊天' }[key] ?? key) : key },
+    bind(namespace) {
+      if (namespace === 'shell-kit.archived') return (key) => ({ nav: '已归档的聊天', title: '已归档的聊天' }[key] ?? key)
+      if (namespace === 'shell-kit.hooks') return (key) => ({ nav: '钩子', title: '钩子' }[key] ?? key)
+      return (key) => key
+    },
   }
   const value = {
     browser: { enabled: false, tools: { read: true } },
@@ -186,7 +194,7 @@ async function boot({ missing = [] } = {}) {
   return { ...loaded, children, active, pending, effects, registrations, tabTypes, mounted, trace, writes, value, rootForm, inventory, credentials, remoteServices }
 }
 
-test('the real classic factory uses only Host seed modules and mounts ten separate plugins', async () => {
+test('the real classic factory uses only Host seed modules and mounts eleven separate plugins', async () => {
   const { client, required, warnings } = await loadClient()
   assert.deepEqual(Array.from(client.inject), [])
   assert.equal(typeof client.apply, 'function')
@@ -205,12 +213,12 @@ test('the real classic factory uses only Host seed modules and mounts ten separa
 
 test('the unified bundle registers the original settings pages, Remote faces, and mobile tab', async () => {
   const result = await boot()
-  assert.equal(result.children.length, 10)
-  assert.equal(result.active.length, 10)
+  assert.equal(result.children.length, 11)
+  assert.equal(result.active.length, 11)
   assert.deepEqual(result.pending, [])
   assert.deepEqual(result.warnings, [])
   const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
-  assert.deepEqual(sections.map(({ registration }) => registration.id).sort(), ['archived-chats', 'boot', 'browser', 'desktop-pet', 'judgment', 'notification', 'skills-mcp', 'theme'])
+  assert.deepEqual(sections.map(({ registration }) => registration.id).sort(), ['archived-chats', 'boot', 'browser', 'desktop-pet', 'hooks', 'judgment', 'notification', 'skills-mcp', 'theme'])
 
   const expected = {
     'archived-chats': { namespace: 'shell-kit.archived', order: 20, label: '已归档的聊天' },
@@ -220,6 +228,7 @@ test('the unified bundle registers the original settings pages, Remote faces, an
     notification: { namespace: 'notification', order: 24, label: '通知' },
     'desktop-pet': { namespace: 'pet', order: 25, label: '桌面宠物' },
     'skills-mcp': { namespace: 'skillsMcp', order: 20, label: 'Skills & MCP' },
+    hooks: { namespace: 'shell-kit.hooks', order: 26, label: '钩子' },
     theme: { namespace: 'theme', order: 5, label: '外观' },
   }
   for (const { registration, Component } of sections) {
@@ -227,6 +236,12 @@ test('the unified bundle registers the original settings pages, Remote faces, an
     assert.equal(typeof Component, 'function')
     assert.equal(registration.order, definition.order)
     assert.equal(registration.label(), definition.label)
+    if (registration.id === 'hooks') {
+      // 钩子页只读配置：自己带 locale，不需要注入任何 form/remote face。
+      assert.equal(registration.locale, 'shell-kit.hooks')
+      assert.equal(registration.inject, undefined)
+      continue
+    }
     if (registration.id === 'archived-chats') {
       assert.equal(registration.locale, 'shell-kit.archived')
       assert.equal(registration.inject, undefined)
@@ -317,8 +332,8 @@ test('missing archived session services leave theme, other pages, and the mobile
   const result = await boot({ missing: ['sessions'] })
   // pet 客户端现在也读 sessions（主视图切会话时上报已读），缺该服务时与其他会话相关插件一起等待。
   assert.deepEqual(result.pending, ['dsh-toolkit-archived-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-pet-client'])
-  assert.equal(result.active.length, 7)
-  assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['boot', 'browser', 'judgment', 'skills-mcp', 'theme'])
+  assert.equal(result.active.length, 8)
+  assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['boot', 'browser', 'hooks', 'judgment', 'skills-mcp', 'theme'])
   assert.equal(result.tabTypes.length, 1)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'dsh-toolkit-theme-client'), true)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'dsh-toolkit-archived-client'), false)
@@ -332,9 +347,9 @@ test('nested Remote dependencies block only the client that declares them', asyn
   ]) {
     const result = await boot({ missing: [dependency] })
     assert.deepEqual(result.pending, [pending])
-    assert.equal(result.active.length, 9)
+    assert.equal(result.active.length, 10)
     const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
-    assert.equal(sections.length, 7)
+    assert.equal(sections.length, 8)
     assert.equal(sections.some(({ registration }) => registration.id === absentSection), false)
     assert.equal(sections.some(({ registration }) => registration.id === 'browser'), true)
     assert.equal(result.tabTypes.length, 1)
@@ -344,12 +359,12 @@ test('nested Remote dependencies block only the client that declares them', asyn
 test('missing settings forms or mobile tab services do not suspend unrelated children', async () => {
   const withoutForms = await boot({ missing: ['configForms'] })
   assert.deepEqual(withoutForms.pending, ['dsh-toolkit-theme-client', 'dsh-toolkit-skills-mcp-client', 'dsh-toolkit-judgment-client', 'dsh-toolkit-browser-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-boot-client', 'dsh-toolkit-pet-client'])
-  assert.deepEqual(withoutForms.active.sort(), ['dsh-toolkit-archived-client', 'dsh-toolkit-mobile-client', 'dsh-toolkit-remote-client'])
+  assert.deepEqual(withoutForms.active.sort(), ['dsh-toolkit-archived-client', 'dsh-toolkit-hooks-client', 'dsh-toolkit-mobile-client', 'dsh-toolkit-remote-client'])
   assert.equal(withoutForms.tabTypes.length, 1)
 
   const withoutTabs = await boot({ missing: ['sidebarRightTabs'] })
   assert.deepEqual(withoutTabs.pending, ['dsh-toolkit-mobile-client'])
-  assert.equal(withoutTabs.active.length, 9)
+  assert.equal(withoutTabs.active.length, 10)
   assert.equal(withoutTabs.tabTypes.length, 0)
-  assert.equal(withoutTabs.registrations.length, 8)
+  assert.equal(withoutTabs.registrations.length, 9)
 })

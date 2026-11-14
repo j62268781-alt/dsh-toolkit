@@ -1,6 +1,7 @@
 import * as boot from './modules/boot/host/index.js'
 import * as archived from './modules/archived/host/index.js'
 import AgentBrowserService from './modules/browser/host/index.js'
+import * as hooks from './modules/hooks/host/index.js'
 import JudgmentService from './modules/judgment/host/index.js'
 import * as mobile from './modules/mobile/host/index.js'
 import * as notification from './modules/notification/host/index.js'
@@ -30,6 +31,7 @@ export function apply(ctx: any, config: any): void {
   ctx.plugin(notification, config.notification)
   ctx.plugin(SkillsMcp, config.skillsMcp)
   ctx.plugin(pet, config.pet)
+  ctx.plugin(configuredPlugin(hooks), config.hooks)
   ctx.plugin(configuredPlugin(remote), config.remote)
 }
 

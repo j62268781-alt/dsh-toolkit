@@ -30,7 +30,7 @@ assert.equal(typeof toolkit.apply, 'function')
 assert.deepEqual(toolkit.inject, [])
 assert.equal(manifest.dsh?.client, undefined, 'the aggregate package must not mount a duplicate client bundle')
 
-const moduleNames = ['boot', 'theme', 'archived', 'browser', 'judgment', 'mobile', 'skills-mcp', 'notification', 'pet', 'remote']
+const moduleNames = ['boot', 'theme', 'archived', 'browser', 'judgment', 'mobile', 'skills-mcp', 'notification', 'pet', 'hooks', 'remote']
 for (const name of moduleNames) {
   const moduleRoot = join(root, 'packages', name)
   const packageManifest = JSON.parse(await readFile(join(moduleRoot, 'package.json'), 'utf8'))

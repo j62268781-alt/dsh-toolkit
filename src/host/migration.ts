@@ -7,6 +7,7 @@ export const ROOT_IDS: readonly string[] = ['shell-kit', 'dsh-toolkit', 'dsh-she
 export const MODULE_NAMESPACES = Object.freeze({
   boot: 'boot', theme: 'theme', archived: 'archived', browser: 'browser',
   judgement: 'judgment', mobile: 'mobile', skillsMcp: 'skills-mcp', notification: 'notification', pet: 'pet',
+  hooks: 'hooks',
 })
 
 const own = (value: object, key: string): boolean => Object.prototype.hasOwnProperty.call(value, key)

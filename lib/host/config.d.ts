@@ -300,6 +300,21 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         islandHeight: s<number, number, "volatile-defined">;
         electronPath: s<string, string, "volatile-defined">;
     }>>, "defined">;
+    hooks: s<Schemastery.ObjectS<NoInfer<{
+        enabled: s<boolean, boolean, "defined">;
+        userFile: s<string, string, "defined">;
+        includeProject: s<boolean, boolean, "defined">;
+        projectDir: s<string, string, "defined">;
+        defaultTimeoutMs: s<number, number, "defined">;
+        maxHistory: s<number, number, "defined">;
+    }>>, Schemastery.ObjectT<NoInfer<{
+        enabled: s<boolean, boolean, "defined">;
+        userFile: s<string, string, "defined">;
+        includeProject: s<boolean, boolean, "defined">;
+        projectDir: s<string, string, "defined">;
+        defaultTimeoutMs: s<number, number, "defined">;
+        maxHistory: s<number, number, "defined">;
+    }>>, "defined">;
     remote: s<Schemastery.ObjectS<NoInfer<{
         enabled: s<boolean, boolean, "volatile-defined">;
         credentialRef: s<string, string, "volatile-defined">;
@@ -627,6 +642,21 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         islandWidth: s<number, number, "volatile-defined">;
         islandHeight: s<number, number, "volatile-defined">;
         electronPath: s<string, string, "volatile-defined">;
+    }>>, "defined">;
+    hooks: s<Schemastery.ObjectS<NoInfer<{
+        enabled: s<boolean, boolean, "defined">;
+        userFile: s<string, string, "defined">;
+        includeProject: s<boolean, boolean, "defined">;
+        projectDir: s<string, string, "defined">;
+        defaultTimeoutMs: s<number, number, "defined">;
+        maxHistory: s<number, number, "defined">;
+    }>>, Schemastery.ObjectT<NoInfer<{
+        enabled: s<boolean, boolean, "defined">;
+        userFile: s<string, string, "defined">;
+        includeProject: s<boolean, boolean, "defined">;
+        projectDir: s<string, string, "defined">;
+        defaultTimeoutMs: s<number, number, "defined">;
+        maxHistory: s<number, number, "defined">;
     }>>, "defined">;
     remote: s<Schemastery.ObjectS<NoInfer<{
         enabled: s<boolean, boolean, "volatile-defined">;

@@ -77,6 +77,14 @@ const SHAPES: Record<string, any> = {
       <path d="M8 10.7v2.6" />
     </>
   ),
+  // 钩子：带环的鱼钩（环 + 下沉的钩身 + 倒刺），和 Qoder 那套面板的钩子图标同义。
+  hook: (
+    <>
+      <circle cx="5.7" cy="3.2" r="1.1" />
+      <path d="M5.7 4.3v4.4a2.9 2.9 0 0 0 5.8 0V7.5" />
+      <path d="M11.5 7.5 9.7 6.9" />
+    </>
+  ),
   gear: (
     <>
       <circle cx="8" cy="8" r="4.6" />

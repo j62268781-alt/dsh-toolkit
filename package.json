@@ -85,6 +85,7 @@
     "dsh-toolkit-archived": "workspace:^",
     "dsh-toolkit-boot": "workspace:^",
     "dsh-toolkit-browser": "workspace:^",
+    "dsh-toolkit-hooks": "workspace:^",
     "dsh-toolkit-judgment": "workspace:^",
     "dsh-toolkit-mobile": "workspace:^",
     "dsh-toolkit-notification": "workspace:^",

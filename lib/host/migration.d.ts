@@ -14,6 +14,7 @@ export declare const MODULE_NAMESPACES: Readonly<{
     skillsMcp: "skills-mcp";
     notification: "notification";
     pet: "pet";
+    hooks: "hooks";
 }>;
 export interface MigrationResult {
     patches: any[];
