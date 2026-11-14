@@ -54,19 +54,23 @@ import { installSlot } from '../../../client/ui/slot.ts'   // ❌
 esbuild 会把 `./x.js` 解析到 `x.ts`、`./x.jsx` 到 `x.tsx`；node:test 侧由 `scripts/jsx-hooks.mjs` 的
 `resolve` 兜底。所以「改名不用改 importer」，反过来也别写 `.ts` 后缀。
 
-### 2.3 类型检查只有 host 侧，分档但不分目录
+### 2.3 类型检查分三档：host 严、client 宽、emit 最松
 
-| 档 | 配置 | 用途 |
-| --- | --- | --- |
-| strict | `tsconfig.json` | `pnpm typecheck`，**零容忍**：整个 host 树（含十个模块）都要过 |
-| loose | `tsconfig.build.json`（`extends` 上面，`strict:false`） | `scripts/build-host.mjs` 的 emit 程序 |
+| 档 | 配置 | 命令 | 口径 |
+| --- | --- | --- | --- |
+| host strict | `tsconfig.json` | `pnpm typecheck` | 整个 host 树零容忍 |
+| client | `tsconfig.client.json` | `pnpm typecheck:client` | `.ts/.tsx` 走 `strict:false` + DOM lib，只要 0 诊断 |
+| emit | `tsconfig.build.json` | `pnpm typecheck:modules` | `scripts/build-host.mjs` 的 emit 程序 |
 
 **为什么 strict 不能按目录白名单豁免**：`src/index.ts` import 了十个模块的 host 插件，`src/host/config.ts`
 又 import 了八个模块的 `Config`。tsc 的 `include` 只决定入口，被 import 的文件一律进程序 —— 「只 include
 已毕业的模块」等于没有限制。所以 strict 覆盖 `src/index.ts` + `src/host/**/*.ts` + `src/modules/*/host/**/*.ts`。
 
-- **client 侧（`.tsx`）不进 tsc 程序**：没有 `@types/react`，`lib` 里也没有 DOM。正确性由 esbuild（语法）
-  + 测试（行为）保证；写类型标注是为了可读性，别指望 tsc 检查它。
+- **client 侧走 `tsconfig.client.json`**：`lib` 加了 DOM，`types` 加了 `react`，`jsx: "react-jsx"`（只为类型检查；
+  真正 emit 仍是 esbuild 的 `__dshReact.createElement` 工厂）。它**故意不开 strict**：十个模块的 UI 从来没被
+  类型检查过，先立「能跑通的门」，再谈收紧；不开 strict 不代表可以乱写 `any`。
+- client 侧的运行期全局（`__CLIENT_CSS__`）与资源模块（`*.css` 的 text loader）声明在
+  `src/client/env.d.ts`、`src/client/assets.d.ts`；新增同类全局必须补在那里，别在每个文件里 `declare`。
 - `TS1xxx` 语法错误会让整个程序的语义诊断消失 —— 看到「0 错误」先确认没有 `error TS1`。
 
 ---
@@ -78,11 +82,13 @@ esbuild 会把 `./x.js` 解析到 `x.ts`、`./x.jsx` 到 `x.tsx`；node:test 侧
 | `pnpm build` | 构建 Host、Client 与十个独立模块包 |
 | `pnpm build:check` | 只校验产物是否最新（不写文件） |
 | `pnpm typecheck` / `pnpm typecheck:modules` | strict / loose 两档 tsc |
+| `pnpm typecheck:client` | client 侧 tsc（`tsconfig.client.json`，见 §2.3） |
 | `pnpm check` | 模块 / 包契约检查（client bundle 断言 + 未定义名字检查） |
 | `pnpm test` | `tests/<group>/*.test.mjs`（node:test） |
-| `pnpm verify` | build → typecheck → check → test → build:check |
+| `pnpm verify` | build → typecheck → typecheck:client → check → test → build:check |
 
-**最低验证线**：`pnpm build` + `pnpm check` + 相关测试；交付前 `pnpm verify`。
+**最低验证线**：`pnpm build` + `pnpm check` + 相关测试；改了 `.ts`/`.tsx` 还要跑 `pnpm typecheck` 与
+`pnpm typecheck:client`（分别对应 host 与 client 两个程序，漏一个就漏掉半个仓库）；交付前 `pnpm verify`。
 
 ---
 
@@ -284,7 +290,15 @@ for (const surface of SURFACES) ctx.effect(() => surface.install(ctx, host), `ds
   ```
 
   它负责：`cache-control: no-store` → method 不符 404 `{ok:false,reason:'not-found'}` → 读 body 并
-  `JSON.parse`（坏 JSON → 400 `bad-json`）→ `pick` / `check`（false → 400 `reason`）→ `run` 抛错 → 500 `message`。
+  `JSON.parse`（坏 JSON → 400 `bad-json`）→ `pick` / `check`（false → 400 `reason`）→ `run` 抛错 →
+  `asHttpFailure(error)` 折算成状态码与 `{ok:false,reason}`。
+- **失败只有一个通道**：域层要表达「这次请求不允许」就 `throw httpFailure(400, '请求体不是合法 JSON')`，
+  不要再 `Object.assign(new Error(msg), { statusCode: 400 })`（历史上 remote 手搓了 3 处，现已统一）。
+  `asHttpFailure(error, fallback)` 认三种输入：`HttpFailure` 实例 → 用它自己的 `status`/`reason`；
+  带 `statusCode` 的老式错误 → 用该码（兼容既有测试对 `error.statusCode` 的断言）；其余 → `fallback` + `message`。
+  `HttpFailure` 同时暴露 `.status` 与 `.statusCode`（后者是兼容别名，新代码只用 `.status`）。
+- `limit` 只管「多大算超限」，**业务上限（比如批量条数）写在 `check()` 或域层**，不要在 `routes/` 里
+  手写第二套长度判断。
 - **`limit` 的单位是解码字符**（`readCharBody`），不是字节：8192 个中文字符必须被接受，
   8193 个必须 `req.destroy()` 且**永不响应**。
 - 只有「浏览器顶跳回来、不该要宿主身份」的回调才用 `auth:false`（现状：OAuth 回调，靠 `state` 保护）。
@@ -298,8 +312,11 @@ for (const surface of SURFACES) ctx.effect(() => surface.install(ctx, host), `ds
 - 测试 import 源码时写 `.js` / `.jsx`（`jsx-hooks` 负责解析到 `.ts` / `.tsx`）；但**把路径当字符串**用的地方
   （esbuild `entryPoints`、`readFileSync`、`loadClientEntry`）必须写真实扩展名。
 - 断言要抓真问题：状态映射 / 降级路径 / 卸载清理 / 迟到响应，而不是只跑通 happy path。
-- **已知的本机失败**（Windows，不要误判为回归）：`tests/pet/service.test.mjs` 断言
-  `assetDir.startsWith('/')`，而 Windows 上真实目录是 `D:\…`。
+- **已知的本机失败**（Windows，不要误判为回归）：`tests/pet/service.test.mjs:75` 断言
+  `assetDir.startsWith('/')`。`assetDir` 是**真实文件系统绝对路径**（`D:\…`），被
+  `pet/host/runtime/core.cjs` 的 `pet-asset://` 协议用 `path.isAbsolute()` 校验后再 `assetJoin()`
+  拼路径；强行补前导 `/` 会让 `path.join('/pets/x','a.webp')` 变成 `\pets\x\a.webp`（当前盘根相对），
+  helper 反而读不到图。这条断言是 POSIX-only，不要为了让它变绿去改源码。
 - `tests/judgment/ledger.test.mjs` 的「并发 ask 原子占用配额」在全量并行下偶发失败，单跑稳定通过 ——
   先复跑该文件再判断是否回归。
 

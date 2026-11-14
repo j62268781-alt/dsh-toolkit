@@ -110,11 +110,15 @@ tests/<m>/*.test.mjs
 ## 6. 验证与提交
 
 ```powershell
-pnpm build          # 产物是 git 跟踪的，必须重新生成
-pnpm typecheck      # host 侧 strict，新模块也要零错误
-pnpm check          # 契约检查（会校验包清单、client bundle、未定义名字）
+pnpm build           # 产物是 git 跟踪的，必须重新生成
+pnpm typecheck       # host 侧 strict，新模块也要零错误
+pnpm typecheck:client # client 侧 tsc（tsconfig.client.json），新模块的 .tsx 也要零诊断
+pnpm check           # 契约检查（会校验包清单、client bundle、未定义名字）
 node --test tests/<m>/*.test.mjs
 ```
+
+host 与 client 是两个 tsc 程序：只跑 `typecheck` 会漏掉整个 `client/`，只跑 `typecheck:client`
+会漏掉 `routes/` 与 `index.ts`。交付前直接 `pnpm verify`（两者都串在里面）。
 
 按 AGENTS.md §14 拆 commit：`feat(<m>): …`（src + lib + packages 一起）、`test(<m>): …` 视情况合并。
 
