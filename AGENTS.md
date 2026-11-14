@@ -302,6 +302,10 @@ for (const surface of SURFACES) ctx.effect(() => surface.install(ctx, host), `ds
 - **`limit` 的单位是解码字符**（`readCharBody`），不是字节：8192 个中文字符必须被接受，
   8193 个必须 `req.destroy()` 且**永不响应**。
 - 只有「浏览器顶跳回来、不该要宿主身份」的回调才用 `auth:false`（现状：OAuth 回调，靠 `state` 保护）。
+  另一类例外是**浏览器自己发起的静态脚本请求**：注册 Service Worker 时由浏览器独立取 `sw.js`，
+  带不上页面 token，所以它走裸 `registerRoute`（`src/modules/notification/host/service-worker.ts`）。
+  这类路由必须同时满足：只回固定文本、不读请求体、不加 `no-store` 之外的状态、显式写
+  `service-worker-allowed` 头，并在测试里断言「`connection.requestRejection` 一次都没被调」。
 - webServer 不存在时要能降级：`ctx.inject(['webServer','connection'], ...)`。
 
 ---
