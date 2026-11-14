@@ -1,6 +1,7 @@
 import { ARCH_NS } from "../locale.js";
 import { readPendingDeletions, removeSessionViaHost, removeSessionsViaHost } from "../deletion.js";
 import { failureText } from "../model.js";
+import { DELETION_CODE } from "../constants.js";
 import { createStore } from "../../../../client/ui/store.js";
 
 /**
@@ -83,11 +84,11 @@ export function createRemoval(ctx) {
       const failed = [];
       const errors = [];
       for (const row of request.rows) {
-        const receipt = receipts.get(row.id) ?? { ok: false, code: "unknown" };
+        const receipt = receipts.get(row.id) ?? { ok: false, code: DELETION_CODE.unknown };
         // The files are already gone (workspace deleted, disk cleanup, an older
         // delete): clearing the archive metadata is the only work left, and it is
         // what keeps such a record from staying archived forever.
-        const alreadyGone = receipt.code === "not-found";
+        const alreadyGone = receipt.code === DELETION_CODE.notFound;
         if (receipt.ok !== true && !alreadyGone) {
           failed.push(row);
           const reason = failureText(t, receipt);
@@ -96,7 +97,7 @@ export function createRemoval(ctx) {
         }
         doneIds.push(row.id);
         // `retained` = 文件搬走了但归档登记还留在宿主里（见 host/trash/deletion.js）。
-        if (receipt.code === "retained") retainedIds.add(row.id);
+        if (receipt.code === DELETION_CODE.retained) retainedIds.add(row.id);
       }
 
       // These metadata commands remain valid after the session files are gone.

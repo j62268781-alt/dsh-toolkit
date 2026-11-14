@@ -6,6 +6,7 @@ import { JSDOM } from 'jsdom'
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ARCH_COPY } from '../../src/modules/archived/client/locale.ts'
+import { DELETION_CODE } from '../../src/modules/archived/host/constants.ts'
 
 const h = React.createElement
 
@@ -200,10 +201,10 @@ test('bulk delete sends one batch request, retries failures, and never touches w
       ok: true, status: 200, json: async () => ({
         ok: true,
         results: sessionIds.map((sessionId) => {
-          if (sessionId === 'a2') return { sessionId, statusCode: 409, ok: false, code: 'session-loaded' }
+          if (sessionId === 'a2') return { sessionId, statusCode: 409, ok: false, code: DELETION_CODE.sessionLoaded }
           // Files already gone: the archive entry must still be cleared, not reported as a failure.
-          if (sessionId === 'missing') return { sessionId, statusCode: 404, ok: false, code: 'not-found' }
-          return { sessionId, statusCode: 200, ok: true, code: 'deleted' }
+          if (sessionId === 'missing') return { sessionId, statusCode: 404, ok: false, code: DELETION_CODE.notFound }
+          return { sessionId, statusCode: 200, ok: true, code: DELETION_CODE.deleted }
         }),
       }),
     }
@@ -221,7 +222,7 @@ test('bulk delete sends one batch request, retries failures, and never touches w
   app.setFetch(async (_input, options) => {
     if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: [] }) }
     const { sessionIds } = JSON.parse(options.body)
-    return { ok: true, status: 200, json: async () => ({ ok: true, results: sessionIds.map((sessionId) => ({ sessionId, statusCode: 200, ok: true, code: 'deleted' })) }) }
+    return { ok: true, status: 200, json: async () => ({ ok: true, results: sessionIds.map((sessionId) => ({ sessionId, statusCode: 200, ok: true, code: DELETION_CODE.deleted })) }) }
   })
   await app.click('永久删除')
   assert.equal(app.dialog(), null)
@@ -251,7 +252,7 @@ test('confirming a bulk delete closes the dialog at once and loads the button in
     await new Promise((resolve) => gates.push(resolve))
     return {
       ok: true, status: 200,
-      json: async () => ({ ok: true, results: sessionIds.map((sessionId) => ({ sessionId, statusCode: 200, ok: true, code: 'deleted' })) }),
+      json: async () => ({ ok: true, results: sessionIds.map((sessionId) => ({ sessionId, statusCode: 200, ok: true, code: DELETION_CODE.deleted })) }),
     }
   })
   await app.render(app.overlay(h(app.sections)))
@@ -302,9 +303,9 @@ test('a session the host still holds keeps its archive entry until the restart c
         results: sessionIds.map((sessionId) => {
           // The host moved the files but still holds the record: clearing the archive
           // registration now would put a session without files back in the sidebar.
-          if (sessionId !== 'loose') return { sessionId, statusCode: 200, ok: true, code: 'deleted' }
+          if (sessionId !== 'loose') return { sessionId, statusCode: 200, ok: true, code: DELETION_CODE.deleted }
           pending = ['loose']
-          return { sessionId, statusCode: 200, ok: true, code: 'retained' }
+          return { sessionId, statusCode: 200, ok: true, code: DELETION_CODE.retained }
         }),
       }),
     }
@@ -331,8 +332,8 @@ test('a retained deletion hides its sidebar row without hiding the rows the Work
         ok: true,
         results: sessionIds.map((sessionId) => (
           sessionId === 'loose'
-            ? { sessionId, statusCode: 200, ok: true, code: 'retained' }
-            : { sessionId, statusCode: 200, ok: true, code: 'deleted' }
+            ? { sessionId, statusCode: 200, ok: true, code: DELETION_CODE.retained }
+            : { sessionId, statusCode: 200, ok: true, code: DELETION_CODE.deleted }
         )),
       }),
     }

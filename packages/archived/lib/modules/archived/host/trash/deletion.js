@@ -1,5 +1,6 @@
 import { archivedIds } from "./reconcile.js";
 import { deleteSessionFiles, markPendingDeletion } from "./files.js";
+import { DELETION_CODE } from "../constants.js";
 /**
  * "Busy" is the host's own notion (`agent.status`), not "the store still holds it".
  *
@@ -26,17 +27,17 @@ export async function deleteArchivedSession(ctx, sessionId) {
     // A session still held in memory but no longer archived is in use by the
     // ordinary sidebar; deleting its files behind that list is not our call.
     if (!archivedIds(ctx).includes(sessionId))
-        return { ok: false, code: "session-loaded" };
+        return { ok: false, code: DELETION_CODE.sessionLoaded };
     if (busy(ctx, sessionId))
-        return { ok: false, code: "session-busy" };
+        return { ok: false, code: DELETION_CODE.sessionBusy };
     // Idle persistence still buffers ~200ms of events; move only after they land.
     if (typeof ctx.sessions.flush === "function")
         await ctx.sessions.flush(live);
     // `flush` awaited real I/O: re-check the verdicts it may have invalidated.
     if (!archivedIds(ctx).includes(sessionId))
-        return { ok: false, code: "session-loaded" };
+        return { ok: false, code: DELETION_CODE.sessionLoaded };
     if (busy(ctx, sessionId))
-        return { ok: false, code: "session-busy" };
+        return { ok: false, code: DELETION_CODE.sessionBusy };
     // Never unarchive here: the host still holds the session, so clearing the
     // registration would put it back in the sidebar, where it could be opened and
     // would write a fresh log into the directory just moved away. The registration
@@ -48,13 +49,13 @@ export async function deleteArchivedSession(ctx, sessionId) {
     // discriminated union, so `code` would not be reachable below.
     if (result.ok === true) {
         await markPendingDeletion(sessionId);
-        return { ok: true, code: "retained", moved: result.moved };
+        return { ok: true, code: DELETION_CODE.retained, moved: result.moved };
     }
     // The files are already gone: clearing this registration is the only work left,
     // and the marker is what lets that happen once the host releases the session.
-    if (result.code === "not-found") {
+    if (result.code === DELETION_CODE.notFound) {
         await markPendingDeletion(sessionId);
-        return { ok: true, code: "retained" };
+        return { ok: true, code: DELETION_CODE.retained };
     }
     return result;
 }
@@ -73,7 +74,7 @@ export async function deleteArchivedSessions(ctx, sessionIds) {
             result = await deleteArchivedSession(ctx, sessionId);
         }
         catch (error) {
-            result = { ok: false, code: "unknown", detail: String(error?.message ?? error) };
+            result = { ok: false, code: DELETION_CODE.unknown, detail: String(error?.message ?? error) };
         }
         results.push({ sessionId, result });
     }

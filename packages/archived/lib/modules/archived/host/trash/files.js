@@ -1,6 +1,7 @@
 import { mkdir, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { dshHome } from "../../../../host/dsh-home.js";
+import { DELETION_CODE } from "../constants.js";
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 function pendingDir() {
     return join(dshHome(), "dsh-delete-session-trash", "pending");
@@ -46,13 +47,13 @@ export async function clearPendingDeletion(sessionId) {
  * Move one session's directory out of `sessions/` and into the trash.
  *
  * Answers the same result vocabulary as the domain (`./deletion.js`): moving to the
- * trash *is* the deletion, so success is `code: "deleted"`. A held handle or a denied
+ * trash *is* the deletion, so success is `DELETION_CODE.deleted`. A held handle or a denied
  * permission surfaces as `move-failed` with the system text in `detail` — the caller
  * branches on the code and never has to parse that message.
  */
 export async function deleteSessionFiles(sessionId) {
     if (!SESSION_ID.test(sessionId)) {
-        return { ok: false, code: "invalid-session-id" };
+        return { ok: false, code: DELETION_CODE.invalidSessionId };
     }
     const home = dshHome();
     const sessionsRoot = join(home, "sessions");
@@ -63,7 +64,7 @@ export async function deleteSessionFiles(sessionId) {
         entries = await readdir(sessionsRoot, { withFileTypes: true });
     }
     catch {
-        return { ok: false, code: "no-sessions-directory" };
+        return { ok: false, code: DELETION_CODE.noSessionsDirectory };
     }
     for (const entry of entries) {
         if (!entry.isDirectory())
@@ -80,7 +81,7 @@ export async function deleteSessionFiles(sessionId) {
         }
     }
     if (found === null)
-        return { ok: false, code: "not-found" };
+        return { ok: false, code: DELETION_CODE.notFound };
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const trashPath = join(trashRoot, `${stamp}-${sessionId}`);
     try {
@@ -88,7 +89,7 @@ export async function deleteSessionFiles(sessionId) {
         await rename(found, trashPath);
     }
     catch (error) {
-        return { ok: false, code: "move-failed", detail: String(error?.message ?? error) };
+        return { ok: false, code: DELETION_CODE.moveFailed, detail: String(error?.message ?? error) };
     }
     const cache = join(home, "storages", "session_projcache", "sessions", `${sessionId}.json`);
     try {
@@ -96,6 +97,6 @@ export async function deleteSessionFiles(sessionId) {
     }
     catch {
     }
-    return { ok: true, code: "deleted", moved: trashPath };
+    return { ok: true, code: DELETION_CODE.deleted, moved: trashPath };
 }
 //# sourceMappingURL=files.js.map

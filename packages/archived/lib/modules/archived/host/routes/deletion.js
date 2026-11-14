@@ -1,5 +1,6 @@
 import { pendingDeletions } from "../trash/reconcile.js";
 import { deleteArchivedSession, deleteArchivedSessions } from "../trash/deletion.js";
+import { DELETION_CODE } from "../constants.js";
 import { DELETE_SESSION_PATH, DELETE_SESSIONS_PATH, PENDING_DELETIONS_PATH } from "../constants.js";
 /** One session id per single request; a page of rows arrives on the bulk route. */
 const SINGLE_BODY_LIMIT = 8_192;
@@ -8,18 +9,18 @@ const BATCH_MAX_IDS = 500;
 /**
  * Result code → HTTP status. One table, so a status can only change here.
  *
- * `move-failed` is almost always a held handle or a permission denial: retryable, not
+ * `moveFailed` is almost always a held handle or a permission denial: retryable, not
  * corrupt, so it stays 409 like the other "try again later" codes. A missing
  * `sessions/` directory is a broken profile rather than a bad request: 500.
  */
 const FAILURE_STATUS = {
-    "invalid-session-id": 404,
-    "not-found": 404,
-    "session-loaded": 409,
-    "session-busy": 409,
-    "move-failed": 409,
-    "no-sessions-directory": 500,
-    unknown: 500,
+    [DELETION_CODE.invalidSessionId]: 404,
+    [DELETION_CODE.notFound]: 404,
+    [DELETION_CODE.sessionLoaded]: 409,
+    [DELETION_CODE.sessionBusy]: 409,
+    [DELETION_CODE.moveFailed]: 409,
+    [DELETION_CODE.noSessionsDirectory]: 500,
+    [DELETION_CODE.unknown]: 500,
 };
 function statusOf(result) {
     if (result.ok === true)

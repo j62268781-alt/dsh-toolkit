@@ -15,7 +15,7 @@ export declare function clearPendingDeletion(sessionId: string): Promise<boolean
  * Move one session's directory out of `sessions/` and into the trash.
  *
  * Answers the same result vocabulary as the domain (`./deletion.js`): moving to the
- * trash *is* the deletion, so success is `code: "deleted"`. A held handle or a denied
+ * trash *is* the deletion, so success is `DELETION_CODE.deleted`. A held handle or a denied
  * permission surfaces as `move-failed` with the system text in `detail` — the caller
  * branches on the code and never has to parse that message.
  */

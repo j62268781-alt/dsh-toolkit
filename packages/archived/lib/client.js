@@ -281,6 +281,24 @@ window.__ModuleLoader__.load({
     var DELETE_SESSION_PATH = `${API_PREFIX}/delete-session`;
     var DELETE_SESSIONS_PATH = `${API_PREFIX}/delete-sessions`;
     var PENDING_DELETIONS_PATH = `${API_PREFIX}/pending-deletions`;
+    var DELETION_CODE = {
+      /** 目录已搬进回收站。 */
+      deleted: 1001,
+      /** 文件搬走了，但归档登记作为 tombstone 留在宿主里（宿主还持有这个 session）。 */
+      retained: 1002,
+      invalidSessionId: 4101,
+      /** 文件本来就不在了：视作成功，只需清掉归档登记。 */
+      notFound: 4102,
+      /** 宿主持有该 session，但它已经不在归档里 —— 用户在普通侧栏里能看到它。 */
+      sessionLoaded: 4103,
+      /** 会话还在跑，等它停下来再删。 */
+      sessionBusy: 4104,
+      /** rename 失败：句柄被占用或没有权限，可重试。 */
+      moveFailed: 4105,
+      /** 整个 `sessions/` 目录读不到：profile 坏了或 DSH_HOME 指错。 */
+      noSessionsDirectory: 5101,
+      unknown: 5199
+    };
 
     // src/client/http.ts
     async function fetchJson(url, { json, ...options } = {}) {
@@ -321,24 +339,28 @@ window.__ModuleLoader__.load({
     function failure(code, detail) {
       return detail === void 0 ? { ok: false, code } : { ok: false, code, detail };
     }
+    function codeOf(result) {
+      const code = result?.code;
+      return typeof code === "number" && Number.isInteger(code) ? code : DELETION_CODE.unknown;
+    }
     async function removeSessionViaHost(sessionId) {
       try {
         const response = await fetchJson(DELETE_SESSION_PATH, { method: "POST", json: { sessionId } });
         const result = await response.json();
-        if (!response.ok) return failure(String(result?.code ?? "unknown"), result?.detail);
+        if (!response.ok) return failure(codeOf(result), result?.detail);
         return result;
       } catch (error) {
-        return failure("unknown", String(error?.message ?? error));
+        return failure(DELETION_CODE.unknown, String(error?.message ?? error));
       }
     }
     async function removeSessionsViaHost(sessionIds) {
       try {
         const response = await fetchJson(DELETE_SESSIONS_PATH, { method: "POST", json: { sessionIds } });
         const result = await response.json();
-        if (!response.ok) return failure(String(result?.code ?? "unknown"), result?.detail);
+        if (!response.ok) return failure(codeOf(result), result?.detail);
         return { ok: true, results: Array.isArray(result?.results) ? result.results : [] };
       } catch (error) {
-        return failure("unknown", String(error?.message ?? error));
+        return failure(DELETION_CODE.unknown, String(error?.message ?? error));
       }
     }
     async function readPendingDeletions() {
@@ -360,17 +382,18 @@ window.__ModuleLoader__.load({
       return display;
     }
     var FAILURE_KEYS = {
-      "invalid-session-id": "failInvalidId",
-      "no-sessions-directory": "failNoSessionsDir",
-      "move-failed": "failLocked",
-      "session-loaded": "failLoaded",
-      "session-busy": "failBusy",
-      unknown: "failUnknown"
+      [DELETION_CODE.invalidSessionId]: "failInvalidId",
+      [DELETION_CODE.noSessionsDirectory]: "failNoSessionsDir",
+      [DELETION_CODE.moveFailed]: "failLocked",
+      [DELETION_CODE.sessionLoaded]: "failLoaded",
+      [DELETION_CODE.sessionBusy]: "failBusy",
+      [DELETION_CODE.unknown]: "failUnknown"
     };
     function failureText(t, receipt) {
       const detail = typeof receipt?.detail === "string" ? receipt.detail.trim() : "";
-      if ((receipt?.code ?? "unknown") === "unknown" && detail !== "") return detail;
-      return t(FAILURE_KEYS[receipt?.code] ?? "failUnknown");
+      const code = receipt?.code ?? DELETION_CODE.unknown;
+      if (code === DELETION_CODE.unknown && detail !== "") return detail;
+      return t(FAILURE_KEYS[code] ?? "failUnknown");
     }
     var UNGROUPED = "__ungrouped";
     function readArchived(ctx) {
@@ -523,8 +546,8 @@ window.__ModuleLoader__.load({
           const failed = [];
           const errors = [];
           for (const row of request.rows) {
-            const receipt = receipts.get(row.id) ?? { ok: false, code: "unknown" };
-            const alreadyGone = receipt.code === "not-found";
+            const receipt = receipts.get(row.id) ?? { ok: false, code: DELETION_CODE.unknown };
+            const alreadyGone = receipt.code === DELETION_CODE.notFound;
             if (receipt.ok !== true && !alreadyGone) {
               failed.push(row);
               const reason = failureText(t, receipt);
@@ -532,7 +555,7 @@ window.__ModuleLoader__.load({
               continue;
             }
             doneIds.push(row.id);
-            if (receipt.code === "retained") retainedIds.add(row.id);
+            if (receipt.code === DELETION_CODE.retained) retainedIds.add(row.id);
           }
           await Promise.allSettled(doneIds.filter((id) => !retainedIds.has(id)).flatMap((id) => [
             Promise.resolve().then(() => ctx.workspaces.unarchiveSession(id)),

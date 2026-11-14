@@ -1,25 +1,31 @@
-import { DELETE_SESSION_PATH, DELETE_SESSIONS_PATH, PENDING_DELETIONS_PATH } from "./constants.js";
+import { DELETE_SESSION_PATH, DELETE_SESSIONS_PATH, PENDING_DELETIONS_PATH, DELETION_CODE } from "./constants.js";
 import { fetchJson } from "../../../client/http.js";
 
 /**
  * 一次删除的回执。
  *
- * 宿主只回稳定的 `code`（`../../host/trash/deletion.js` 是唯一来源），`detail` 是系统
- * 原始错误、只用来显示。传输层自己失败（网络、坏 JSON）时给 `code: "unknown"`，让
- * 调用方永远只需要认识一套 code。
+ * 宿主只回稳定的数字 `code`（码表见 `../host/constants.js`，唯一来源），`detail` 是系统
+ * 原始错误、只用来显示。传输层自己失败（网络、坏 JSON、回执里没有数字 code）时一律
+ * 给 `DELETION_CODE.unknown`，让调用方永远只需要认识一套 code。
  */
 function failure(code, detail) {
   return detail === undefined ? { ok: false, code } : { ok: false, code, detail };
+}
+
+/** 只接受码表里那种整数；`"4104"`、`null`、缺失都归到 unknown，不做字符串比较。 */
+function codeOf(result) {
+  const code = result?.code;
+  return typeof code === "number" && Number.isInteger(code) ? code : DELETION_CODE.unknown;
 }
 
 export async function removeSessionViaHost(sessionId) {
   try {
     const response = await fetchJson(DELETE_SESSION_PATH, { method: "POST", json: { sessionId } });
     const result = await response.json();
-    if (!response.ok) return failure(String(result?.code ?? "unknown"), result?.detail);
+    if (!response.ok) return failure(codeOf(result), result?.detail);
     return result;
   } catch (error) {
-    return failure("unknown", String(error?.message ?? error));
+    return failure(DELETION_CODE.unknown, String(error?.message ?? error));
   }
 }
 
@@ -34,10 +40,10 @@ export async function removeSessionsViaHost(sessionIds) {
   try {
     const response = await fetchJson(DELETE_SESSIONS_PATH, { method: "POST", json: { sessionIds } });
     const result = await response.json();
-    if (!response.ok) return failure(String(result?.code ?? "unknown"), result?.detail);
+    if (!response.ok) return failure(codeOf(result), result?.detail);
     return { ok: true, results: Array.isArray(result?.results) ? result.results : [] };
   } catch (error) {
-    return failure("unknown", String(error?.message ?? error));
+    return failure(DELETION_CODE.unknown, String(error?.message ?? error));
   }
 }
 

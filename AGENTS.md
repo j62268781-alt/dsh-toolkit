@@ -136,10 +136,12 @@ src/modules/<module>/host/
 - 路由骨架统一走 `src/host/routes.ts` 的 `registerJsonRoutes` + `jsonRoute`，**不要**手写 method 守卫 /
   body 上限 / no-store / 错误映射。
 - 领域层返回**域结果**（`{ok:true,…}` / `{ok:false,…}`），HTTP 状态码映射留在 `routes/`。
-- 失败用**稳定的业务 `code`**（`"not-found"` / `"session-busy"` / `"unknown"` …），需要原文时另给
-  `detail`；**不要把文案塞进 code，也不要让 client 靠 `reason.startsWith(...)` 反推状态**。
-  `code` 与 HTTP 的 `statusCode` 各管一件事，`routes/` 用一张 `Record<code, status>` 映射，
-  不要在 payload 里把 code 改写成另一个 code。
+- 失败用**稳定的数字业务 `code`**，只通过码表引用（`DELETION_CODE.sessionBusy`），不写字面量 `4104`：
+  `1xxx` 已完成、`4xxx` 这次请求或当前状态不允许（重试 / 刷新 / 等会话闲下来可能变）、`5xxx` 环境坏了
+  （重试无用，要人处理）。需要原文时另给 `detail`；**不要把文案塞进 code，也不要让 client 靠
+  `reason.startsWith(...)` 反推状态**。`code` 与 HTTP 的 `statusCode` 各管一件事，`routes/` 用一张
+  `Record<code, status>` 映射，不要在 payload 里把 code 改写成另一个 code。码表放在该模块的
+  `host/constants.ts`（client 也会求值它，所以那里不能有 Node 依赖），client 由自己的 `constants.ts` 转出。
 - 禁止出现 `.tsx`、`document`、`window`、React。
 - `inject` 数组顺序被测试断言（例：`tests/integration/archived-deletion.test.mjs:107`），改动要同步测试。
 

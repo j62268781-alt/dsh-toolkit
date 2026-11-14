@@ -1,3 +1,5 @@
+import { DELETION_CODE } from "./constants.js";
+
 // Project the existing session and workspace snapshots without mutating either source.
 export function archivedRowTitle(summary) {
   const title = typeof summary?.title === "string" ? summary.title.trim() : "";
@@ -9,17 +11,17 @@ export function archivedRowTitle(summary) {
 /**
  * 宿主回执的 `code` → 本模块字典里的文案键。
  *
- * 宿主只说 code（`host/trash/deletion.js` 是唯一来源），措辞留在这里：改一句提示不用
- * 碰宿主，也不会像 `reason` 时代那样「宿主改了措辞，客户端的分支悄悄失效」。
- * `not-found` 不在表里 —— 文件本来就没了，removal 会把它当成成功。
+ * 宿主只说数字 code（码表在 `host/constants.js`，唯一来源），措辞留在这里：改一句提示
+ * 不用碰宿主，也不会像 `reason` 时代那样「宿主改了措辞，客户端的分支悄悄失效」。
+ * `notFound` 不在表里 —— 文件本来就没了，removal 会把它当成成功。
  */
 const FAILURE_KEYS = {
-  "invalid-session-id": "failInvalidId",
-  "no-sessions-directory": "failNoSessionsDir",
-  "move-failed": "failLocked",
-  "session-loaded": "failLoaded",
-  "session-busy": "failBusy",
-  unknown: "failUnknown",
+  [DELETION_CODE.invalidSessionId]: "failInvalidId",
+  [DELETION_CODE.noSessionsDirectory]: "failNoSessionsDir",
+  [DELETION_CODE.moveFailed]: "failLocked",
+  [DELETION_CODE.sessionLoaded]: "failLoaded",
+  [DELETION_CODE.sessionBusy]: "failBusy",
+  [DELETION_CODE.unknown]: "failUnknown",
 };
 
 /**
@@ -30,8 +32,9 @@ const FAILURE_KEYS = {
  */
 export function failureText(t, receipt) {
   const detail = typeof receipt?.detail === "string" ? receipt.detail.trim() : "";
-  if ((receipt?.code ?? "unknown") === "unknown" && detail !== "") return detail;
-  return t(FAILURE_KEYS[receipt?.code] ?? "failUnknown");
+  const code = receipt?.code ?? DELETION_CODE.unknown;
+  if (code === DELETION_CODE.unknown && detail !== "") return detail;
+  return t(FAILURE_KEYS[code] ?? "failUnknown");
 }
 
 const UNGROUPED = "__ungrouped";
