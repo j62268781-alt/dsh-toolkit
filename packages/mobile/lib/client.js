@@ -1057,9 +1057,7 @@ window.__ModuleLoader__.load({
         clearTimeout(timer);
         controller = new AbortController();
         const active = controller;
-        pending = Promise.resolve().then(() => {
-          if (!stopped) return task(active.signal);
-        }).catch((error) => {
+        pending = Promise.resolve().then(() => stopped ? void 0 : task(active.signal)).then(() => void 0).catch((error) => {
           if (!stopped && !active.signal.aborted) onError(error);
         }).finally(() => {
           pending = void 0;

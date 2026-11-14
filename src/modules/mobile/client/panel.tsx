@@ -9,7 +9,7 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
   const { IconHome, IconBack, IconRotate, IconRefresh, IconFrame, IconFrameNone } = icons;
   const { measureStage, maxMediaCssWidth, getPanelCssWidth, setDevicePixelWidth } = canvasRuntime;
   function nextFrame() {
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
       else setTimeout(resolve, 16);
     });
@@ -69,7 +69,8 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
           const target = devicesRef.current.find((d) => d.id === deviceId);
           const willBoot = target !== void 0 && target.state !== "online" && (target.type === "simulator" || target.type === "emulator");
           if (willBoot) setBooting(true);
-          const body = deviceId === void 0 ? {} : { deviceId };
+          // 显式类型：`deviceId` 缺省时是 `{}`，但两个分支都会补 `preferredWidth`。
+          const body: { deviceId?: any; preferredWidth?: number } = deviceId === void 0 ? {} : { deviceId };
           const preferredWidth = preferredStreamWidth();
           if (preferredWidth > 0) body.preferredWidth = preferredWidth;
           const result = await api("grant", body);

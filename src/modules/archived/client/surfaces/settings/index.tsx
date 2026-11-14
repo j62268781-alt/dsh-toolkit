@@ -5,6 +5,7 @@ import { useStore } from "../../../../../client/ui/store.js";
 import { ARCH_NS } from "../../locale.js";
 import { readArchived } from "../../model.js";
 import { DeleteButton } from "../../components/delete-button/index.jsx";
+import type { RemovalState } from "../../state/removal.js";
 
 export { default as css } from "./style.css";
 
@@ -45,7 +46,16 @@ function createArchivedSection(ctx, removal) {
   const Button = primitives.Button;
   const SearchIcon = primitives.IconSearchOutlineRegular ?? FallbackSearchIcon;
 
-  function RestoreButton({ busy, disabled, onClick, className, children }) {
+  /** `className` is optional: the fallback button supplies its own when absent. */
+  interface RestoreButtonProps {
+    busy?: boolean;
+    disabled?: boolean;
+    onClick?: () => any;
+    className?: string;
+    children?: any;
+  }
+
+  function RestoreButton({ busy, disabled, onClick, className, children }: RestoreButtonProps) {
     if (Button === undefined) {
       return <button type="button" className={className ?? "sk-arch__btn"} disabled={busy || disabled} onClick={onClick}>{children}</button>;
     }
@@ -62,7 +72,7 @@ function createArchivedSection(ctx, removal) {
     const [busyId, setBusyId] = React.useState(null);
     const [error, setError] = React.useState("");
 
-    const removalState = useStore(removal);
+    const removalState = useStore<RemovalState>(removal);
 
     React.useEffect(() => {
       const rerender = () => bump((n) => n + 1);

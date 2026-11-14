@@ -24,6 +24,7 @@ import { fetchJson } from '../../../client/http.js'
 import { RAISE_PATH } from '../host/constants.js'
 import { NOTIFICATION_NS, NOTIFICATION_COPY, createTranslator } from './locale.js'
 import { CONFIG_NS, readSettings, safeSnapshot } from './model.js'
+import type { SessionListSnapshot } from './model.js'
 import { displayTitleOf, sessionDetailOf } from './detail.js'
 import { NotificationEngine } from './engine.js'
 import { NotificationDispatcher } from './dispatch.js'
@@ -49,7 +50,7 @@ function localeHint(ctx) {
 }
 
 /** 统一的诊断输出：注册失败只 warn，不让一个可选环节拖垮整个客户端半。 */
-function warn(message, error) {
+function warn(message: string, error?: any) {
   try {
     if (error === undefined) console.warn(`[dsh-toolkit:notification] ${message}`)
     else console.warn(`[dsh-toolkit:notification] ${message}`, error)
@@ -99,7 +100,7 @@ export function pendingFactsOf(statuses) {
  * @param {object} snapshot `ctx.sessions.list` 快照。
  * @param {string} id 会话 id。
  */
-export function hasUnfinishedWork(snapshot, id) {
+export function hasUnfinishedWork(snapshot: SessionListSnapshot | undefined, id: string) {
   try {
     const values = snapshot?.projectionsBySession?.[id]?.values
     if (values === null || typeof values !== 'object') return false
@@ -120,7 +121,7 @@ export function hasUnfinishedWork(snapshot, id) {
  * @param {object} snapshot `ctx.sessions.list` 快照。
  * @param {string} id 会话 id。
  */
-export function hasRunningDescendants(snapshot, id) {
+export function hasRunningDescendants(snapshot: SessionListSnapshot | undefined, id: string) {
   try {
     const byId = snapshot?.byId ?? {}
     const seen = new Set([id])
@@ -161,7 +162,7 @@ export default function createNotification(require) {
 
       /* ── 偏好源：配置表单 → 容错解码 → 稳定的快照 ─────────────────────── */
       let settingsValue = readSettings(safeSnapshot(form))
-      const settingsListeners = new Set()
+      const settingsListeners = new Set<() => void>()
       const refreshSettings = () => {
         settingsValue = readSettings(safeSnapshot(form))
         for (const listener of [...settingsListeners]) {
@@ -498,10 +499,12 @@ export default function createNotification(require) {
 
       install(() => {
         if (typeof form?.subscribe !== 'function') return undefined
+        // 共享层 `ScopedForm.subscribe` 的返回类型还是 unknown（src/client/config.ts），
+        // 按宿主约定它就是一个 disposer，这里只在调用处收窄，不改共享层的签名。
         const off = form.subscribe(() => {
           refreshSettings()
           syncScope()
-        })
+        }) as (() => void) | undefined
         return () => {
           try {
             off?.()

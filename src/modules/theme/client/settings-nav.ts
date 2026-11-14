@@ -170,7 +170,9 @@ function installGroupedMenu(ctx, nav, input) {
   };
 }
 
-export function installSettingsNav(ctx = {}) {
+/** The host plugin context is a runtime object with no type in the client program;
+ *  `any` keeps the slot/locale subscriptions honest instead of inventing a shape. */
+export function installSettingsNav(ctx: any = {}) {
   let panel = null;
   let overlay = null;
   let block = null;
@@ -216,7 +218,7 @@ export function installSettingsNav(ctx = {}) {
   const observer = new MutationObserver((records) => {
     // Ignore our own menu updates; watch the original rows for React/locale changes.
     if (records.some(({ target }) => !target.parentElement?.closest(".sk-setnav__groups,.sk-setnav__empty") &&
-      !target.closest?.(".sk-setnav__groups,.sk-setnav__empty"))) scan();
+      !(target as Element).closest?.(".sk-setnav__groups,.sk-setnav__empty"))) scan();
   });
   observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["aria-current", "class", "disabled"] });
   const offSlots = ctx.slots?.subscribe("settings.section", scan);

@@ -211,7 +211,7 @@ export function createTranslator(ctx, language) {
   } catch {
     bind = undefined
   }
-  return function translate(key, params) {
+  return function translate(key, params?: any) {
     let text
     if (typeof bind === 'function') {
       try {

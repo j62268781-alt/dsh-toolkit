@@ -8,17 +8,25 @@ import { fetchJson } from "../../../client/http.js";
  * 原始错误、只用来显示。传输层自己失败（网络、坏 JSON、回执里没有数字 code）时一律
  * 给 `DELETION_CODE.unknown`，让调用方永远只需要认识一套 code。
  */
-function failure(code, detail) {
+/** 一次删除的回执；批量删除把每个会话的结果放在 `results` 里。 */
+export interface DeletionReceipt {
+  ok: boolean;
+  code?: number;
+  detail?: any;
+  results?: any[];
+}
+
+function failure(code: number, detail?: any): DeletionReceipt {
   return detail === undefined ? { ok: false, code } : { ok: false, code, detail };
 }
 
 /** 只接受码表里那种整数；`"4104"`、`null`、缺失都归到 unknown，不做字符串比较。 */
-function codeOf(result) {
+function codeOf(result: any): number {
   const code = result?.code;
   return typeof code === "number" && Number.isInteger(code) ? code : DELETION_CODE.unknown;
 }
 
-export async function removeSessionViaHost(sessionId) {
+export async function removeSessionViaHost(sessionId: string): Promise<DeletionReceipt> {
   try {
     const response = await fetchJson(DELETE_SESSION_PATH, { method: "POST", json: { sessionId } });
     const result = await response.json();
@@ -36,7 +44,7 @@ export async function removeSessionViaHost(sessionId) {
  * answer is a receipt per id rather than one verdict for the call: a row that
  * cannot go must not take the rest of the batch with it.
  */
-export async function removeSessionsViaHost(sessionIds) {
+export async function removeSessionsViaHost(sessionIds: string[]): Promise<DeletionReceipt> {
   try {
     const response = await fetchJson(DELETE_SESSIONS_PATH, { method: "POST", json: { sessionIds } });
     const result = await response.json();
@@ -55,7 +63,7 @@ export async function removeSessionsViaHost(sessionIds) {
  * out until then. A failed lookup returns an empty set: showing a row that no
  * longer has files is far less harmful than hiding one that does.
  */
-export async function readPendingDeletions() {
+export async function readPendingDeletions(): Promise<Set<string>> {
   try {
     const response = await fetchJson(PENDING_DELETIONS_PATH, { method: "GET" });
     if (!response.ok) return new Set();

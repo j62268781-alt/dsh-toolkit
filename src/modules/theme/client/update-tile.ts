@@ -112,7 +112,7 @@ export function installUpdateTile() {
     observer.disconnect();
     if (queued) cancelAnimationFrame(queued);
     if (typeof unsubscribe === "function") unsubscribe();
-    for (const tile of document.querySelectorAll(TILE)) {
+    for (const tile of document.querySelectorAll<HTMLElement>(TILE)) {
       tile.removeAttribute("data-cx-update");
       tile.removeAttribute("data-cx-progress");
       tile.style.removeProperty("--cx-update-pct");

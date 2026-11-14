@@ -149,9 +149,9 @@ export function toneOf(state) {
  * 创建状态存储：可订阅、可触发拉取。
  * @param options.onError 传输层错误的回调（面板只在首次失败时提示）。
  */
-export function createConnection({ onError = () => {} } = {}) {
+export function createConnection({ onError = () => {} }: { onError?: (error: any) => void } = {}) {
   let value = { ...EMPTY, state: 'closed' }
-  const listeners = new Set()
+  const listeners = new Set<() => void>()
   let inflight
   let disposed = false
 
@@ -166,7 +166,7 @@ export function createConnection({ onError = () => {} } = {}) {
     }
   }
 
-  async function request(path, { method = 'GET', json } = {}) {
+  async function request(path, { method = 'GET', json }: { method?: string; json?: any } = {}) {
     let response
     try {
       response = await fetch(`${API_PREFIX}/${path}`, {
@@ -181,7 +181,8 @@ export function createConnection({ onError = () => {} } = {}) {
     } catch (error) {
       throw new Error(`连不上插件路由：${String(error?.message ?? error)}`)
     }
-    let payload = {}
+    // 响应体形状由路由决定（状态快照 / 探测结果），这里按 any 读字段。
+    let payload: any = {}
     try {
       payload = await response.json()
     } catch {
@@ -213,7 +214,7 @@ export function createConnection({ onError = () => {} } = {}) {
   }
 
   /** 执行一个会改变状态的动作，并把结果直接写进存储。 */
-  async function act(path, json) {
+  async function act(path, json?) {
     try {
       const payload = await request(path, { method: 'POST', ...(json === undefined ? {} : { json }) })
       publish(normalize(payload))

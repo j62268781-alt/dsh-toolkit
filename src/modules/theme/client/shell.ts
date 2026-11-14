@@ -1,7 +1,20 @@
 import { isCodexShell } from "./platform.js";
 
+/** Installers run only while the Codex shell is active; `nativeInstallers` are its
+ *  counterpart for the other palettes (sidebar width tracking, for example). */
+export interface CodexShellOptions {
+  root?: Element
+  MutationObserver?: typeof MutationObserver
+  isCodexShell?: () => boolean
+  nativeInstallers?: Array<(ctx: any) => unknown>
+}
+
 /** Keep Codex structure exclusive; other palettes may own independent effects. */
-export function installCodexShell(ctx, installers, options = {}) {
+export function installCodexShell(
+  ctx: any,
+  installers: Array<(ctx: any) => unknown>,
+  options: CodexShellOptions = {},
+) {
   const root = options.root ?? document.documentElement;
   const Observer = options.MutationObserver ?? MutationObserver;
   // The Codex shell needs a column to lay the rail out in, so it runs in the desktop

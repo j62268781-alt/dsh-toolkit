@@ -56,6 +56,18 @@ export function audioSupported() {
  * 音量在播放时读取（`volumeOf()`），所以拖音量滑块不需要重建播放器。
  */
 export class SoundPlayer {
+  /** 读取当前音量（0..1）的注入函数；每次播放都重新求值。 */
+  volumeOf: () => number
+
+  /** 共享的音频上下文，首次播放时懒创建。 */
+  context: AudioContext | null
+
+  /** 卸载标记：置位后不再创建上下文。 */
+  disposed: boolean
+
+  /** 播放结束后挂起上下文的定时器。 */
+  suspendTimer: ReturnType<typeof setTimeout> | null
+
   /**
    * @param {() => number} volumeOf 读取当前音量（0..1）。
    */

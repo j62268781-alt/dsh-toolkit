@@ -1,7 +1,32 @@
 import { Chevron } from '../components/chevron.jsx'
 import { detailNodes } from '../components/card.jsx'
 
-export function listCardView({ key, identity, description, enabled, details, pending, statusNode, authNote, isOpen, onToggle, menu, error }) {
+/**
+ * What the list card reads. The panel builds every value here (elements, pairs,
+ * handlers), so they stay opaque on purpose — this type only has to keep the
+ * caller's object literal and this view in step.
+ */
+export interface ListCardProps {
+  key: any
+  identity: any
+  description?: any
+  enabled?: any
+  details: any
+  pending?: any
+  statusNode?: any
+  authNote?: any
+  isOpen?: any
+  onToggle?: any
+  menu?: any
+  error?: any
+  /**
+   * Accepted but unused: the panel's `card()` builds `menu` from this same list and
+   * passes it along. Declared so the caller's literal stays exact.
+   */
+  menuItems?: any
+}
+
+export function listCardView({ key, identity, description, enabled, details, pending, statusNode, authNote, isOpen, onToggle, menu, error }: ListCardProps) {
   return (
     <li className="smp-card" key={key}>
       <div className="smp-cardRow" key="row">

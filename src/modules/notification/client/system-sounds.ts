@@ -20,6 +20,15 @@ export async function loadSystemSounds() {
 
 /** Authenticated system files play in this window and use the application's volume. */
 export class SystemSoundPlayer extends SoundPlayer {
+  /** 已解码的音效文件，按 id 缓存（上限 8 条，见 playFile）。 */
+  buffers: Map<string, AudioBuffer>
+
+  /** 正在播放的节点，卸载时要逐个 stop。 */
+  sources: Set<AudioBufferSourceNode>
+
+  /** 在途的下载请求，卸载时要 abort。 */
+  requests: Set<AbortController>
+
   constructor(volumeOf) {
     super(volumeOf)
     this.buffers = new Map()
@@ -27,7 +36,7 @@ export class SystemSoundPlayer extends SoundPlayer {
     this.requests = new Set()
   }
 
-  play(id, volume) {
+  override play(id, volume) {
     if (SOUND_IDS.includes(id)) return super.play(id, volume)
     const level = clampVolume(volume === undefined ? this.volumeOf() : volume)
     if (this.disposed || id === 'none' || level <= 0 || !audioSupported() || !/^[a-zA-Z0-9:_-]{1,128}$/.test(id)) return false
@@ -84,7 +93,7 @@ export class SystemSoundPlayer extends SoundPlayer {
     return true
   }
 
-  dispose() {
+  override dispose() {
     for (const request of this.requests) request.abort()
     this.requests.clear()
     for (const source of this.sources) { try { source.stop() } catch { /* Already ended. */ } }

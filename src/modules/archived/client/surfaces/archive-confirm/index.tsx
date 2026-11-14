@@ -2,6 +2,7 @@ import React from "react";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { useStore } from "../../../../../client/ui/store.js";
+import type { ArchiveConfirmState } from "../../state/archive-confirm.js";
 import { confirmDialog } from "../../../../../client/ui/components/confirm-dialog/index.jsx";
 import { ARCH_NS } from "../../locale.js";
 
@@ -22,7 +23,7 @@ export function install(ctx, host) {
   const t = ctx.locale.bind(ARCH_NS);
 
   function ArchiveConfirmDialog() {
-    const state = useStore(host.archiveConfirm);
+    const state = useStore<ArchiveConfirmState>(host.archiveConfirm);
     if (!state.request) return null;
     const title = t("archiveTitle").replace("{t}", state.request.title || t("untitled"));
     return confirmDialog({
@@ -42,7 +43,7 @@ export function install(ctx, host) {
     });
   }
 
-  const offDialog = installSlot(ctx, { name: "shell.overlay", id: "dsh-toolkit.archived.archive-confirm" }, ArchiveConfirmDialog);
+  const offDialog = installSlot(ctx, { name: "shell.overlay", id: "dsh-toolkit.archived.archive-confirm" }, ArchiveConfirmDialog) as () => void;
   const offWrap = wrapArchiveSession();
   return () => {
     offDialog();

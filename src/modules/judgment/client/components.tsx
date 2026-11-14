@@ -3,8 +3,16 @@ import './react.js'
 import { useEffect, useRef, useState } from 'react'
 import { anchorStyle, listenMenuDismiss, measureMenuAnchor } from '../../../client/ui/components/menu/index.js'
 
+/** Form field props: label above, control below; `wide` spans both columns. */
+export interface FieldProps {
+  label: string
+  hint?: string
+  wide?: boolean
+  children?: any
+}
+
 /** 表单字段：标签在上、控件在下，可跨两列。 */
-export function Field({ label, hint, wide, children }) {
+export function Field({ label, hint, wide, children }: FieldProps) {
   return (
     <div className="jdg-field" data-wide={wide === true ? 'true' : undefined}>
       <span className="jdg-label">{label}</span>

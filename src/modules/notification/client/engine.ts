@@ -13,37 +13,83 @@
  *   - 待交互按 `pendingInteraction.key` 变化触发：出现或替换才通知，消失不通知。
  */
 
+import type { SessionListSnapshot } from './model.js'
+
 /** 一条分类完成的通知事件。 */
-/**
- * @typedef {object} NotificationEvent
- * @property {'completed'|'failed'|'question'|'permission'} kind 提醒类型。
- * @property {string} sessionId 会话 id。
- * @property {string} title 通知标题（会话标题）。
- * @property {string} detail 通知正文素材（完成时是本轮最终回复，失败时是错误信息，待交互时是问题/工具）。
- */
+export interface NotificationEvent {
+  /** 提醒类型。 */
+  kind: 'completed' | 'failed' | 'question' | 'permission'
+  /** 会话 id。 */
+  sessionId: string
+  /** 通知标题（会话标题）。 */
+  title: string
+  /** 通知正文素材（完成时是本轮最终回复，失败时是错误信息，待交互时是问题/工具）。 */
+  detail: string
+}
+
+/** 通知范围：全部会话 / 只主会话 / 主会话等子会话跑完。 */
+export type NotificationScope = 'all' | 'main' | 'main-wait'
+
+/** 一个会话当前的待交互事实（`index.tsx` 从宿主待交互状态里投影出来）。 */
+export interface PendingFacts {
+  /** 交互标识；变化即代表「出现了新的等待」。 */
+  key?: string
+  /** 待交互类型。 */
+  kind?: 'question' | 'permission'
+  /** 问题 / 工具名，作为正文素材。 */
+  detail?: string
+}
 
 /** 引擎依赖的端口。 */
-/**
- * @typedef {object} EnginePorts
- * @property {(id: string) => object|undefined} detailOf 读取会话事实（无对话快照时也要返回可判定的对象）。
- * @property {(id: string) => Promise<object|undefined>} [ensureDetail] 物化未打开会话的对话快照，
- *   可返回物化期间读到的事实（best-effort）。
- * @property {(id: string) => string} titleOf 会话标题。
- * @property {() => Promise<void>} settle 结束后的等待窗口。
- * @property {(id: string) => boolean} isSubagent 是否子会话。
- * @property {(id: string) => boolean} hasRunningDescendants 是否还有在跑的后代会话。
- * @property {(id: string) => boolean} [hasUnfinishedWork] 宿主是否会自动续跑。
- * @property {(event: NotificationEvent) => void} emit 交出一条事件。
- */
+export interface EnginePorts {
+  /** 读取会话事实（无对话快照时也要返回可判定的对象）。返回值随宿主快照形状变化，只能按字段读。 */
+  detailOf: (id: string) => any
+  /** 物化未打开会话的对话快照，可返回物化期间读到的事实（best-effort）。 */
+  ensureDetail?: (id: string) => Promise<any>
+  /** 会话标题。 */
+  titleOf: (id: string) => string
+  /** 结束后的等待窗口。 */
+  settle: () => Promise<void>
+  /** 是否子会话。 */
+  isSubagent: (id: string) => boolean
+  /** 是否还有在跑的后代会话。 */
+  hasRunningDescendants: (id: string) => boolean
+  /** 宿主是否会自动续跑。 */
+  hasUnfinishedWork?: (id: string) => boolean
+  /** 交出一条事件。 */
+  emit: (event: NotificationEvent) => void
+}
 
 /** 一轮运行的失败基线。 */
-/**
- * @typedef {object} RunState
- * @property {number} baselineErrorSeq 开跑时已物化的最大 turn-error seq。
- * @property {string|null} baselineAgentError 开跑时的 lastAgentError。
- */
+export interface RunState {
+  /** 开跑时已物化的最大 turn-error seq。 */
+  baselineErrorSeq: number
+  /** 开跑时的 lastAgentError。 */
+  baselineAgentError: string | null
+}
 
 export class NotificationEngine {
+  /** 注入端口。 */
+  ports: EnginePorts
+
+  /** 上一次观察到的 running。 */
+  prevRunning: Map<string, boolean>
+
+  /** 进行中一轮的基线。 */
+  runs: Map<string, RunState>
+
+  /** 正在 settle 的会话，防止并发重入。 */
+  settling: Set<string>
+
+  /** 上一次观察到的待交互 key。 */
+  pendingKeys: Map<string, string>
+
+  /** 等后代跑完再发的完成通知。 */
+  held: Map<string, string>
+
+  /** 通知范围，由配置同步进来。 */
+  scope: NotificationScope
+
   /**
    * @param {EnginePorts} ports 注入端口。
    */
@@ -68,7 +114,7 @@ export class NotificationEngine {
    * 离开 main-wait 时把 hold 住的完成通知放行。
    * @param {'all'|'main'|'main-wait'} scope 通知范围。
    */
-  setScope(scope) {
+  setScope(scope: NotificationScope) {
     const previous = this.scope
     this.scope = scope
     if (scope !== 'all') this.forgetSubagents()
@@ -115,7 +161,7 @@ export class NotificationEngine {
    * 但不发任何通知（插件加载前就空闲的会话不该补发）。
    * @param {object} sessions 会话列表快照 `{ byId }`。
    */
-  seed(sessions) {
+  seed(sessions: SessionListSnapshot | undefined) {
     for (const summary of Object.values(sessions?.byId ?? {})) {
       const id = summary?.id
       if (typeof id !== 'string' || this.silenced(id)) continue
@@ -128,7 +174,7 @@ export class NotificationEngine {
    * 处理一次会话列表快照（列表每次变化都会调用）。
    * @param {object} sessions 会话列表快照 `{ byId }`。
    */
-  observe(sessions) {
+  observe(sessions: SessionListSnapshot | undefined) {
     const seen = new Set()
     for (const summary of Object.values(sessions?.byId ?? {})) {
       const id = summary?.id
@@ -164,7 +210,7 @@ export class NotificationEngine {
    * 插件加载前就在等回答的会话不该补发一条提醒（和空闲会话同理）。
    * @param {ReadonlyMap<string, {key: string}>} pending 当前待交互。
    */
-  seedPending(pending) {
+  seedPending(pending: ReadonlyMap<string, PendingFacts> | undefined) {
     for (const [id, facts] of pending ?? []) {
       if (this.silenced(id)) continue
       if (typeof facts?.key === 'string') this.pendingKeys.set(id, facts.key)
@@ -175,7 +221,7 @@ export class NotificationEngine {
    * 处理一次待交互快照。
    * @param {ReadonlyMap<string, {key: string, kind: 'question'|'permission', detail: string}>} pending 每个会话当前待交互。
    */
-  observePending(pending) {
+  observePending(pending: ReadonlyMap<string, PendingFacts> | undefined) {
     for (const [id, facts] of pending ?? []) {
       if (this.silenced(id)) {
         this.pendingKeys.delete(id)
@@ -267,7 +313,7 @@ export class NotificationEngine {
   }
 
   /** 交出一条事件（统一入口，便于测试统计）。 */
-  emit(event) {
+  emit(event: NotificationEvent) {
     try {
       this.ports.emit(event)
     } catch {

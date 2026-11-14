@@ -38,7 +38,7 @@ export function statusOf(form) {
 }
 
 /** 一个字典字段；非字典读成空字典。 */
-export function dictOf(value, field) {
+export function dictOf(value: any, field: string): Record<string, any> {
   const dict = value?.[field]
   return dict !== null && typeof dict === 'object' && !Array.isArray(dict) ? dict : {}
 }
@@ -294,7 +294,7 @@ export function purposeTargetLabel(purpose, defaultConnection) {
 }
 
 /** 哪些用途指向这条连接（删除连接前要讲清楚代价）。 */
-export function purposesUsing(purposes, connectionId, defaultConnection) {
+export function purposesUsing(purposes: Record<string, any>, connectionId: string, defaultConnection: any) {
   return Object.entries(purposes)
     .filter(([, purpose]) => (purpose?.connection ?? '') === connectionId)
     .map(([name]) => name)

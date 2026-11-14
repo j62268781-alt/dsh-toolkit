@@ -26,9 +26,7 @@ export function startPolling(
     clearTimeout(timer)
     controller = new AbortController()
     const active = controller
-    pending = Promise.resolve().then(() => {
-      if (!stopped) return task(active.signal)
-    }).catch((error: unknown) => {
+    pending = Promise.resolve().then(() => (stopped ? undefined : task(active.signal))).then(() => undefined).catch((error: unknown) => {
       if (!stopped && !active.signal.aborted) onError(error)
     }).finally(() => {
       pending = undefined

@@ -26,13 +26,14 @@ function findFrame() {
   if (frameEl && frameEl.isConnected) return frameEl;
 
   frameEl =
-    [...document.querySelectorAll('[class*="_frame"]')].find((el) =>
+    [...document.querySelectorAll<HTMLElement>('[class*="_frame"]')].find((el) =>
       el.style?.gridTemplateColumns?.includes("minmax("),
     ) ?? null;
   return frameEl;
 }
 
-export function installSidebarWidth(ctx, options = {}) {
+/** `native` tracks the host's own frame (264–420px) instead of the Codex rail. */
+export function installSidebarWidth(ctx: any, options: { native?: boolean } = {}) {
   const native = options.native === true;
   // The native frame contract is 264–420px; Codex adds its separate 52px rail.
   const minWidth = native ? 264 : WORKSPACE_MIN;

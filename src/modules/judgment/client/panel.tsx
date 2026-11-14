@@ -23,16 +23,26 @@ const CSS = `${settingsStyles('jdg')}\n${panelCss}`
 
 const EMPTY = {}
 
+/** 打开的是哪张表单：`isNew` 为新增，否则按 `id` 编辑已有一条。 */
+interface EditorState {
+  kind: 'connection' | 'purpose'
+  isNew: boolean
+  id?: string
+}
+
 export function Panel(props) {
   const form = props.form
   const [tick, setTick] = useState(0)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   // 首次渲染就打开某个新增表单（测试用；也让将来做深链有落点）。
-  const [editor, setEditor] = useState(props.initialEditor === 'connection' || props.initialEditor === 'purpose'
+  const [editor, setEditor] = useState<EditorState | null>(props.initialEditor === 'connection' || props.initialEditor === 'purpose'
     ? { kind: props.initialEditor, isNew: true }
     : null)
-  const [draft, setDraft] = useState(props.initialEditor === 'connection'
+  // 连接表单与用途表单共用这一个 draft；两者字段集合不同，输入框回填的又都是字符串
+  // （timeoutMs 也先当字符串收，提交时再 Number），写死联合类型只会到处要收窄，故按 any 处理。
+  // 真实形状由 blankConnection / blankPurpose / connectionDraft 决定。
+  const [draft, setDraft] = useState<any>(props.initialEditor === 'connection'
     ? blankConnection()
     : props.initialEditor === 'purpose' ? blankPurpose() : EMPTY)
   // 首次渲染就展开某张卡片（测试用；也让将来做深链有落点）。

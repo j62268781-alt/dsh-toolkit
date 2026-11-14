@@ -655,9 +655,8 @@ window.__ModuleLoader__.load({
       return result;
     }
     var Bits = class {
-      constructor() {
-        this.bits = [];
-      }
+      /** 位序列（每项 0/1）。显式声明：`useDefineForClassFields` 下 tsc 不再从构造函数赋值推断字段。 */
+      bits = [];
       push(value, length) {
         for (let i = length - 1; i >= 0; i--) this.bits.push(value >>> i & 1);
       }
@@ -1079,6 +1078,10 @@ window.__ModuleLoader__.load({
       return view !== void 0 && view !== null && ACTIVE_STATES.has(view.state);
     }
     var PairingError = class extends Error {
+      /** 稳定错误码（`CONTROL_UNREACHABLE` / 服务端码）。 */
+      code;
+      /** 服务端附带的细节（`retryable` / `remoteCode` 等），形状由路由决定。 */
+      details;
       constructor(code, message, details = void 0) {
         super(message);
         this.name = "PairingError";
@@ -1869,7 +1872,7 @@ window.__ModuleLoader__.load({
         const seconds = useCountdown(value.qr?.expiresAt);
         const expired = value.state === "expired" || seconds === 0;
         const scanned = value.state === "scanned";
-        const maskPanel = (title, action) => h(
+        const maskPanel = (title, action = void 0) => h(
           "span",
           { className: "wc-qr-mask__panel" },
           h("span", { className: "wc-qr-mask__title" }, title),

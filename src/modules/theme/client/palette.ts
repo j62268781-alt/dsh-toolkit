@@ -14,11 +14,35 @@ export const SCENE_CLASS = 'sk-theme-scene'
 export const HERO_SELECTOR =
   '[data-slot="main.conversation"] > [data-phase="hero"] > [data-conversation-content][data-content-phase="hero"]'
 
-const BUILDERS = new Map()
+/** A scene builder: `compact` asks for the reduced card-preview variant. */
+export type SceneFactory = (options: { compact?: boolean }) => Element | null
+
+/** Collaborators `installPalette` / `installSceneClock` would otherwise read from
+ *  the globals; tests pass fakes instead of stubbing `document` and friends. */
+export interface SceneClock {
+  setInterval(handler: () => void, ms: number): any
+  clearInterval(handle: any): void
+}
+
+export interface SceneClockOptions {
+  document?: Document
+  clock?: SceneClock
+  now?: () => Date
+}
+
+export interface InstallPaletteOptions extends SceneClockOptions {
+  root?: Element
+  form?: any
+  readPalette?: (form: any) => string
+  MutationObserver?: typeof MutationObserver
+  heroSelector?: string
+}
+
+const BUILDERS = new Map<string, SceneFactory>()
 
 /** Scene builders are registered by the client entry (kept out of this module to
  * avoid a cycle: panels import palette helpers, entries import scene modules). */
-export function registerPaletteScene(palette, factory) {
+export function registerPaletteScene(palette: string, factory: SceneFactory) {
   if (typeof factory !== 'function') throw new TypeError('scene factory must be a function')
   BUILDERS.set(palette, factory)
   return () => {
@@ -26,12 +50,12 @@ export function registerPaletteScene(palette, factory) {
   }
 }
 
-export function paletteSceneFactory(palette) {
+export function paletteSceneFactory(palette: string) {
   return BUILDERS.get(palette)
 }
 
 /** Build one scene element (`compact` renders the card thumbnail variant). */
-export function createPaletteScene(palette, options = {}) {
+export function createPaletteScene(palette: string, options: { compact?: boolean } = {}) {
   const factory = BUILDERS.get(palette)
   return factory ? factory({ compact: options.compact === true }) : null
 }
@@ -50,7 +74,7 @@ export function readPalette(form) {
 }
 
 /** Apply an explicit style marker; only `codex` enables the Codex shell. */
-export function applyPalette(palette, root = globalThis.document?.documentElement) {
+export function applyPalette(palette: string, root: Element = globalThis.document?.documentElement) {
   if (!root?.setAttribute) return
   root.setAttribute(PALETTE_ATTR, PALETTES.includes(palette) ? palette : 'native')
 }
@@ -76,7 +100,10 @@ export function clearPaletteScenes(scope = globalThis.document) {
 }
 
 /** One wall-clock refresh for hero + settings scenes, paused while hidden. */
-export function installSceneClock(updateScene, options = {}) {
+export function installSceneClock(
+  updateScene: (scene: Element, now: Date) => void,
+  options: SceneClockOptions = {},
+) {
   const doc = options.document ?? globalThis.document
   const clock = options.clock ?? globalThis
   const now = options.now ?? (() => new Date())
@@ -100,7 +127,7 @@ export function installSceneClock(updateScene, options = {}) {
  * Own the palette marker and the hero scene for the client lifetime.
  * Returns the teardown used by `ctx.effect`.
  */
-export function installPalette(ctx, options = {}) {
+export function installPalette(ctx: any, options: InstallPaletteOptions = {}) {
   const doc = options.document ?? globalThis.document
   const root = options.root ?? doc?.documentElement
   const form = options.form ?? findScopedForm(ctx, 'theme').form

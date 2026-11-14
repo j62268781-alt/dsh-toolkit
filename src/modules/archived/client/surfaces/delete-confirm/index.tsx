@@ -5,6 +5,7 @@ import { useStore } from "../../../../../client/ui/store.js";
 import { confirmDialog } from "../../../../../client/ui/components/confirm-dialog/index.jsx";
 import { ARCH_NS } from "../../locale.js";
 import { DeleteButton } from "../../components/delete-button/index.jsx";
+import type { RemovalState } from "../../state/removal.js";
 
 export const NAME = "delete-confirm";
 
@@ -22,7 +23,7 @@ export function install(ctx, host) {
   const t = ctx.locale.bind(ARCH_NS);
 
   function RemovalDialog() {
-    const state = useStore(host.removal);
+    const state = useStore<RemovalState>(host.removal);
     if (!state.request) return null;
     const error = state.error
       ? <p role="alert" className="sk-arch__note--error">{t("removeFailed").replace("{reason}", state.error)}</p>

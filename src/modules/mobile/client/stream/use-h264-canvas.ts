@@ -32,7 +32,8 @@ export function createUseH264Canvas(React, canvasRuntime) {
       let pendingFrame = null;
       let rafId = 0;
       let lastDrawAt = 0;
-      const report = (state, detail) => {
+      /** `detail` 只在部分状态出现（"connecting" 无详情），所以是可选的。 */
+      const report = (state, detail?) => {
         if (!cancelled) onState(state, detail);
       };
       const drawLatestFrame = () => {
@@ -230,7 +231,7 @@ export function createUseH264Canvas(React, canvasRuntime) {
           // Host 重建流会正常结束旧响应；有过数据时走 150ms 快速重连。
           const waitMs = healthy && endedCleanly ? RECONNECT_FAST_MS : reconnectDelay;
           report("connecting", "画面中断，正在重连…");
-          await new Promise((resolve) => {
+          await new Promise<void>((resolve) => {
             finishReconnect = () => {
               clearTimeout(reconnectTimer);
               reconnectTimer = null;

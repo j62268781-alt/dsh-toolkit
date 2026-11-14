@@ -542,7 +542,7 @@ function Switch({ primitives, label, checked, disabled, onChange }) {
  * `editable` 时数值本身是个输入框（回车/失焦提交、自动夹到 [min,max]）：
  * 毫秒这种值光靠 ±100 点太累，但**别把数值做成只能点**。
  */
-function NumberStepper({ primitives, value, min, max, step = 1, unit, disabled, editable = false, arrows = true, onChange }) {
+function NumberStepper({ primitives = undefined, value, min, max, step = 1, unit, disabled, editable = false, arrows = true, onChange }) {
   const Up = primitives?.IconChevronUpOutlineRegular
   const Down = primitives?.IconChevronDownOutlineRegular
   const [draft, setDraft] = useState(String(value))

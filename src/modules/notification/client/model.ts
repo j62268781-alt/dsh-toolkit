@@ -92,7 +92,7 @@ export function resolveSettings(raw) {
     ? root.notification
     : root
   const volume = Number(source.volume)
-  const types = {}
+  const types: Record<string, { enabled: boolean; sound: string }> = {}
   for (const kind of KINDS) {
     types[kind] = {
       enabled: typeof source[`${kind}Enabled`] === 'boolean'
@@ -175,6 +175,29 @@ export function notificationBody(event, t) {
     default:
       return t('bodyCompleted')
   }
+}
+
+/**
+ * 宿主会话列表快照里通知侧真正读到的字段。
+ *
+ * 宿主的快照类型随版本变化，这里只声明本模块用到的三个字段，其余一律按结构容错读取，
+ * 这样引擎与安装器可以共用一份形状而不用把宿主类型搬进 client。
+ */
+export interface SessionSummary {
+  /** 会话 id。 */
+  id: string
+  /** 父会话 id；主会话没有。 */
+  parentId?: string
+  /** 是否正在跑。 */
+  running?: boolean
+}
+
+/** `ctx.sessions.list.getSnapshot()` 投影后通知侧用到的子集（`byId` 按 id 索引）。 */
+export interface SessionListSnapshot {
+  /** 按 id 索引的会话摘要。 */
+  byId?: Record<string, SessionSummary>
+  /** 宿主按会话缓存的状态投影；`values` 下有 goal / 排队输入等深字段，只能显式 any。 */
+  projectionsBySession?: Record<string, any>
 }
 
 /**

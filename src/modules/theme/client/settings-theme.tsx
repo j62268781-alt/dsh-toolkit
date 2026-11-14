@@ -148,7 +148,20 @@ function ThemeEmblem({ palette }) {
   return <img className="sk-theme-emblem sk-theme-emblem--native" src={DSH_DESKTOP_LOGO} alt="" draggable={false} aria-hidden="true" />
 }
 
-function ThemeCard({ selected, label, hint, onClick, children, disabled = false, colorScheme, palette }) {
+/** `colorScheme` / `palette` drive the card artwork's preview markers, so the
+ *  native Light/Dark cards leave them undefined on purpose. */
+interface ThemeCardProps {
+  selected: boolean;
+  label: string;
+  hint?: string;
+  onClick: () => void;
+  children?: any;
+  disabled?: boolean;
+  colorScheme?: string;
+  palette?: string;
+}
+
+function ThemeCard({ selected, label, hint, onClick, children, disabled = false, colorScheme, palette }: ThemeCardProps) {
   return (
     <button
       type="button"

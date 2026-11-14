@@ -10,7 +10,16 @@ export { default as css } from "./style.css";
  * a delete in flight is unavailable, not disabled, and graying it out was most of
  * what read as "the page flashed".
  */
-export function DeleteButton({ children, size = "md", className, loading = false, ...props }) {
+/** `className` stays optional: call sites append it to the module's own class. */
+export interface DeleteButtonProps {
+  children?: any;
+  size?: string;
+  className?: string;
+  loading?: boolean;
+  [key: string]: any;
+}
+
+export function DeleteButton({ children, size = "md", className, loading = false, ...props }: DeleteButtonProps) {
   const Button = primitives.Button;
   const Icon = primitives.IconTrashOutlineRegular;
   const classes = className === undefined ? "sk-arch__delete" : `sk-arch__delete ${className}`;

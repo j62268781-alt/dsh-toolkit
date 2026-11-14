@@ -43,8 +43,22 @@ export function isValidName(name, max = 32) {
   return new RegExp(`^[A-Za-z0-9_-]{1,${max}}$`).test((name ?? '').trim())
 }
 
+/** The server fields these validators read; callers pass a draft, a row or `{}`. */
+export interface ServerDraftShape {
+  serverName?: string
+  transport?: string
+  command?: string
+  url?: string
+}
+
+/** The skill fields these validators read. */
+export interface SkillDraftShape {
+  name?: string
+  body?: string
+}
+
 /** Validate a server draft; returns a message or null when it may be saved. */
-export function validateServerDraft(draft = {}) {
+export function validateServerDraft(draft: ServerDraftShape = {}) {
   if (!isValidName(draft.serverName, 32)) return '名称只能用字母、数字、- 和 _，且不超过 32 个字符'
   const transport = draft.transport ?? 'streamable-http'
   if (transport === 'stdio') {
@@ -56,14 +70,14 @@ export function validateServerDraft(draft = {}) {
 }
 
 /** Validate a skill draft; returns a message or null. */
-export function validateSkillDraft(draft = {}) {
+export function validateSkillDraft(draft: SkillDraftShape = {}) {
   if (!isValidName(draft.name, 64)) return '名称只能用字母、数字、- 和 _，且不超过 64 个字符'
   if ((draft.body ?? '').trim() === '') return '请填写技能正文'
   return null
 }
 
 /** Whether a field applies to the draft's transport. */
-export function fieldApplies(field, draft = {}) {
+export function fieldApplies(field, draft: ServerDraftShape = {}) {
   if (field.when === undefined) return true
   const stdio = (draft.transport ?? 'streamable-http') === 'stdio'
   return field.when === 'stdio' ? stdio : !stdio

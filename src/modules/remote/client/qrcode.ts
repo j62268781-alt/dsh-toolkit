@@ -74,7 +74,8 @@ function reedSolomon(data, ecCount) {
 
 // ---- bit buffer ----
 class Bits {
-  constructor() { this.bits = [] }
+  /** 位序列（每项 0/1）。显式声明：`useDefineForClassFields` 下 tsc 不再从构造函数赋值推断字段。 */
+  bits: number[] = []
   push(value, length) {
     for (let i = length - 1; i >= 0; i--) this.bits.push((value >>> i) & 1)
   }

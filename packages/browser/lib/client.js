@@ -712,7 +712,7 @@ window.__ModuleLoader__.load({
         }
       );
     }
-    function NumberStepper({ primitives: primitives2, value, min, max, step = 1, unit, disabled, editable = false, arrows = true, onChange }) {
+    function NumberStepper({ primitives: primitives2 = void 0, value, min, max, step = 1, unit, disabled, editable = false, arrows = true, onChange }) {
       const Up = primitives2?.IconChevronUpOutlineRegular;
       const Down = primitives2?.IconChevronDownOutlineRegular;
       const [draft, setDraft] = (0, import_react4.useState)(String(value));

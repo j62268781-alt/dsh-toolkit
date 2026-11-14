@@ -41,7 +41,7 @@ export function createWechatViews({ React, t, useCountdown, QrCode }) {
     const scanned = value.state === 'scanned'
     // 不写「等待扫码 / 已扫码 / 已过期」状态行：二维码本身、蒙层和倒计时已经把话说完了。
     // 蒙层内容包一层衬底：二维码本身是黑白高对比，白字直接压上去几乎看不清。
-    const maskPanel = (title, action) => h('span', { className: 'wc-qr-mask__panel' },
+    const maskPanel = (title, action = undefined) => h('span', { className: 'wc-qr-mask__panel' },
       h('span', { className: 'wc-qr-mask__title' }, title),
       action === undefined ? null : h('span', { className: 'wc-qr-mask__action' }, action))
     const mask = expired

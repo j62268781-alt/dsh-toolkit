@@ -3,6 +3,7 @@ import { primitives } from "../../../../../client/ui/primitives.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { useStore } from "../../../../../client/ui/store.js";
 import { ARCH_NS } from "../../locale.js";
+import type { RemovalState } from "../../state/removal.js";
 
 export const NAME = "session-menu";
 
@@ -20,7 +21,7 @@ export function install(ctx, host) {
   function DeleteSessionMenuItem({ sessionId, displayTitle, useMenuOpenState, useWorkspaces }) {
     const [, setMenuOpen] = useMenuOpenState();
     const archived = useWorkspaces((snapshot) => snapshot.archivedSessionIds.includes(sessionId));
-    const state = useStore(host.removal);
+    const state = useStore<RemovalState>(host.removal);
     if (!archived || state.removed.has(sessionId) || !MenuItem) return null;
     const Icon = primitives.IconTrashOutlineRegular;
     return <MenuItem danger disabled={state.busy}

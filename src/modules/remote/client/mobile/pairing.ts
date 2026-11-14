@@ -192,7 +192,11 @@ export function isPairingActive(view) {
 
 /** 配对链路的错误：`code` 来自控制路由或远端服务器，`message` 是服务端原文。 */
 export class PairingError extends Error {
-  constructor(code, message, details = undefined) {
+  /** 稳定错误码（`CONTROL_UNREACHABLE` / 服务端码）。 */
+  code: string
+  /** 服务端附带的细节（`retryable` / `remoteCode` 等），形状由路由决定。 */
+  details: any
+  constructor(code: string, message: string, details: any = undefined) {
     super(message)
     this.name = 'PairingError'
     this.code = code
@@ -313,7 +317,7 @@ export function createPairing() {
      */
     renewing: false,
   }
-  const listeners = new Set()
+  const listeners = new Set<() => void>()
   /** 远端撤销只清理一次：每 2.5 秒轮询一次 hostStatus，不能每次都删一遍盘。 */
   let revocationCleaned = false
 

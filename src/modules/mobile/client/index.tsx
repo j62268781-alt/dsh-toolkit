@@ -19,7 +19,7 @@ export default function createClient(require) {
   const ROUTE_PANEL_OPEN = "panel-open";
   const ROUTE_PANEL_OPEN_ACK = "panel-open-ack";
   const SHORTCUT_ID = "sidebar.mobile";
-  async function api(route, body, { signal } = {}) {
+  async function api(route, body, { signal }: { signal?: AbortSignal } = {}) {
     let response;
     try {
       response = await fetchJson(`${PREFIX}/${route}`, {
@@ -102,7 +102,7 @@ export default function createClient(require) {
           let lastHandled = 0;
           const RETRY_DELAY_MS = 2e3;
           const STUCK_DELAY_MS = 1e3;
-          const sleep = (ms) => new Promise((resolve) => {
+          const sleep = (ms) => new Promise<void>((resolve) => {
             const done = () => {
               clearTimeout(timer);
               controller.signal.removeEventListener("abort", done);

@@ -186,6 +186,22 @@ export function activateWindow() {
  */
 const STICKY_KINDS = ['question', 'permission']
 
+/** 一条系统通知的内容与点击动作（全部可选：调用方常常只给标题正文）。 */
+export interface BrowserNotificationOptions {
+  /** 标题（会话标题）。 */
+  title?: string
+  /** 正文（本轮最终回复 / 错误 / 问题）。 */
+  body?: string
+  /** 折叠键，同一会话同一类型共用一张卡片。 */
+  tag?: string
+  /** 事件类型，决定是否常驻（question/permission）。 */
+  kind?: string
+  /** 归属会话，供回前台时按会话回收。 */
+  sessionId?: string
+  /** 点击动作（跳转到会话）。 */
+  onClick?: () => void
+}
+
 /**
  * 发一条系统通知。
  * @param {object} options 通知内容与点击动作。
@@ -197,7 +213,7 @@ const STICKY_KINDS = ['question', 'permission']
  * @param {() => void} [options.onClick] 点击动作（跳转到会话）。
  * @returns {boolean} 是否真的弹出了通知。
  */
-export function showBrowserNotification(options = {}) {
+export function showBrowserNotification(options: BrowserNotificationOptions = {}) {
   const Ctor = notificationCtor()
   if (Ctor === undefined) {
     warn('browser Notification API is unavailable (insecure context or unsupported browser)')
@@ -333,7 +349,7 @@ export function showTestNotification(t) {
 }
 
 /** 统一的诊断输出：不吞错误，也不让日志本身抛错。 */
-function warn(message, error) {
+function warn(message, error?) {
   try {
     if (error === undefined) console.warn(`[dsh-toolkit:notification] ${message}`)
     else console.warn(`[dsh-toolkit:notification] ${message}`, error)
@@ -346,7 +362,7 @@ function warn(message, error) {
  * 真失败用 error 级：宿主只把 error 级 console 转发到可见日志，
  * 而「通知没弹出来」恰恰是必须能查的那种问题（warn 级在这里等于静默）。
  */
-function fail(message, error) {
+function fail(message, error?) {
   try {
     if (error === undefined) console.error(`[dsh-toolkit:notification] ${message}`)
     else console.error(`[dsh-toolkit:notification] ${message}`, error)

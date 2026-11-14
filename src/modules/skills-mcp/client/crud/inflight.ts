@@ -11,13 +11,34 @@ export const DEFAULT_TIMEOUT = 15000
 /** An `update` has no visible marker, so it stops spinning after this. */
 export const UPDATE_GRACE = 4000
 
+/**
+ * One in-flight operation, as the panel records it.
+ *
+ * `at` is always stamped by the recorder; `kind` and the per-op expectations are
+ * optional because each operation only fills in the fields it can be checked on.
+ * `draft` keeps the optimistic add's form so its card can render before the write
+ * lands — it is deliberately opaque here, the projection owns its shape.
+ */
+export interface InflightInfo {
+  at: number
+  kind?: string
+  expectEnabled?: boolean
+  expectName?: string
+  draft?: any
+  scope?: string
+  confirmed?: boolean
+}
+
+/** In-flight operations keyed by entry id (the panel's `inflight` state). */
+export type InflightMap = Record<string, InflightInfo>
+
 /** Record an operation, returning the new map. */
-export function markInflight(map = {}, entryId, info = {}) {
+export function markInflight(map: InflightMap = {}, entryId, info = {}) {
   return { ...map, [entryId]: { at: Date.now(), ...info } }
 }
 
 /** Whether an entry currently has an operation in flight. */
-export function isPending(map = {}, entryId) {
+export function isPending(map: InflightMap = {}, entryId) {
   return map[entryId] !== undefined
 }
 
@@ -53,11 +74,11 @@ function bareId(value) {
  * Drop entries whose effect is visible (or which outlived the safety timeout).
  * Returns the same map instance when nothing changed, so React can skip a render.
  */
-export function settleInflight(map = {}, { profileRows = [], now = Date.now(), timeout = DEFAULT_TIMEOUT } = {}) {
+export function settleInflight(map: InflightMap = {}, { profileRows = [], now = Date.now(), timeout = DEFAULT_TIMEOUT } = {}) {
   const entries = Object.entries(map)
   if (entries.length === 0) return map
   const known = new Set(profileRows.map((candidate) => bareId(candidate?.entryId)))
-  const kept = {}
+  const kept: InflightMap = {}
   for (const [entryId, info] of entries) {
     const row = known.has(bareId(entryId)) ? profileRows.find((candidate) => bareId(candidate?.entryId) === bareId(entryId)) : undefined
     if (hasSettled(info, row, now)) continue
@@ -68,7 +89,7 @@ export function settleInflight(map = {}, { profileRows = [], now = Date.now(), t
 }
 
 /** In-flight entries that are adds still waiting for their row to appear. */
-export function pendingAdds(map = {}, profileRows = []) {
+export function pendingAdds(map: InflightMap = {}, profileRows = []) {
   const known = new Set(profileRows.map((row) => bareId(row?.entryId)))
   return Object.entries(map)
     .filter(([entryId, info]) => info.kind === 'add' && !known.has(bareId(entryId)))

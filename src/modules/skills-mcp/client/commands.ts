@@ -3,7 +3,7 @@ import { fetchJson } from '../../../client/http.js'
 
 const bareRowId = (entryId) => String(entryId).replace(/^include:/, '').replace(/^[a-z-]+:/i, '')
 
-const postJson = (path, json, signal) => fetchJson(`${NS}/${path}`, {
+const postJson = (path: string, json: unknown, signal?: AbortSignal) => fetchJson(`${NS}/${path}`, {
   method: 'POST', json, ...(signal === undefined ? {} : { signal }),
 })
 
@@ -65,7 +65,7 @@ export const sendSkillWrite = async (request) => {
 }
 
 /** Read one skill body (GET; only files the Host's scan found are readable). */
-export const readSkillBody = async (path, { signal } = {}) => {
+export const readSkillBody = async (path: string, { signal }: { signal?: AbortSignal } = {}) => {
   if (typeof fetch !== 'function') return { ok: false, reason: '当前环境没有 fetch' }
   if (typeof path !== 'string' || path === '') return { ok: false, reason: '没有文件路径' }
   try {

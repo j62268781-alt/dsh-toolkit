@@ -25,19 +25,35 @@
 
 import { notificationBody, truncate } from './model.js'
 import { notificationTag } from './browser-notify.js'
+import type { NotificationEvent } from './engine.js'
 
-/**
- * @typedef {object} DispatchDeps
- * @property {() => object} settings 读取当前偏好。
- * @property {(key: string, params?: object) => string} t 文案函数。
- * @property {(sound: string, volume: number) => boolean | void} playSound 播放提示音，false 表示未接受播放。
- * @property {(payload: {title: string, body: string, tag: string, kind: string, sessionId: string}) => boolean} showNotification 弹系统通知。
- * @property {(sessionId: string) => boolean} [isCurrent] 会话是否是用户正在看的那个（只用于诊断原因）。
- * @property {() => boolean} isHidden 文档是否在后台/最小化。
- * @property {() => boolean} [hasFocus] 文档是否获得焦点（缺省按「有焦点」处理）。
- * @property {() => boolean} [islandActive] 灵动岛是否在线（pet 客户端写的 `dataset.dshIsland`，只读）。
- * @property {() => number} [now] 时钟（毫秒），缺省用 Date.now；测试注入以验证提示音去抖。
- */
+/** 分发器依赖的端口。 */
+export interface DispatchDeps {
+  /** 读取当前偏好；配置快照的形状由宿主决定，只能按字段读。 */
+  settings: () => any
+  /** 文案函数。 */
+  t: (key: string, params?: any) => string
+  /** 播放提示音，false 表示未接受播放。 */
+  playSound: (sound: string, volume: number) => boolean | void
+  /** 弹系统通知。 */
+  showNotification: (payload: {
+    title: string
+    body: string
+    tag: string
+    kind: string
+    sessionId: string
+  }) => boolean
+  /** 会话是否是用户正在看的那个（只用于诊断原因）。 */
+  isCurrent?: (sessionId: string) => boolean
+  /** 文档是否在后台/最小化。 */
+  isHidden: () => boolean
+  /** 文档是否获得焦点（缺省按「有焦点」处理）。 */
+  hasFocus?: () => boolean
+  /** 灵动岛是否在线（pet 客户端写的 `dataset.dshIsland`，只读）。 */
+  islandActive?: () => boolean
+  /** 时钟（毫秒），缺省用 Date.now；测试注入以验证提示音去抖。 */
+  now?: () => number
+}
 
 /**
  * 提示音去抖窗口（毫秒）。
@@ -49,20 +65,30 @@ import { notificationTag } from './browser-notify.js'
 export const SOUND_WINDOW = 900
 
 /** 一次分发的决策结果（测试读取它）。 */
-/**
- * @typedef {object} DispatchResult
- * @property {boolean} notified 是否弹了系统通知。
- * @property {boolean} sounded 是否播放了提示音。
- * @property {string} [title] 实际使用的通知标题（会话标题）。
- * @property {string} [body] 实际使用的通知正文。
- * @property {string} [reason] 未通知的原因（诊断用）。
- */
+export interface DispatchResult {
+  /** 是否弹了系统通知。 */
+  notified: boolean
+  /** 是否播放了提示音。 */
+  sounded: boolean
+  /** 实际使用的通知标题（会话标题）。 */
+  title?: string
+  /** 实际使用的通知正文。 */
+  body?: string
+  /** 未通知的原因（诊断用）。 */
+  reason?: string
+}
 
 export class NotificationDispatcher {
+  /** 注入端口。 */
+  deps: DispatchDeps
+
+  /** 上一次真正出声的时刻，用于 SOUND_WINDOW 去抖。初值 -Infinity 保证第一声一定响。 */
+  lastSoundAt: number
+
   /**
    * @param {DispatchDeps} deps 注入端口。
    */
-  constructor(deps) {
+  constructor(deps: DispatchDeps) {
     this.deps = deps
     /** 上一次真正出声的时刻，用于 SOUND_WINDOW 去抖。初值 -Infinity 保证第一声一定响。 */
     this.lastSoundAt = Number.NEGATIVE_INFINITY
@@ -79,7 +105,7 @@ export class NotificationDispatcher {
    * @param {{kind: string, sessionId: string, title: string, detail: string}} event 引擎事件。
    * @returns {DispatchResult} 决策结果。
    */
-  dispatch(event) {
+  dispatch(event: NotificationEvent): DispatchResult {
     const settings = this.deps.settings()
     // 总开关：关掉就既不响也不弹。
     if (settings.enabled !== true) return { notified: false, sounded: false, reason: 'disabled' }

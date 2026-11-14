@@ -564,6 +564,20 @@ window.__ModuleLoader__.load({
 
     // src/modules/notification/client/engine.ts
     var NotificationEngine = class {
+      /** 注入端口。 */
+      ports;
+      /** 上一次观察到的 running。 */
+      prevRunning;
+      /** 进行中一轮的基线。 */
+      runs;
+      /** 正在 settle 的会话，防止并发重入。 */
+      settling;
+      /** 上一次观察到的待交互 key。 */
+      pendingKeys;
+      /** 等后代跑完再发的完成通知。 */
+      held;
+      /** 通知范围，由配置同步进来。 */
+      scope;
       /**
        * @param {EnginePorts} ports 注入端口。
        */
@@ -961,6 +975,10 @@ window.__ModuleLoader__.load({
     // src/modules/notification/client/dispatch.ts
     var SOUND_WINDOW = 900;
     var NotificationDispatcher = class {
+      /** 注入端口。 */
+      deps;
+      /** 上一次真正出声的时刻，用于 SOUND_WINDOW 去抖。初值 -Infinity 保证第一声一定响。 */
+      lastSoundAt;
       /**
        * @param {DispatchDeps} deps 注入端口。
        */
@@ -1069,6 +1087,14 @@ window.__ModuleLoader__.load({
       }
     }
     var SoundPlayer = class {
+      /** 读取当前音量（0..1）的注入函数；每次播放都重新求值。 */
+      volumeOf;
+      /** 共享的音频上下文，首次播放时懒创建。 */
+      context;
+      /** 卸载标记：置位后不再创建上下文。 */
+      disposed;
+      /** 播放结束后挂起上下文的定时器。 */
+      suspendTimer;
       /**
        * @param {() => number} volumeOf 读取当前音量（0..1）。
        */
@@ -1188,6 +1214,12 @@ window.__ModuleLoader__.load({
       };
     }
     var SystemSoundPlayer = class extends SoundPlayer {
+      /** 已解码的音效文件，按 id 缓存（上限 8 条，见 playFile）。 */
+      buffers;
+      /** 正在播放的节点，卸载时要逐个 stop。 */
+      sources;
+      /** 在途的下载请求，卸载时要 abort。 */
+      requests;
       constructor(volumeOf) {
         super(volumeOf);
         this.buffers = /* @__PURE__ */ new Map();

@@ -68,9 +68,9 @@ function placeTip(tip, entry) {
 export function installRailUnpin() {
   let queued = 0;
   let tip = null;
-  let tipTimer = 0;
+  let tipTimer: ReturnType<typeof setTimeout> | 0 = 0;
   let tipEntry = null;
-  let heldClick = 0;
+  let heldClick: ReturnType<typeof setTimeout> | 0 = 0;
   let replaying = false;
   let lastDoubleClick = 0;
 
@@ -156,7 +156,7 @@ export function installRailUnpin() {
   };
   const onDoubleClick = (event) => {
     const entry = entryOf(event.target);
-    const unpin = entry?.querySelector(UNPIN);
+    const unpin = entry?.querySelector<HTMLButtonElement>(UNPIN);
     if (!unpin) return;
     lastDoubleClick = Date.now();
     if (heldClick) {

@@ -27,7 +27,7 @@ export function createRecentStore(limit = RECENT_LIMIT) {
   /** @type {RecentNotification[]} */
   let entries = []
   let sequence = 0
-  const listeners = new Set()
+  const listeners = new Set<() => void>()
 
   const notify = () => {
     for (const listener of [...listeners]) {

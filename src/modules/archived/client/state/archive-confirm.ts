@@ -12,9 +12,24 @@ import { createStore } from "../../../../client/ui/store.js";
  * caller turns a resolved call into a "session archived" toast and clears the
  * open conversation.
  */
+/** One pending confirmation, as read by the overlay. */
+export interface ArchiveConfirmRequest {
+  sessionId: string;
+  title: any;
+  run: () => any;
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}
+
+export interface ArchiveConfirmState {
+  request: ArchiveConfirmRequest | null;
+  busy: boolean;
+  error: string;
+}
+
 export function createArchiveConfirm() {
-  const store = createStore({ request: null, busy: false, error: "" });
-  const queue = [];
+  const store = createStore<ArchiveConfirmState>({ request: null, busy: false, error: "" });
+  const queue: ArchiveConfirmRequest[] = [];
   const advance = () => store.set({ busy: false, request: queue[0] ?? null, error: "" });
   return {
     subscribe: store.subscribe,

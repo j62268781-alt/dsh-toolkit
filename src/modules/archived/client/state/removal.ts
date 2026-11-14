@@ -4,6 +4,24 @@ import { failureText } from "../model.js";
 import { DELETION_CODE } from "../constants.js";
 import { createStore } from "../../../../client/ui/store.js";
 
+/** A queued removal: `all` is the page batch, `one` a single row. */
+export interface RemovalRequest {
+  kind: "one" | "all";
+  rows: any[];
+}
+
+/** Shape read by the dialogs and the two lists; the store's public state. */
+export interface RemovalState {
+  request: RemovalRequest | null;
+  busy: boolean;
+  busyKind: "one" | "all" | null;
+  error: string;
+  note: string;
+  removed: Set<string>;
+  hidden: Set<string>;
+  pending: Set<string>;
+}
+
 /**
  * Merge per-Session requests onto one queue so two dialogs never stack.
  *
@@ -13,7 +31,7 @@ import { createStore } from "../../../../client/ui/store.js";
  */
 export function createRemoval(ctx) {
   const t = ctx.locale.bind(ARCH_NS);
-  const store = createStore({
+  const store = createStore<RemovalState>({
     request: null,
     busy: false,
     busyKind: null,
@@ -43,7 +61,7 @@ export function createRemoval(ctx) {
     const state = store.get();
     const removed = new Set(state.removed);
     const hidden = new Set(state.hidden);
-    const patch = {};
+    const patch: Partial<RemovalState> = {};
     for (const id of markers) {
       if (!removed.has(id)) { removed.add(id); patch.removed = removed; }
       if (!hidden.has(id)) { hidden.add(id); patch.hidden = hidden; }
@@ -79,10 +97,10 @@ export function createRemoval(ctx) {
       store.set({ request: null, busy: true, busyKind: request.kind, error: "", note: "", pending: new Set(ids) });
 
       const receipts = await collectReceipts(request, ids);
-      const doneIds = [];
-      const retainedIds = new Set();
-      const failed = [];
-      const errors = [];
+      const doneIds: string[] = [];
+      const retainedIds = new Set<string>();
+      const failed: any[] = [];
+      const errors: string[] = [];
       for (const row of request.rows) {
         const receipt = receipts.get(row.id) ?? { ok: false, code: DELETION_CODE.unknown };
         // The files are already gone (workspace deleted, disk cleanup, an older

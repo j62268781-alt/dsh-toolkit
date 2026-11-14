@@ -684,10 +684,10 @@ window.__ModuleLoader__.load({
         };
         return /* @__PURE__ */ __dshReact.createElement("label", { className: "pet-slider" }, /* @__PURE__ */ __dshReact.createElement("input", { type: "range", "aria-label": label, min, max, step, value: draft, disabled, onChange: (event) => update(Number(event.target.value)) }), /* @__PURE__ */ __dshReact.createElement("output", null, draft, field === "bubbleWidth" ? " px" : "%"));
       }
-      function Row({ title, description, children }) {
+      function Row({ title, description = void 0, children }) {
         return /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-row" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-rowCopy" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, title), description && /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-desc" }, description)), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-control" }, children));
       }
-      function Preview({ builtIn, width, height }) {
+      function Preview({ builtIn = false, width, height }) {
         return /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-preview" }, /* @__PURE__ */ __dshReact.createElement("div", { className: `pet-screen${builtIn ? " pet-screenNotch" : ""}`, "aria-label": t("preview") }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-island", style: { width: `${(builtIn ? 52 : 40) * width / 100}%`, height: `${builtIn ? 14 : 14 * height / 100}px` } }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-previewEyes", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("span", null, "●"), /* @__PURE__ */ __dshReact.createElement("span", null, "•••")))), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-previewLabel" }, t(builtIn ? "builtIn" : "external")));
       }
       return function PetPanel() {

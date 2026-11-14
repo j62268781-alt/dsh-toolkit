@@ -35,7 +35,9 @@ export function installSettingsActions(panel) {
   let pending = false;
   let presentation = null;
   let revision = 0;
-  const updates = window.dshDesktop?.updates;
+  // The desktop host injects `dshDesktop` on the window at runtime; there is no
+  // ambient type for it in the client program.
+  const updates = (window as any).dshDesktop?.updates;
   const available = typeof updates?.open === 'function';
   const showUpdateError = (message) => {
     if (disposed) return;
@@ -67,7 +69,7 @@ export function installSettingsActions(panel) {
     more.setAttribute('aria-expanded', 'false');
     if (focus) more.focus();
   };
-  const enabledActions = () => [...menu.querySelectorAll('button')].filter((button) => !button.hidden && !button.disabled);
+  const enabledActions = (): HTMLButtonElement[] => [...menu.querySelectorAll('button')].filter((button) => !button.hidden && !button.disabled);
   const open = () => {
     menu.hidden = false;
     more.setAttribute('aria-expanded', 'true');
@@ -106,7 +108,7 @@ export function installSettingsActions(panel) {
     else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
       event.preventDefault();
       const buttons = enabledActions();
-      const index = buttons.indexOf(document.activeElement);
+      const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
       const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
         : (index + (event.key === 'ArrowUp' ? -1 : 1) + buttons.length) % buttons.length;
       buttons[next]?.focus();

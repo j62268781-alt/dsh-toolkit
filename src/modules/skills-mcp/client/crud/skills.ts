@@ -65,13 +65,19 @@ export function removeSkill(skills = [], entry) {
   return skills.filter((item) => item !== entry)
 }
 
+/** The identity fields a discovered skill carries (its name and its scope key). */
+export interface SkillIdentityShape {
+  name?: unknown
+  scope?: unknown
+}
+
 /**
  * Local identity of a discovered skill: its name plus the scope key the settings
  * document uses (`global`, or a project path). A delete is bookkept against
  * exactly this pair, so rendering can filter the card out until the document
  * itself catches up.
  */
-export function removalTargetOf(skill = {}) {
+export function removalTargetOf(skill: SkillIdentityShape = {}) {
   const name = String(skill?.name ?? '')
   const scope = typeof skill?.scope === 'string' && skill.scope !== '' ? skill.scope : 'global'
   return { name, scopeKey: scope === 'global' ? 'global' : scope }

@@ -13,10 +13,28 @@ async function request(path, options = {}) {
   return value
 }
 
+/** `/state` 与 SSE 帧合并后的快照（`getSnapshot()` 的返回形状）。 */
+export interface PetSnapshot {
+  pets: any[]
+  sessions: any[]
+  petdex: { skipped: number; progress: any }
+  runtime: { status: string; available?: boolean; error?: string }
+  connected: boolean
+  loaded: boolean
+  /** `/state` 里 `settings` 只有 host 给出时才有，缺省时面板走表单值。 */
+  settings?: any
+}
+
+export interface PetConnectionOptions {
+  onNavigation?: (sessionId: string, isDisposed: () => boolean) => void | Promise<void>
+  /** 由装配方注入；`catch()` 会把异常作为唯一实参传进来，所以形参必须是可选的。 */
+  onNavigationError?: (error?: any) => void
+}
+
 /** Own one authenticated stream for all settings views and helper navigation. */
-export function createPetConnection({ onNavigation, onNavigationError = () => {} } = {}) {
-  let snapshot = { pets: [], sessions: [], petdex: { skipped: 0, progress: null }, runtime: { status: 'stopped' }, connected: false, loaded: false }
-  const listeners = new Set()
+export function createPetConnection({ onNavigation, onNavigationError = () => {} }: PetConnectionOptions = {}) {
+  let snapshot: PetSnapshot = { pets: [], sessions: [], petdex: { skipped: 0, progress: null }, runtime: { status: 'stopped' }, connected: false, loaded: false }
+  const listeners = new Set<() => void>()
   let disposed = false
   let controller
   let reader
@@ -31,7 +49,7 @@ export function createPetConnection({ onNavigation, onNavigationError = () => {}
   }
   const accept = (value, navigate = false) => {
     if (!value || typeof value !== 'object' || disposed) return
-    const patch = { loaded: true }
+    const patch: Partial<PetSnapshot> = { loaded: true }
     if (Array.isArray(value.pets)) patch.pets = value.pets.filter((pet) => typeof pet?.id === 'string' && typeof pet?.name === 'string')
     if (value.runtime && typeof value.runtime === 'object') patch.runtime = value.runtime
     if (value.settings && typeof value.settings === 'object') patch.settings = value.settings

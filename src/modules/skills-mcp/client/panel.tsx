@@ -7,6 +7,7 @@ import { pageHead } from './components/head.jsx'
 import { matchesName } from './components/filters.js'
 import { orderedScopeGroups, scopeKey } from './components/scopeOrder.js'
 import { pendingAdds as pendingAddsOf, pendingLabel, settleInflight } from './crud/inflight.js'
+import type { InflightMap } from './crud/inflight.js'
 import { emptyMcpText, emptySkillText } from './components/sections.js'
 import { anchorStyle, measureMenuAnchor, listenMenuDismiss } from './components/menuAnchor.js'
 import { useFormSnapshot, useFormRefresh } from './hooks/useFormRefresh.js'
@@ -176,7 +177,9 @@ export function createPanel(React, primitives) {
       return () => clearTimeout(timer)
     }, [previewPending, previewNonce])
 
-    const [inflight, setInflight] = useState({})
+    // `React` arrives as an untyped prop, so `useState` is `any` and cannot take a type
+    // argument; the tuple annotation is what gives the in-flight map its value type.
+    const [inflight, setInflight]: [InflightMap, any] = useState({})
     useEffect(() => () => {
       editBodyTaskRef.current.invalidate()
       previewTaskRef.current.invalidate()
@@ -292,9 +295,12 @@ export function createPanel(React, primitives) {
     ]
     const rootIdOfSource = (source) => (String(source).endsWith("-agents") ? "agents" : "dsh")
     const discoveredOnly = discovered.filter((entry) => matchesName(entry.name, query))
-    const knownProjects = new Map((runtime.workspaces ?? [])
+    // Path → display title for the workspaces the Host knows. Annotated because the
+    // projection's element type is `never[]`, which otherwise infers `Map<unknown, unknown>`
+    // and makes every label lookup `unknown` (i.e. not renderable as a child).
+    const knownProjects = new Map<string, string>((runtime.workspaces ?? [])
       .filter((workspace) => typeof workspace?.path === 'string' && workspace.path !== '')
-      .map((workspace) => [workspace.path, typeof workspace.title === 'string' && workspace.title !== '' ? workspace.title : workspace.path]))
+      .map((workspace): [string, string] => [workspace.path, typeof workspace.title === 'string' && workspace.title !== '' ? workspace.title : workspace.path]))
     const projectLabel = (path) => {
       if (typeof path !== 'string' || path === '') return ''
       const known = knownProjects.get(path)
@@ -649,7 +655,8 @@ export function createPanel(React, primitives) {
       )
     }
 
-    function card(key, identity, description, enabled, details, menuItems, pending, statusNode, authNote) {
+    // `statusNode`/`authNote` are only supplied by the MCP card; a skills card has neither.
+    function card(key, identity, description, enabled, details, menuItems, pending, statusNode?: any, authNote?: any) {
       return listCardView({
         key, identity, description, enabled, details, menuItems, pending, statusNode, authNote,
         isOpen: expanded === key, onToggle: () => setExpanded(expanded === key ? '' : key),

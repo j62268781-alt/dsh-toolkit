@@ -281,7 +281,7 @@ function createBeams(doc, count) {
  * @param {{ compact?: boolean }} [options] compact paints the reduced card preview.
  * @returns {HTMLElement} the decorative scene root.
  */
-export function createOceanScene(options = {}) {
+export function createOceanScene(options: { compact?: boolean } = {}) {
   const doc = globalThis.document
   if (!doc || typeof doc.createElement !== 'function') {
     throw new Error('createOceanScene needs a DOM document')

@@ -22,7 +22,33 @@ function withoutField(values, field) {
   return next
 }
 
-export function createNotificationPanel(React, options = {}) {
+/** 偏好源：`useSyncExternalStore` 需要的两件套（快照形状由 `model.ts` 决定）。 */
+export interface NotificationSettingsSource {
+  /** 当前偏好快照。 */
+  getSnapshot: () => any
+  /** 订阅偏好变化，返回退订函数。 */
+  subscribe: (listener: () => void) => () => void
+}
+
+/** 页面工厂的依赖，由 `index.tsx` 装配时传入。 */
+export interface NotificationPanelOptions {
+  /** 配置表单（`findScopedForm` 的结果），页面的保存链路用。 */
+  form?: any
+  /** 表单 entry id。 */
+  entryId?: string
+  /** 文案函数。 */
+  t?: (key: string, params?: any) => string
+  /** 偏好源。 */
+  settings?: NotificationSettingsSource
+  /** 最近事件列表。 */
+  recent?: any
+  /** 页面上的动作集合：播放预览音、申请通知权限、打开会话…返回值各不相同，只能显式 any。 */
+  actions?: any
+  /** 官方 primitives（降级宿主拿到 null）。 */
+  primitives?: any
+}
+
+export function createNotificationPanel(React, options: NotificationPanelOptions = {}) {
   const t = typeof options.t === 'function' ? options.t : (key) => key
   const { settings, actions = {}, primitives } = options
   const Switch = primitives?.Switch

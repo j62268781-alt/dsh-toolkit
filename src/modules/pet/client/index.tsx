@@ -19,8 +19,8 @@ export default function createPet(require) {
     apply(ctx) {
       const { form } = findScopedForm(ctx, CONFIG_NS)
       const t = createTranslator(ctx)
-      const warn = (error) => console.warn('[dsh-toolkit-pet]', error)
-      const listeners = new Set()
+      const warn = (error?: any) => console.warn('[dsh-toolkit-pet]', error)
+      const listeners = new Set<() => void>()
       let value = readSettings(formSnapshot(form))
       const refresh = () => { value = readSettings(form ? formSnapshot(form) : connection.getSnapshot().settings); for (const listener of [...listeners]) listener() }
       const settings = { getSnapshot: () => value, subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener) } }
@@ -51,7 +51,9 @@ export default function createPet(require) {
       // 分页控件是共享件（src/client/ui/components/pagination/index.jsx），样式随本模块的样式表一起注入。
       ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet(css + paginationCss + resizableDialogCss, 'dsh-toolkit-pet'), 'dsh-toolkit-pet:stylesheet')
       ctx.effect(() => {
-        const off = form ? (form.subscribe?.(refresh) ?? form.store?.subscribe?.(refresh)) : connection.subscribe(refresh)
+        // `subscribe()` 在 ScopedForm 上的返回类型是 `unknown`（宿主实现可能返回 disposer 或句柄），
+        // 这里只按「函数就调用」使用，故显式收窄成可选 disposer。
+        const off = (form ? (form.subscribe?.(refresh) ?? form.store?.subscribe?.(refresh)) : connection.subscribe(refresh)) as (() => void) | undefined
         return () => { off?.(); listeners.clear() }
       }, 'dsh-toolkit-pet:settings')
       ctx.effect(() => { connection.start(); return () => connection.dispose() }, 'dsh-toolkit-pet:connection')

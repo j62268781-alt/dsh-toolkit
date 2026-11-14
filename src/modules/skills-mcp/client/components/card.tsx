@@ -95,8 +95,37 @@ function transportPairs(transport, values) {
   return pairs
 }
 
+/**
+ * The fields a card renders from one profile row.
+ *
+ * A projection from the Host, so every field is optional and only read through
+ * `?? ''`/`String(...)`; nothing here writes back into the row.
+ */
+export interface RowShape {
+  transport?: string
+  entryId?: string
+  /** For a stdio row the projection merges command + args into this field. */
+  target?: string
+  args?: string
+  env?: string
+  headersText?: string
+  scope?: string
+}
+
+/** The fields a card renders from one `config.servers[]` entry. */
+export interface ServerEntryShape {
+  transport?: string
+  command?: string
+  /** A config entry keeps arguments as a list; an older projection wrote a string. */
+  args?: string | string[]
+  env?: string
+  url?: string
+  /** An object from the config, or the form's `KEY=VALUE` text. */
+  headers?: unknown
+}
+
 /** Detail pairs for a global MCP row (a profile patch entry). */
-export function rowDetailPairs(row = {}) {
+export function rowDetailPairs(row: RowShape = {}) {
   const transport = row.transport || 'streamable-http'
   return [
     ['行 id', String(row.entryId ?? '').replace(/^include:/, '')],
@@ -134,7 +163,7 @@ export function scopeLabelOf(scope) {
 }
 
 /** Detail pairs for a project-level entry (managed by the panel itself). */
-export function entryDetailPairs(server = {}, scopeLabel = '') {
+export function entryDetailPairs(server: ServerEntryShape = {}, scopeLabel = '') {
   const transport = server.transport || 'streamable-http'
   const args = Array.isArray(server.args) ? server.args.join(' ') : (server.args ?? '')
   return [

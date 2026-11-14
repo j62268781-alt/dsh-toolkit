@@ -150,7 +150,8 @@ function createEmbers(doc, random, compact) {
  *  No listener, timer or animation frame is retained by an individual scene.
  *  Keeping the legacy hope id preserves existing saved theme choices.
  */
-const SKY_STOPS = [
+/** `[hour, [top, mid, low], night amount]` keyframes for the sky gradient. */
+const SKY_STOPS: Array<[number, string[], number]> = [
   [0, ['#050b22', '#101b43', '#243355'], 1],
   [5, ['#11152f', '#593755', '#bc6d62'], 0.85],
   [6.5, ['#535e9c', '#ee9a8a', '#ffd6a1'], 0.08],
@@ -215,12 +216,18 @@ function createLandscape(doc) {
   return landscape
 }
 
+/** Options accepted by `createHopeScene`; `now` is pinned by tests. */
+export interface HopeSceneOptions {
+  compact?: boolean
+  now?: Date
+}
+
 /**
  * Paint the local-time 「昼夜流光」 scene.
- * @param {{ compact?: boolean, now?: Date }} [options] compact paints the reduced card preview.
- * @returns {HTMLElement} the decorative scene root.
+ * @param options compact paints the reduced card preview.
+ * @returns the decorative scene root.
  */
-export function createHopeScene(options = {}) {
+export function createHopeScene(options: HopeSceneOptions = {}) {
   const doc = globalThis.document
   if (!doc || typeof doc.createElement !== 'function') {
     throw new Error('createHopeScene needs a DOM document')
