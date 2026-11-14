@@ -30,8 +30,8 @@ import { NotificationEngine } from './engine.js'
 import { NotificationDispatcher } from './dispatch.js'
 import { SystemSoundPlayer, loadSystemSounds } from './system-sounds.js'
 import {
-  browserPermission, dismissLiveNotifications, requestBrowserPermission, showBrowserNotification,
-  showTestNotification,
+  browserPermission, dismissLiveNotifications, isDesktopShell, requestBrowserPermission,
+  showBrowserNotification, showTestNotification,
 } from './browser-notify.js'
 import { createRecentStore } from './recent.js'
 import { createNotificationPanel } from './panel.jsx'
@@ -445,6 +445,8 @@ export default function createNotification(require) {
           return sent
         },
         permission: () => browserPermission(),
+        // 决定「拒绝后该去系统设置还是浏览器站点设置」，见 panel.tsx 的两套文案。
+        desktopShell: () => isDesktopShell(),
         requestPermission: async () => {
           const permission = await requestBrowserPermission()
           if (permission === 'granted') refreshSettings()
@@ -551,6 +553,25 @@ export default function createNotification(require) {
         }
         return off
       }, 'dsh-toolkit-notification:pending')
+
+      // 首次手势解锁 AudioContext：提醒常在没有用户手势的时候触发（后台会话刚跑完），
+      // 自动播放策略会让 resume() 一直挂着，于是提示音静默丢失，且没有任何报错可查。
+      install(() => {
+        if (typeof window === 'undefined') return undefined
+        const unlock = () => {
+          try {
+            const context = player.contextOf()
+            if (context.state === 'suspended') void context.resume()
+          } catch (error) {
+            warn('audio unlock failed', error)
+          }
+          detach()
+        }
+        const events = ['pointerdown', 'keydown', 'touchstart']
+        const detach = () => { for (const event of events) window.removeEventListener(event, unlock, true) }
+        for (const event of events) window.addEventListener(event, unlock, true)
+        return detach
+      }, 'dsh-toolkit-notification:audio-unlock')
 
       install(() => () => player.dispose(), 'dsh-toolkit-notification:sounds')
 

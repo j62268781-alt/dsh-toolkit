@@ -5,6 +5,12 @@ const KIND_COPY = { completed: 'typeCompleted', failed: 'typeFailed', question: 
 const MODE_COPY = { never: 'currentNever', unfocused: 'currentUnfocused', always: 'currentAlways' }
 const PERMISSION_COPY = { granted: 'permissionGranted', denied: 'permissionDenied', default: 'permissionDefault', unsupported: 'permissionUnsupported' }
 const PERMISSION_HINT = { granted: 'permissionHintGranted', denied: 'permissionHintDenied', default: 'permissionHintDefault', unsupported: 'permissionHintUnsupported' }
+/**
+ * web 端「被拒绝」的成因与修法和桌面外壳不同：Chrome 站点权限被 block 时，Windows 通知设置里
+ * Chrome 仍然是「已允许」，照着系统设置那句去改永远改不好，所以这里按宿主分两套文案。
+ */
+const PERMISSION_COPY_WEB = { denied: 'permissionDeniedWeb' }
+const PERMISSION_HINT_WEB = { denied: 'permissionHintDeniedWeb' }
 
 /** 乐观回显的对账基准：把 `notification.*` 的扁平字段映射回解码后的快照。 */
 function savedFieldValue(snapshot, field) {
@@ -78,6 +84,21 @@ export function createNotificationPanel(React, options: NotificationPanelOptions
     const translate = typeof props?.t === 'function' ? props.t : t
     const snapshot = React.useSyncExternalStore(settings.subscribe, settings.getSnapshot, settings.getSnapshot)
     const [permission, setPermission] = React.useState(() => actions.permission?.() ?? 'unsupported')
+    // 拿不到判定就按浏览器处理：web shell 是本插件的默认场景，桌面外壳会显式返回 true。
+    const webShell = typeof actions.desktopShell === 'function' ? actions.desktopShell() !== true : true
+    const permissionCopy = (webShell && PERMISSION_COPY_WEB[permission]) || PERMISSION_COPY[permission] || 'permissionUnsupported'
+    const permissionHint = (webShell && PERMISSION_HINT_WEB[permission]) || PERMISSION_HINT[permission] || 'permissionHintUnsupported'
+    // 权限可能在页面之外被改（地址栏图标、系统设置、另一个标签页）：回到前台就重读一次，
+    // 否则用户改完回来看到的还是「已关闭」，只能靠手点「重新检查」自救。
+    React.useEffect(() => {
+      const sync = () => setPermission(actions.permission?.() ?? 'unsupported')
+      if (typeof document !== 'undefined') document.addEventListener('visibilitychange', sync)
+      if (typeof window !== 'undefined') window.addEventListener('focus', sync)
+      return () => {
+        if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', sync)
+        if (typeof window !== 'undefined') window.removeEventListener('focus', sync)
+      }
+    }, [])
     const [busy, setBusy] = React.useState(false)
     const [error, setError] = React.useState('')
     const [notice, setNotice] = React.useState('')
@@ -148,7 +169,7 @@ export function createNotificationPanel(React, options: NotificationPanelOptions
       else if (next === 'denied') setError(translate('deniedHint'))
     })
     const testNotification = () => change(async () => {
-      if (!await actions.testNotification()) setError(translate('testFailed', { reason: translate(PERMISSION_COPY[permission] ?? 'permissionUnsupported') }))
+      if (!await actions.testNotification()) setError(translate('testFailed', { reason: translate(permissionCopy) }))
     })
     const recheckPermission = () => { setError(''); setNotice(''); setPermission(actions.permission?.() ?? 'unsupported') }
     const preview = () => change(async () => {
@@ -165,7 +186,7 @@ export function createNotificationPanel(React, options: NotificationPanelOptions
         <Row title={translate('enabledTitle')} description={translate('enabledDesc')}><Toggle checked={enabled} disabled={readOnly} label={translate('enabledTitle')} onChange={(next) => changeField('enabled', next, () => actions.setEnabled(next))} /></Row>
         <Row title={translate('currentTitle')} description={translate('currentDesc')}><Timing value={currentMode} disabled={inactive} translate={translate} onChange={(next) => changeField('currentMode', next, () => actions.setCurrentMode(next))} /></Row>
         <Row title={translate('testTitle')} description={translate('testHint')}><div className="ntf-actions"><ActionButton disabled={inactive || busy || permission === 'denied' || permission === 'unsupported'} onClick={testNotification}>{translate('testButton')}</ActionButton></div></Row>
-        <Row title={translate('permissionTitle')} description={translate(PERMISSION_HINT[permission] ?? 'permissionHintUnsupported')}><div className="ntf-actions">{permission === 'default' ? <ActionButton disabled={busy} onClick={requestPermission}>{translate('grantButton')}</ActionButton> : permission === 'unsupported' ? null : <ActionButton disabled={busy} onClick={recheckPermission}>{translate('recheckButton')}</ActionButton>}</div></Row>
+        <Row title={translate('permissionTitle')} description={translate(permissionHint)}><div className="ntf-actions">{permission === 'default' ? <ActionButton disabled={busy} onClick={requestPermission}>{translate('grantButton')}</ActionButton> : permission === 'unsupported' ? null : <ActionButton disabled={busy} onClick={recheckPermission}>{translate('recheckButton')}</ActionButton>}</div></Row>
       </Group>
       <Group title={translate('typesHeading')}>
         {KINDS.map((kind) => { const title = translate(`${KIND_COPY[kind]}Title`); const field = `${kind}Enabled`; return <Row key={kind} title={title} description={translate(`${KIND_COPY[kind]}Desc`)}><Toggle checked={valueOf(field) === true} disabled={inactive} label={title} onChange={(next) => changeField(field, next, () => actions.setKindEnabled(kind, next))} /></Row> })}

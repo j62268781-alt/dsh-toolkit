@@ -261,10 +261,12 @@ window.__ModuleLoader__.load({
         permissionTitle: "系统权限",
         permissionGranted: "通知权限：已授予",
         permissionDenied: "通知权限：已被拒绝，需在系统设置里重新允许。",
+        permissionDeniedWeb: "通知权限：已被浏览器拦截，需在站点设置里重新允许。",
         permissionDefault: "通知权限：尚未授予",
         permissionUnsupported: "通知权限：当前环境不支持",
         permissionHintGranted: "系统通知已开启，提醒会正常弹出。",
         permissionHintDenied: "系统通知已关闭；请到系统设置里允许本应用发送通知。",
+        permissionHintDeniedWeb: "系统通知被浏览器拦截；点地址栏左侧的图标 →「通知」→ 允许，然后刷新页面。",
         permissionHintDefault: "系统通知尚未开启；点击右侧按钮申请权限。",
         permissionHintUnsupported: "当前环境不支持系统通知（需要浏览器或桌面外壳）。",
         grantButton: "授权",
@@ -345,10 +347,12 @@ window.__ModuleLoader__.load({
         permissionTitle: "System permission",
         permissionGranted: "Permission: granted",
         permissionDenied: "Permission: denied — allow it again in the system settings.",
+        permissionDeniedWeb: "Permission: blocked by the browser — allow it in the site settings.",
         permissionDefault: "Permission: not granted yet",
         permissionUnsupported: "Permission: unsupported here",
         permissionHintGranted: "System notifications are on; reminders will appear.",
         permissionHintDenied: "System notifications are off; allow this app in the system settings.",
+        permissionHintDeniedWeb: "The browser is blocking notifications; open the icon left of the address bar → Notifications → Allow, then reload.",
         permissionHintDefault: "System notifications are not enabled yet; request permission to start.",
         permissionHintUnsupported: "System notifications are not available in this environment.",
         grantButton: "Grant",
@@ -816,6 +820,13 @@ window.__ModuleLoader__.load({
         return Ctor.permission;
       } catch {
         return "unsupported";
+      }
+    }
+    function isDesktopShell() {
+      try {
+        return typeof globalThis === "object" && globalThis !== null && "dshDesktop" in globalThis;
+      } catch {
+        return false;
       }
     }
     async function requestBrowserPermission() {
@@ -1360,6 +1371,8 @@ window.__ModuleLoader__.load({
     var MODE_COPY = { never: "currentNever", unfocused: "currentUnfocused", always: "currentAlways" };
     var PERMISSION_COPY = { granted: "permissionGranted", denied: "permissionDenied", default: "permissionDefault", unsupported: "permissionUnsupported" };
     var PERMISSION_HINT = { granted: "permissionHintGranted", denied: "permissionHintDenied", default: "permissionHintDefault", unsupported: "permissionHintUnsupported" };
+    var PERMISSION_COPY_WEB = { denied: "permissionDeniedWeb" };
+    var PERMISSION_HINT_WEB = { denied: "permissionHintDeniedWeb" };
     function savedFieldValue(snapshot, field) {
       for (const kind of KINDS) {
         if (field === `${kind}Enabled`) return snapshot.types?.[kind]?.enabled === true;
@@ -1399,6 +1412,18 @@ window.__ModuleLoader__.load({
         const translate = typeof props?.t === "function" ? props.t : t;
         const snapshot = React2.useSyncExternalStore(settings.subscribe, settings.getSnapshot, settings.getSnapshot);
         const [permission, setPermission] = React2.useState(() => actions.permission?.() ?? "unsupported");
+        const webShell = typeof actions.desktopShell === "function" ? actions.desktopShell() !== true : true;
+        const permissionCopy = webShell && PERMISSION_COPY_WEB[permission] || PERMISSION_COPY[permission] || "permissionUnsupported";
+        const permissionHint = webShell && PERMISSION_HINT_WEB[permission] || PERMISSION_HINT[permission] || "permissionHintUnsupported";
+        React2.useEffect(() => {
+          const sync = () => setPermission(actions.permission?.() ?? "unsupported");
+          if (typeof document !== "undefined") document.addEventListener("visibilitychange", sync);
+          if (typeof window !== "undefined") window.addEventListener("focus", sync);
+          return () => {
+            if (typeof document !== "undefined") document.removeEventListener("visibilitychange", sync);
+            if (typeof window !== "undefined") window.removeEventListener("focus", sync);
+          };
+        }, []);
         const [busy, setBusy] = React2.useState(false);
         const [error, setError] = React2.useState("");
         const [notice, setNotice] = React2.useState("");
@@ -1477,7 +1502,7 @@ window.__ModuleLoader__.load({
           else if (next === "denied") setError(translate("deniedHint"));
         });
         const testNotification = () => change(async () => {
-          if (!await actions.testNotification()) setError(translate("testFailed", { reason: translate(PERMISSION_COPY[permission] ?? "permissionUnsupported") }));
+          if (!await actions.testNotification()) setError(translate("testFailed", { reason: translate(permissionCopy) }));
         });
         const recheckPermission = () => {
           setError("");
@@ -1492,7 +1517,7 @@ window.__ModuleLoader__.load({
         if (!soundChoices.some((entry) => entry.id === selectedSound)) soundChoices.push({ id: selectedSound, label: translate("soundMissing") });
         const modeValue = valueOf("currentMode");
         const currentMode = CURRENT_MODES.includes(modeValue) ? modeValue : "unfocused";
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-page" }, /* @__PURE__ */ __dshReact.createElement("header", { className: "ntf-pageHead" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "ntf-pageTitle" }, translate("title")), /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-pageIntro" }, translate("intro"))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("preferencesHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("enabledTitle"), description: translate("enabledDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: enabled, disabled: readOnly, label: translate("enabledTitle"), onChange: (next) => changeField("enabled", next, () => actions.setEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("currentTitle"), description: translate("currentDesc") }, /* @__PURE__ */ __dshReact.createElement(Timing, { value: currentMode, disabled: inactive, translate, onChange: (next) => changeField("currentMode", next, () => actions.setCurrentMode(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("testTitle"), description: translate("testHint") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: inactive || busy || permission === "denied" || permission === "unsupported", onClick: testNotification }, translate("testButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("permissionTitle"), description: translate(PERMISSION_HINT[permission] ?? "permissionHintUnsupported") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, permission === "default" ? /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: requestPermission }, translate("grantButton")) : permission === "unsupported" ? null : /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: recheckPermission }, translate("recheckButton"))))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("typesHeading") }, KINDS.map((kind) => {
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-page" }, /* @__PURE__ */ __dshReact.createElement("header", { className: "ntf-pageHead" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "ntf-pageTitle" }, translate("title")), /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-pageIntro" }, translate("intro"))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("preferencesHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("enabledTitle"), description: translate("enabledDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: enabled, disabled: readOnly, label: translate("enabledTitle"), onChange: (next) => changeField("enabled", next, () => actions.setEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("currentTitle"), description: translate("currentDesc") }, /* @__PURE__ */ __dshReact.createElement(Timing, { value: currentMode, disabled: inactive, translate, onChange: (next) => changeField("currentMode", next, () => actions.setCurrentMode(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("testTitle"), description: translate("testHint") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: inactive || busy || permission === "denied" || permission === "unsupported", onClick: testNotification }, translate("testButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("permissionTitle"), description: translate(permissionHint) }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, permission === "default" ? /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: requestPermission }, translate("grantButton")) : permission === "unsupported" ? null : /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: busy, onClick: recheckPermission }, translate("recheckButton"))))), /* @__PURE__ */ __dshReact.createElement(Group, { title: translate("typesHeading") }, KINDS.map((kind) => {
           const title = translate(`${KIND_COPY[kind]}Title`);
           const field = `${kind}Enabled`;
           return /* @__PURE__ */ __dshReact.createElement(Row, { key: kind, title, description: translate(`${KIND_COPY[kind]}Desc`) }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: valueOf(field) === true, disabled: inactive, label: title, onChange: (next) => changeField(field, next, () => actions.setKindEnabled(kind, next)) }));
@@ -1854,6 +1879,8 @@ window.__ModuleLoader__.load({
               return sent;
             },
             permission: () => browserPermission(),
+            // 决定「拒绝后该去系统设置还是浏览器站点设置」，见 panel.tsx 的两套文案。
+            desktopShell: () => isDesktopShell(),
             requestPermission: async () => {
               const permission = await requestBrowserPermission();
               if (permission === "granted") refreshSettings();
@@ -1946,6 +1973,24 @@ window.__ModuleLoader__.load({
             }
             return off;
           }, "dsh-toolkit-notification:pending");
+          install(() => {
+            if (typeof window === "undefined") return void 0;
+            const unlock = () => {
+              try {
+                const context = player.contextOf();
+                if (context.state === "suspended") void context.resume();
+              } catch (error) {
+                warn2("audio unlock failed", error);
+              }
+              detach();
+            };
+            const events = ["pointerdown", "keydown", "touchstart"];
+            const detach = () => {
+              for (const event of events) window.removeEventListener(event, unlock, true);
+            };
+            for (const event of events) window.addEventListener(event, unlock, true);
+            return detach;
+          }, "dsh-toolkit-notification:audio-unlock");
           install(() => () => player.dispose(), "dsh-toolkit-notification:sounds");
           install(() => {
             if (typeof window === "undefined" || typeof document === "undefined") return void 0;
