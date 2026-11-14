@@ -20,7 +20,22 @@ export declare class HttpFailure extends Error {
     readonly status: number;
     readonly reason: string;
     constructor(status: number, reason: string);
+    /**
+     * 兼容历史调用方：`serverScope` 这类域函数老代码按 `statusCode` 判断。
+     * 新代码用 `status`（语义是 HTTP 状态码，别名只为不破坏既有断言）。
+     */
+    get statusCode(): number;
 }
+/** Throw-side shorthand: `throw httpFailure(400, 'bad-json')`. */
+export declare function httpFailure(status: number, reason: string): HttpFailure;
+/**
+ * Read any thrown value back as an HTTP failure.
+ *
+ * The handler skeleton and the modules that hand-write their own handler (streams,
+ * binary responses) need the same decision, so it lives here instead of each catch
+ * block probing for a `statusCode` that only some throw sites set.
+ */
+export declare function asHttpFailure(error: unknown, fallback?: number): HttpFailure;
 /** What one JSON route declares: transport policy here, domain decisions in `run`. */
 export interface JsonRouteSpec {
     path: string;

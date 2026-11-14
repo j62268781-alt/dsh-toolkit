@@ -57,6 +57,33 @@ export class HttpFailure extends Error {
     this.status = status
     this.reason = reason
   }
+
+  /**
+   * 兼容历史调用方：`serverScope` 这类域函数老代码按 `statusCode` 判断。
+   * 新代码用 `status`（语义是 HTTP 状态码，别名只为不破坏既有断言）。
+   */
+  get statusCode(): number {
+    return this.status
+  }
+}
+
+/** Throw-side shorthand: `throw httpFailure(400, 'bad-json')`. */
+export function httpFailure(status: number, reason: string): HttpFailure {
+  return new HttpFailure(status, reason)
+}
+
+/**
+ * Read any thrown value back as an HTTP failure.
+ *
+ * The handler skeleton and the modules that hand-write their own handler (streams,
+ * binary responses) need the same decision, so it lives here instead of each catch
+ * block probing for a `statusCode` that only some throw sites set.
+ */
+export function asHttpFailure(error: unknown, fallback = 500): HttpFailure {
+  if (error instanceof HttpFailure) return error
+  const thrown = error as { statusCode?: unknown; message?: unknown } | undefined
+  const status = typeof thrown?.statusCode === 'number' ? thrown.statusCode : fallback
+  return new HttpFailure(status, String(thrown?.message ?? error))
 }
 
 /** What one JSON route declares: transport policy here, domain decisions in `run`. */
@@ -104,8 +131,11 @@ export function jsonRoute(ctx: any, spec: JsonRouteSpec): Route {
         } catch (error: any) {
           // The request was accepted, so it has to be answered: a rejected flush or
           // a failed rename is a 500 carrying the host's message, never a dropped
-          // socket and never an unhandled rejection.
-          send(500, { ok: false, reason: String(error?.message ?? error) })
+          // socket and never an unhandled rejection. A `HttpFailure` thrown by the
+          // domain keeps the status it asked for (400 for a bad shape, 404 for a
+          // missing id) instead of turning into a 500.
+          const failure = asHttpFailure(error)
+          send(failure.status, { ok: false, reason: failure.reason })
         }
       }
       if (limit <= 0) {

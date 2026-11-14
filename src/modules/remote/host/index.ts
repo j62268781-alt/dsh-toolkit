@@ -24,7 +24,7 @@
  */
 
 import { sendJson, readBody } from '../../../host/http.js'
-import { registerAuthenticatedRoute } from '../../../host/routes.js'
+import { registerAuthenticatedRoute, asHttpFailure, httpFailure } from '../../../host/routes.js'
 import { createBridge } from './wechat/bridge.js'
 import { Config, DEFAULT_CREDENTIAL_REF, readConfig } from './wechat/config.js'
 import { createLoginManager } from './wechat/login.js'
@@ -350,7 +350,7 @@ export function registerClawbotRoutes(ctx: any, service: any) {
         try {
           payload = JSON.parse(await readBody(req, MAX_BODY))
         } catch {
-          throw Object.assign(new Error('请求体不是合法 JSON'), { statusCode: 400 })
+          throw httpFailure(400, '请求体不是合法 JSON')
         }
         return service.submitCode(String(payload?.code ?? ''))
       },
@@ -362,7 +362,7 @@ export function registerClawbotRoutes(ctx: any, service: any) {
         try {
           payload = JSON.parse(await readBody(req, MAX_BODY))
         } catch {
-          throw Object.assign(new Error('请求体不是合法 JSON'), { statusCode: 400 })
+          throw httpFailure(400, '请求体不是合法 JSON')
         }
         return service.setMonitor(payload?.enabled === true)
       },
@@ -381,7 +381,7 @@ export function registerClawbotRoutes(ctx: any, service: any) {
         try {
           payload = JSON.parse(await readBody(req, MAX_BODY))
         } catch {
-          throw Object.assign(new Error('请求体不是合法 JSON'), { statusCode: 400 })
+          throw httpFailure(400, '请求体不是合法 JSON')
         }
         return service.setBridgeAccess({
           enabled: typeof payload?.enabled === 'boolean' ? payload.enabled : undefined,
@@ -404,7 +404,7 @@ export function registerClawbotRoutes(ctx: any, service: any) {
         try {
           return sendJson(res, 200, await run(req, res))
         } catch (error: any) {
-          const status = Number.isInteger(error?.statusCode) ? error.statusCode : 400
+          const status = asHttpFailure(error, 400).status
           return sendJson(res, status, { ok: false, error: String(error?.message ?? error) })
         }
       },
@@ -436,7 +436,7 @@ function registerPeersRoute(ctx: any) {
         return sendJson(res, 200, { ok: true, peers })
       } catch (error: any) {
         // serverScope 对非法地址抛 400；读盘失败（权限等）是 500，别谎称「没配对过」。
-        const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+        const status = asHttpFailure(error, 500).status
         return sendJson(res, status, { ok: false, error: String(error?.message ?? error) })
       }
     },
@@ -469,7 +469,7 @@ function registerLocalStateRoute(ctx: any) {
         return sendJson(res, 200, { ok: true, dir, hostOnly, removed })
       } catch (error: any) {
         // serverScope 对非法地址抛 400；删盘失败（占用/权限）是 500，别谎称「已经清干净」。
-        const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+        const status = asHttpFailure(error, 500).status
         return sendJson(res, status, { ok: false, error: String(error?.message ?? error) })
       }
     },

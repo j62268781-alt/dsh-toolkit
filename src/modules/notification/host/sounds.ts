@@ -5,12 +5,14 @@ import { lstat, mkdtemp, open, readdir, realpath, rm, writeFile } from 'node:fs/
 import { homedir, tmpdir } from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
+import { httpFailure } from '../../../host/routes.js'
 
 export const MAX_SOUND_BYTES = 4 * 1024 * 1024
 const runFile = promisify(execFileCallback)
 const commandOptions = { timeout: 3000, maxBuffer: 64 * 1024, windowsHide: true }
-const missing = () => Object.assign(new Error('sound-not-found'), { statusCode: 404 })
-const unavailable = () => Object.assign(new Error('sound-unavailable'), { statusCode: 503 })
+// 走共享的 HttpFailure 通道：路由层据此决定状态码，别再各自挂 statusCode 属性。
+const missing = () => httpFailure(404, 'sound-not-found')
+const unavailable = () => httpFailure(503, 'sound-unavailable')
 
 /** One playable file the platform actually offers, with the root it must stay under. */
 export interface SoundEntry {

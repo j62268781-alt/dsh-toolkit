@@ -18,6 +18,7 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { dshHome } from '../../../../host/dsh-home.js';
+import { httpFailure } from '../../../../host/routes.js';
 /**
  * 与上游一致：DSH_HOME 优先，否则 ~/.dsh（规则本身在 `host/dsh-home.js`，全仓一份）。
  *
@@ -35,10 +36,10 @@ export function serverScope(serverUrl) {
         parsed = new URL(String(serverUrl));
     }
     catch {
-        throw Object.assign(new Error('配对服务器地址不是合法 URL'), { statusCode: 400 });
+        throw httpFailure(400, '配对服务器地址不是合法 URL');
     }
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-        throw Object.assign(new Error('配对服务器只支持 http/https'), { statusCode: 400 });
+        throw httpFailure(400, '配对服务器只支持 http/https');
     }
     return createHash('sha256').update(parsed.origin).digest('hex').slice(0, 24);
 }
