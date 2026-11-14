@@ -187,6 +187,17 @@ test('archived route preserves methods, JSON, session ID, and path guards', { ti
     ['{}', 400, 'bad-session-id'],
     ['{"sessionId":null}', 400, 'bad-session-id'],
     ['{"sessionId":""}', 400, 'bad-session-id'],
+  ]) {
+    const { res } = await request(service.route, body)
+    assert.equal(res.statusCode, status)
+    // 传输层的坏输入仍然用 `reason`（`host/routes.ts` 的协议词汇，全仓共用）；
+    // 业务判定才用 `code`。两者不互相转换。
+    assert.deepEqual(res.json(), { ok: false, reason })
+    assert.equal(res.headers['cache-control'], 'no-store')
+    assert.equal(res.headers['content-type'], 'application/json; charset=utf-8')
+    assert.equal(res.headers['access-control-allow-origin'], undefined)
+  }
+  for (const [body, status, code] of [
     ['{"sessionId":"live"}', 409, 'session-loaded'],
     ['{"sessionId":"../outside"}', 404, 'invalid-session-id'],
     ['{"sessionId":"/absolute"}', 404, 'invalid-session-id'],
@@ -195,7 +206,7 @@ test('archived route preserves methods, JSON, session ID, and path guards', { ti
   ]) {
     const { res } = await request(service.route, body)
     assert.equal(res.statusCode, status)
-    assert.deepEqual(res.json(), { ok: false, reason })
+    assert.deepEqual(res.json(), { ok: false, code })
     assert.equal(res.headers['cache-control'], 'no-store')
     assert.equal(res.headers['content-type'], 'application/json; charset=utf-8')
     assert.equal(res.headers['access-control-allow-origin'], undefined)
@@ -220,14 +231,14 @@ test('an archived session is deletable while loaded, and a running one is still 
 
   const busy = await request(service.route, JSON.stringify({ sessionId: runningId }))
   assert.equal(busy.res.statusCode, 409)
-  assert.deepEqual(busy.res.json(), { ok: false, reason: 'session-busy' })
+  assert.deepEqual(busy.res.json(), { ok: false, code: 'session-busy' })
   await assert.rejects(stat(join(root, 'dsh-delete-session-trash')), { code: 'ENOENT' })
 
   const idle = await request(service.route, JSON.stringify({ sessionId: idleId }))
   assert.equal(idle.res.statusCode, 200)
   const result = idle.res.json()
   assert.equal(result.ok, true)
-  assert.equal(result.retained, true, 'a loaded session keeps its tombstone until the host drops it')
+  assert.equal(result.code, 'retained', 'a loaded session keeps its tombstone until the host drops it')
   await assert.rejects(stat(join(root, 'sessions', 'bucket', idleId)), { code: 'ENOENT' })
   // The archive registration must survive: clearing it would put the record back in
   // the sidebar while the host still holds the session.
@@ -315,7 +326,7 @@ test('authenticated archived deletion moves real session files and projection ca
   assert.equal(res.statusCode, 200)
   const result = res.json()
   assert.equal(result.ok, true)
-  assert.equal(result.retained, undefined, 'an unloaded session needs no tombstone')
+  assert.equal(result.code, 'deleted', 'an unloaded session needs no tombstone')
   assert.equal(dirname(result.moved), trashDir)
   assert.ok(result.moved.endsWith(`-${sessionId}`))
   await assert.rejects(stat(sessionDir), { code: 'ENOENT' })
@@ -324,7 +335,7 @@ test('authenticated archived deletion moves real session files and projection ca
   assert.equal(await readFile(`${result.moved}.projcache.json`, 'utf8'), '{"title":"archived"}')
   const again = await request(service.route, JSON.stringify({ sessionId }))
   assert.equal(again.res.statusCode, 404)
-  assert.deepEqual(again.res.json(), { ok: false, reason: 'not-found' })
+  assert.deepEqual(again.res.json(), { ok: false, code: 'not-found' })
 })
 
 test('pending deletions survive a reload and are pruned once the host drops the session', { timeout: 5000 }, async (t) => {
@@ -413,13 +424,14 @@ test('bulk route answers one receipt per session and a rejected row does not abo
   const body = res.json()
   assert.equal(body.ok, true)
   // Order follows the request, and each row carries its own verdict: one moved, one
-  // still running, one that was loaded, one whose files were already gone.
-  const verdicts = body.results.map(({ sessionId, status, ok, reason, retained }) => ({ sessionId, status, ok, reason, retained }))
+  // still running, one that was loaded, one whose files were already gone. The HTTP
+  // status of a row travels as `statusCode`; the business verdict travels as `code`.
+  const verdicts = body.results.map(({ sessionId, statusCode, ok, code, detail }) => ({ sessionId, statusCode, ok, code, detail }))
   assert.deepEqual(verdicts, [
-    { sessionId: removable, status: 200, ok: true, reason: undefined, retained: undefined },
-    { sessionId: running, status: 409, ok: false, reason: 'session-busy', retained: undefined },
-    { sessionId: loaded, status: 200, ok: true, reason: undefined, retained: true },
-    { sessionId: 'bulk-missing', status: 404, ok: false, reason: 'not-found', retained: undefined },
+    { sessionId: removable, statusCode: 200, ok: true, code: 'deleted', detail: undefined },
+    { sessionId: running, statusCode: 409, ok: false, code: 'session-busy', detail: undefined },
+    { sessionId: loaded, statusCode: 200, ok: true, code: 'retained', detail: undefined },
+    { sessionId: 'bulk-missing', statusCode: 404, ok: false, code: 'not-found', detail: undefined },
   ])
   assert.ok(body.results[0].moved.endsWith(`-${removable}`), 'the receipt reports where the files went')
   await assert.rejects(stat(join(root, 'sessions', 'bucket', removable)), { code: 'ENOENT' })
@@ -458,12 +470,12 @@ test('archived client sends the whole page to the bulk route and keeps its recei
     calls.push({ input, options, destination: new URL(input, origin).href })
     return {
       ok: true, status: 200,
-      json: async () => ({ ok: true, results: [{ sessionId: 'a1', status: 200, ok: true }, { sessionId: 'a2', status: 409, ok: false, reason: 'session-loaded' }] }),
+      json: async () => ({ ok: true, results: [{ sessionId: 'a1', statusCode: 200, ok: true, code: 'deleted' }, { sessionId: 'a2', statusCode: 409, ok: false, code: 'session-loaded' }] }),
     }
   }
   assert.deepEqual(await removeSessionsViaHost(['a1', 'a2']), {
     ok: true,
-    results: [{ sessionId: 'a1', status: 200, ok: true }, { sessionId: 'a2', status: 409, ok: false, reason: 'session-loaded' }],
+    results: [{ sessionId: 'a1', statusCode: 200, ok: true, code: 'deleted' }, { sessionId: 'a2', statusCode: 409, ok: false, code: 'session-loaded' }],
   })
   assert.equal(calls.length, 1, 'one round trip for a page of rows')
   const [{ input, options, destination }] = calls
@@ -478,10 +490,10 @@ test('archived client sends the whole page to the bulk route and keeps its recei
 test('archived client preserves error receipts and reports a failed request', async (t) => {
   const previous = globalThis.fetch
   t.after(() => { globalThis.fetch = previous })
-  globalThis.fetch = async () => ({ ok: false, status: 409, json: async () => ({ ok: false, reason: 'session-busy' }) })
-  assert.deepEqual(await removeSessionViaHost('live'), { ok: false, reason: 'session-busy' })
+  globalThis.fetch = async () => ({ ok: false, status: 409, json: async () => ({ ok: false, code: 'session-busy' }) })
+  assert.deepEqual(await removeSessionViaHost('live'), { ok: false, code: 'session-busy' })
   globalThis.fetch = async () => { throw new Error('connection lost') }
-  assert.deepEqual(await removeSessionViaHost('archived'), { ok: false, reason: 'connection lost' })
+  assert.deepEqual(await removeSessionViaHost('archived'), { ok: false, code: 'unknown', detail: 'connection lost' })
 })
 
 test('archived client treats an unavailable pending list as "nothing to hide"', async (t) => {

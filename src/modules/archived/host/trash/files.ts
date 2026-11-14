@@ -1,25 +1,10 @@
 import { mkdir, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import type { Dirent } from "node:fs";
 import { join } from "node:path";
+import { dshHome } from "../../../../host/dsh-home.js";
+import type { DeletionResult } from "./deletion.js";
 
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-
-/** What moving a session to the trash can answer; the route interprets the leftovers. */
-export interface TrashFailure {
-  ok: false;
-  reason: string;
-}
-export interface TrashSuccess {
-  ok: true;
-  moved: string;
-}
-export type TrashResult = TrashSuccess | TrashFailure;
-
-function dshHome() {
-  const fromEnv = process.env.DSH_HOME;
-  return fromEnv !== undefined && fromEnv !== "" ? fromEnv : join(homedir(), ".dsh");
-}
 
 function pendingDir() {
   return join(dshHome(), "dsh-delete-session-trash", "pending");
@@ -62,9 +47,17 @@ export async function clearPendingDeletion(sessionId: string): Promise<boolean> 
   }
 }
 
-export async function deleteSessionFiles(sessionId: string): Promise<TrashResult> {
+/**
+ * Move one session's directory out of `sessions/` and into the trash.
+ *
+ * Answers the same result vocabulary as the domain (`./deletion.js`): moving to the
+ * trash *is* the deletion, so success is `code: "deleted"`. A held handle or a denied
+ * permission surfaces as `move-failed` with the system text in `detail` — the caller
+ * branches on the code and never has to parse that message.
+ */
+export async function deleteSessionFiles(sessionId: string): Promise<DeletionResult> {
   if (!SESSION_ID.test(sessionId)) {
-    return { ok: false, reason: "invalid-session-id" };
+    return { ok: false, code: "invalid-session-id" };
   }
 
   const home = dshHome();
@@ -76,7 +69,7 @@ export async function deleteSessionFiles(sessionId: string): Promise<TrashResult
   try {
     entries = await readdir(sessionsRoot, { withFileTypes: true });
   } catch {
-    return { ok: false, reason: "no-sessions-directory" };
+    return { ok: false, code: "no-sessions-directory" };
   }
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
@@ -91,7 +84,7 @@ export async function deleteSessionFiles(sessionId: string): Promise<TrashResult
 
     }
   }
-  if (found === null) return { ok: false, reason: "not-found" };
+  if (found === null) return { ok: false, code: "not-found" };
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const trashPath = join(trashRoot, `${stamp}-${sessionId}`);
@@ -99,7 +92,7 @@ export async function deleteSessionFiles(sessionId: string): Promise<TrashResult
     await mkdir(trashRoot, { recursive: true });
     await rename(found, trashPath);
   } catch (error) {
-    return { ok: false, reason: `move-failed: ${(error as Error).message}` };
+    return { ok: false, code: "move-failed", detail: String((error as Error | undefined)?.message ?? error) };
   }
 
   const cache = join(home, "storages", "session_projcache", "sessions", `${sessionId}.json`);
@@ -109,5 +102,5 @@ export async function deleteSessionFiles(sessionId: string): Promise<TrashResult
 
   }
 
-  return { ok: true, moved: trashPath };
+  return { ok: true, code: "deleted", moved: trashPath };
 }

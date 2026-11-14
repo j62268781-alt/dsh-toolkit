@@ -1,21 +1,38 @@
 import { archivedIds } from "./reconcile.js";
-import type { TrashFailure, TrashResult } from "./files.js";
 import { deleteSessionFiles, markPendingDeletion } from "./files.js";
 
 /**
- * What a deletion attempt answers, in domain terms.
+ * 删除一个 session 的结果码 —— 这个模块对外的全部词汇。
  *
- * `retained` marks a session whose files moved but whose archive registration stays
- * behind as a tombstone; `moved` is the trash path, for logs and tests.
+ * 以前失败只回 `reason` 字符串，`move-failed: <系统错误>` 那种拼串既没法穷举，路由
+ * 还得靠 `startsWith` / `===` 去猜意图，客户端再按猜出来的字符串分支：一处措辞改动
+ * 会静默改掉 HTTP 状态码。现在判断只认 `code`，`detail` 只给日志和人看。
+ *
+ * 成功只有两种：`deleted`（目录已搬进回收站）与 `retained`（文件搬走了，但归档登记
+ * 作为 tombstone 留在宿主里，因为宿主还持有这个 session）。
  */
-export interface DeletionFailure {
-  ok: false;
-  reason: string;
-}
+export type DeletionCode =
+  | "deleted"
+  | "retained"
+  | "invalid-session-id"
+  | "no-sessions-directory"
+  | "not-found"
+  | "move-failed"
+  | "session-loaded"
+  | "session-busy"
+  | "unknown";
+
 export interface DeletionSuccess {
   ok: true;
+  code: "deleted" | "retained";
+  /** 回收站里的落点，给日志和测试看。 */
   moved?: string;
-  retained?: boolean;
+}
+export interface DeletionFailure {
+  ok: false;
+  code: Exclude<DeletionCode, "deleted" | "retained">;
+  /** 系统原始错误信息（rename 的 EPERM、flush 抛出的 message），不参与判断。 */
+  detail?: string;
 }
 export type DeletionResult = DeletionSuccess | DeletionFailure;
 
@@ -34,9 +51,9 @@ function busy(ctx: any, sessionId: string): boolean {
 /**
  * Delete one archived session's files, and nothing else.
  *
- * Answers a domain outcome (`{ok:true, moved?, retained?}` or `{ok:false, reason}`);
- * mapping that onto an HTTP status is the route's job, so this stays callable from
- * a test or a future CLI without inventing a receipt shape.
+ * Answers a domain result (`{ok:true, code}` or `{ok:false, code, detail?}`); mapping
+ * that onto an HTTP status is the route's job, so this stays callable from a test or
+ * a future CLI without inventing a receipt shape.
  */
 export async function deleteArchivedSession(ctx: any, sessionId: string): Promise<DeletionResult> {
   const live = ctx.sessions?.get?.(sessionId);
@@ -46,14 +63,14 @@ export async function deleteArchivedSession(ctx: any, sessionId: string): Promis
 
   // A session still held in memory but no longer archived is in use by the
   // ordinary sidebar; deleting its files behind that list is not our call.
-  if (!archivedIds(ctx).includes(sessionId)) return { ok: false, reason: "session-loaded" };
-  if (busy(ctx, sessionId)) return { ok: false, reason: "session-busy" };
+  if (!archivedIds(ctx).includes(sessionId)) return { ok: false, code: "session-loaded" };
+  if (busy(ctx, sessionId)) return { ok: false, code: "session-busy" };
 
   // Idle persistence still buffers ~200ms of events; move only after they land.
   if (typeof ctx.sessions.flush === "function") await ctx.sessions.flush(live);
   // `flush` awaited real I/O: re-check the verdicts it may have invalidated.
-  if (!archivedIds(ctx).includes(sessionId)) return { ok: false, reason: "session-loaded" };
-  if (busy(ctx, sessionId)) return { ok: false, reason: "session-busy" };
+  if (!archivedIds(ctx).includes(sessionId)) return { ok: false, code: "session-loaded" };
+  if (busy(ctx, sessionId)) return { ok: false, code: "session-busy" };
 
   // Never unarchive here: the host still holds the session, so clearing the
   // registration would put it back in the sidebar, where it could be opened and
@@ -63,17 +80,18 @@ export async function deleteArchivedSession(ctx: any, sessionId: string): Promis
   const result = await deleteSessionFiles(sessionId);
   // Compare against the literal instead of relying on truthiness: with
   // `strictNullChecks` off (the emit program) `if (result.ok)` does not narrow a
-  // discriminated union, so `reason` would not be reachable below.
+  // discriminated union, so `code` would not be reachable below.
   if (result.ok === true) {
     await markPendingDeletion(sessionId);
-    return { ok: true, moved: result.moved, retained: true };
+    return { ok: true, code: "retained", moved: result.moved };
   }
-  const failure = result as TrashFailure;
-  if (failure.reason === "not-found") {
+  // The files are already gone: clearing this registration is the only work left,
+  // and the marker is what lets that happen once the host releases the session.
+  if (result.code === "not-found") {
     await markPendingDeletion(sessionId);
-    return { ok: true, retained: true };
+    return { ok: true, code: "retained" };
   }
-  return failure;
+  return result;
 }
 
 /**
@@ -90,7 +108,7 @@ export async function deleteArchivedSessions(ctx: any, sessionIds: readonly stri
     try {
       result = await deleteArchivedSession(ctx, sessionId);
     } catch (error) {
-      result = { ok: false, reason: String((error as Error | undefined)?.message ?? error) };
+      result = { ok: false, code: "unknown", detail: String((error as Error | undefined)?.message ?? error) };
     }
     results.push({ sessionId, result });
   }

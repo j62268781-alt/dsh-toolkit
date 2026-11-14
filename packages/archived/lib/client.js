@@ -198,12 +198,21 @@ window.__ModuleLoader__.load({
         removeSession: "删除会话",
         removeAll: "全部删除",
         cancel: "取消",
+        // 弹窗右上角 X 的无障碍名（宿主的 closeLabel 是 aria-label，不是按钮文字）。
+        close: "关闭",
         confirmDelete: "永久删除",
         deleteAllTitle: "永久删除 {t} 个会话？",
         deleteAllDesc: "此操作会从本机移除全部已归档会话，之后不能从 dsh 恢复。",
         deleteOneTitle: "永久删除“{t}”？",
         deleteOneDesc: "此操作会从本机移除该会话，之后不能从 dsh 恢复。",
         removeFailed: "删除失败：{reason}",
+        // 宿主的失败 code → 一句话（key 见 model.js 的 FAILURE_KEYS）
+        failInvalidId: "会话 id 不合法，已跳过。",
+        failNoSessionsDir: "找不到 dsh 的 sessions 目录。",
+        failLocked: "文件被别的程序占用或没有权限，稍后重试。",
+        failLoaded: "dsh 仍持有这个会话，但它已经不在归档里了，刷新页面即可。",
+        failBusy: "这个会话还在运行，等它停下来再删。",
+        failUnknown: "未知错误。",
         deleteRetained: "已删除 {t} 个会话的文件；残留的归档记录会在重启 dsh 后清理。",
         chats: "个会话",
         empty: "还没有归档的会话",
@@ -231,12 +240,20 @@ window.__ModuleLoader__.load({
         removeSession: "Delete session",
         removeAll: "Delete all",
         cancel: "Cancel",
+        // Accessible name of the dialog's X button (the host reads closeLabel as aria-label).
+        close: "Close",
         confirmDelete: "Delete permanently",
         deleteAllTitle: "Permanently delete {t} sessions?",
         deleteAllDesc: "This removes every archived session from this machine. They cannot be recovered from dsh afterwards.",
         deleteOneTitle: "Permanently delete “{t}”?",
         deleteOneDesc: "This removes the session from this machine. It cannot be recovered from dsh afterwards.",
         removeFailed: "Delete failed: {reason}",
+        failInvalidId: "Not a valid session id; skipped.",
+        failNoSessionsDir: "dsh’s sessions directory is missing.",
+        failLocked: "Another program holds the files, or permission was denied. Try again later.",
+        failLoaded: "dsh still holds this session, but it is no longer archived. Refresh the page.",
+        failBusy: "This session is still running. Delete it once it stops.",
+        failUnknown: "Unknown error.",
         deleteRetained: "Deleted {t} session file(s); restart dsh to clear them from this list.",
         chats: "sessions",
         empty: "No archived sessions yet",
@@ -301,24 +318,27 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/archived/client/deletion.ts
+    function failure(code, detail) {
+      return detail === void 0 ? { ok: false, code } : { ok: false, code, detail };
+    }
     async function removeSessionViaHost(sessionId) {
       try {
         const response = await fetchJson(DELETE_SESSION_PATH, { method: "POST", json: { sessionId } });
         const result = await response.json();
-        if (!response.ok) return { ok: false, reason: String(result?.reason ?? `HTTP ${response.status}`) };
+        if (!response.ok) return failure(String(result?.code ?? "unknown"), result?.detail);
         return result;
       } catch (error) {
-        return { ok: false, reason: String(error?.message ?? error) };
+        return failure("unknown", String(error?.message ?? error));
       }
     }
     async function removeSessionsViaHost(sessionIds) {
       try {
         const response = await fetchJson(DELETE_SESSIONS_PATH, { method: "POST", json: { sessionIds } });
         const result = await response.json();
-        if (!response.ok) return { ok: false, reason: String(result?.reason ?? `HTTP ${response.status}`) };
+        if (!response.ok) return failure(String(result?.code ?? "unknown"), result?.detail);
         return { ok: true, results: Array.isArray(result?.results) ? result.results : [] };
       } catch (error) {
-        return { ok: false, reason: String(error?.message ?? error) };
+        return failure("unknown", String(error?.message ?? error));
       }
     }
     async function readPendingDeletions() {
@@ -330,6 +350,87 @@ window.__ModuleLoader__.load({
       } catch {
         return /* @__PURE__ */ new Set();
       }
+    }
+
+    // src/modules/archived/client/model.ts
+    function archivedRowTitle(summary) {
+      const title = typeof summary?.title === "string" ? summary.title.trim() : "";
+      if (title !== "") return title;
+      const display = typeof summary?.displayTitle === "string" ? summary.displayTitle.trim() : "";
+      return display;
+    }
+    var FAILURE_KEYS = {
+      "invalid-session-id": "failInvalidId",
+      "no-sessions-directory": "failNoSessionsDir",
+      "move-failed": "failLocked",
+      "session-loaded": "failLoaded",
+      "session-busy": "failBusy",
+      unknown: "failUnknown"
+    };
+    function failureText(t, receipt) {
+      const detail = typeof receipt?.detail === "string" ? receipt.detail.trim() : "";
+      if ((receipt?.code ?? "unknown") === "unknown" && detail !== "") return detail;
+      return t(FAILURE_KEYS[receipt?.code] ?? "failUnknown");
+    }
+    var UNGROUPED = "__ungrouped";
+    function readArchived(ctx) {
+      const sessions = ctx.sessions?.list?.getSnapshot?.() ?? {};
+      const workspaces = ctx.workspaces?.list?.getSnapshot?.() ?? {};
+      const byId = sessions.byId ?? {};
+      const items = Array.isArray(workspaces.items) ? workspaces.items : [];
+      const archived = [...new Set(Array.isArray(workspaces.archivedSessionIds) ? workspaces.archivedSessionIds : [])];
+      const workspaceByPath = /* @__PURE__ */ new Map();
+      for (const workspace of items) {
+        const path = typeof workspace.path === "string" ? workspace.path : "";
+        if (path && !workspaceByPath.has(path)) workspaceByPath.set(path, workspace);
+      }
+      const workspaceKey = (workspace) => workspace?.workspaceId ?? workspace?.id ?? "";
+      const workspaceOf = /* @__PURE__ */ new Map();
+      for (const workspace of items) {
+        for (const sessionId of workspace.sessionIds ?? []) {
+          if (!workspaceOf.has(sessionId)) workspaceOf.set(sessionId, workspace);
+        }
+      }
+      const groupOf = (id) => {
+        const byMember = workspaceOf.get(id);
+        if (byMember) return byMember;
+        const cwd = byId[id]?.cwd;
+        return typeof cwd === "string" ? workspaceByPath.get(cwd) : void 0;
+      };
+      const toRow = (id) => {
+        const summary = byId[id];
+        const workspace = groupOf(id);
+        return {
+          id,
+          title: archivedRowTitle(summary),
+          updatedAt: summary?.updatedAt ?? 0,
+          workspaceId: workspaceKey(workspace),
+          missing: summary === void 0
+        };
+      };
+      const buckets = /* @__PURE__ */ new Map();
+      for (const id of archived) {
+        const workspace = groupOf(id);
+        const key = workspace ? workspaceKey(workspace) : UNGROUPED;
+        if (!buckets.has(key)) {
+          buckets.set(key, { id: key, title: workspace?.title ?? workspace?.path ?? "", rows: [] });
+        }
+        buckets.get(key).rows.push(toRow(id));
+      }
+      const byRecency = (a, b) => b.updatedAt - a.updatedAt;
+      const groups = [];
+      for (const workspace of items) {
+        const key = workspaceKey(workspace);
+        const bucket = buckets.get(key);
+        if (!bucket) continue;
+        groups.push({ id: key, title: bucket.title, rows: bucket.rows.sort(byRecency), workspaceId: key });
+      }
+      const ungrouped = buckets.get(UNGROUPED);
+      if (ungrouped) {
+        groups.push({ id: UNGROUPED, title: "", rows: ungrouped.rows.sort(byRecency), workspaceId: "" });
+      }
+      const projects = items.map((workspace) => ({ id: workspaceKey(workspace), title: workspace?.title ?? workspace?.path ?? "" }));
+      return { groups, total: archived.length, projects, hasUngrouped: ungrouped !== void 0 };
     }
 
     // src/client/ui/store.ts
@@ -422,16 +523,16 @@ window.__ModuleLoader__.load({
           const failed = [];
           const errors = [];
           for (const row of request.rows) {
-            const receipt = receipts.get(row.id) ?? { ok: false, reason: "no-receipt" };
-            const alreadyGone = receipt.reason === "not-found";
+            const receipt = receipts.get(row.id) ?? { ok: false, code: "unknown" };
+            const alreadyGone = receipt.code === "not-found";
             if (receipt.ok !== true && !alreadyGone) {
               failed.push(row);
-              const reason = String(receipt.reason ?? "unknown");
+              const reason = failureText(t, receipt);
               errors.push(request.kind === "all" ? `${row.title || row.id}: ${reason}` : reason);
               continue;
             }
             doneIds.push(row.id);
-            if (receipt.retained === true) retainedIds.add(row.id);
+            if (receipt.code === "retained") retainedIds.add(row.id);
           }
           await Promise.allSettled(doneIds.filter((id) => !retainedIds.has(id)).flatMap((id) => [
             Promise.resolve().then(() => ctx.workspaces.unarchiveSession(id)),
@@ -471,7 +572,7 @@ window.__ModuleLoader__.load({
           }
           return receipts;
         }
-        for (const id of ids) receipts.set(id, { ok: false, reason: response.reason });
+        for (const id of ids) receipts.set(id, { ok: false, code: response.code, detail: response.detail });
         return receipts;
       }
       const [row] = request.rows;
@@ -595,46 +696,62 @@ window.__ModuleLoader__.load({
       return ctx.slots.inject(descriptor.name, () => ctx.slots.register(descriptor, Component));
     }
 
+    // src/client/ui/components/confirm-dialog/index.tsx
+    function confirmDialog({
+      primitives: primitives2,
+      title,
+      description,
+      children,
+      onCancel,
+      onConfirm,
+      pending = false,
+      confirmButton,
+      closeLabel = "关闭",
+      cancelLabel = "取消",
+      confirmLabel = "删除",
+      pendingLabel = "删除中…"
+    }) {
+      const Modal = primitives2?.Modal;
+      if (Modal === void 0) return null;
+      const Button = primitives2.Button ?? "button";
+      const confirm = confirmButton ?? /* @__PURE__ */ __dshReact.createElement(Button, { variant: "primary", key: "ok", onClick: onConfirm, disabled: pending }, pending ? pendingLabel : confirmLabel);
+      return /* @__PURE__ */ __dshReact.createElement(
+        Modal,
+        {
+          open: true,
+          onClose: onCancel,
+          title,
+          closeLabel,
+          description,
+          footer: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(Button, { variant: "outline", key: "cancel", onClick: onCancel, disabled: pending }, cancelLabel), confirm)
+        },
+        children
+      );
+    }
+
     // src/modules/archived/client/surfaces/archive-confirm/index.tsx
     var NAME = "archive-confirm";
     function install(ctx, host) {
       const t = ctx.locale.bind(ARCH_NS);
-      const Modal = primitives.Modal;
-      const Button = primitives.Button ?? "button";
       function ArchiveConfirmDialog() {
         const state = useStore(host.archiveConfirm);
-        if (!state.request || !Modal) return null;
+        if (!state.request) return null;
         const title = t("archiveTitle").replace("{t}", state.request.title || t("untitled"));
-        const error = state.error ? /* @__PURE__ */ import_react4.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("archiveFailed").replace("{reason}", state.error)) : null;
-        return /* @__PURE__ */ import_react4.default.createElement(
-          Modal,
-          {
-            open: true,
-            title,
-            closeLabel: t("cancel"),
-            onClose: () => host.archiveConfirm.cancel(),
-            description: t("archiveDesc"),
-            footer: /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(
-              Button,
-              {
-                variant: "outline",
-                disabled: state.busy,
-                onClick: () => host.archiveConfirm.cancel()
-              },
-              t("cancel")
-            ), /* @__PURE__ */ import_react4.default.createElement(
-              Button,
-              {
-                disabled: state.busy,
-                onClick: () => {
-                  void host.archiveConfirm.confirm();
-                }
-              },
-              state.busy ? t("archiving") : t("archiveAction")
-            ))
+        return confirmDialog({
+          primitives,
+          title,
+          description: t("archiveDesc"),
+          closeLabel: t("close"),
+          cancelLabel: t("cancel"),
+          confirmLabel: t("archiveAction"),
+          pendingLabel: t("archiving"),
+          pending: state.busy,
+          onCancel: () => host.archiveConfirm.cancel(),
+          onConfirm: () => {
+            void host.archiveConfirm.confirm();
           },
-          error
-        );
+          children: state.error ? /* @__PURE__ */ import_react4.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("archiveFailed").replace("{reason}", state.error)) : null
+        });
       }
       const offDialog = installSlot(ctx, { name: "shell.overlay", id: "dsh-toolkit.archived.archive-confirm" }, ArchiveConfirmDialog);
       const offWrap = wrapArchiveSession();
@@ -671,41 +788,31 @@ window.__ModuleLoader__.load({
       const t = ctx.locale.bind(ARCH_NS);
       function RemovalDialog() {
         const state = useStore(host.removal);
-        const Modal = primitives.Modal;
-        const Button = primitives.Button ?? "button";
-        if (!state.request || !Modal) return null;
+        if (!state.request) return null;
         const error = state.error ? /* @__PURE__ */ import_react5.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("removeFailed").replace("{reason}", state.error)) : null;
+        const shared = {
+          primitives,
+          closeLabel: t("close"),
+          cancelLabel: t("cancel"),
+          children: error,
+          onCancel: () => host.removal.cancel(),
+          confirmButton: /* @__PURE__ */ import_react5.default.createElement(DeleteButton, { onClick: () => {
+            void host.removal.confirm();
+          } }, t("confirmDelete"))
+        };
         if (state.request.kind === "all") {
-          return /* @__PURE__ */ import_react5.default.createElement(
-            Modal,
-            {
-              open: true,
-              title: t("deleteAllTitle").replace("{t}", String(state.request.rows.length)),
-              closeLabel: t("cancel"),
-              onClose: () => host.removal.cancel(),
-              description: t("deleteAllDesc"),
-              footer: /* @__PURE__ */ import_react5.default.createElement(import_react5.default.Fragment, null, /* @__PURE__ */ import_react5.default.createElement(Button, { variant: "outline", onClick: () => host.removal.cancel() }, t("cancel")), /* @__PURE__ */ import_react5.default.createElement(DeleteButton, { onClick: () => {
-                void host.removal.confirm();
-              } }, t("confirmDelete")))
-            },
-            error
-          );
+          return confirmDialog({
+            ...shared,
+            title: t("deleteAllTitle").replace("{t}", String(state.request.rows.length)),
+            description: t("deleteAllDesc")
+          });
         }
         const title = state.request.rows[0]?.title || t("untitled");
-        return /* @__PURE__ */ import_react5.default.createElement(
-          Modal,
-          {
-            open: true,
-            title: t("deleteOneTitle").replace("{t}", title),
-            closeLabel: t("cancel"),
-            onClose: () => host.removal.cancel(),
-            description: t("deleteOneDesc"),
-            footer: /* @__PURE__ */ import_react5.default.createElement(import_react5.default.Fragment, null, /* @__PURE__ */ import_react5.default.createElement(Button, { variant: "outline", onClick: () => host.removal.cancel() }, t("cancel")), /* @__PURE__ */ import_react5.default.createElement(DeleteButton, { onClick: () => {
-              void host.removal.confirm();
-            } }, t("confirmDelete")))
-          },
-          error
-        );
+        return confirmDialog({
+          ...shared,
+          title: t("deleteOneTitle").replace("{t}", title),
+          description: t("deleteOneDesc")
+        });
       }
       return installSlot(ctx, { name: "shell.overlay", id: "dsh-toolkit.archived.delete-confirm" }, RemovalDialog);
     }
@@ -756,74 +863,6 @@ window.__ModuleLoader__.load({
       install: () => install4
     });
     var import_react7 = __toESM(require("react"), 1);
-
-    // src/modules/archived/client/model.ts
-    function archivedRowTitle(summary) {
-      const title = typeof summary?.title === "string" ? summary.title.trim() : "";
-      if (title !== "") return title;
-      const display = typeof summary?.displayTitle === "string" ? summary.displayTitle.trim() : "";
-      return display;
-    }
-    var UNGROUPED = "__ungrouped";
-    function readArchived(ctx) {
-      const sessions = ctx.sessions?.list?.getSnapshot?.() ?? {};
-      const workspaces = ctx.workspaces?.list?.getSnapshot?.() ?? {};
-      const byId = sessions.byId ?? {};
-      const items = Array.isArray(workspaces.items) ? workspaces.items : [];
-      const archived = [...new Set(Array.isArray(workspaces.archivedSessionIds) ? workspaces.archivedSessionIds : [])];
-      const workspaceByPath = /* @__PURE__ */ new Map();
-      for (const workspace of items) {
-        const path = typeof workspace.path === "string" ? workspace.path : "";
-        if (path && !workspaceByPath.has(path)) workspaceByPath.set(path, workspace);
-      }
-      const workspaceKey = (workspace) => workspace?.workspaceId ?? workspace?.id ?? "";
-      const workspaceOf = /* @__PURE__ */ new Map();
-      for (const workspace of items) {
-        for (const sessionId of workspace.sessionIds ?? []) {
-          if (!workspaceOf.has(sessionId)) workspaceOf.set(sessionId, workspace);
-        }
-      }
-      const groupOf = (id) => {
-        const byMember = workspaceOf.get(id);
-        if (byMember) return byMember;
-        const cwd = byId[id]?.cwd;
-        return typeof cwd === "string" ? workspaceByPath.get(cwd) : void 0;
-      };
-      const toRow = (id) => {
-        const summary = byId[id];
-        const workspace = groupOf(id);
-        return {
-          id,
-          title: archivedRowTitle(summary),
-          updatedAt: summary?.updatedAt ?? 0,
-          workspaceId: workspaceKey(workspace),
-          missing: summary === void 0
-        };
-      };
-      const buckets = /* @__PURE__ */ new Map();
-      for (const id of archived) {
-        const workspace = groupOf(id);
-        const key = workspace ? workspaceKey(workspace) : UNGROUPED;
-        if (!buckets.has(key)) {
-          buckets.set(key, { id: key, title: workspace?.title ?? workspace?.path ?? "", rows: [] });
-        }
-        buckets.get(key).rows.push(toRow(id));
-      }
-      const byRecency = (a, b) => b.updatedAt - a.updatedAt;
-      const groups = [];
-      for (const workspace of items) {
-        const key = workspaceKey(workspace);
-        const bucket = buckets.get(key);
-        if (!bucket) continue;
-        groups.push({ id: key, title: bucket.title, rows: bucket.rows.sort(byRecency), workspaceId: key });
-      }
-      const ungrouped = buckets.get(UNGROUPED);
-      if (ungrouped) {
-        groups.push({ id: UNGROUPED, title: "", rows: ungrouped.rows.sort(byRecency), workspaceId: "" });
-      }
-      const projects = items.map((workspace) => ({ id: workspaceKey(workspace), title: workspace?.title ?? workspace?.path ?? "" }));
-      return { groups, total: archived.length, projects, hasUngrouped: ungrouped !== void 0 };
-    }
 
     // src/modules/archived/client/surfaces/settings/style.css
     var style_default2 = `.sk-arch {

@@ -200,10 +200,10 @@ test('bulk delete sends one batch request, retries failures, and never touches w
       ok: true, status: 200, json: async () => ({
         ok: true,
         results: sessionIds.map((sessionId) => {
-          if (sessionId === 'a2') return { sessionId, status: 409, ok: false, reason: 'session-loaded' }
+          if (sessionId === 'a2') return { sessionId, statusCode: 409, ok: false, code: 'session-loaded' }
           // Files already gone: the archive entry must still be cleared, not reported as a failure.
-          if (sessionId === 'missing') return { sessionId, status: 404, ok: false, reason: 'not-found' }
-          return { sessionId, status: 200, ok: true }
+          if (sessionId === 'missing') return { sessionId, statusCode: 404, ok: false, code: 'not-found' }
+          return { sessionId, statusCode: 200, ok: true, code: 'deleted' }
         }),
       }),
     }
@@ -212,7 +212,8 @@ test('bulk delete sends one batch request, retries failures, and never touches w
   await app.click('永久删除')
   assert.equal(batches.length, 1, 'one round trip for the whole page')
   assert.match(String(batches[0]), /archived\/delete-sessions$/)
-  assert.match(app.dom.window.document.querySelector('[role="alert"]').textContent, /第二条: session-loaded/)
+  assert.match(app.dom.window.document.querySelector('[role="alert"]').textContent, /第二条: dsh 仍持有这个会话/)
+  assert.doesNotMatch(app.dom.window.document.querySelector('[role="alert"]').textContent, /missing/, 'a not-found code is a success, not noise')
   assert.deepEqual(app.calls.delete, [], 'bulk delete never removes a workspace registration')
   assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 1, 'only the failed session remains listed')
   assert.match(app.text(), /永久删除 1 个会话？/)
@@ -220,7 +221,7 @@ test('bulk delete sends one batch request, retries failures, and never touches w
   app.setFetch(async (_input, options) => {
     if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ ok: true, sessionIds: [] }) }
     const { sessionIds } = JSON.parse(options.body)
-    return { ok: true, status: 200, json: async () => ({ ok: true, results: sessionIds.map((sessionId) => ({ sessionId, status: 200, ok: true })) }) }
+    return { ok: true, status: 200, json: async () => ({ ok: true, results: sessionIds.map((sessionId) => ({ sessionId, statusCode: 200, ok: true, code: 'deleted' })) }) }
   })
   await app.click('永久删除')
   assert.equal(app.dialog(), null)
@@ -250,7 +251,7 @@ test('confirming a bulk delete closes the dialog at once and loads the button in
     await new Promise((resolve) => gates.push(resolve))
     return {
       ok: true, status: 200,
-      json: async () => ({ ok: true, results: sessionIds.map((sessionId) => ({ sessionId, status: 200, ok: true })) }),
+      json: async () => ({ ok: true, results: sessionIds.map((sessionId) => ({ sessionId, statusCode: 200, ok: true, code: 'deleted' })) }),
     }
   })
   await app.render(app.overlay(h(app.sections)))
@@ -301,9 +302,9 @@ test('a session the host still holds keeps its archive entry until the restart c
         results: sessionIds.map((sessionId) => {
           // The host moved the files but still holds the record: clearing the archive
           // registration now would put a session without files back in the sidebar.
-          if (sessionId !== 'loose') return { sessionId, status: 200, ok: true }
+          if (sessionId !== 'loose') return { sessionId, statusCode: 200, ok: true, code: 'deleted' }
           pending = ['loose']
-          return { sessionId, status: 200, ok: true, retained: true }
+          return { sessionId, statusCode: 200, ok: true, code: 'retained' }
         }),
       }),
     }
@@ -330,8 +331,8 @@ test('a retained deletion hides its sidebar row without hiding the rows the Work
         ok: true,
         results: sessionIds.map((sessionId) => (
           sessionId === 'loose'
-            ? { sessionId, status: 200, ok: true, retained: true }
-            : { sessionId, status: 200, ok: true }
+            ? { sessionId, statusCode: 200, ok: true, code: 'retained' }
+            : { sessionId, statusCode: 200, ok: true, code: 'deleted' }
         )),
       }),
     }
@@ -396,6 +397,10 @@ test('sidebar delete entry still asks for the irreversible confirmation', async 
   await act(async () => app.dom.window.document.querySelector('[role="menuitem"]').click())
   assert.equal(closed, 1)
   assert.match(app.dialog().textContent, /永久删除“单独归档”？/)
+  // 永久删除保留模块自己的红色危险按钮，不是宿主的黑色 primary。
+  const confirm = [...app.dialog().querySelectorAll('button')].find((node) => node.textContent === '永久删除')
+  assert.match(confirm.className, /sk-arch__delete/)
+  assert.equal(confirm.dataset.variant, 'outline')
   await app.click('取消')
   assert.equal(app.calls.delete.length, 0)
 })
@@ -410,6 +415,10 @@ test('archiving from the sidebar asks first and refuses silently when cancelled'
   pending.catch(() => {})
   assert.match(app.dialog().textContent, /归档“第一条”？/)
   assert.match(app.dialog().textContent, /它会离开当前任务列表，保留在设置里的已归档的会话中；之后你可以在那里永久删除。/)
+  // 归档是常态操作而不是破坏性操作：确认按钮用宿主的黑色 primary，取消用 outline。
+  const buttons = [...app.dialog().querySelectorAll('button')]
+  assert.equal(buttons.find((node) => node.textContent === '归档').dataset.variant, 'primary')
+  assert.equal(buttons.find((node) => node.textContent === '取消').dataset.variant, 'outline')
   await app.click('取消')
   await assert.rejects(pending, /cancelled/)
   assert.equal(app.dialog(), null)

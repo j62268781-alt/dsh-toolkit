@@ -14,9 +14,9 @@ function busy(ctx, sessionId) {
 /**
  * Delete one archived session's files, and nothing else.
  *
- * Answers a domain outcome (`{ok:true, moved?, retained?}` or `{ok:false, reason}`);
- * mapping that onto an HTTP status is the route's job, so this stays callable from
- * a test or a future CLI without inventing a receipt shape.
+ * Answers a domain result (`{ok:true, code}` or `{ok:false, code, detail?}`); mapping
+ * that onto an HTTP status is the route's job, so this stays callable from a test or
+ * a future CLI without inventing a receipt shape.
  */
 export async function deleteArchivedSession(ctx, sessionId) {
     const live = ctx.sessions?.get?.(sessionId);
@@ -26,17 +26,17 @@ export async function deleteArchivedSession(ctx, sessionId) {
     // A session still held in memory but no longer archived is in use by the
     // ordinary sidebar; deleting its files behind that list is not our call.
     if (!archivedIds(ctx).includes(sessionId))
-        return { ok: false, reason: "session-loaded" };
+        return { ok: false, code: "session-loaded" };
     if (busy(ctx, sessionId))
-        return { ok: false, reason: "session-busy" };
+        return { ok: false, code: "session-busy" };
     // Idle persistence still buffers ~200ms of events; move only after they land.
     if (typeof ctx.sessions.flush === "function")
         await ctx.sessions.flush(live);
     // `flush` awaited real I/O: re-check the verdicts it may have invalidated.
     if (!archivedIds(ctx).includes(sessionId))
-        return { ok: false, reason: "session-loaded" };
+        return { ok: false, code: "session-loaded" };
     if (busy(ctx, sessionId))
-        return { ok: false, reason: "session-busy" };
+        return { ok: false, code: "session-busy" };
     // Never unarchive here: the host still holds the session, so clearing the
     // registration would put it back in the sidebar, where it could be opened and
     // would write a fresh log into the directory just moved away. The registration
@@ -45,17 +45,18 @@ export async function deleteArchivedSession(ctx, sessionId) {
     const result = await deleteSessionFiles(sessionId);
     // Compare against the literal instead of relying on truthiness: with
     // `strictNullChecks` off (the emit program) `if (result.ok)` does not narrow a
-    // discriminated union, so `reason` would not be reachable below.
+    // discriminated union, so `code` would not be reachable below.
     if (result.ok === true) {
         await markPendingDeletion(sessionId);
-        return { ok: true, moved: result.moved, retained: true };
+        return { ok: true, code: "retained", moved: result.moved };
     }
-    const failure = result;
-    if (failure.reason === "not-found") {
+    // The files are already gone: clearing this registration is the only work left,
+    // and the marker is what lets that happen once the host releases the session.
+    if (result.code === "not-found") {
         await markPendingDeletion(sessionId);
-        return { ok: true, retained: true };
+        return { ok: true, code: "retained" };
     }
-    return failure;
+    return result;
 }
 /**
  * Delete a page of archived sessions, one verdict per id.
@@ -72,7 +73,7 @@ export async function deleteArchivedSessions(ctx, sessionIds) {
             result = await deleteArchivedSession(ctx, sessionId);
         }
         catch (error) {
-            result = { ok: false, reason: String(error?.message ?? error) };
+            result = { ok: false, code: "unknown", detail: String(error?.message ?? error) };
         }
         results.push({ sessionId, result });
     }

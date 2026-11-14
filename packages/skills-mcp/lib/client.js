@@ -769,9 +769,11 @@ window.__ModuleLoader__.load({
       primitives,
       title,
       description,
+      children,
       onCancel,
       onConfirm,
       pending = false,
+      confirmButton,
       closeLabel = "关闭",
       cancelLabel = "取消",
       confirmLabel = "删除",
@@ -780,6 +782,7 @@ window.__ModuleLoader__.load({
       const Modal = primitives?.Modal;
       if (Modal === void 0) return null;
       const Button = primitives.Button ?? "button";
+      const confirm = confirmButton ?? /* @__PURE__ */ __dshReact.createElement(Button, { variant: "primary", key: "ok", onClick: onConfirm, disabled: pending }, pending ? pendingLabel2 : confirmLabel);
       return /* @__PURE__ */ __dshReact.createElement(
         Modal,
         {
@@ -788,8 +791,9 @@ window.__ModuleLoader__.load({
           title,
           closeLabel,
           description,
-          footer: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(Button, { variant: "outline", key: "cancel", onClick: onCancel, disabled: pending }, cancelLabel), /* @__PURE__ */ __dshReact.createElement(Button, { variant: "primary", key: "ok", onClick: onConfirm, disabled: pending }, pending ? pendingLabel2 : confirmLabel))
-        }
+          footer: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(Button, { variant: "outline", key: "cancel", onClick: onCancel, disabled: pending }, cancelLabel), confirm)
+        },
+        children
       );
     }
 
