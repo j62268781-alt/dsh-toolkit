@@ -8,7 +8,7 @@ import { HOOK_EVENTS, HOOKS_REFRESH_PATH, HOOKS_SNAPSHOT_PATH, HOOKS_TEST_PATH }
 import type { HookEventDefinition } from "../../constants.js";
 import { HOOKS_NS } from "../../locale.js";
 import type { HookSnapshotView, HookRow, HookRunRow } from "../../model.js";
-import { formatDuration, groupHooks, matcherLabel, readSnapshot } from "../../model.js";
+import { formatDuration, groupHooks, matcherLabel, readSnapshot, runProblem } from "../../model.js";
 
 export const NAME = "settings";
 
@@ -238,18 +238,21 @@ function createHooksSection(ctx: any) {
       );
     };
 
-    const renderHistoryRow = (run: HookRunRow) => (
-      <li className="sk-hooks__run" key={run.id}>
-        <span className="sk-hooks__runTime">{run.at > 0 ? timeFormat.format(new Date(run.at)) : "—"}</span>
-        <span className={`sk-hooks__badge sk-hooks__badge--${run.source}`}>{sourceLabel(run.source)}</span>
-        <code className="sk-hooks__runCommand" title={run.command}>{run.command}</code>
-        <span className={`sk-hooks__decision is-${run.decision}`}>{t(decisionKeys[run.decision] ?? "decisionAllow")}</span>
-        <span className="sk-hooks__runMs">{formatDuration(run.durationMs)}</span>
-        <span className="sk-hooks__runState">
-          {run.timedOut ? t("timedOut") : run.code !== 0 ? t("exit", { code: run.code }) : ""}
-        </span>
-      </li>
-    );
+    const renderHistoryRow = (run: HookRunRow) => {
+      const problem = runProblem(run, { timedOut: t("timedOut"), exit: (code) => t("exit", { code }) });
+      return (
+        <li className="sk-hooks__run" key={run.id}>
+          <span className="sk-hooks__runTime">{run.at > 0 ? timeFormat.format(new Date(run.at)) : "—"}</span>
+          <span className={`sk-hooks__badge sk-hooks__badge--${run.source}`}>{sourceLabel(run.source)}</span>
+          <code className="sk-hooks__runCommand" title={run.command}>{run.command}</code>
+          <span className={`sk-hooks__decision is-${run.decision}`}>{t(decisionKeys[run.decision] ?? "decisionAllow")}</span>
+          {problem.text === "" ? null : (
+            <span className={`sk-hooks__runNote is-${problem.tone}`} title={problem.text}>{problem.text}</span>
+          )}
+          <span className="sk-hooks__runMs">{formatDuration(run.durationMs)}</span>
+        </li>
+      );
+    };
 
     return (
       <div className="sk-hooks">

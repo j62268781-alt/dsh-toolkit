@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 // 纯投影不碰 DOM/ctx，直接 import 源码（jsx-register 负责把 .ts 说明符解析到源码）。
-import { formatDuration, groupHooks, matcherLabel, readSnapshot } from '../../src/modules/hooks/client/model.ts'
+import { formatDuration, groupHooks, matcherLabel, readSnapshot, runProblem } from '../../src/modules/hooks/client/model.ts'
 
 const EVENTS = [
   { id: 'SessionStart', label: '会话开始', hint: '', matcher: 'source', supported: true },
@@ -73,4 +73,23 @@ test('matcherLabel：空串与 * 都显示「全部」，其余原样', () => {
   assert.equal(matcherLabel('  ', '全部'), '全部')
   assert.equal(matcherLabel('*', '全部'), '全部')
   assert.equal(matcherLabel('bash', '全部'), 'bash')
+})
+
+const LABELS = { timedOut: '超时', exit: (code) => `退出码 ${code}` }
+
+test('runProblem：起不来时显示 error，而不是「退出码 null」', () => {
+  const problem = runProblem(
+    { id: '1', at: 0, event: 'Stop', command: 'x', source: 'user', decision: 'allow', durationMs: 3, code: null, timedOut: false, reason: '', error: '启动失败：spawn ENOENT' },
+    LABELS,
+  )
+  assert.deepEqual(problem, { text: '启动失败：spawn ENOENT', tone: 'error' })
+})
+
+test('runProblem：失败优先于理由，超时优先于退出码', () => {
+  const base = { id: '1', at: 0, event: 'Stop', command: 'x', source: 'user', decision: 'allow', durationMs: 3, code: 0, timedOut: false, reason: '', error: '' }
+  assert.deepEqual(runProblem({ ...base, code: 2, reason: 'blocked by guard' }, LABELS), { text: '退出码 2', tone: 'error' })
+  assert.deepEqual(runProblem({ ...base, code: 2, timedOut: true }, LABELS), { text: '超时', tone: 'error' })
+  assert.deepEqual(runProblem({ ...base, decision: 'deny', reason: 'blocked by guard' }, LABELS), { text: 'blocked by guard', tone: 'reason' })
+  assert.deepEqual(runProblem(base, LABELS), { text: '', tone: 'none' })
+  assert.deepEqual(runProblem({ ...base, reason: '   ' }, LABELS), { text: '', tone: 'none' }, '空白理由不算理由')
 })

@@ -379,9 +379,18 @@
   color: var(--dsw-alias-state-warning-primary, #b7791f);
 }
 
-.sk-hooks__runState {
-  flex: none;
+.sk-hooks__runNote {
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--dsw-alias-label-tertiary);
+}
+
+.sk-hooks__runNote.is-error {
+  color: var(--dsw-alias-state-danger-primary, #d0453f);
 }
 
 .sk-hooks__btn {

@@ -43,7 +43,8 @@ export interface HookRunRow {
   source: string;
   decision: string;
   durationMs: number;
-  code: number;
+  /** 进程起不来时 host 给 null，不能当 0 处理。 */
+  code: number | null;
   timedOut: boolean;
   reason: string;
   error: string;
@@ -113,7 +114,7 @@ export function readSnapshot(payload: any): HookSnapshotView {
       source: text(run?.source),
       decision: text(run?.decision) || "allow",
       durationMs: typeof run?.durationMs === "number" ? run.durationMs : 0,
-      code: typeof run?.code === "number" ? run.code : 0,
+      code: typeof run?.code === "number" ? run.code : null,
       timedOut: run?.timedOut === true,
       reason: text(run?.reason),
       error: text(run?.error),
@@ -154,4 +155,33 @@ export function formatDuration(ms: number): string {
 export function matcherLabel(matcher: string, allLabel: string): string {
   const trimmed = matcher.trim();
   return trimmed === "" || trimmed === "*" ? allLabel : trimmed;
+}
+
+export interface RunProblemLabels {
+  timedOut: string;
+  exit: (code: number) => string;
+}
+
+export interface RunProblem {
+  text: string;
+  tone: "error" | "reason" | "none";
+}
+
+/**
+ * 「最近执行」右侧那行补充说明。
+ *
+ * 一条记录里可能同时有 退出码 / 超时 / error / reason，但一行只放得下一句：
+ * 失败优先（起不来 > 超时 > 非零退出码），其次是 hook 自己给的理由（deny 时的 stderr）。
+ * `code` 为 null 表示进程根本没起来，这时必须显示 error，不能显示「退出码 null」。
+ */
+export function runProblem(run: HookRunRow, labels: RunProblemLabels): RunProblem {
+  const error = run.error.trim();
+  if (error !== "") return { text: error, tone: "error" };
+  if (run.timedOut) return { text: labels.timedOut, tone: "error" };
+  if (typeof run.code === "number" && run.code !== 0) {
+    return { text: labels.exit(run.code), tone: "error" };
+  }
+  const reason = run.reason.trim();
+  if (reason !== "") return { text: reason, tone: "reason" };
+  return { text: "", tone: "none" };
 }
