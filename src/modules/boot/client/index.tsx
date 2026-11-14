@@ -138,11 +138,11 @@ export function apply(ctx) {
   const { form } = findScopedForm(ctx, 'boot')
   // Panel-local CSS injected globally: every selector is a `.boot-*` class under the settings
   // panel, so an inline <style> would work too — kept as-is so the plugin keeps using the host's
-  // `data-plugin` reclaim contract (tests assert `style[data-plugin="toolkit-boot-panel"]`).
-  ctx.effect(() => installStylesheet(panelCss, 'toolkit-boot-panel'), 'toolkit-boot:settings-styles')
+  // `data-plugin` reclaim contract (tests assert `style[data-plugin="dsh-toolkit-boot-panel"]`).
+  ctx.effect(() => installStylesheet(panelCss, 'dsh-toolkit-boot-panel'), 'dsh-toolkit-boot:settings-styles')
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: 'boot', order: 15,
     label: () => '启动动画', inject: () => ({ form }),
   }, BootPanel))
-  ctx.effect(() => registerSettingsIcon(ctx, 'boot', 'rocket'), 'toolkit-boot:settings-icon')
+  ctx.effect(() => registerSettingsIcon(ctx, 'boot', 'rocket'), 'dsh-toolkit-boot:settings-icon')
 }

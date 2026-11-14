@@ -1,5 +1,5 @@
 /**
- * dsh-sidebar-mobile — DSH 右侧边栏的移动设备面板。
+ * dsh-toolkit-mobile — DSH 右侧边栏的移动设备面板。
  *
  * 把 mobilecli 封装成 DSH 的移动设备层：Host 侧管进程/流/工具/技能，
  * Client 侧在右侧边栏渲染实时画面并转发点击。
@@ -20,12 +20,12 @@
  * 以及后台的流子进程。disposer 顺序与注册顺序相反，保证先停流再摘路由，
  * 避免摘掉路由后仍有响应在往已卸载的处理器里写。
  *
- * @module dsh-sidebar-mobile
+ * @module dsh-toolkit-mobile
  */
 import { resolveBinary } from "./device/mobilecli.js";
 import { TOOL_NAMES } from "./agent/tools.js";
 /** Cordis 插件名，也是挂载 id。 */
-export declare const name = "dsh-sidebar-mobile";
+export declare const name = "dsh-toolkit-mobile";
 /**
  * 需要的服务。
  *

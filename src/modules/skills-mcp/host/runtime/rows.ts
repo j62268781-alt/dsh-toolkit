@@ -46,7 +46,7 @@ export function configuredWorkspaces(ctx: any) {
     })).filter((workspace: any) => workspace.path !== '')))
   } catch (error: any) {
     // Distinguish "no workspaces" from "the registry blew up".
-    if (process.env.SMP_DEBUG) console.error('[dsh-skills-mcp-manager] workspace registry unavailable', error)
+    if (process.env.SMP_DEBUG) console.error('[dsh-toolkit-skills-mcp] workspace registry unavailable', error)
     return []
   }
 }

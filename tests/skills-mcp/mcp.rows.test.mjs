@@ -76,7 +76,7 @@ function harness({ apply, rejection, schema } = {}) {
 
 test('命令路由：路径带插件前缀，且注册后可释放', () => {
   const h = harness()
-  assert.match(ROWS_PATH, /^\/dsh-skills-mcp-manager\//)
+  assert.match(ROWS_PATH, /^\/dsh-toolkit-skills-mcp\//)
   assert.equal(h.route.path, ROWS_PATH)
   assert.doesNotThrow(() => h.dispose())
 })

@@ -34,7 +34,7 @@ export function hiddenRowsCss(ids) {
  * once per batch, and every change to `hidden` notifies this renderer.
  */
 export function installHiddenRows(removal) {
-  const sheet = installMutableStylesheet("toolkit-archived-hidden");
+  const sheet = installMutableStylesheet("dsh-toolkit-archived-hidden");
   let written;
 
   const render = () => {

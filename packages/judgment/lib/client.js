@@ -96,114 +96,8 @@ window.__ModuleLoader__.load({
       return { form: void 0, entryId: moduleEntryId(namespace) };
     }
 
-    // src/modules/judgment/client/judgment-remote.ts
-    var PACKAGE = "dsh-judgment";
-    var SERVICE = "judgment";
-    function codec(typeSymbol) {
-      return { mode: "strict", typeSymbol, create: () => ({ parse: (value) => value }) };
-    }
-    function descriptor(method, parameters) {
-      const endpoint = `${SERVICE}/${method}`;
-      return {
-        id: `${PACKAGE}#${endpoint}`,
-        service: SERVICE,
-        namespace: SERVICE,
-        method,
-        invocation: { kind: "direct" },
-        parameters: parameters.map((name) => ({
-          name,
-          wire: name,
-          source: "json",
-          codec: codec(`${PACKAGE}#${endpoint}:${name}`)
-        })),
-        // 结果原样透传（`JudgeStatus` / `JudgeHealth` 全是 JSON 值）；strip 由 host 侧负责。
-        result: { mode: "src-json" }
-      };
-    }
-    function judgmentContribution() {
-      return {
-        package: PACKAGE,
-        descriptors: [
-          // host: status()  —— 页面刷新后仍能显示「已验证」
-          descriptor("status", []),
-          // host: health(options) —— wire 名必须等于形参名 `options`
-          descriptor("health", ["options"])
-        ]
-      };
-    }
-
-    // src/modules/judgment/client/primitives.ts
-    var primitives = (() => {
-      try {
-        return require("@deepseek-ai/dsh-client-ui-primitives");
-      } catch {
-        return null;
-      }
-    })();
-
-    // src/client/ui/components/settings-icon/index.tsx
-    var import_react2 = __toESM(require("react"), 1);
-    globalThis.__dshReact ??= import_react2.default;
-    var SHAPES = {
-      rocket: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "6", r: "1.15" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 10.6 4.7 12.4M9.7 10.6l1.6 1.8M8 12.1v2.2" })),
-      globe: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2 8h12" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "8", rx: "2.7", ry: "6" })),
-      scale: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.6v10.8M5.7 13.4h4.6M2.9 5.1h10.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.9 5.1 1.6 8.3h2.6L2.9 5.1ZM13.1 5.1l-1.3 3.2h2.6L13.1 5.1Z" })),
-      bell: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1c-2.2 0-3.7 1.6-3.7 3.8 0 2.4-.7 3.4-1.3 4.1-.2.3 0 .7.3.7h9.4c.3 0 .5-.4.3-.7-.6-.7-1.3-1.7-1.3-4.1 0-2.2-1.5-3.8-3.7-3.8Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.6 11a1.4 1.4 0 0 0 2.8 0" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1V1.2" })),
-      paw: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "4.7", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "4.5", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "11.3", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 7.9c2 0 3.4 1.4 3.4 3 0 1.3-1 2.2-2.2 2.2-.5 0-.8-.2-1.2-.2s-.7.2-1.2.2c-1.2 0-2.2-.9-2.2-2.2 0-1.6 1.4-3 3.4-3Z" })),
-      palette: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.3c-3.2 0-5.7 2.5-5.7 5.7s2.5 5.7 5.7 5.7c.9 0 1.5-.6 1.5-1.4 0-.4-.2-.7-.4-1-.2-.3-.4-.5-.4-.9 0-.7.6-1.3 1.3-1.3h1.2c1.6 0 2.9-1.3 2.9-2.9 0-2.2-2.5-3.9-6.1-3.9Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "5.6", cy: "6.3", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8.6", cy: "4.9", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "11.1", cy: "6.6", r: ".75" })),
-      archive: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: "1.9", y: "2.6", width: "12.2", height: "2.5", rx: ".7" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.6 5.1h10.8v7.4c0 .7-.6 1.3-1.3 1.3H3.9c-.7 0-1.3-.6-1.3-1.3V5.1Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 8.5h3.4" })),
-      plug: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M6 2.3v3.2M10 2.3v3.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.4 5.5h7.2v1.6a3.6 3.6 0 0 1-7.2 0V5.5Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 10.7v2.6" })),
-      gear: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "4.6" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" }))
-    };
-    function createGlyph(key) {
-      function ToolkitSettingsGlyph({ size = 16, active = false }) {
-        const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
-        return /* @__PURE__ */ __dshReact.createElement(
-          "svg",
-          {
-            viewBox: "0 0 16 16",
-            width: edge,
-            height: edge,
-            fill: "none",
-            stroke: "currentColor",
-            strokeWidth: "1.4",
-            strokeLinecap: "round",
-            strokeLinejoin: "round",
-            "aria-hidden": "true",
-            focusable: "false",
-            "data-sk-settings-icon": key,
-            "data-active": active ? "true" : "false"
-          },
-          SHAPES[key]
-        );
-      }
-      ToolkitSettingsGlyph.displayName = `ToolkitSettingsGlyph(${key})`;
-      return ToolkitSettingsGlyph;
-    }
-    var GLYPH_COMPONENTS = Object.freeze(
-      Object.fromEntries(Object.keys(SHAPES).map((key) => [key, createGlyph(key)]))
-    );
-    function registerSettingsIcon(ctx, sectionId, iconKey) {
-      const slots = ctx?.slots;
-      if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return void 0;
-      if (typeof sectionId !== "string" || sectionId === "") return void 0;
-      const Glyph = GLYPH_COMPONENTS[iconKey];
-      if (!Glyph) return void 0;
-      try {
-        const dispose = slots.inject("settings.section.icon", () => slots.register({
-          name: "settings.section.icon",
-          id: sectionId
-        }, Glyph));
-        return typeof dispose === "function" ? dispose : void 0;
-      } catch {
-        return void 0;
-      }
-    }
-
-    // src/modules/judgment/client/panel.tsx
-    var import_react7 = require("react");
-
     // src/modules/judgment/client/config.ts
+    var ENTRY_CANDIDATES = ["dsh-toolkit-judgment", "judgment/provider", "dsh-judgment"];
     function snapshotOf(form) {
       const snapshot = form?.getSnapshot?.() ?? form?.store?.getSnapshot?.() ?? form?.snapshot;
       return snapshot?.value ?? snapshot ?? {};
@@ -378,6 +272,113 @@ window.__ModuleLoader__.load({
     function purposesUsing(purposes, connectionId, defaultConnection) {
       return Object.entries(purposes).filter(([, purpose]) => (purpose?.connection ?? "") === connectionId).map(([name]) => name).concat(defaultConnection === connectionId ? ["（默认连接）"] : []);
     }
+
+    // src/modules/judgment/client/judgment-remote.ts
+    var PACKAGE = "dsh-judgment";
+    var SERVICE = "judgment";
+    function codec(typeSymbol) {
+      return { mode: "strict", typeSymbol, create: () => ({ parse: (value) => value }) };
+    }
+    function descriptor(method, parameters) {
+      const endpoint = `${SERVICE}/${method}`;
+      return {
+        id: `${PACKAGE}#${endpoint}`,
+        service: SERVICE,
+        namespace: SERVICE,
+        method,
+        invocation: { kind: "direct" },
+        parameters: parameters.map((name) => ({
+          name,
+          wire: name,
+          source: "json",
+          codec: codec(`${PACKAGE}#${endpoint}:${name}`)
+        })),
+        // 结果原样透传（`JudgeStatus` / `JudgeHealth` 全是 JSON 值）；strip 由 host 侧负责。
+        result: { mode: "src-json" }
+      };
+    }
+    function judgmentContribution() {
+      return {
+        package: PACKAGE,
+        descriptors: [
+          // host: status()  —— 页面刷新后仍能显示「已验证」
+          descriptor("status", []),
+          // host: health(options) —— wire 名必须等于形参名 `options`
+          descriptor("health", ["options"])
+        ]
+      };
+    }
+
+    // src/modules/judgment/client/primitives.ts
+    var primitives = (() => {
+      try {
+        return require("@deepseek-ai/dsh-client-ui-primitives");
+      } catch {
+        return null;
+      }
+    })();
+
+    // src/client/ui/components/settings-icon/index.tsx
+    var import_react2 = __toESM(require("react"), 1);
+    globalThis.__dshReact ??= import_react2.default;
+    var SHAPES = {
+      rocket: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "6", r: "1.15" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 10.6 4.7 12.4M9.7 10.6l1.6 1.8M8 12.1v2.2" })),
+      globe: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2 8h12" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "8", rx: "2.7", ry: "6" })),
+      scale: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.6v10.8M5.7 13.4h4.6M2.9 5.1h10.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.9 5.1 1.6 8.3h2.6L2.9 5.1ZM13.1 5.1l-1.3 3.2h2.6L13.1 5.1Z" })),
+      bell: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1c-2.2 0-3.7 1.6-3.7 3.8 0 2.4-.7 3.4-1.3 4.1-.2.3 0 .7.3.7h9.4c.3 0 .5-.4.3-.7-.6-.7-1.3-1.7-1.3-4.1 0-2.2-1.5-3.8-3.7-3.8Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.6 11a1.4 1.4 0 0 0 2.8 0" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.1V1.2" })),
+      paw: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "4.7", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "8", cy: "4.5", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("ellipse", { cx: "11.3", cy: "5.7", rx: "1.1", ry: "1.45" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 7.9c2 0 3.4 1.4 3.4 3 0 1.3-1 2.2-2.2 2.2-.5 0-.8-.2-1.2-.2s-.7.2-1.2.2c-1.2 0-2.2-.9-2.2-2.2 0-1.6 1.4-3 3.4-3Z" })),
+      palette: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2.3c-3.2 0-5.7 2.5-5.7 5.7s2.5 5.7 5.7 5.7c.9 0 1.5-.6 1.5-1.4 0-.4-.2-.7-.4-1-.2-.3-.4-.5-.4-.9 0-.7.6-1.3 1.3-1.3h1.2c1.6 0 2.9-1.3 2.9-2.9 0-2.2-2.5-3.9-6.1-3.9Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "5.6", cy: "6.3", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8.6", cy: "4.9", r: ".75" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "11.1", cy: "6.6", r: ".75" })),
+      archive: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: "1.9", y: "2.6", width: "12.2", height: "2.5", rx: ".7" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.6 5.1h10.8v7.4c0 .7-.6 1.3-1.3 1.3H3.9c-.7 0-1.3-.6-1.3-1.3V5.1Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 8.5h3.4" })),
+      plug: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M6 2.3v3.2M10 2.3v3.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.4 5.5h7.2v1.6a3.6 3.6 0 0 1-7.2 0V5.5Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 10.7v2.6" })),
+      gear: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "4.6" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" }))
+    };
+    function createGlyph(key) {
+      function ToolkitSettingsGlyph({ size = 16, active = false }) {
+        const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
+        return /* @__PURE__ */ __dshReact.createElement(
+          "svg",
+          {
+            viewBox: "0 0 16 16",
+            width: edge,
+            height: edge,
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: "1.4",
+            strokeLinecap: "round",
+            strokeLinejoin: "round",
+            "aria-hidden": "true",
+            focusable: "false",
+            "data-sk-settings-icon": key,
+            "data-active": active ? "true" : "false"
+          },
+          SHAPES[key]
+        );
+      }
+      ToolkitSettingsGlyph.displayName = `ToolkitSettingsGlyph(${key})`;
+      return ToolkitSettingsGlyph;
+    }
+    var GLYPH_COMPONENTS = Object.freeze(
+      Object.fromEntries(Object.keys(SHAPES).map((key) => [key, createGlyph(key)]))
+    );
+    function registerSettingsIcon(ctx, sectionId, iconKey) {
+      const slots = ctx?.slots;
+      if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return void 0;
+      if (typeof sectionId !== "string" || sectionId === "") return void 0;
+      const Glyph = GLYPH_COMPONENTS[iconKey];
+      if (!Glyph) return void 0;
+      try {
+        const dispose = slots.inject("settings.section.icon", () => slots.register({
+          name: "settings.section.icon",
+          id: sectionId
+        }, Glyph));
+        return typeof dispose === "function" ? dispose : void 0;
+      } catch {
+        return void 0;
+      }
+    }
+
+    // src/modules/judgment/client/panel.tsx
+    var import_react7 = require("react");
 
     // src/modules/judgment/client/components.tsx
     var import_react4 = require("react");
@@ -1214,7 +1215,7 @@ window.__ModuleLoader__.load({
     // src/modules/judgment/client/index.tsx
     var inject = ["slots", "configForms", "remote", "remote.credentials"];
     async function apply(ctx) {
-      const { form, entryId } = findScopedForm(ctx, "judgement", ["judgment/provider", "dsh-judgment"]);
+      const { form, entryId } = findScopedForm(ctx, "judgement", ENTRY_CANDIDATES);
       let credentials;
       try {
         credentials = ctx.remote?.credentials;
@@ -1241,7 +1242,7 @@ window.__ModuleLoader__.load({
         // primitives 见 client/primitives.js：走宿主模块表的同步 require。
         inject: () => ({ form, entryId, credentials, primitives, judgment })
       }, Panel));
-      ctx.effect(() => registerSettingsIcon(ctx, "judgment", "scale"), "toolkit-judgment:settings-icon");
+      ctx.effect(() => registerSettingsIcon(ctx, "judgment", "scale"), "dsh-toolkit-judgment:settings-icon");
     }
 
     return module.exports;

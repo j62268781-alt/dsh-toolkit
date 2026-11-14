@@ -21,7 +21,7 @@ export function registerRuntimeRoute(ctx, readRuntime) {
                 res.end(JSON.stringify(payload));
             }
             catch (error) {
-                ctx.logger.warn('dsh-skills-mcp-manager: runtime read failed: %s', String(error?.message ?? error));
+                ctx.logger.warn('dsh-toolkit-skills-mcp: runtime read failed: %s', String(error?.message ?? error));
                 res.statusCode = 503;
                 res.end(JSON.stringify({ error: 'runtime-unavailable' }));
             }

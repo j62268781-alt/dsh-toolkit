@@ -14,7 +14,7 @@
  * file, `phase` from the Loader, tools from the live registry, status from probe caches,
  * skills from the periodic scan.
  *
- * @module dsh-skills-mcp-manager
+ * @module dsh-toolkit-skills-mcp
  */
 import { join } from 'node:path'
 import { RowOp, ReconnectRequest, ImportRequest } from './config.js'
@@ -145,14 +145,14 @@ export function apply(ctx: any, config: any) {
   filterState.reason = shadow.reason
   if (shadow.installed) {
     filterState.preExisting = liveToolNames(ctx).filter(isMcpName)
-    ctx.logger.info('dsh-skills-mcp-manager: MCP tool filter installed (%d pre-existing MCP tool(s))', filterState.preExisting.length)
+    ctx.logger.info('dsh-toolkit-skills-mcp: MCP tool filter installed (%d pre-existing MCP tool(s))', filterState.preExisting.length)
   } else {
     // Reported, never swallowed: "filtering is off" and "filtering could not be
     // installed" look identical in the UI otherwise, and only one of them is the
     // user's configuration.
-    ctx.logger.warn('dsh-skills-mcp-manager: MCP tool filter not installed — %s', shadow.reason)
+    ctx.logger.warn('dsh-toolkit-skills-mcp: MCP tool filter not installed — %s', shadow.reason)
   }
-  ctx.effect(() => () => shadow.restore(), 'dsh-skills-mcp-manager.tool-filter')
+  ctx.effect(() => () => shadow.restore(), 'dsh-toolkit-skills-mcp.tool-filter')
 
   const observation = createServerObserver(ctx, {
     agents: () => agents, servers: () => committedServers,
@@ -169,17 +169,17 @@ export function apply(ctx: any, config: any) {
   const mountInto = (host: any, server: any, sink: any, where: any) => {
     const mountConfig = serverMountConfig(server)
     if (mountConfig === null) {
-      ctx.logger.warn('dsh-skills-mcp-manager: server %s has no name/%s, skipped', server.id, server.transport === 'stdio' ? 'command' : 'url')
+      ctx.logger.warn('dsh-toolkit-skills-mcp: server %s has no name/%s, skipped', server.id, server.transport === 'stdio' ? 'command' : 'url')
       return false
     }
     try {
       const fiber = host.plugin(mcpPlugin, mountConfig)
       recordMount(server.serverName, fiber)
       sink.push(typeof fiber === 'function' ? fiber : () => fiber?.dispose?.())
-      ctx.logger.info('dsh-skills-mcp-manager: mounted mcp server %s (%s) in %s', server.serverName, mountConfig.transport, where)
+      ctx.logger.info('dsh-toolkit-skills-mcp: mounted mcp server %s (%s) in %s', server.serverName, mountConfig.transport, where)
       return true
     } catch (error: any) {
-      ctx.logger.error('dsh-skills-mcp-manager: cannot mount mcp server %s in %s', server.serverName, where)
+      ctx.logger.error('dsh-toolkit-skills-mcp: cannot mount mcp server %s in %s', server.serverName, where)
       ctx.logger.error(error)
       return false
     }
@@ -190,7 +190,7 @@ export function apply(ctx: any, config: any) {
       try {
         stop()
       } catch (error: any) {
-        ctx.logger.warn('dsh-skills-mcp-manager: unmount failed')
+        ctx.logger.warn('dsh-toolkit-skills-mcp: unmount failed')
         ctx.logger.warn(error)
       }
     }
@@ -284,7 +284,7 @@ export function apply(ctx: any, config: any) {
     try {
       live = registry.list() ?? []
     } catch (error: any) {
-      ctx.logger.warn('dsh-skills-mcp-manager: cannot list live agents: %s', String(error?.message ?? error))
+      ctx.logger.warn('dsh-toolkit-skills-mcp: cannot list live agents: %s', String(error?.message ?? error))
       return
     }
     for (const agent of live) attachAgent(agent)
@@ -459,13 +459,13 @@ export function apply(ctx: any, config: any) {
         .catch((error) => {
           serverMigrationState.status = 'failed'
           serverMigrationState.reason = String(error?.message ?? error)
-          ctx.logger.warn('dsh-skills-mcp-manager: migration failed: %s', serverMigrationState.reason)
+          ctx.logger.warn('dsh-toolkit-skills-mcp: migration failed: %s', serverMigrationState.reason)
         })
     }
     const timer = setTimeout(attempt, 800)
     const repeat = setInterval(attempt, 5000)
     return () => { stopped = true; clearTimeout(timer); clearInterval(repeat) }
-  }, 'dsh-skills-mcp-manager.migration')
+  }, 'dsh-toolkit-skills-mcp.migration')
 
   skills.installScan()
 
@@ -515,7 +515,7 @@ export function apply(ctx: any, config: any) {
         // servers mounted, so only the edited one reconnects.
         tick({ force: true })
       } catch (error: any) {
-        routeCtx.logger.warn('dsh-skills-mcp-manager: post-command refresh failed: %s', String(error?.message ?? error))
+        routeCtx.logger.warn('dsh-toolkit-skills-mcp: post-command refresh failed: %s', String(error?.message ?? error))
       }
       return { ok: true, reason: '', servers: JSON.parse(JSON.stringify(configuredMcpRows(routeCtx).rows)) }
     }),
@@ -599,7 +599,7 @@ export function apply(ctx: any, config: any) {
         ? { ok: true, reason: '' }
         : { ok: false, reason: '停用后未等到 Loader 卸载该行，已重新启用，请再试一次' }
     } catch (error: any) {
-      ctx.logger.warn('dsh-skills-mcp-manager: reconnect failed: %s', String(error?.message ?? error))
+      ctx.logger.warn('dsh-toolkit-skills-mcp: reconnect failed: %s', String(error?.message ?? error))
       return { ok: false, reason: String(error?.message ?? error) }
     }
   }

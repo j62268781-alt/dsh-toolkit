@@ -66,7 +66,7 @@ function makeFlow({ home, sdk, t, onRedirect }) {
     store,
     getSdk: () => ({ ok: true, sdk }),
     makeProvider: (serverName, url) => createOAuthProvider({
-      store, serverName, url, redirectUri: 'http://127.0.0.1:1/dsh-skills-mcp-manager/oauth/callback', onRedirect, log: noopLog,
+      store, serverName, url, redirectUri: 'http://127.0.0.1:1/dsh-toolkit-skills-mcp/oauth/callback', onRedirect, log: noopLog,
     }),
     log: noopLog,
   })
@@ -413,7 +413,7 @@ test('callback：路由路径带插件前缀，且只接受 GET', async (t) => {
   assert.equal(ctx.routes.length, 1)
   assert.equal(ctx.routes[0].kind, 'exact')
   assert.equal(ctx.routes[0].path, CALLBACK_PATH)
-  assert.match(CALLBACK_PATH, /^\/dsh-skills-mcp-manager\/oauth\/callback$/)
+  assert.match(CALLBACK_PATH, /^\/dsh-toolkit-skills-mcp\/oauth\/callback$/)
 
   const posted = await callRoute(ctx.routes[0], { method: 'POST', url: `${CALLBACK_PATH}?code=c&state=s` })
   assert.equal(posted.statusCode, 405)
@@ -494,7 +494,7 @@ test('callback：state 匹配后完成授权并记住结果', async (t) => {
    * 会在「需要授权」上再停最多 5 秒（下一个轮询），那几秒里什么都没发生，看着就像没生效。
    */
   assert.match(response.body, /BroadcastChannel/, '成功页要广播「授权完成」，好让面板立刻刷新')
-  assert.match(response.body, /dsh-skills-mcp-manager\/oauth/, '频道名必须与面板一致')
+  assert.match(response.body, /dsh-toolkit-skills-mcp\/oauth/, '频道名必须与面板一致')
   // 文案里不该再让用户去点「重连」——Host 现在会自动重连
   assert.doesNotMatch(response.body, /点一次「重连」/, '自动重连之后不该再让用户手动点')
   // stdio 服务器不该被问（它没有 HTTP 状态码可挑战）——它的 url 为空，会被跳过

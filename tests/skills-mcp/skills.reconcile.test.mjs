@@ -94,7 +94,7 @@ test('reconcileSkills：写入 SKILL.md（含 frontmatter），移除配置后�
   // 清理按状态文件记录的文件执行（删文件，目录可能留空）
   await reconcileSkills(ctx, [])
   assert.equal(existsSync(file), false, 'SKILL.md 未被清理')
-  const state = JSON.parse(readFileSync(join(home, 'dsh-skills-mcp-manager.state.json'), 'utf8'))
+  const state = JSON.parse(readFileSync(join(home, 'dsh-toolkit-skills-mcp.state.json'), 'utf8'))
   assert.ok(Array.isArray(state.files), '状态文件应记录 owned 文件')
 })
 

@@ -436,7 +436,7 @@ export async function bootPanel(doc = emptyDoc(), options = {}) {
         return () => {}
       },
     },
-    configForms: { get: (entryId) => entryId === 'dsh-skills-mcp-manager' ? form : undefined },
+    configForms: { get: (entryId) => entryId === 'dsh-toolkit-skills-mcp' ? form : undefined },
   })
   runtime.render()
   const settle = async () => {

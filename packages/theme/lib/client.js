@@ -4966,11 +4966,11 @@ window.__ModuleLoader__.load({
       return dispose;
     }
     function apply(ctx) {
-      ctx.effect(registerScenes, "toolkit-theme:scene-builders");
-      ctx.effect(() => installSceneClock(updateHopeSceneTime), "toolkit-theme:scene-clock");
-      ctx.effect(installShellMarkers, "toolkit-theme:shell-markers");
-      ctx.effect(() => installStylesheet(styles_default, "toolkit-theme"), "toolkit-theme:stylesheet");
-      ctx.effect(() => installPalette(ctx), "toolkit-theme:palette");
+      ctx.effect(registerScenes, "dsh-toolkit-theme:scene-builders");
+      ctx.effect(() => installSceneClock(updateHopeSceneTime), "dsh-toolkit-theme:scene-clock");
+      ctx.effect(installShellMarkers, "dsh-toolkit-theme:shell-markers");
+      ctx.effect(() => installStylesheet(styles_default, "dsh-toolkit-theme"), "dsh-toolkit-theme:stylesheet");
+      ctx.effect(() => installPalette(ctx), "dsh-toolkit-theme:palette");
       ctx.effect(() => installCodexShell(ctx, [
         installRailTitles,
         installRailUnpin,
@@ -4979,10 +4979,10 @@ window.__ModuleLoader__.load({
         installSidebarWidth,
         installWorkspaceCollapse,
         installUpdateTile
-      ], { nativeInstallers: [(ctx2) => installSidebarWidth(ctx2, { native: true })] }), "toolkit-theme:codex-shell");
-      ctx.effect(() => installSettingsNav(ctx), "toolkit-theme:settings-nav");
-      ctx.effect(() => registerSettingsIcon(ctx, "theme", "palette"), "toolkit-theme:settings-icon");
-      ctx.effect(() => installThemeCenter(ctx), "toolkit-theme:settings-section");
+      ], { nativeInstallers: [(ctx2) => installSidebarWidth(ctx2, { native: true })] }), "dsh-toolkit-theme:codex-shell");
+      ctx.effect(() => installSettingsNav(ctx), "dsh-toolkit-theme:settings-nav");
+      ctx.effect(() => registerSettingsIcon(ctx, "theme", "palette"), "dsh-toolkit-theme:settings-icon");
+      ctx.effect(() => installThemeCenter(ctx), "dsh-toolkit-theme:settings-section");
     }
 
     return module.exports;

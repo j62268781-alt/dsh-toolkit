@@ -9,7 +9,7 @@
  *   node tests/mobile/test-harness.mjs
  *   MOBILECLI_TEST_HOME=/tmp/mclihome node tests/mobile/test-harness.mjs
  *
- * @module dsh-sidebar-mobile/test-harness
+ * @module dsh-toolkit-mobile/test-harness
  */
 
 import assert from "node:assert/strict";
@@ -481,7 +481,7 @@ await test("未知 action 被拒", () => {
 console.log("\n路由匹配");
 
 const { matchRouteName } = await import("../../src/modules/mobile/host/stream/routes.ts");
-const PREFIX = "/_dsh/dsh-sidebar-mobile";
+const PREFIX = "/_dsh/dsh-toolkit-mobile";
 
 await test("匹配已知路由", () => {
   assert.equal(matchRouteName(`${PREFIX}/stream/abc`, PREFIX), "stream");
@@ -2167,7 +2167,7 @@ await test("「请打开面板」的轮询必须在 apply() 里，不能放进�
   const applyAt = source.indexOf("apply(ctx) {");
   assert.ok(applyAt > 0, "找不到 apply(ctx)");
 
-  const pollAt = source.indexOf("dsh-sidebar-mobile:panel-open-poll");
+  const pollAt = source.indexOf("dsh-toolkit-mobile:panel-open-poll");
   assert.ok(
     pollAt > applyAt,
     "「请打开面板」的轮询不在 apply() 里 —— 面板没打开时它根本不会跑，功能自相矛盾",
@@ -2385,7 +2385,7 @@ await test("端到端（真 HTTP）：路由真的挂在那个 URL 上，长轮�
    * 换句话说：这条过了，就只剩"浏览器里的 openTab 到底有没有打开侧边栏"
    * 那一件事需要人来确认了。
    */
-  const PREFIX = "/_dsh/dsh-sidebar-mobile";
+  const PREFIX = "/_dsh/dsh-toolkit-mobile";
 
   const client = {
     async listDevices() { return []; },
@@ -4221,7 +4221,7 @@ await test("3 秒内第二次 re-grant 被节流：不重建，回包仍是当�
 // 旧 /stream 响应必须被 Host 主动 end（否则浏览器要等看门狗，画面冻住），
 // 客户端随后带新 token 重连就能拿到新分辨率的流。
 await test("按新缩放重建时旧 /stream 响应主动结束，重连即拿到新流", async () => {
-  const PREFIX = "/_dsh/dsh-sidebar-mobile";
+  const PREFIX = "/_dsh/dsh-toolkit-mobile";
   const streams = [];
   const spawnScales = [];
   const pool = new StreamSessionPool({

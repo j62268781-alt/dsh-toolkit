@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { Config, readBootConfig } from "./config.js";
 import { createBootScene } from "./scene.js";
-export const name = "toolkit-boot";
+export const name = "dsh-toolkit-boot";
 export const inject = [];
 let bootAssets;
 function readBootAssets() {

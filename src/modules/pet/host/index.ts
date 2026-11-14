@@ -13,7 +13,7 @@ import { createActivityFeed, type ActivityFeed } from './activity.js'
 import { createCatalog, filterCatalog, installPet, listInstalled, removePet, resolveAssetUrl, type InstallProgress, type InstallResult } from './petdex.js'
 import { createPreviewStore } from './preview.js'
 
-export const name = 'toolkit-pet'
+export const name = 'dsh-toolkit-pet'
 export const inject = ['webServer', 'connection', 'sessionController', 'sessionProjections', 'sessions', 'settings']
 export const API_PATH = '/api/plugins/dsh-toolkit/pet'
 const PET_IDS = ['deepseek-whale']

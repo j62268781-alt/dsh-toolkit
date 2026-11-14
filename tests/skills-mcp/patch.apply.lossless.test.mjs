@@ -213,7 +213,7 @@ test('运行时字段清理及旧标识迁移兼容顶层和 insert 行，保留
     const before = readPatch(path)
     assert.equal(await migratePanelConfig(ctxFor(dir)), entryId === LEGACY_NAME ? 4 : 3)
     const after = readPatch(path)
-    const panel = findRowDeep(after, (item) => item.id === 'dsh-skills-mcp-manager')
+    const panel = findRowDeep(after, (item) => item.id === 'dsh-toolkit-skills-mcp')
     assert.deepEqual(panel.config, { toolFilters: { deepwiki: { mode: 'deny', tools: ['private'] } } })
     assert.deepEqual(dropById(after, NAME), dropById(before, entryId))
     const cleaned = readFileSync(path, 'utf8')

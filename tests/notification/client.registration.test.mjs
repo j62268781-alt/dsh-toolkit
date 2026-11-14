@@ -65,7 +65,7 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
   const { require, required } = makeRequire()
   const client = module.default(require)
   assert.equal(globalThis.__dshReact, React)
-  assert.equal(client.name, 'toolkit-notification-client')
+  assert.equal(client.name, 'dsh-toolkit-notification-client')
   assert.deepEqual(Array.from(client.inject), ['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces'])
   assert.equal(typeof client.apply, 'function')
   const page = makeDom()
@@ -78,12 +78,12 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
   // 插件不再自己渲染应用内卡片，所以不需要 react-dom。
   assert.deepEqual([...new Set(required)].sort(), ['@deepseek-ai/dsh-client-ui-primitives', 'react'])
   assert.deepEqual(runtime.effects, [
-    'toolkit-notification:dictionary', 'toolkit-notification:stylesheet',
-    'toolkit-notification:settings', 'toolkit-notification:sessions',
-    'toolkit-notification:pending', 'toolkit-notification:sounds',
-    'toolkit-notification:dismiss-visible',
-    'toolkit-notification:section',
-    'toolkit-notification:settings-icon',
+    'dsh-toolkit-notification:dictionary', 'dsh-toolkit-notification:stylesheet',
+    'dsh-toolkit-notification:settings', 'dsh-toolkit-notification:sessions',
+    'dsh-toolkit-notification:pending', 'dsh-toolkit-notification:sounds',
+    'dsh-toolkit-notification:dismiss-visible',
+    'dsh-toolkit-notification:section',
+    'dsh-toolkit-notification:settings-icon',
   ])
   assert.equal(runtime.localeRegistrations.length, 1)
   assert.equal(runtime.localeRegistrations[0].namespace, NOTIFICATION_NS)
@@ -91,7 +91,7 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
   assert.ok(NOTIFICATION_COPY.en.nav)
   assert.deepEqual(Object.keys(runtime.localeRegistrations[0].dictionary).sort(), ['en', 'zh'])
   assert.equal(runtime.localeRegistrations[0].dictionary.zh.nav, '通知')
-  const style = page.document.querySelector('style[data-plugin="toolkit-notification"]')
+  const style = page.document.querySelector('style[data-plugin="dsh-toolkit-notification"]')
   assert.ok(style)
   const css = style.textContent.replace(/\s+/g, '')
   assert.match(css, /\.ntf-page\{/)
@@ -115,7 +115,7 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
   assert.equal(meta.label(), '通知')
   assert.equal(typeof Component, 'function')
   runtime.dispose()
-  assert.equal(page.document.querySelector('style[data-plugin="toolkit-notification"]'), null)
+  assert.equal(page.document.querySelector('style[data-plugin="dsh-toolkit-notification"]'), null)
 })
 
 test('页面：四张分组卡片、全局声音与四种类型开关，无最近通知和范围控件', async (t) => {

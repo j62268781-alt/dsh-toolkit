@@ -98,7 +98,7 @@ let io = {
      * a "scratch backup dir" in a comment for exactly this reason, but no such seam
      * existed, so every run of the suite dropped another backup into the real home.
      */
-    backupDir: () => join(dshHome(), 'dsh-skills-mcp-manager.backups'),
+    backupDir: () => join(dshHome(), 'dsh-toolkit-skills-mcp.backups'),
 };
 /** Inject the host's file-lock / atomic-write implementation. */
 export function setPatchIO(next) {
@@ -315,7 +315,7 @@ export async function migratePanelConfig(ctx) {
                     }
                     catch (error) {
                         skillFailed = true;
-                        ctx?.logger?.warn?.('dsh-skills-mcp-manager: cannot migrate skill %s: %s', name, String(error?.message ?? error));
+                        ctx?.logger?.warn?.('dsh-toolkit-skills-mcp: cannot migrate skill %s: %s', name, String(error?.message ?? error));
                     }
                 }
                 // Keep the key when a file could not be written, so the next attempt can retry
@@ -343,7 +343,7 @@ export async function migratePanelConfig(ctx) {
         parseDocument(after, { customTags: [YAML_JS_TAG] }); // gate: never write invalid YAML
         await backupPatch(before);
         await io.writeFileAtomic(path, after, {});
-        ctx.logger?.info?.('dsh-skills-mcp-manager: migrated %d legacy config item(s)', changed);
+        ctx.logger?.info?.('dsh-toolkit-skills-mcp: migrated %d legacy config item(s)', changed);
         return changed;
     });
 }
@@ -531,7 +531,7 @@ export async function applyRowOp(ctx, op) {
         parseDocument(after, { customTags: [YAML_JS_TAG] }); // gate: never write invalid YAML
         await backupPatch(before);
         await io.writeFileAtomic(path, after, {});
-        ctx.logger.info('dsh-skills-mcp-manager: %s profile row %s', op.op, op.entryId);
+        ctx.logger.info('dsh-toolkit-skills-mcp: %s profile row %s', op.op, op.entryId);
         return true;
     });
 }
@@ -599,7 +599,7 @@ export async function migrateServerEntries(ctx, entries) {
         parseDocument(after, { customTags: [YAML_JS_TAG] });
         await backupPatch(before);
         await io.writeFileAtomic(path, after, {});
-        ctx.logger.info('dsh-skills-mcp-manager: migrated %d panel server(s) into profile rows', ids.length);
+        ctx.logger.info('dsh-toolkit-skills-mcp: migrated %d panel server(s) into profile rows', ids.length);
         return { migrated: ids.length, ids };
     });
 }

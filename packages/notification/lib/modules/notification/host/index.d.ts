@@ -1,6 +1,6 @@
 import type { RaiseWindowOptions } from './raise.js';
 import type { SoundService } from './sounds.js';
-export declare const name = "toolkit-notification";
+export declare const name = "dsh-toolkit-notification";
 export declare const inject: string[];
 export declare const SOUNDS_PATH = "/api/plugins/dsh-toolkit/notification/sounds";
 export declare const SOUND_PATH = "/api/plugins/dsh-toolkit/notification/sound";

@@ -3,7 +3,7 @@ import type { BootAssets } from "./scene.js";
 import { Config, readBootConfig } from "./config.js";
 import { createBootScene } from "./scene.js";
 
-export const name = "toolkit-boot";
+export const name = "dsh-toolkit-boot";
 export const inject: string[] = [];
 
 let bootAssets: BootAssets | undefined;

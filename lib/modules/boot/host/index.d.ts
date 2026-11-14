@@ -1,5 +1,5 @@
 import { Config } from "./config.js";
-export declare const name = "toolkit-boot";
+export declare const name = "dsh-toolkit-boot";
 export declare const inject: string[];
 export declare function apply(ctx: any, config?: any): void;
 export { Config };

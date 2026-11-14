@@ -33,7 +33,7 @@ export function createSkillsController(ctx: any, { agents, lastBeat, refresh }: 
       // reason must survive into the published diagnostics.
       discoveryInfo = { at: new Date().toISOString(), roots, count: 0, error: String(error?.message ?? error) }
       beat({ ...lastBeat(), at: new Date().toISOString(), discovery: discoveryInfo })
-      if (process.env.SMP_DEBUG) console.error('[dsh-skills-mcp-manager] skill scan failed', error)
+      if (process.env.SMP_DEBUG) console.error('[dsh-toolkit-skills-mcp] skill scan failed', error)
       discoveredSkills = []
     }
   }
@@ -116,7 +116,7 @@ export function createSkillsController(ctx: any, { agents, lastBeat, refresh }: 
             ...projectScopes,
           ])].filter((root) => typeof root === 'string' && root !== ''))
         } catch (error: any) {
-          if (process.env.SMP_DEBUG) console.error('[dsh-skills-mcp-manager] post-write rescan failed', error)
+          if (process.env.SMP_DEBUG) console.error('[dsh-toolkit-skills-mcp] post-write rescan failed', error)
         }
       }
       return result
@@ -129,7 +129,7 @@ export function createSkillsController(ctx: any, { agents, lastBeat, refresh }: 
         nonce: String(result?.nonce ?? ''), ok: result?.ok === true,
         at: new Date().toISOString(),
       }
-      try { refresh() } catch (error: any) { console.error('[dsh-skills-mcp-manager] post-skill refresh failed:', error) }
+      try { refresh() } catch (error: any) { console.error('[dsh-toolkit-skills-mcp] post-skill refresh failed:', error) }
     }
 
     ctx.inject(['webServer', 'connection'], (skillRouteCtx: any) => registerSkillRoute(skillRouteCtx, {
@@ -165,7 +165,7 @@ export function createSkillsController(ctx: any, { agents, lastBeat, refresh }: 
           const nextRoots = [...new Set([...scopes, ...extra])].filter((root) => typeof root === 'string' && root !== '')
           await refreshDiscovered(nextRoots)
         } catch (error: any) {
-          if (process.env.SMP_DEBUG) console.error('[dsh-skills-mcp-manager] read rescan failed', error)
+          if (process.env.SMP_DEBUG) console.error('[dsh-toolkit-skills-mcp] read rescan failed', error)
         }
       }
       if (!isKnown()) return { ok: false, reason: '该技能不在当前扫描结果里' }

@@ -123,7 +123,7 @@ export function createOAuthProvider({
       return committed
     } catch (error: any) {
       // Keep successful auth usable in memory if durable storage is temporarily unavailable.
-      log?.warn?.(`dsh-skills-mcp-manager: 保存 ${serverName} 的 OAuth 凭据失败：${String(error?.message ?? error)}`)
+      log?.warn?.(`dsh-toolkit-skills-mcp: 保存 ${serverName} 的 OAuth 凭据失败：${String(error?.message ?? error)}`)
       return optimisticResult
     }
   })
@@ -234,7 +234,7 @@ export function createOAuthProvider({
       try {
         await onRedirect?.(href)
       } catch (error: any) {
-        log?.warn?.(`dsh-skills-mcp-manager: 记录 ${serverName} 的授权链接失败：${String(error?.message ?? error)}`)
+        log?.warn?.(`dsh-toolkit-skills-mcp: 记录 ${serverName} 的授权链接失败：${String(error?.message ?? error)}`)
       }
     },
 

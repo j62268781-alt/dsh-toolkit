@@ -28,7 +28,7 @@ type Origin = { host: string; port: number; scheme: string };
 export function stateRoot(): string {
   const dshHome = process.env.DSH_HOME;
   const base = typeof dshHome === "string" && dshHome !== "" ? dshHome : join(homedir(), ".dsh");
-  return join(base, "cache", "dsh-sidebar-mobile");
+  return join(base, "cache", "dsh-toolkit-mobile");
 }
 
 /** Reuse a per-DSH_HOME signing key; controller generations revoke capabilities on reload. */

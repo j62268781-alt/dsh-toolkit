@@ -211,7 +211,7 @@ test('settings panel previews above choices and writes every control through the
   const { document } = app.dom.window
   assert.equal(app.panel.meta.order, 15)
   assert.equal(app.panel.meta.name, 'settings.section')
-  const style = document.querySelector('style[data-plugin="toolkit-boot-panel"]')
+  const style = document.querySelector('style[data-plugin="dsh-toolkit-boot-panel"]')
   assert.ok(style)
   assert.match(style.textContent, /\.boot-preview/)
   const frame = document.querySelector('iframe.boot-preview')
@@ -285,11 +285,11 @@ test('mode cards reuse the desktop whale and toggles match General Settings geom
   assert.equal(themeSelect.tagName, 'SELECT')
   assert.equal(getComputedStyle(themeSelect).height, '30px')
   assert.equal(getComputedStyle(themeSelect).paddingRight, '30px')
-  const bootSheet = document.querySelector('style[data-plugin="toolkit-boot-panel"]').textContent
+  const bootSheet = document.querySelector('style[data-plugin="dsh-toolkit-boot-panel"]').textContent
   assert.match(bootSheet, /\.boot-select\{[^}]*appearance:none/)
   assert.match(bootSheet, /\.boot-select\{[^}]*background-position:right 10px center/)
   assert.doesNotMatch(bootSheet, /\.ntf-select\{/, 'each panel keeps only its own prefixed rule')
-  const rules = [...document.querySelector('style[data-plugin="toolkit-boot-panel"]').sheet.cssRules]
+  const rules = [...document.querySelector('style[data-plugin="dsh-toolkit-boot-panel"]').sheet.cssRules]
   const rule = (selector) => rules.find((item) => item.selectorText === selector).style
   assert.equal(rule('.boot-switch[aria-checked=true]').getPropertyValue('background'), 'var(--dsw-alias-brand-primary)')
   assert.equal(rule('.boot-switch[aria-checked=false] .boot-switch-thumb').getPropertyValue('background'), 'var(--dsw-alias-switch-thumb)')

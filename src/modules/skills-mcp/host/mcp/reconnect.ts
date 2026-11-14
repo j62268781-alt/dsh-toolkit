@@ -66,7 +66,7 @@ export function registerReconnectRoute(ctx: any, { schema, run }: any) {
         try {
           send(200, await run(request))
         } catch (error: any) {
-          ctx.logger.warn('dsh-skills-mcp-manager: reconnect command failed: %s', String(error?.message ?? error))
+          ctx.logger.warn('dsh-toolkit-skills-mcp: reconnect command failed: %s', String(error?.message ?? error))
           send(200, { ok: false, reason: String(error?.message ?? error) })
         }
       })

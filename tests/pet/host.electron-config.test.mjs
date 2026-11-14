@@ -7,7 +7,7 @@ import { ELECTRON_VERSION, executableIn, helperEnvironment, resolveElectron, run
 import { readSettings } from '../../src/modules/pet/host/config.ts'
 
 async function temporaryHome(t) {
-  const directory = await mkdtemp(path.join(tmpdir(), 'toolkit-pet-test-'))
+  const directory = await mkdtemp(path.join(tmpdir(), 'dsh-toolkit-pet-test-'))
   const previous = { DSH_HOME: process.env.DSH_HOME, DSH_TOOLKIT_ELECTRON_PATH: process.env.DSH_TOOLKIT_ELECTRON_PATH }
   process.env.DSH_HOME = directory
   delete process.env.DSH_TOOLKIT_ELECTRON_PATH
@@ -17,7 +17,7 @@ async function temporaryHome(t) {
       else process.env[key] = value
     }
     assert.equal(path.dirname(directory), path.resolve(tmpdir()))
-    assert.match(path.basename(directory), /^toolkit-pet-test-/)
+    assert.match(path.basename(directory), /^dsh-toolkit-pet-test-/)
     await rm(directory, { recursive: true, force: true })
   })
   return directory

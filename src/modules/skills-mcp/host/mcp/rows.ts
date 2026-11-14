@@ -98,7 +98,7 @@ export function registerRowRoute(ctx: any, { schema, apply }: any) {
           const result = await apply(op)
           send(200, result)
         } catch (error: any) {
-          ctx.logger.warn('dsh-skills-mcp-manager: row command failed: %s', String(error?.message ?? error))
+          ctx.logger.warn('dsh-toolkit-skills-mcp: row command failed: %s', String(error?.message ?? error))
           send(200, { ok: false, reason: String(error?.message ?? error) })
         }
       })

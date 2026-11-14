@@ -20,11 +20,11 @@ import { prepareOutboundText } from './markdown.js'
  *
  * `MessageSourceMap` 是「合并扩展」的接口：每个 producer 在自己的模块里声明自己的 kind，
  * 宿主没有（也明确不要）共享的 catch-all `plugin` kind。不在这里声明，`createUserMessage`
- * 会在类型层拒绝 `plugin:toolkit-remote` —— 而运行时它是合法的（见下方 INSTRUCTIONS_SOURCE）。
+ * 会在类型层拒绝 `plugin:dsh-toolkit-remote` —— 而运行时它是合法的（见下方 INSTRUCTIONS_SOURCE）。
  */
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
-    'plugin:toolkit-remote': { kind: 'plugin:toolkit-remote'; form: 'instructions' }
+    'plugin:dsh-toolkit-remote': { kind: 'plugin:dsh-toolkit-remote'; form: 'instructions' }
   }
 }
 
@@ -37,7 +37,7 @@ const REPLY_TIMEOUT_MS = 180_000
  * 而且这个错误发生在写入历史时，首条消息可能正常、下一条才炸。插件来源的规范写法是
  * `plugin:<插件名>`（与运行时写入的 `plugin:claude-mem` 一致）。
  */
-export const INSTRUCTIONS_SOURCE = Object.freeze({ kind: 'plugin:toolkit-remote', form: 'instructions' })
+export const INSTRUCTIONS_SOURCE = Object.freeze({ kind: 'plugin:dsh-toolkit-remote', form: 'instructions' })
 const SYSTEM_PROMPT = [
   '你正在通过微信私聊与用户对话，你的回复会被直接发送到微信。',
   '请用简洁的纯文本回答（不要用 Markdown 标题/加粗/图片语法，微信不渲染）。',

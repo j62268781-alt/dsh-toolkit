@@ -26,7 +26,7 @@ test('panel reads same-origin runtime data instead of legacy settings and refres
   })
   try {
     assert.equal(requests.length, 1)
-    assert.equal(requests[0].url, '/dsh-skills-mcp-manager/runtime')
+    assert.equal(requests[0].url, '/dsh-toolkit-skills-mcp/runtime')
     assert.equal(requests[0].options.credentials, 'same-origin')
     assert.equal(requests[0].options.cache, 'no-store')
     panel.click(panel.byClass('smp-cardToggle'))

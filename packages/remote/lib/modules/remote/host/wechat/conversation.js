@@ -20,7 +20,7 @@ const REPLY_TIMEOUT_MS = 180_000;
  * 而且这个错误发生在写入历史时，首条消息可能正常、下一条才炸。插件来源的规范写法是
  * `plugin:<插件名>`（与运行时写入的 `plugin:claude-mem` 一致）。
  */
-export const INSTRUCTIONS_SOURCE = Object.freeze({ kind: 'plugin:toolkit-remote', form: 'instructions' });
+export const INSTRUCTIONS_SOURCE = Object.freeze({ kind: 'plugin:dsh-toolkit-remote', form: 'instructions' });
 const SYSTEM_PROMPT = [
     '你正在通过微信私聊与用户对话，你的回复会被直接发送到微信。',
     '请用简洁的纯文本回答（不要用 Markdown 标题/加粗/图片语法，微信不渲染）。',

@@ -34,7 +34,7 @@ export default function createClient(require) {
         label: () => 'Skills & MCP',
         inject: () => ({ form, entryId, inventory }),
       }, Panel))
-      ctx.effect(() => registerSettingsIcon(ctx, 'skills-mcp', 'plug'), 'toolkit-skills-mcp:settings-icon')
+      ctx.effect(() => registerSettingsIcon(ctx, 'skills-mcp', 'plug'), 'dsh-toolkit-skills-mcp:settings-icon')
     },
   }
 }

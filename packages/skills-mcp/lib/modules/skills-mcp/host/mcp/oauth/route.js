@@ -71,7 +71,7 @@ export function registerOAuthRoute(ctx, { schema, run }) {
                     send(200, await run(op));
                 }
                 catch (error) {
-                    ctx.logger.warn('dsh-skills-mcp-manager: oauth command failed: %s', String(error?.message ?? error));
+                    ctx.logger.warn('dsh-toolkit-skills-mcp: oauth command failed: %s', String(error?.message ?? error));
                     send(200, { ok: false, reason: String(error?.message ?? error) });
                 }
             });

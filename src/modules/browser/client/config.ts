@@ -3,8 +3,11 @@
  * `form` 是 `ctx.configForms.get(entryId)` 给的一侧，有 `getSnapshot()` 与 `set`/`mutate`。
  */
 
-/** Host 行 id 的候选：cordis.patch.yml 里的 id 是 `agent-browser`，也可能是包名。 */
-export const ENTRY_CANDIDATES = ['agent-browser', 'dsh-agent-browser']
+/**
+ * Host 行 id 的候选：cordis.patch.yml 里的 id 是 `dsh-toolkit-browser`。
+ * 后两个是旧行 id / 包名，保留只为读得到还没迁移的旧配置。
+ */
+export const ENTRY_CANDIDATES = ['dsh-toolkit-browser', 'agent-browser', 'dsh-agent-browser']
 
 /** 取配置表单；未提供的 entry 会抛错，所以逐个试。 */
 export function findForm(ctx) {

@@ -14,12 +14,12 @@ export default function createPet(require) {
   const React = require('react')
   globalThis.__dshReact = React
   return {
-    name: 'toolkit-pet-client',
+    name: 'dsh-toolkit-pet-client',
     inject: ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces', 'sessions'],
     apply(ctx) {
       const { form } = findScopedForm(ctx, CONFIG_NS)
       const t = createTranslator(ctx)
-      const warn = (error) => console.warn('[toolkit-pet]', error)
+      const warn = (error) => console.warn('[dsh-toolkit-pet]', error)
       const listeners = new Set()
       let value = readSettings(formSnapshot(form))
       const refresh = () => { value = readSettings(form ? formSnapshot(form) : connection.getSnapshot().settings); for (const listener of [...listeners]) listener() }
@@ -44,18 +44,18 @@ export default function createPet(require) {
         try { return require('@deepseek-ai/dsh-client-ui-primitives') } catch { return null }
       })()
       const Panel = createPetPanel(React, { t, settings, connection, actions, primitives })
-      ctx.effect(() => ctx.locale?.register?.(PET_NS, PET_COPY), 'toolkit-pet:dictionary')
+      ctx.effect(() => ctx.locale?.register?.(PET_NS, PET_COPY), 'dsh-toolkit-pet:dictionary')
       // Panel-local CSS injected globally: every selector is a `.pet-*` class under the settings
       // panel, so an inline <style> would work too — kept as-is so the plugin keeps using the
-      // host's `data-plugin` reclaim contract (tests assert `style[data-plugin=toolkit-pet]`).
+      // host's `data-plugin` reclaim contract (tests assert `style[data-plugin=dsh-toolkit-pet]`).
       // 分页控件是共享件（src/client/ui/components/pagination/index.jsx），样式随本模块的样式表一起注入。
-      ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet(css + paginationCss + resizableDialogCss, 'toolkit-pet'), 'toolkit-pet:stylesheet')
+      ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet(css + paginationCss + resizableDialogCss, 'dsh-toolkit-pet'), 'dsh-toolkit-pet:stylesheet')
       ctx.effect(() => {
         const off = form ? (form.subscribe?.(refresh) ?? form.store?.subscribe?.(refresh)) : connection.subscribe(refresh)
         return () => { off?.(); listeners.clear() }
-      }, 'toolkit-pet:settings')
-      ctx.effect(() => { connection.start(); return () => connection.dispose() }, 'toolkit-pet:connection')
-      // 跨模块契约（只读方：toolkit-notification）：灵动岛在线时在根元素上留一个标记，
+      }, 'dsh-toolkit-pet:settings')
+      ctx.effect(() => { connection.start(); return () => connection.dispose() }, 'dsh-toolkit-pet:connection')
+      // 跨模块契约（只读方：dsh-toolkit-notification）：灵动岛在线时在根元素上留一个标记，
       // 通知侧据此把「前台提醒」让给岛上的徽标，避免同一件事既响提示音又亮徽标。
       //   'on'  = 灵动岛已开启（islandEnabled）且桌面 helper 在跑（runtime.status === 'running'）
       //   缺失  = 没有灵动岛（未装 pet 模块 / 没开岛 / helper 没跑），通知侧按旧行为提醒
@@ -77,7 +77,7 @@ export default function createPet(require) {
           listeners.delete(sync)
           delete root.dataset.dshIsland
         }
-      }, 'toolkit-pet:island-mark')
+      }, 'dsh-toolkit-pet:island-mark')
       // 别人把主视图切到这个会话时（系统通知点击跳转、侧栏点另一个会话），灵动岛的状态也要
       // 跟着刷新：读到「主视图持有哪个会话」就把它标记成已读。只读既有快照，不新增事件通道。
       // 三路来源互为兜底（列表快照 → retainInfo → 当前会话的本地记录），并每秒重扫一次，
@@ -210,9 +210,9 @@ export default function createPet(require) {
           globalThis.removeEventListener?.('focus', wake)
           globalThis.removeEventListener?.('visibilitychange', wake)
         }
-      }, 'toolkit-pet:seen-on-focus')
-      ctx.effect(() => ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'desktop-pet', order: 25, label: () => t('nav'), locale: PET_NS }, Panel)), 'toolkit-pet:section')
-      ctx.effect(() => registerSettingsIcon(ctx, 'desktop-pet', 'paw'), 'toolkit-pet:settings-icon')
+      }, 'dsh-toolkit-pet:seen-on-focus')
+      ctx.effect(() => ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'desktop-pet', order: 25, label: () => t('nav'), locale: PET_NS }, Panel)), 'dsh-toolkit-pet:section')
+      ctx.effect(() => registerSettingsIcon(ctx, 'desktop-pet', 'paw'), 'dsh-toolkit-pet:settings-icon')
     },
   }
 }

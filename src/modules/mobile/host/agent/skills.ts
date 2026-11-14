@@ -23,7 +23,7 @@
  * 与 dsh-android 的做法一致：`ctx.inject(['skills'])` 拿不到就静默跳过，
  * 插件其余部分照常工作。
  *
- * @module dsh-sidebar-mobile/lib/skills
+ * @module dsh-toolkit-mobile/lib/skills
  */
 
 import { readFileSync } from "node:fs";
@@ -221,7 +221,7 @@ export function registerSkills(
           content: skill.content,
           source: "bundled",
         }),
-      "dsh-sidebar-mobile:skill",
+      "dsh-toolkit-mobile:skill",
     );
     log("info", `已注册 skill：${skill.name}（${skill.content.length} 字符）`);
   });

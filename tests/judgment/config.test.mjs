@@ -152,7 +152,8 @@ test('findForm 按候选顺序取表单，未提供的 entry 抛错也不影响'
 
   const none = findForm({ configForms: { get: () => undefined } })
   assert.equal(none.form, undefined)
-  assert.equal(none.entryId, 'judgment/provider')
+  // 首选候选就是 cordis.patch.yml 里的行 id；旧的 judgment/provider 只是回退。
+  assert.equal(none.entryId, 'dsh-toolkit-judgment')
 
   // 宿主没有 configForms 服务时也不炸（页面只读空配置）。
   assert.equal(findForm({}).form, undefined)

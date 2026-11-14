@@ -57,7 +57,7 @@ export function registerImportRoute(ctx, { schema, scan }) {
                     send(200, scan(request));
                 }
                 catch (error) {
-                    ctx.logger.warn('dsh-skills-mcp-manager: import scan failed: %s', String(error?.message ?? error));
+                    ctx.logger.warn('dsh-toolkit-skills-mcp: import scan failed: %s', String(error?.message ?? error));
                     send(200, { ok: false, files: [], servers: [], error: String(error?.message ?? error) });
                 }
             });

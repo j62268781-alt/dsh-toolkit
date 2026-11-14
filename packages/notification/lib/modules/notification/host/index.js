@@ -2,7 +2,7 @@ import { sendJson } from '../../../host/http.js';
 import { registerAuthenticatedRoute } from '../../../host/routes.js';
 import { raiseWindow } from './raise.js';
 import { createSoundService } from './sounds.js';
-export const name = 'toolkit-notification';
+export const name = 'dsh-toolkit-notification';
 export const inject = ['webServer', 'connection'];
 export const SOUNDS_PATH = '/api/plugins/dsh-toolkit/notification/sounds';
 export const SOUND_PATH = '/api/plugins/dsh-toolkit/notification/sound';

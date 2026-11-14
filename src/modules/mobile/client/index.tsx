@@ -15,7 +15,7 @@ export default function createClient(require) {
   const Fragment = React.Fragment;
   const primitives = require("@deepseek-ai/dsh-client-ui-primitives");
   const TAB_ID = "@j62268781-alt/dsh-sidebar-mobile";
-  const PREFIX = "/_dsh/dsh-sidebar-mobile";
+  const PREFIX = "/_dsh/dsh-toolkit-mobile";
   const ROUTE_PANEL_OPEN = "panel-open";
   const ROUTE_PANEL_OPEN_ACK = "panel-open-ack";
   const SHORTCUT_ID = "sidebar.mobile";
@@ -158,7 +158,7 @@ export default function createClient(require) {
             stopped = true;
             controller.abort();
           };
-        }, "dsh-sidebar-mobile:panel-open-poll");
+        }, "dsh-toolkit-mobile:panel-open-poll");
       });
       ctx.inject(["shortcuts", "sidebarRight"], (scope) => {
         scope.effect(
@@ -190,7 +190,7 @@ export default function createClient(require) {
               };
             }
           }),
-          "dsh-sidebar-mobile:shortcut"
+          "dsh-toolkit-mobile:shortcut"
         );
       });
       ctx.effect(
@@ -215,7 +215,7 @@ export default function createClient(require) {
             }
           ]
         }),
-        "dsh-sidebar-mobile:tab-type"
+        "dsh-toolkit-mobile:tab-type"
       );
       ctx.effect(
         () => ctx.slots.register(
@@ -225,7 +225,7 @@ export default function createClient(require) {
           },
           MobilePanel
         ),
-        "dsh-sidebar-mobile:tab-body"
+        "dsh-toolkit-mobile:tab-body"
       );
       ctx.effect(
         () => ctx.slots.register(
@@ -235,7 +235,7 @@ export default function createClient(require) {
           },
           MobileTitle
         ),
-        "dsh-sidebar-mobile:tab-title"
+        "dsh-toolkit-mobile:tab-title"
       );
     }
   };

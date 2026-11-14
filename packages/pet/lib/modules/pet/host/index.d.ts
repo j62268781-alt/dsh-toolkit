@@ -1,4 +1,4 @@
-export declare const name = "toolkit-pet";
+export declare const name = "dsh-toolkit-pet";
 export declare const inject: string[];
 export declare const API_PATH = "/api/plugins/dsh-toolkit/pet";
 export declare function createPetService(ctx: any, initialConfig?: any): Promise<any>;

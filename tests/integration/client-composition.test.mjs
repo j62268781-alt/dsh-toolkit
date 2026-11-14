@@ -6,33 +6,33 @@ import React from 'react'
 
 const CLIENT = new URL('../../lib/client.js', import.meta.url)
 const EXPECTED_INJECT = {
-  'toolkit-theme-client': ['layout', 'slots', 'locale', 'configForms', 'theme'],
-  'toolkit-archived-client': ['slots', 'locale', 'sessions', 'workspaces'],
-  'toolkit-skills-mcp-client': ['slots', 'configForms', 'remote', 'remote.pluginInventory'],
-  'toolkit-judgment-client': ['slots', 'configForms', 'remote', 'remote.credentials'],
-  'toolkit-browser-client': ['slots', 'configForms', 'remote'],
-  'toolkit-mobile-client': ['slots', 'sidebarRightTabs'],
-  'toolkit-notification-client': ['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces'],
-  'toolkit-boot-client': ['slots', 'configForms'],
-  'toolkit-pet-client': ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces', 'sessions'],
-  'toolkit-remote-client': ['locale'],
+  'dsh-toolkit-theme-client': ['layout', 'slots', 'locale', 'configForms', 'theme'],
+  'dsh-toolkit-archived-client': ['slots', 'locale', 'sessions', 'workspaces'],
+  'dsh-toolkit-skills-mcp-client': ['slots', 'configForms', 'remote', 'remote.pluginInventory'],
+  'dsh-toolkit-judgment-client': ['slots', 'configForms', 'remote', 'remote.credentials'],
+  'dsh-toolkit-browser-client': ['slots', 'configForms', 'remote'],
+  'dsh-toolkit-mobile-client': ['slots', 'sidebarRightTabs'],
+  'dsh-toolkit-notification-client': ['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces'],
+  'dsh-toolkit-boot-client': ['slots', 'configForms'],
+  'dsh-toolkit-pet-client': ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces', 'sessions'],
+  'dsh-toolkit-remote-client': ['locale'],
 }
 const ALL_SERVICES = new Set([
   ...Object.values(EXPECTED_INJECT).flat(), 'sidebarRight', 'shortcuts', 'uiSession', 'uiConversation', 'uiWorkspace',
 ])
 const IMMEDIATE_EFFECTS = new Set([
-  'toolkit-theme:settings-section',
+  'dsh-toolkit-theme:settings-section',
   // Archived registers its dictionary through the shared bridge (generic label) and
   // mounts its settings page as one of several surfaces.
   'locale shell-kit.archived',
-  'toolkit-archived:settings',
-  'toolkit-notification:dictionary',
-  'toolkit-notification:section',
-  'toolkit-pet:dictionary',
-  'toolkit-pet:section',
-  'dsh-sidebar-mobile:tab-type',
-  'dsh-sidebar-mobile:tab-body',
-  'dsh-sidebar-mobile:tab-title',
+  'dsh-toolkit-archived:settings',
+  'dsh-toolkit-notification:dictionary',
+  'dsh-toolkit-notification:section',
+  'dsh-toolkit-pet:dictionary',
+  'dsh-toolkit-pet:section',
+  'dsh-toolkit-mobile:tab-type',
+  'dsh-toolkit-mobile:tab-body',
+  'dsh-toolkit-mobile:tab-title',
 ])
 
 async function loadClient() {
@@ -300,35 +300,35 @@ test('the unified bundle registers the original settings pages, Remote faces, an
   assert.equal(mobile.multiple, false)
   assert.equal(mobile.keepMounted, true)
   assert.equal(mobile.guide[0].commandId, 'sidebar.mobile')
-  const mobileSeats = result.registrations.filter(({ plugin }) => plugin === 'toolkit-mobile-client')
+  const mobileSeats = result.registrations.filter(({ plugin }) => plugin === 'dsh-toolkit-mobile-client')
   assert.deepEqual(mobileSeats.map(({ registration }) => registration.name), ['sidebar.right.pane.tab', 'sidebar.right.pane.tab.title'])
   for (const { registration, Component } of mobileSeats) {
     assert.equal(registration.key, mobile.id)
     assert.equal(typeof Component, 'function')
   }
-  assert.ok(result.effects.some(({ label }) => label === 'toolkit-theme:stylesheet'))
-  assert.ok(result.effects.some(({ label }) => label === 'toolkit-archived:stylesheet'))
-  assert.ok(result.effects.some(({ label }) => label === 'toolkit-notification:dictionary'))
-  assert.ok(result.effects.some(({ label }) => label === 'toolkit-notification:section'))
-  assert.ok(result.effects.some(({ label }) => label === 'dsh-sidebar-mobile:panel-open-poll'))
+  assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-theme:stylesheet'))
+  assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-archived:stylesheet'))
+  assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-notification:dictionary'))
+  assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-notification:section'))
+  assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-mobile:panel-open-poll'))
 })
 
 test('missing archived session services leave theme, other pages, and the mobile tab active', async () => {
   const result = await boot({ missing: ['sessions'] })
   // pet 客户端现在也读 sessions（主视图切会话时上报已读），缺该服务时与其他会话相关插件一起等待。
-  assert.deepEqual(result.pending, ['toolkit-archived-client', 'toolkit-notification-client', 'toolkit-pet-client'])
+  assert.deepEqual(result.pending, ['dsh-toolkit-archived-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-pet-client'])
   assert.equal(result.active.length, 7)
   assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['boot', 'browser', 'judgment', 'skills-mcp', 'theme'])
   assert.equal(result.tabTypes.length, 1)
-  assert.equal(result.effects.some(({ plugin }) => plugin === 'toolkit-theme-client'), true)
-  assert.equal(result.effects.some(({ plugin }) => plugin === 'toolkit-archived-client'), false)
-  assert.equal(result.effects.some(({ plugin }) => plugin === 'toolkit-pet-client'), false)
+  assert.equal(result.effects.some(({ plugin }) => plugin === 'dsh-toolkit-theme-client'), true)
+  assert.equal(result.effects.some(({ plugin }) => plugin === 'dsh-toolkit-archived-client'), false)
+  assert.equal(result.effects.some(({ plugin }) => plugin === 'dsh-toolkit-pet-client'), false)
 })
 
 test('nested Remote dependencies block only the client that declares them', async () => {
   for (const [dependency, pending, absentSection] of [
-    ['remote.pluginInventory', 'toolkit-skills-mcp-client', 'skills-mcp'],
-    ['remote.credentials', 'toolkit-judgment-client', 'judgment'],
+    ['remote.pluginInventory', 'dsh-toolkit-skills-mcp-client', 'skills-mcp'],
+    ['remote.credentials', 'dsh-toolkit-judgment-client', 'judgment'],
   ]) {
     const result = await boot({ missing: [dependency] })
     assert.deepEqual(result.pending, [pending])
@@ -343,12 +343,12 @@ test('nested Remote dependencies block only the client that declares them', asyn
 
 test('missing settings forms or mobile tab services do not suspend unrelated children', async () => {
   const withoutForms = await boot({ missing: ['configForms'] })
-  assert.deepEqual(withoutForms.pending, ['toolkit-theme-client', 'toolkit-skills-mcp-client', 'toolkit-judgment-client', 'toolkit-browser-client', 'toolkit-notification-client', 'toolkit-boot-client', 'toolkit-pet-client'])
-  assert.deepEqual(withoutForms.active.sort(), ['toolkit-archived-client', 'toolkit-mobile-client', 'toolkit-remote-client'])
+  assert.deepEqual(withoutForms.pending, ['dsh-toolkit-theme-client', 'dsh-toolkit-skills-mcp-client', 'dsh-toolkit-judgment-client', 'dsh-toolkit-browser-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-boot-client', 'dsh-toolkit-pet-client'])
+  assert.deepEqual(withoutForms.active.sort(), ['dsh-toolkit-archived-client', 'dsh-toolkit-mobile-client', 'dsh-toolkit-remote-client'])
   assert.equal(withoutForms.tabTypes.length, 1)
 
   const withoutTabs = await boot({ missing: ['sidebarRightTabs'] })
-  assert.deepEqual(withoutTabs.pending, ['toolkit-mobile-client'])
+  assert.deepEqual(withoutTabs.pending, ['dsh-toolkit-mobile-client'])
   assert.equal(withoutTabs.active.length, 9)
   assert.equal(withoutTabs.tabTypes.length, 0)
   assert.equal(withoutTabs.registrations.length, 8)

@@ -30,7 +30,7 @@ export function createServerObserver(ctx: any, { agents: readAgents, servers: re
     // the same, or the status tag would show a confident lie. The service can also appear
     // later (the profile composes rows after this plugin), so this is not fatal — the
     // availability check is re-run on every publish.
-    ctx.logger.warn('dsh-skills-mcp-manager: MCP connection probe unavailable — %s', probe.reason())
+    ctx.logger.warn('dsh-toolkit-skills-mcp: MCP connection probe unavailable — %s', probe.reason())
   }
 
   /**

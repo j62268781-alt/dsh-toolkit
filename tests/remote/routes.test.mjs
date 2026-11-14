@@ -85,7 +85,7 @@ const PATHS = [
 ]
 
 test('插件声明与其依赖', () => {
-  assert.equal(plugin.name, 'toolkit-remote')
+  assert.equal(plugin.name, 'dsh-toolkit-remote')
   assert.deepEqual(plugin.inject, ['webServer', 'connection', 'credentials'])
   assert.equal(typeof plugin.apply, 'function')
   assert.equal(typeof plugin.Config, 'function', 'Config 是 Schemastery 的 schema 工厂')
@@ -423,7 +423,7 @@ test('客户端产物是自包含单文件，入口挂在账户行而不是插�
     if (id === 'react-dom/client') return { createRoot: () => ({ render() {}, unmount() {} }) }
     throw new Error(`unexpected dependency: ${id}`)
   })
-  assert.equal(client.name, 'toolkit-remote-client')
+  assert.equal(client.name, 'dsh-toolkit-remote-client')
   // 账户行没有可注册的 list 插槽，入口改成 DOM 安装器，因此不再声明 slots。
   assert.deepEqual(Array.from(client.inject), ['locale'])
   assert.deepEqual([...new Set(required)].sort(), ['react', 'react-dom', 'react-dom/client'])
@@ -439,8 +439,8 @@ test('客户端产物是自包含单文件，入口挂在账户行而不是插�
     locale: { register: () => () => {} },
   }
   client.apply(ctx)
-  assert.ok(effects.some((label) => label === 'toolkit-remote:stylesheet'))
-  assert.ok(effects.some((label) => label === 'toolkit-remote:entry-icon'))
+  assert.ok(effects.some((label) => label === 'dsh-toolkit-remote:stylesheet'))
+  assert.ok(effects.some((label) => label === 'dsh-toolkit-remote:entry-icon'))
 })
 
 test('客户端产物不含服务端代码与凭据名称泄露', async () => {

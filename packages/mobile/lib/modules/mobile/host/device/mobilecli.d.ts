@@ -13,7 +13,7 @@
  * runJson() 使用有限输出和可取消的进程执行器；spawnStream() 单独保留长驻字节流，
  * 不把 H.264/MJPEG 缓冲到内存。
  *
- * @module dsh-sidebar-mobile/lib/mobilecli
+ * @module dsh-toolkit-mobile/lib/mobilecli
  */
 /**
  * mobilecli 以非零退出码表示失败，同时仍可能在 stdout 打印结构化错误。

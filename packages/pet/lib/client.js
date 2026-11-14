@@ -950,12 +950,12 @@ window.__ModuleLoader__.load({
       const React2 = require2("react");
       globalThis.__dshReact = React2;
       return {
-        name: "toolkit-pet-client",
+        name: "dsh-toolkit-pet-client",
         inject: ["slots", "locale", "configForms", "uiWorkspace", "workspaces", "sessions"],
         apply(ctx) {
           const { form } = findScopedForm(ctx, CONFIG_NS);
           const t = createTranslator(ctx);
-          const warn = (error) => console.warn("[toolkit-pet]", error);
+          const warn = (error) => console.warn("[dsh-toolkit-pet]", error);
           const listeners = /* @__PURE__ */ new Set();
           let value = readSettings(formSnapshot(form));
           const refresh = () => {
@@ -990,19 +990,19 @@ window.__ModuleLoader__.load({
             }
           })();
           const Panel = createPetPanel(React2, { t, settings, connection, actions, primitives });
-          ctx.effect(() => ctx.locale?.register?.(PET_NS, PET_COPY), "toolkit-pet:dictionary");
-          ctx.effect(() => typeof document === "undefined" ? void 0 : installStylesheet(style_default + paginationCss + resizableDialogCss, "toolkit-pet"), "toolkit-pet:stylesheet");
+          ctx.effect(() => ctx.locale?.register?.(PET_NS, PET_COPY), "dsh-toolkit-pet:dictionary");
+          ctx.effect(() => typeof document === "undefined" ? void 0 : installStylesheet(style_default + paginationCss + resizableDialogCss, "dsh-toolkit-pet"), "dsh-toolkit-pet:stylesheet");
           ctx.effect(() => {
             const off = form ? form.subscribe?.(refresh) ?? form.store?.subscribe?.(refresh) : connection.subscribe(refresh);
             return () => {
               off?.();
               listeners.clear();
             };
-          }, "toolkit-pet:settings");
+          }, "dsh-toolkit-pet:settings");
           ctx.effect(() => {
             connection.start();
             return () => connection.dispose();
-          }, "toolkit-pet:connection");
+          }, "dsh-toolkit-pet:connection");
           ctx.effect(() => {
             const root = typeof document === "undefined" ? void 0 : document.documentElement;
             if (!root) return void 0;
@@ -1019,7 +1019,7 @@ window.__ModuleLoader__.load({
               listeners.delete(sync);
               delete root.dataset.dshIsland;
             };
-          }, "toolkit-pet:island-mark");
+          }, "dsh-toolkit-pet:island-mark");
           ctx.effect(() => {
             const sessions = ctx.sessions;
             const list = sessions?.list;
@@ -1157,9 +1157,9 @@ window.__ModuleLoader__.load({
               globalThis.removeEventListener?.("focus", wake);
               globalThis.removeEventListener?.("visibilitychange", wake);
             };
-          }, "toolkit-pet:seen-on-focus");
-          ctx.effect(() => ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "desktop-pet", order: 25, label: () => t("nav"), locale: PET_NS }, Panel)), "toolkit-pet:section");
-          ctx.effect(() => registerSettingsIcon(ctx, "desktop-pet", "paw"), "toolkit-pet:settings-icon");
+          }, "dsh-toolkit-pet:seen-on-focus");
+          ctx.effect(() => ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "desktop-pet", order: 25, label: () => t("nav"), locale: PET_NS }, Panel)), "dsh-toolkit-pet:section");
+          ctx.effect(() => registerSettingsIcon(ctx, "desktop-pet", "paw"), "dsh-toolkit-pet:settings-icon");
         }
       };
     }

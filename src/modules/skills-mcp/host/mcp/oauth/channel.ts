@@ -20,7 +20,7 @@
  */
 
 /** BroadcastChannel 名。改动它等于同时改两端，所以不要各写各的。 */
-export const AUTH_CHANNEL = 'dsh-skills-mcp-manager/oauth'
+export const AUTH_CHANNEL = 'dsh-toolkit-skills-mcp/oauth'
 
 /** 回调页发、面板收的信号。只有一个含义：授权流程刚刚走完了。 */
 export const AUTH_DONE = 'authorized'

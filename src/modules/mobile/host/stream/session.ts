@@ -20,7 +20,7 @@
  * 计时器，超时停流；下一次订阅会重新拉起。**主动停止从不被重启逻辑对抗**：
  * stop 会先摘掉自动重启的意图，否则退出事件会把刚停掉的流又拉起来。
  *
- * @module dsh-sidebar-mobile/lib/stream-session
+ * @module dsh-toolkit-mobile/lib/stream-session
  */
 
 /**

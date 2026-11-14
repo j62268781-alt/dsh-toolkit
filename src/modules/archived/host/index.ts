@@ -1,7 +1,7 @@
 import { registerJsonRoutes } from "../../../host/routes.js";
 import { createDeletionRoutes } from "./routes/deletion.js";
 
-export const name = "toolkit-archived";
+export const name = "dsh-toolkit-archived";
 /**
  * `webServer` and `connection` are hard dependencies: without both there is nowhere
  * to register and no identity gate, so the module waits instead of half-loading.

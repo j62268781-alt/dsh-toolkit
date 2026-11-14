@@ -56,7 +56,7 @@ import { chromeCandidates, chromeFromDoctor, chromePathNames, installPlan, runCo
 import { loadBundledSkill, pluginNote } from './skill.js';
 import { runSubgoals, runTask } from './task.js';
 /** loader 诊断用的插件名。 */
-export const name = 'agent-browser';
+export const name = 'dsh-toolkit-browser';
 export { Config };
 /** 默认会话名：CLI 的默认会话全机共享、跨对话持久，会劫持别的 agent 的页面。 */
 const DEFAULT_SESSION = 'dsh-agent-browser';

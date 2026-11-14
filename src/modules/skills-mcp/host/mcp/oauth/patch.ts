@@ -113,7 +113,7 @@ export function makeAuthProvider({ sdk, oauthProvider, log, serverName, prepareA
       })
       if (result === 'AUTHORIZED') return
       // REDIRECT：授权链接已经交给面板（见 provider.redirectToAuthorization）。
-      log?.warn?.(`dsh-skills-mcp-manager: ${serverName} 需要用户完成一次授权，已把授权链接交给面板`)
+      log?.warn?.(`dsh-toolkit-skills-mcp: ${serverName} 需要用户完成一次授权，已把授权链接交给面板`)
       const error: any = new Error(`${serverName} 需要授权：请在 MCP 面板里点「授权」完成一次登录`)
       error.code = 'OAUTH_REDIRECT_REQUIRED'
       throw error
@@ -169,7 +169,7 @@ export function installTransportPatch({ sdk, lookup, log }: any = {}) {
       try {
         picked = state.lookup?.(this._url) ?? null
       } catch (error: any) {
-        log?.warn?.(`dsh-skills-mcp-manager: 查询 OAuth 配置失败（本次按无凭据连接）：${String(error?.message ?? error)}`)
+        log?.warn?.(`dsh-toolkit-skills-mcp: 查询 OAuth 配置失败（本次按无凭据连接）：${String(error?.message ?? error)}`)
         picked = null
       }
       if (picked !== null && picked !== undefined) {
@@ -183,7 +183,7 @@ export function installTransportPatch({ sdk, lookup, log }: any = {}) {
         } catch (error: any) {
           // 实例被 seal 住的情况：记录下来，让面板能看到「补丁没生效」，而不是假装成功。
           state.injectError = String(error?.message ?? error)
-          log?.warn?.(`dsh-skills-mcp-manager: 无法给 transport 注入 OAuth provider：${state.injectError}`)
+          log?.warn?.(`dsh-toolkit-skills-mcp: 无法给 transport 注入 OAuth provider：${state.injectError}`)
         }
       }
     }
@@ -223,7 +223,7 @@ export function installTransportPatch({ sdk, lookup, log }: any = {}) {
     try {
       if (proto.start === patched) proto.start = originalStart
     } catch (error: any) {
-      log?.warn?.(`dsh-skills-mcp-manager: 还原 transport 补丁失败：${String(error?.message ?? error)}`)
+      log?.warn?.(`dsh-toolkit-skills-mcp: 还原 transport 补丁失败：${String(error?.message ?? error)}`)
     }
     delete proto[PATCH_KEY]
   }

@@ -1,4 +1,4 @@
-export declare const IMPORT_PATH = "/dsh-skills-mcp-manager/import";
+export declare const IMPORT_PATH = "/dsh-toolkit-skills-mcp/import";
 /**
  * Register the import-scan route.
  *

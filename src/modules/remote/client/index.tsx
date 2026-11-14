@@ -40,7 +40,7 @@ export default function createRemote(require) {
   }
 
   return {
-    name: 'toolkit-remote-client',
+    name: 'dsh-toolkit-remote-client',
     inject: ['locale'],
     apply(ctx) {
       const t = createTranslator(ctx)
@@ -57,14 +57,14 @@ export default function createRemote(require) {
 
       const Entry = createPanel(ReactRuntime, { t, connection, portal })
 
-      ctx.effect(() => ctx.locale?.register?.(WC_NS, WC_COPY) ?? (() => {}), 'toolkit-remote:dictionary')
-      ctx.effect(() => installStylesheet(css, 'toolkit-remote'), 'toolkit-remote:stylesheet')
+      ctx.effect(() => ctx.locale?.register?.(WC_NS, WC_COPY) ?? (() => {}), 'dsh-toolkit-remote:dictionary')
+      ctx.effect(() => installStylesheet(css, 'dsh-toolkit-remote'), 'dsh-toolkit-remote:stylesheet')
       ctx.effect(() => {
         connection.dispose()
-      }, 'toolkit-remote:connection')
+      }, 'dsh-toolkit-remote:connection')
       ctx.effect(
         () => installEntry(ctx, { React: ReactRuntime, createRoot, Entry }),
-        'toolkit-remote:entry-icon',
+        'dsh-toolkit-remote:entry-icon',
       )
     },
   }

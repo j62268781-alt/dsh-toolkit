@@ -25,7 +25,7 @@
  * judge is forwarded unchanged, because the safe direction for a filter is to leave
  * a tool it cannot place alone.
  *
- * @module dsh-skills-mcp-manager/mcp/filter
+ * @module dsh-toolkit-skills-mcp/mcp/filter
  */
 /** The namespace every MCP tool's public name starts with. */
 export declare const MCP_PREFIX = "mcp__";

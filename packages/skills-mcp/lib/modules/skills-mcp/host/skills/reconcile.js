@@ -76,7 +76,7 @@ export async function readState() {
     catch (error) {
         // "State file missing" and "state file unreadable" must not look identical.
         if (process.env.SMP_DEBUG)
-            console.error('[dsh-skills-mcp-manager] skill state unreadable', error);
+            console.error('[dsh-toolkit-skills-mcp] skill state unreadable', error);
         return { files: [] };
     }
 }
@@ -104,7 +104,7 @@ export async function reconcileSkills(ctx, skills) {
                 await mkdir(dirname(path), { recursive: true });
                 await writeFile(path, text);
                 result.written.push(path);
-                ctx.logger.info('dsh-skills-mcp-manager: wrote %s', path);
+                ctx.logger.info('dsh-toolkit-skills-mcp: wrote %s', path);
             }
             else {
                 result.kept.push(path);
@@ -113,7 +113,7 @@ export async function reconcileSkills(ctx, skills) {
         }
         catch (error) {
             result.failed.push(`${path}: ${error?.message ?? error}`);
-            ctx.logger.error('dsh-skills-mcp-manager: cannot write %s', path);
+            ctx.logger.error('dsh-toolkit-skills-mcp: cannot write %s', path);
             ctx.logger.error(error);
         }
     }
@@ -123,11 +123,11 @@ export async function reconcileSkills(ctx, skills) {
         try {
             await rm(dirname(path), { recursive: true, force: true });
             result.removed.push(path);
-            ctx.logger.info('dsh-skills-mcp-manager: removed %s', dirname(path));
+            ctx.logger.info('dsh-toolkit-skills-mcp: removed %s', dirname(path));
         }
         catch (error) {
             result.failed.push(`${path}: ${error?.message ?? error}`);
-            ctx.logger.warn('dsh-skills-mcp-manager: cannot remove %s', path);
+            ctx.logger.warn('dsh-toolkit-skills-mcp: cannot remove %s', path);
         }
     }
     try {
@@ -136,7 +136,7 @@ export async function reconcileSkills(ctx, skills) {
     }
     catch (error) {
         if (process.env.SMP_DEBUG)
-            console.error('[dsh-skills-mcp-manager] cannot write skill state', error);
+            console.error('[dsh-toolkit-skills-mcp] cannot write skill state', error);
     }
     return result;
 }

@@ -8,6 +8,7 @@
 import './react.js'
 import { browserContribution } from './browser-remote.js'
 import { findScopedForm } from '../../../client/config.js'
+import { ENTRY_CANDIDATES } from './config.js'
 import { primitives } from './primitives.js'
 import { registerSettingsIcon } from '../../../client/ui/components/settings-icon/index.jsx'
 import { Panel } from './panel.jsx'
@@ -17,7 +18,7 @@ export const inject = ['slots', 'configForms', 'remote']
 
 export async function apply(ctx) {
   // entry id 在注册时就解析一次：页面渲染时宿主不会再变。
-  const { form, entryId } = findScopedForm(ctx, 'browser', ['agent-browser', 'dsh-agent-browser'])
+  const { form, entryId } = findScopedForm(ctx, 'browser', ENTRY_CANDIDATES)
 
   // 自检通路：必须在注册槽位**之前** mount——页面渲染时那个命名空间就得存在。
   // 失败就退化成"没有自检"，页面其余部分照常可用。
@@ -42,5 +43,5 @@ export async function apply(ctx) {
     label: () => '浏览器',
     inject: () => ({ form, entryId, primitives, browser }),
   }, Panel))
-  ctx.effect(() => registerSettingsIcon(ctx, 'browser', 'globe'), 'toolkit-browser:settings-icon')
+  ctx.effect(() => registerSettingsIcon(ctx, 'browser', 'globe'), 'dsh-toolkit-browser:settings-icon')
 }

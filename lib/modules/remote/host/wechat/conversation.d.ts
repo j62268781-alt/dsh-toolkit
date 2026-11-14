@@ -13,12 +13,12 @@
  *
  * `MessageSourceMap` 是「合并扩展」的接口：每个 producer 在自己的模块里声明自己的 kind，
  * 宿主没有（也明确不要）共享的 catch-all `plugin` kind。不在这里声明，`createUserMessage`
- * 会在类型层拒绝 `plugin:toolkit-remote` —— 而运行时它是合法的（见下方 INSTRUCTIONS_SOURCE）。
+ * 会在类型层拒绝 `plugin:dsh-toolkit-remote` —— 而运行时它是合法的（见下方 INSTRUCTIONS_SOURCE）。
  */
 declare module '@deepseek-ai/dsh-llm' {
     interface MessageSourceMap {
-        'plugin:toolkit-remote': {
-            kind: 'plugin:toolkit-remote';
+        'plugin:dsh-toolkit-remote': {
+            kind: 'plugin:dsh-toolkit-remote';
             form: 'instructions';
         };
     }
@@ -32,7 +32,7 @@ declare module '@deepseek-ai/dsh-llm' {
  * `plugin:<插件名>`（与运行时写入的 `plugin:claude-mem` 一致）。
  */
 export declare const INSTRUCTIONS_SOURCE: Readonly<{
-    kind: "plugin:toolkit-remote";
+    kind: "plugin:dsh-toolkit-remote";
     form: "instructions";
 }>;
 /** 会话 id：稳定、可读前缀、不含敏感原文。 */

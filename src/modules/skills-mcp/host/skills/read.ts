@@ -40,7 +40,7 @@ export function registerSkillReadRoute(ctx: any, { resolve }: any) {
         res.statusCode = 200
         res.end(JSON.stringify(await resolve(wanted)))
       } catch (error: any) {
-        ctx.logger.warn('dsh-skills-mcp-manager: skill read failed: %s', String(error?.message ?? error))
+        ctx.logger.warn('dsh-toolkit-skills-mcp: skill read failed: %s', String(error?.message ?? error))
         res.statusCode = 200
         res.end(JSON.stringify({ ok: false, reason: String(error?.message ?? error) }))
       }

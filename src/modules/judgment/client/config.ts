@@ -7,10 +7,10 @@
  */
 
 /**
- * Host 行 id 的候选：cordis.patch.yml 里的行 id 是 `judgment/provider`，
- * 但也可能是包名。取到哪个就用哪个写回（`mutate` 需要它）。
+ * Host 行 id 的候选：cordis.patch.yml 里的行 id 是 `dsh-toolkit-judgment`；
+ * 后两个是旧行 id 与包名，保留只为读得到还没迁移的旧配置。
  */
-export const ENTRY_CANDIDATES = ['judgment/provider', 'dsh-judgment']
+export const ENTRY_CANDIDATES = ['dsh-toolkit-judgment', 'judgment/provider', 'dsh-judgment']
 
 /** 取配置表单；未提供的 entry 会抛错，所以逐个试。 */
 export function findForm(ctx) {

@@ -148,7 +148,7 @@ export default function createNotification(require) {
   globalThis.__dshReact = React
 
   return {
-    name: 'toolkit-notification-client',
+    name: 'dsh-toolkit-notification-client',
     // `workspaces` 只用于点击通知时判断/取消归档；Cordis 的 ctx 是严格的，
     // 没在 inject 里声明的服务一读就抛错（真机上表现为点击通知只打一条 warn）。
     inject: ['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces'],
@@ -486,14 +486,14 @@ export default function createNotification(require) {
         } catch {
           return undefined
         }
-      }, 'toolkit-notification:dictionary')
+      }, 'dsh-toolkit-notification:dictionary')
 
       // 样式挂在全局而不是设置页里：`.ntf-*` 同时服务于设置页与（此前的）浮层元素，
       // 而设置页在降级宿主里可能根本不挂载。
       install(() => {
         if (typeof document === 'undefined') return () => {}
-        return installStylesheet(`${settingsStyles('ntf')}\n${css}`, 'toolkit-notification')
-      }, 'toolkit-notification:stylesheet')
+        return installStylesheet(`${settingsStyles('ntf')}\n${css}`, 'dsh-toolkit-notification')
+      }, 'dsh-toolkit-notification:stylesheet')
 
       install(() => {
         if (typeof form?.subscribe !== 'function') return undefined
@@ -508,7 +508,7 @@ export default function createNotification(require) {
             // 忽略。
           }
         }
-      }, 'toolkit-notification:settings')
+      }, 'dsh-toolkit-notification:settings')
 
       install(() => {
         const list = ctx.sessions?.list
@@ -527,7 +527,7 @@ export default function createNotification(require) {
           warn('session baseline failed', error)
         }
         return off
-      }, 'toolkit-notification:sessions')
+      }, 'dsh-toolkit-notification:sessions')
 
       install(() => {
         const status = ctx.uiSession?.sessionStatus
@@ -546,9 +546,9 @@ export default function createNotification(require) {
           // 初始快照读失败不影响后续订阅。
         }
         return off
-      }, 'toolkit-notification:pending')
+      }, 'dsh-toolkit-notification:pending')
 
-      install(() => () => player.dispose(), 'toolkit-notification:sounds')
+      install(() => () => player.dispose(), 'dsh-toolkit-notification:sounds')
 
       // 回到前台就收回提醒：系统横幅原本是用来「叫人回来」的，人已经在看了还挂着只会挡视线。
       // 只关「用户此刻确实看得到」的那条——主视图持有的会话，或者窗口整体回到前台时的全部。
@@ -590,7 +590,7 @@ export default function createNotification(require) {
           document.removeEventListener('visibilitychange', dismissVisible)
           window.removeEventListener('focus', dismissVisible)
         }
-      }, 'toolkit-notification:dismiss-visible')
+      }, 'dsh-toolkit-notification:dismiss-visible')
 
       install(() => {
         if (typeof ctx.slots?.inject !== 'function' || typeof ctx.slots?.register !== 'function') return undefined
@@ -601,11 +601,11 @@ export default function createNotification(require) {
           label: () => t('nav'),
           locale: NOTIFICATION_NS,
         }, Panel))
-      }, 'toolkit-notification:section')
+      }, 'dsh-toolkit-notification:section')
 
       install(
         () => registerSettingsIcon(ctx, 'notification', 'bell'),
-        'toolkit-notification:settings-icon',
+        'dsh-toolkit-notification:settings-icon',
       )
     },
   }

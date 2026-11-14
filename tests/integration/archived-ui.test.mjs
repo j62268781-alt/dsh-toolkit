@@ -338,7 +338,7 @@ test('a retained deletion hides its sidebar row without hiding the rows the Work
   })
   await app.render(app.overlay(h(app.sections)))
 
-  const sheet = () => app.dom.window.document.querySelector('style[data-plugin="toolkit-archived-hidden"]')
+  const sheet = () => app.dom.window.document.querySelector('style[data-plugin="dsh-toolkit-archived-hidden"]')
   assert.ok(sheet(), 'the row hider installs a stylesheet with the client')
   assert.equal(sheet().textContent, '', 'nothing is hidden before a delete')
 
@@ -367,7 +367,7 @@ test('a reload hides the sessions whose files are already deleted but still regi
   assert.deepEqual(titles, ['第一条', '第二条', '无法读取的会话'])
   assert.equal(app.dom.window.document.querySelector('.sk-arch__removeAll').disabled, false)
   // The sidebar lookup uses the same markers: a tombstone is not drawn again either.
-  const sheet = app.dom.window.document.querySelector('style[data-plugin="toolkit-archived-hidden"]')
+  const sheet = app.dom.window.document.querySelector('style[data-plugin="dsh-toolkit-archived-hidden"]')
   assert.match(sheet.textContent, /\[data-row-key="session:loose"\]\{display:none !important\}/)
 
   // Everything archived is pending: no rows left, so the bulk action has nothing to do.

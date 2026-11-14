@@ -520,7 +520,7 @@ window.__ModuleLoader__.load({
       return rules.join("\n");
     }
     function installHiddenRows(removal) {
-      const sheet = installMutableStylesheet("toolkit-archived-hidden");
+      const sheet = installMutableStylesheet("dsh-toolkit-archived-hidden");
       let written;
       const render = () => {
         const css = hiddenRowsCss(removal.snapshot().hidden);
@@ -1160,14 +1160,14 @@ window.__ModuleLoader__.load({
       const host = { removal: createRemoval(ctx), archiveConfirm: createArchiveConfirm() };
       ctx.effect(() => installStylesheet(
         composeStyles(settingsStyles("sk"), style_default2, style_default),
-        "toolkit-archived"
-      ), "toolkit-archived:stylesheet");
+        "dsh-toolkit-archived"
+      ), "dsh-toolkit-archived:stylesheet");
       installDictionary(ctx, ARCH_NS, ARCH_COPY);
-      ctx.effect(() => installHiddenRows(host.removal), "toolkit-archived:hidden-rows");
+      ctx.effect(() => installHiddenRows(host.removal), "dsh-toolkit-archived:hidden-rows");
       for (const surface of SURFACES) {
-        ctx.effect(() => surface.install(ctx, host), `toolkit-archived:${surface.NAME}`);
+        ctx.effect(() => surface.install(ctx, host), `dsh-toolkit-archived:${surface.NAME}`);
       }
-      ctx.effect(() => registerSettingsIcon(ctx, "archived-chats", "archive"), "toolkit-archived:settings-icon");
+      ctx.effect(() => registerSettingsIcon(ctx, "archived-chats", "archive"), "dsh-toolkit-archived:settings-icon");
     }
 
     return module.exports;

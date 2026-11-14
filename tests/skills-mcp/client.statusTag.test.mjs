@@ -362,7 +362,7 @@ test('需要授权：OAuth 不可用时给手贴 header 的建议 + 原因，且
 test('需要授权：OAuth 可用时给授权按钮与授权链接', { skip: skipWithoutBundle() }, async () => {
   const panel = await bootPanel(emptyDoc({
     profileServers: [profileServer()], rowOpsReady: true, reconnectReady: true,
-    oauthState: { ready: true, reason: '', detail: '', sdkVersion: '2.2.0', redirectUri: 'http://127.0.0.1:3080/dsh-skills-mcp-manager/oauth/callback' },
+    oauthState: { ready: true, reason: '', detail: '', sdkVersion: '2.2.0', redirectUri: 'http://127.0.0.1:3080/dsh-toolkit-skills-mcp/oauth/callback' },
     // 这台服务器正等着用户去授权：Host 已经把链接记下来了
     oauthServers: {
       protected: {
@@ -497,7 +497,7 @@ test('需要授权：已有凭据但服务器仍拒绝时，按钮说「重新�
    */
   const panel = await bootPanel(emptyDoc({
     profileServers: [profileServer()], rowOpsReady: true, reconnectReady: true,
-    oauthState: { ready: true, reason: '', detail: '', sdkVersion: '2.2.0', redirectUri: 'http://127.0.0.1:3080/dsh-skills-mcp-manager/oauth/callback' },
+    oauthState: { ready: true, reason: '', detail: '', sdkVersion: '2.2.0', redirectUri: 'http://127.0.0.1:3080/dsh-toolkit-skills-mcp/oauth/callback' },
     oauthServers: {
       protected: {
         present: true, refreshable: true, waiting: false, authorizeUrl: '',
@@ -546,7 +546,7 @@ test('授权回调的广播会立刻重拉运行时状态（不等 5 秒轮询�
     serverStatus: [statusEntry({ serverName: 'protected', tier: 'global', scope: '', status: 'connected', detail: '' })],
   }))
   try {
-    const channel = panel.channels.find((item) => item.name === 'dsh-skills-mcp-manager/oauth')
+    const channel = panel.channels.find((item) => item.name === 'dsh-toolkit-skills-mcp/oauth')
     assert.ok(channel, '面板必须订阅授权回调的广播频道')
     const before = panel.doc.runtimeFetches ?? 0
     channel.emit('authorized')
@@ -560,7 +560,7 @@ test('授权回调的广播会立刻重拉运行时状态（不等 5 秒轮询�
 test('广播里的其它消息不触发重拉（只有授权完成才算数）', { skip: skipWithoutBundle() }, async () => {
   const panel = await bootPanel(emptyDoc({ profileServers: [profileServer()], rowOpsReady: true }))
   try {
-    const channel = panel.channels.find((item) => item.name === 'dsh-skills-mcp-manager/oauth')
+    const channel = panel.channels.find((item) => item.name === 'dsh-toolkit-skills-mcp/oauth')
     assert.ok(channel)
     const before = panel.doc.runtimeFetches ?? 0
     channel.emit('something-else')

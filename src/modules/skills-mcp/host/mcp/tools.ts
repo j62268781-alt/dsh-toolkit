@@ -90,7 +90,7 @@ export function toolsByServer(ctx: any, serverNames: any, scope: any = undefined
   } catch (error: any) {
     // `schemas()` throws when any visible tool's parameters are not lossless JSON.
     const detail = String(error?.message ?? error)
-    ctx.logger?.warn?.('dsh-skills-mcp-manager: cannot read the tool registry: %s', detail)
+    ctx.logger?.warn?.('dsh-toolkit-skills-mcp: cannot read the tool registry: %s', detail)
     return { ok: false, reason: TOOL_READ_REASONS.readFailed, detail }
   }
   if (!Array.isArray(schemas)) {

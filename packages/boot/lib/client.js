@@ -399,7 +399,7 @@ window.__ModuleLoader__.load({
     }
     function apply(ctx) {
       const { form } = findScopedForm(ctx, "boot");
-      ctx.effect(() => installStylesheet(panelCss, "toolkit-boot-panel"), "toolkit-boot:settings-styles");
+      ctx.effect(() => installStylesheet(panelCss, "dsh-toolkit-boot-panel"), "dsh-toolkit-boot:settings-styles");
       ctx.slots.inject("settings.section", () => ctx.slots.register({
         name: "settings.section",
         id: "boot",
@@ -407,7 +407,7 @@ window.__ModuleLoader__.load({
         label: () => "启动动画",
         inject: () => ({ form })
       }, BootPanel));
-      ctx.effect(() => registerSettingsIcon(ctx, "boot", "rocket"), "toolkit-boot:settings-icon");
+      ctx.effect(() => registerSettingsIcon(ctx, "boot", "rocket"), "dsh-toolkit-boot:settings-icon");
     }
 
     return module.exports;

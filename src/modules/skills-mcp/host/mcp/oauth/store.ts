@@ -25,7 +25,7 @@ export function isValidServerName(name: any) {
 }
 
 export function oauthDir(dshHome: any) {
-  return join(dshHome, 'dsh-skills-mcp-manager', 'oauth')
+  return join(dshHome, 'dsh-toolkit-skills-mcp', 'oauth')
 }
 
 export function oauthFile(dshHome: any, serverName: any) {
@@ -85,14 +85,14 @@ export function createOAuthStore({ dshHome, log }: any = {}) {
       return emptyRecord(serverName, url)
     }
     if (text.length > MAX_BYTES) {
-      log?.warn?.(`dsh-skills-mcp-manager: 凭据文件 ${file} 过大，已忽略`)
+      log?.warn?.(`dsh-toolkit-skills-mcp: 凭据文件 ${file} 过大，已忽略`)
       return emptyRecord(serverName, url)
     }
     let raw
     try {
       raw = JSON.parse(text)
     } catch (error: any) {
-      log?.warn?.(`dsh-skills-mcp-manager: 凭据文件 ${file} 不是合法 JSON：${String(error?.message ?? error)}`)
+      log?.warn?.(`dsh-toolkit-skills-mcp: 凭据文件 ${file} 不是合法 JSON：${String(error?.message ?? error)}`)
       return emptyRecord(serverName, url)
     }
     return normalizeRecord(raw, serverName, url)
@@ -110,14 +110,14 @@ export function createOAuthStore({ dshHome, log }: any = {}) {
       try {
         await chmod(file, 0o600)
       } catch (error: any) {
-        log?.warn?.(`dsh-skills-mcp-manager: 无法把 ${file} 的权限收紧到 0600：${String(error?.message ?? error)}`)
+        log?.warn?.(`dsh-toolkit-skills-mcp: 无法把 ${file} 的权限收紧到 0600：${String(error?.message ?? error)}`)
       }
       return next
     } finally {
       try {
         await unlink(temp)
       } catch (error: any) {
-        if (error?.code !== 'ENOENT') log?.warn?.(`dsh-skills-mcp-manager: 清理临时凭据文件 ${temp} 失败：${String(error?.message ?? error)}`)
+        if (error?.code !== 'ENOENT') log?.warn?.(`dsh-toolkit-skills-mcp: 清理临时凭据文件 ${temp} 失败：${String(error?.message ?? error)}`)
       }
     }
   }
@@ -130,7 +130,7 @@ export function createOAuthStore({ dshHome, log }: any = {}) {
       return true
     } catch (error: any) {
       if (error?.code === 'ENOENT') return false
-      log?.warn?.(`dsh-skills-mcp-manager: 删除凭据 ${file} 失败：${String(error?.message ?? error)}`)
+      log?.warn?.(`dsh-toolkit-skills-mcp: 删除凭据 ${file} 失败：${String(error?.message ?? error)}`)
       return false
     }
   }

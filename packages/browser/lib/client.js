@@ -134,6 +134,32 @@ window.__ModuleLoader__.load({
       return { form: void 0, entryId: moduleEntryId(namespace) };
     }
 
+    // src/modules/browser/client/config.ts
+    var ENTRY_CANDIDATES = ["dsh-toolkit-browser", "agent-browser", "dsh-agent-browser"];
+    function snapshotOf(form) {
+      const snapshot = form?.getSnapshot?.() ?? form?.store?.getSnapshot?.() ?? form?.snapshot;
+      return snapshot?.value ?? snapshot ?? {};
+    }
+    function statusOf(form) {
+      const snapshot = form?.getSnapshot?.() ?? form?.store?.getSnapshot?.() ?? form?.snapshot;
+      return snapshot?.status ?? "ready";
+    }
+    function objectOf(value, field) {
+      const group = value?.[field];
+      return group !== null && typeof group === "object" && !Array.isArray(group) ? group : {};
+    }
+    function arrayOf(value, field) {
+      const list = value?.[field];
+      return Array.isArray(list) ? list : [];
+    }
+    var DOMAIN_PATTERN = /^(?:\*\.)?[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$/;
+    var SESSION_PATTERN = /^[A-Za-z0-9._-]*$/;
+    function parseDomains(text) {
+      const parts = String(text ?? "").split(/[,\n]/).map((part) => part.trim()).filter((part) => part !== "");
+      const invalid = parts.filter((part) => !DOMAIN_PATTERN.test(part));
+      return { domains: parts, invalid };
+    }
+
     // src/modules/browser/client/primitives.ts
     var primitives = (() => {
       try {
@@ -204,31 +230,6 @@ window.__ModuleLoader__.load({
 
     // src/modules/browser/client/panel.tsx
     var import_react4 = require("react");
-
-    // src/modules/browser/client/config.ts
-    function snapshotOf(form) {
-      const snapshot = form?.getSnapshot?.() ?? form?.store?.getSnapshot?.() ?? form?.snapshot;
-      return snapshot?.value ?? snapshot ?? {};
-    }
-    function statusOf(form) {
-      const snapshot = form?.getSnapshot?.() ?? form?.store?.getSnapshot?.() ?? form?.snapshot;
-      return snapshot?.status ?? "ready";
-    }
-    function objectOf(value, field) {
-      const group = value?.[field];
-      return group !== null && typeof group === "object" && !Array.isArray(group) ? group : {};
-    }
-    function arrayOf(value, field) {
-      const list = value?.[field];
-      return Array.isArray(list) ? list : [];
-    }
-    var DOMAIN_PATTERN = /^(?:\*\.)?[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$/;
-    var SESSION_PATTERN = /^[A-Za-z0-9._-]*$/;
-    function parseDomains(text) {
-      const parts = String(text ?? "").split(/[,\n]/).map((part) => part.trim()).filter((part) => part !== "");
-      const invalid = parts.filter((part) => !DOMAIN_PATTERN.test(part));
-      return { domains: parts, invalid };
-    }
 
     // src/modules/browser/client/styles.css
     var styles_default = "/*\n * 浏览器设置页样式。类名一律 ab- 前缀：样式是页面挂载时全局注入的，别的设置页\n * （jdg-、smp-）可能同时挂载，不能共用类名。\n *\n * 尺寸事实来自 DSH「通用设置」面板（dsh-client-ui-settings-general 的 DeveloperToolsRow）：\n *   行      justify-content:space-between; align-items:center; gap:24px;\n *           padding:16px 0; border-bottom:.5px solid var(--dsw-alias-border-l2)\n *   标题    14px / 20px\n *   子标题  12px / 18px + --dsw-alias-label-secondary，margin-top:4px\n *   末行    General 的 `:last-child{border-bottom:none}` —— 我们也只在整页最后一行去掉\n * 页头使用共享设置样式，与 DSH「Agent 预设」的标题、副标题和 12px 间距一致。\n * 按钮逐字抄 skills-mcp 的 `.smp-button`（含 `flex:none`——少了它会被左列挤成竖排）。\n */\n\n.ab-page{box-sizing:border-box;width:100%;color:var(--dsw-alias-label-primary);flex-direction:column;align-items:center;gap:18px;display:flex}\n\n.ab-pageHead{box-sizing:border-box;display:flex;flex-direction:column}\n\n.ab-section{display:flex;flex-direction:column}\n\n/* 每一行都长一样：同一条 16px 竖距 + 同一条下边框；只有整页最后一行没有。 */\n.ab-row{box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:24px;padding:16px 0;border-bottom:.5px solid var(--dsw-alias-border-l2)}\n.ab-section>.ab-row:last-child{border-bottom:none}\n/* 整页第一行不留上内边距：summary → 第一行的视觉间距就等于「副标题 → summary」的 flex gap，\n   否则会多出一份 16px（真机反馈：那里显得太大）。 */\n.ab-section>.ab-row:first-child{padding-top:0}\n\n/* 分组标题：排版与「向上的间距」逐字抄「Agent 预设」页（ui-agent-preset 的\n   `.FfBBxq_groupHead` + `.FfBBxq_group+.FfBBxq_group{margin-top:20px}`）：\n   12px / 600 / tertiary / letter-spacing .06em；组与组之间 20px。\n   注意：上一行自带 16px 下内边距，所以视觉上标题上方约 36px、下方 16px——标题明显更靠近\n   它标注的那组。行距本身不为了标题破例（每一行仍是统一的 16px）。 */\n.ab-groupTitle{margin:20px 0 0;color:var(--dsw-alias-label-tertiary);font-size:12px;font-weight:600;line-height:18px;letter-spacing:.06em;text-transform:uppercase}\n.ab-rowText{display:flex;flex-direction:column;min-width:0}\n.ab-rowTitle{font-size:14px;line-height:20px}\n.ab-rowSubtitle{color:var(--dsw-alias-label-secondary);margin-top:4px;font-size:12px;line-height:18px}\n.ab-rowControl{display:inline-flex;align-items:center;gap:8px;flex:none}\n/* 只有文本输入要占宽。**别给「控件容器内的所有孩子」统一设宽度**——那会把 36px 的 Switch\n   拉成整列宽，开关直接变形（真机踩过：重启后开关全变形）。只对 .ab-input 设宽。 */\n.ab-rowControl .ab-input{width:320px;max-width:100%}\n\n.ab-input{box-sizing:border-box;width:100%;height:32px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);padding:0 10px}\n/* 多行输入（允许域名）：跟 .ab-input 同一套颜色与圆角，可纵向拉高。 */\n.ab-textarea{box-sizing:border-box;width:100%;min-height:84px;resize:vertical;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);padding:8px 10px}\n.ab-textarea::placeholder{color:var(--dsw-alias-label-tertiary)}\n.ab-textarea:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}\n.ab-textarea:disabled{cursor:not-allowed}\n\n/* 数字步进器：逐字抄「通用设置 → 字号」那行（ui-theme 的 FontSizeRow 的 CSS）：\n   数值居中 + 右侧浮出上下箭头（hover / 聚焦才显形），底色用 bg-module-platform。 */\n.ab-stepper{box-sizing:border-box;position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:72px;height:36px;padding-right:22px;border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-module-platform)}\n/* 可输入的步进器：6 位毫秒（600000）也要放得下，且不被右侧箭头压住。 */\n.ab-stepper[data-editable=true]{min-width:104px;padding-right:24px}\n/* 不带箭头的数值框（最大输出 / 自定义空闲超时）：不需要给箭头留空隙。 */\n.ab-stepper[data-arrows=false]{padding-right:0}\n.ab-stepperValue{min-width:18px;text-align:center;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary);font-size:14px;line-height:22px}\n.ab-stepperInput{width:72px;padding:0;border:none;outline:none;background:transparent;text-align:center;font:inherit;font-size:14px;line-height:22px;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary)}\n.ab-stepperInput:disabled{cursor:not-allowed}\n.ab-stepperInput:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px;border-radius:var(--dsw-radius-xs)}\n.ab-stepperUnit{color:var(--dsw-alias-label-secondary);font-size:14px;line-height:22px}\n.ab-stepperArrows{position:absolute;right:8px;display:flex;flex-direction:column;gap:2px;opacity:0}\n.ab-stepper:hover .ab-stepperArrows,.ab-stepper:focus-within .ab-stepperArrows{opacity:1}\n.ab-stepper[data-disabled=true]{opacity:.5}\n.ab-stepperArrow{box-sizing:border-box;width:17px;height:12px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:none;border-radius:var(--dsw-radius-xs);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 75%, transparent);color:var(--dsw-alias-label-primary);font-size:8px;line-height:1;cursor:pointer}\n.ab-stepperArrow:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}\n.ab-stepperArrow:disabled{opacity:.4;cursor:not-allowed}\n\n/* 上下布局的行：文字在上、控件在下面占满整行（用于需要宽度的控件，如多行 textarea）。 */\n.ab-rowStacked{flex-direction:column;align-items:stretch;gap:10px}\n.ab-rowControlFull{display:block;width:100%}\n.ab-input::placeholder{color:var(--dsw-alias-label-tertiary)}\n\n/* 预设下拉（空闲超时）：与 .ab-input 同一套外观，窄一点，自带 chevron。 */\n.ab-select{box-sizing:border-box;height:32px;min-width:132px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);appearance:none;-webkit-appearance:none;padding:0 28px 0 10px;background-image:url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 9px center;background-size:14px}\n.ab-select:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}\n.ab-select:disabled{cursor:not-allowed}\n.ab-input:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}\n.ab-input:disabled{cursor:not-allowed}\n\n/* 与 skills-mcp 的 .smp-button 同一条规则；`flex:none` 是重点（否则会被挤成竖排）。 */\n.ab-button{white-space:nowrap}\n\n/* 安装自检卡片：一句话标题 + 右侧动作，下面就是那两项检查。 */\n.ab-summary{box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:.5px solid var(--dsw-alias-settings-card-stroke,var(--dsw-alias-border-l2));border-radius:var(--dsw-radius-xl,var(--dsw-radius-md));background:var(--dsw-alias-settings-card-fill,var(--dsw-alias-bg-layer-1))}\n.ab-summary[data-tone=ok]{border-color:var(--dsw-alias-state-success-primary,#12805c)}\n.ab-summary[data-tone=danger]{border-color:var(--dsw-alias-state-error-primary,#d92d20)}\n.ab-summaryHead{display:flex;align-items:center;gap:10px}\n.ab-summaryTitle{flex:1 1 auto;min-width:0;font-size:14px;line-height:20px}\n.ab-summaryAction{flex:none;display:inline-flex}\n\n.ab-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--dsw-alias-label-tertiary,#9aa4b2)}\n.ab-dot[data-dot=ok]{background:var(--dsw-alias-state-success-primary,#067647)}\n.ab-dot[data-dot=danger]{background:var(--dsw-alias-state-error-primary,#d92d20)}\n\n/* 一项检查 = 一行：✓/✗ + 名字 + 结论（+ 需要时右侧\"安装\"）。 */\n.ab-check{display:flex;flex-direction:column;gap:2px;padding-left:18px}\n.ab-checkHead{display:flex;align-items:center;gap:8px;min-width:0}\n.ab-checkMark{flex:none;width:12px;font-size:12px;line-height:18px;color:var(--dsw-alias-state-success-primary,#067647)}\n.ab-check[data-status=fail] .ab-checkMark{color:var(--dsw-alias-state-error-primary,#d92d20)}\n.ab-checkLabel{flex:none;width:104px;color:var(--dsw-alias-label-primary);font-size:13px;line-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.ab-checkMessage{flex:1 1 auto;min-width:0;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px;overflow-wrap:anywhere}\n.ab-check[data-status=fail] .ab-checkMessage{color:var(--dsw-alias-state-error-primary,#d92d20)}\n.ab-checkAction{flex:none;display:inline-flex;margin-left:auto}\n.ab-checkFix{color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:16px;overflow-wrap:anywhere}\n\n.ab-note{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;margin:0}\n.ab-error{color:var(--dsw-alias-state-error-primary,var(--dsw-alias-label-primary));font-size:12px;line-height:18px;margin:0}\n";
@@ -858,7 +859,7 @@ window.__ModuleLoader__.load({
     // src/modules/browser/client/index.tsx
     var inject = ["slots", "configForms", "remote"];
     async function apply(ctx) {
-      const { form, entryId } = findScopedForm(ctx, "browser", ["agent-browser", "dsh-agent-browser"]);
+      const { form, entryId } = findScopedForm(ctx, "browser", ENTRY_CANDIDATES);
       let browser;
       try {
         await ctx.remote.$mount(browserContribution());
@@ -879,7 +880,7 @@ window.__ModuleLoader__.load({
         label: () => "浏览器",
         inject: () => ({ form, entryId, primitives, browser })
       }, Panel));
-      ctx.effect(() => registerSettingsIcon(ctx, "browser", "globe"), "toolkit-browser:settings-icon");
+      ctx.effect(() => registerSettingsIcon(ctx, "browser", "globe"), "dsh-toolkit-browser:settings-icon");
     }
 
     return module.exports;

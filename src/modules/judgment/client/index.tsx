@@ -7,6 +7,7 @@
  */
 import './react.js'
 import { findScopedForm } from '../../../client/config.js'
+import { ENTRY_CANDIDATES } from './config.js'
 import { judgmentContribution } from './judgment-remote.js'
 import { primitives } from './primitives.js'
 import { registerSettingsIcon } from '../../../client/ui/components/settings-icon/index.jsx'
@@ -17,7 +18,7 @@ export const inject = ['slots', 'configForms', 'remote', 'remote.credentials']
 
 export async function apply(ctx) {
   // entry id 在注册时就解析一次：页面渲染时宿主不会再变。
-  const { form, entryId } = findScopedForm(ctx, 'judgement', ['judgment/provider', 'dsh-judgment'])
+  const { form, entryId } = findScopedForm(ctx, 'judgement', ENTRY_CANDIDATES)
   // 凭据面：宿主没提供就退化成只读展示（页面会说明），不让整个客户端半挂掉。
   let credentials
   try {
@@ -54,5 +55,5 @@ export async function apply(ctx) {
     // primitives 见 client/primitives.js：走宿主模块表的同步 require。
     inject: () => ({ form, entryId, credentials, primitives, judgment }),
   }, Panel))
-  ctx.effect(() => registerSettingsIcon(ctx, 'judgment', 'scale'), 'toolkit-judgment:settings-icon')
+  ctx.effect(() => registerSettingsIcon(ctx, 'judgment', 'scale'), 'dsh-toolkit-judgment:settings-icon')
 }

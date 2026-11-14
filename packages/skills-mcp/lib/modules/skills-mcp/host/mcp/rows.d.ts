@@ -1,4 +1,4 @@
-export declare const ROWS_PATH = "/dsh-skills-mcp-manager/rows";
+export declare const ROWS_PATH = "/dsh-toolkit-skills-mcp/rows";
 /**
  * Register the command route.
  *

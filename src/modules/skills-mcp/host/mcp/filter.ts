@@ -25,7 +25,7 @@
  * judge is forwarded unchanged, because the safe direction for a filter is to leave
  * a tool it cannot place alone.
  *
- * @module dsh-skills-mcp-manager/mcp/filter
+ * @module dsh-toolkit-skills-mcp/mcp/filter
  */
 
 /** The namespace every MCP tool's public name starts with. */
@@ -181,7 +181,7 @@ export function installShadow(ctx: any, decide: any, log: any) {
     try {
       verdict = decide(definition === null || definition === undefined ? undefined : definition.name)
     } catch (error: any) {
-      log?.warn?.(`dsh-skills-mcp-manager: could not judge a registration, forwarding it unchanged: ${String(error?.message ?? error)}`)
+      log?.warn?.(`dsh-toolkit-skills-mcp: could not judge a registration, forwarding it unchanged: ${String(error?.message ?? error)}`)
       verdict = { admit: true }
     }
     // The forwarded call is deliberately outside the catch above: a duplicate-name
@@ -211,7 +211,7 @@ export function installShadow(ctx: any, decide: any, log: any) {
       if (hadOwn) Reflect.set(underlying, 'register', original)
       else Reflect.deleteProperty(underlying, 'register')
     } catch (error: any) {
-      log?.warn?.(`dsh-skills-mcp-manager: could not restore the tools service: ${String(error?.message ?? error)}`)
+      log?.warn?.(`dsh-toolkit-skills-mcp: could not restore the tools service: ${String(error?.message ?? error)}`)
     }
   }
   return { installed: true, restore, reason: '' }

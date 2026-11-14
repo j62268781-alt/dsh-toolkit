@@ -43,8 +43,8 @@ test('isValidServerName：路径分隔符与非常规字符一律拒绝', () => 
 
 test('oauthFile：非法名字返回空串，而不是拼出一个危险路径', () => {
   assert.equal(oauthFile('/home/u/.dsh', '../evil'), '')
-  assert.equal(oauthFile('/home/u/.dsh', 'ok'), join('/home/u/.dsh/dsh-skills-mcp-manager/oauth/ok.json'))
-  assert.equal(oauthDir('/home/u/.dsh'), join('/home/u/.dsh/dsh-skills-mcp-manager/oauth'))
+  assert.equal(oauthFile('/home/u/.dsh', 'ok'), join('/home/u/.dsh/dsh-toolkit-skills-mcp/oauth/ok.json'))
+  assert.equal(oauthDir('/home/u/.dsh'), join('/home/u/.dsh/dsh-toolkit-skills-mcp/oauth'))
 })
 
 test('normalizeRecord：形状不对的字段逐个丢掉，整份不作废', () => {
@@ -177,10 +177,10 @@ test('provider：redirectUrl 与 clientMetadata 是 getter，不是方法', () =
     store: createOAuthStore({ dshHome: '/tmp/does-not-matter' }),
     serverName: 'github',
     url: 'https://api.example.com/mcp',
-    redirectUri: 'http://127.0.0.1:3080/dsh-skills-mcp-manager/oauth/callback',
+    redirectUri: 'http://127.0.0.1:3080/dsh-toolkit-skills-mcp/oauth/callback',
   })
   assert.equal(typeof provider.redirectUrl, 'string')
-  assert.equal(provider.redirectUrl, 'http://127.0.0.1:3080/dsh-skills-mcp-manager/oauth/callback')
+  assert.equal(provider.redirectUrl, 'http://127.0.0.1:3080/dsh-toolkit-skills-mcp/oauth/callback')
   const metadata = provider.clientMetadata
   assert.equal(typeof metadata, 'object')
   assert.deepEqual(metadata.redirect_uris, [provider.redirectUrl])

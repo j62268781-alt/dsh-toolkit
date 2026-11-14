@@ -145,7 +145,7 @@ export function createOAuthController(ctx: any) {
         // showed 「已授权」. One server must have exactly one provider.
         made = oauthFlow.providerFor(serverName, rowUrl)
       } catch (error: any) {
-        ctx.logger.warn('dsh-skills-mcp-manager: cannot build an OAuth provider for %s: %s', serverName, String(error?.message ?? error))
+        ctx.logger.warn('dsh-toolkit-skills-mcp: cannot build an OAuth provider for %s: %s', serverName, String(error?.message ?? error))
         return null
       }
       if (made === undefined || made === null) return null
@@ -212,14 +212,14 @@ export function createOAuthController(ctx: any) {
       hostUrl = import.meta.resolve('@deepseek-ai/dsh-mcp-client')
     } catch (error: any) {
       oauthReady = { ready: false, reason: 'no-host-package-url', detail: String(error?.message ?? error), sdkVersion: '' }
-      ctx.logger.warn('dsh-skills-mcp-manager: OAuth support unavailable — %s', oauthReady.detail)
+      ctx.logger.warn('dsh-toolkit-skills-mcp: OAuth support unavailable — %s', oauthReady.detail)
       return
     }
     const loaded = await loadSdk(hostUrl)
     oauthSdk = loaded
     if (loaded.ok !== true) {
       oauthReady = { ready: false, reason: String(loaded.reason ?? ''), detail: oauthSdkReasonText(loaded), sdkVersion: '' }
-      ctx.logger.warn('dsh-skills-mcp-manager: OAuth support unavailable — %s (%s)', oauthReady.detail, String(loaded.detail ?? ''))
+      ctx.logger.warn('dsh-toolkit-skills-mcp: OAuth support unavailable — %s (%s)', oauthReady.detail, String(loaded.detail ?? ''))
       return
     }
     const patched = installTransportPatch({
@@ -229,7 +229,7 @@ export function createOAuthController(ctx: any) {
     })
     if (patched.installed !== true) {
       oauthReady = { ready: false, reason: String(patched.reason ?? ''), detail: patchReasonText(patched.reason), sdkVersion: (loaded as any).version }
-      ctx.logger.warn('dsh-skills-mcp-manager: OAuth support unavailable — %s (%s)', oauthReady.detail, String(patched.detail ?? ''))
+      ctx.logger.warn('dsh-toolkit-skills-mcp: OAuth support unavailable — %s (%s)', oauthReady.detail, String(patched.detail ?? ''))
       return
     }
     // Verify with a real instance: every step above can "succeed" while the final header is
@@ -237,10 +237,10 @@ export function createOAuthController(ctx: any) {
     const verified = await patched.verify()
     if (verified.ok !== true) {
       oauthReady = { ready: false, reason: String(verified.reason ?? ''), detail: patchReasonText(verified.reason), sdkVersion: (loaded as any).version }
-      ctx.logger.warn('dsh-skills-mcp-manager: OAuth support unavailable — %s (%s)', oauthReady.detail, String(verified.detail ?? ''))
+      ctx.logger.warn('dsh-toolkit-skills-mcp: OAuth support unavailable — %s (%s)', oauthReady.detail, String(verified.detail ?? ''))
       return
     }
-    ctx.effect(() => () => { try { patched.uninstall?.() } catch { /* best effort */ } }, 'dsh-skills-mcp-manager.oauth.patch')
+    ctx.effect(() => () => { try { patched.uninstall?.() } catch { /* best effort */ } }, 'dsh-toolkit-skills-mcp.oauth.patch')
     oauthFlow = createOAuthFlow({
       store: oauthStore,
       getSdk: () => (oauthSdk?.ok === true ? oauthSdk : { ok: false, reason: String(oauthSdk?.reason ?? ''), detail: String(oauthSdk?.detail ?? '') }),
@@ -270,13 +270,13 @@ export function createOAuthController(ctx: any) {
       log: { warn: (message: any) => ctx.logger.warn(message) },
     })
     oauthReady = { ready: true, reason: '', detail: '', sdkVersion: (loaded as any).version }
-    ctx.logger.info('dsh-skills-mcp-manager: OAuth support installed (MCP SDK %s)', (loaded as any).version)
+    ctx.logger.info('dsh-toolkit-skills-mcp: OAuth support installed (MCP SDK %s)', (loaded as any).version)
   }
 
   const oauthBootstrapped = bootstrapOAuth().catch((error) => {
     // Never let an optional capability reject out of apply().
     oauthReady = { ready: false, reason: 'bootstrap-failed', detail: String(error?.message ?? error), sdkVersion: '' }
-    ctx.logger.warn('dsh-skills-mcp-manager: OAuth bootstrap failed — %s', oauthReady.detail)
+    ctx.logger.warn('dsh-toolkit-skills-mcp: OAuth bootstrap failed — %s', oauthReady.detail)
   })
 
   /*
@@ -383,7 +383,7 @@ export function createOAuthController(ctx: any) {
       },
       onError: (error: any) => {
         // Keep the previous answer on a failed read; failure is not equivalent to no credentials.
-        ctx.logger.warn('dsh-skills-mcp-manager: cannot read OAuth state for %s: %s', serverName, String(error?.message ?? error))
+        ctx.logger.warn('dsh-toolkit-skills-mcp: cannot read OAuth state for %s: %s', serverName, String(error?.message ?? error))
       },
     }).catch(() => {})
   }
@@ -417,16 +417,16 @@ export function createOAuthController(ctx: any) {
       Promise.resolve(oauthFlow.refresh(serverName, url))
         .then((result) => {
           if (result.ok === true) {
-            ctx.logger.info('dsh-skills-mcp-manager: %s 的令牌已在到期前刷新', serverName)
+            ctx.logger.info('dsh-toolkit-skills-mcp: %s 的令牌已在到期前刷新', serverName)
             // 让卡片立刻看到新的到期时间，而不是等下一个 15 秒的 TTL。
             oauthStatusCache.delete(serverName)
             kickProjection()
             return
           }
-          ctx.logger.warn('dsh-skills-mcp-manager: %s 的令牌预刷新失败（%s）：%s', serverName, result.reason, result.detail)
+          ctx.logger.warn('dsh-toolkit-skills-mcp: %s 的令牌预刷新失败（%s）：%s', serverName, result.reason, result.detail)
         })
         .catch((error) => {
-          ctx.logger.warn('dsh-skills-mcp-manager: %s 的令牌预刷新异常：%s', serverName, String(error?.message ?? error))
+          ctx.logger.warn('dsh-toolkit-skills-mcp: %s 的令牌预刷新异常：%s', serverName, String(error?.message ?? error))
         })
         .finally(() => oauthRefreshing.delete(serverName))
     }
@@ -437,7 +437,7 @@ export function createOAuthController(ctx: any) {
     ctx.effect(() => {
       const timer = setInterval(sweepOAuthRefresh, OAUTH_REFRESH_SWEEP_MS)
       return () => clearInterval(timer)
-    }, 'dsh-skills-mcp-manager.oauth-sweep')
+    }, 'dsh-toolkit-skills-mcp.oauth-sweep')
   }
 
   const registerRoutes = ({ invalidateServerCaches, reconnectServer }: any) => {
@@ -474,12 +474,12 @@ export function createOAuthController(ctx: any) {
         },
         onAuthorized: async (serverName: any) => {
           // 授权一完成就自己重连，不等用户回面板再点一次。重连是命令，直接走任务函数。
-          ctx.logger.info('dsh-skills-mcp-manager: %s finished OAuth authorization, reconnecting', serverName)
+          ctx.logger.info('dsh-toolkit-skills-mcp: %s finished OAuth authorization, reconnecting', serverName)
           invalidateServerCaches(serverName)
           const target = candidateServers().find((entry) => entry.serverName === serverName)
           const tier = target !== undefined && String(target.scope ?? '') === 'global' ? 'global' : 'project'
           void reconnectServer({ tier, serverName }).catch((error: any) => {
-            ctx.logger.warn('dsh-skills-mcp-manager: reconnect after OAuth failed: %s', String(error?.message ?? error))
+            ctx.logger.warn('dsh-toolkit-skills-mcp: reconnect after OAuth failed: %s', String(error?.message ?? error))
           })
         },
         snapshot: () => oauthResultCache,
@@ -488,7 +488,7 @@ export function createOAuthController(ctx: any) {
       oauthCallbackReady = registered.installed === true
       oauthCallbackPath = registered.installed === true ? CALLBACK_PATH : `unavailable: ${registered.reason}`
       if (registered.installed !== true) {
-        ctx.logger.warn('dsh-skills-mcp-manager: OAuth callback route unavailable — %s', registered.reason)
+        ctx.logger.warn('dsh-toolkit-skills-mcp: OAuth callback route unavailable — %s', registered.reason)
       }
     })
   }

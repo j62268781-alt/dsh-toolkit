@@ -1585,7 +1585,7 @@ window.__ModuleLoader__.load({
       const React2 = require2("react");
       globalThis.__dshReact = React2;
       return {
-        name: "toolkit-notification-client",
+        name: "dsh-toolkit-notification-client",
         // `workspaces` 只用于点击通知时判断/取消归档；Cordis 的 ctx 是严格的，
         // 没在 inject 里声明的服务一读就抛错（真机上表现为点击通知只打一条 warn）。
         inject: ["slots", "locale", "configForms", "sessions", "uiSession", "uiConversation", "uiWorkspace", "workspaces"],
@@ -1849,13 +1849,13 @@ window.__ModuleLoader__.load({
             } catch {
               return void 0;
             }
-          }, "toolkit-notification:dictionary");
+          }, "dsh-toolkit-notification:dictionary");
           install(() => {
             if (typeof document === "undefined") return () => {
             };
             return installStylesheet(`${settingsStyles("ntf")}
-    ${styles_default}`, "toolkit-notification");
-          }, "toolkit-notification:stylesheet");
+    ${styles_default}`, "dsh-toolkit-notification");
+          }, "dsh-toolkit-notification:stylesheet");
           install(() => {
             if (typeof form?.subscribe !== "function") return void 0;
             const off = form.subscribe(() => {
@@ -1868,7 +1868,7 @@ window.__ModuleLoader__.load({
               } catch {
               }
             };
-          }, "toolkit-notification:settings");
+          }, "dsh-toolkit-notification:settings");
           install(() => {
             const list = ctx.sessions?.list;
             if (typeof list?.subscribe !== "function" || typeof list?.getSnapshot !== "function") return void 0;
@@ -1885,7 +1885,7 @@ window.__ModuleLoader__.load({
               warn2("session baseline failed", error);
             }
             return off;
-          }, "toolkit-notification:sessions");
+          }, "dsh-toolkit-notification:sessions");
           install(() => {
             const status = ctx.uiSession?.sessionStatus;
             if (typeof status?.subscribe !== "function" || typeof status?.getSnapshot !== "function") return void 0;
@@ -1901,8 +1901,8 @@ window.__ModuleLoader__.load({
             } catch {
             }
             return off;
-          }, "toolkit-notification:pending");
-          install(() => () => player.dispose(), "toolkit-notification:sounds");
+          }, "dsh-toolkit-notification:pending");
+          install(() => () => player.dispose(), "dsh-toolkit-notification:sounds");
           install(() => {
             if (typeof window === "undefined" || typeof document === "undefined") return void 0;
             const currentSessionId = () => {
@@ -1939,7 +1939,7 @@ window.__ModuleLoader__.load({
               document.removeEventListener("visibilitychange", dismissVisible);
               window.removeEventListener("focus", dismissVisible);
             };
-          }, "toolkit-notification:dismiss-visible");
+          }, "dsh-toolkit-notification:dismiss-visible");
           install(() => {
             if (typeof ctx.slots?.inject !== "function" || typeof ctx.slots?.register !== "function") return void 0;
             return ctx.slots.inject("settings.section", () => ctx.slots.register({
@@ -1950,10 +1950,10 @@ window.__ModuleLoader__.load({
               label: () => t("nav"),
               locale: NOTIFICATION_NS
             }, Panel));
-          }, "toolkit-notification:section");
+          }, "dsh-toolkit-notification:section");
           install(
             () => registerSettingsIcon(ctx, "notification", "bell"),
-            "toolkit-notification:settings-icon"
+            "dsh-toolkit-notification:settings-icon"
           );
         }
       };

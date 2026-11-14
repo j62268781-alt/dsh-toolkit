@@ -1,5 +1,5 @@
 /**
- * dsh-sidebar-mobile — DSH 右侧边栏的移动设备面板。
+ * dsh-toolkit-mobile — DSH 右侧边栏的移动设备面板。
  *
  * 把 mobilecli 封装成 DSH 的移动设备层：Host 侧管进程/流/工具/技能，
  * Client 侧在右侧边栏渲染实时画面并转发点击。
@@ -20,7 +20,7 @@
  * 以及后台的流子进程。disposer 顺序与注册顺序相反，保证先停流再摘路由，
  * 避免摘掉路由后仍有响应在往已卸载的处理器里写。
  *
- * @module dsh-sidebar-mobile
+ * @module dsh-toolkit-mobile
  */
 
 import { Mobilecli, resolveBinary } from "./device/mobilecli.js";
@@ -42,7 +42,7 @@ import { MOBILE_LOOP_PURPOSE, MOBILE_LOOP_TOOL_NAME } from "./agent/mobile-loop.
 import { TOOL_NAMES, createMobileLoopTool, createTools } from "./agent/tools.js";
 
 /** Cordis 插件名，也是挂载 id。 */
-export const name = "dsh-sidebar-mobile";
+export const name = "dsh-toolkit-mobile";
 
 /**
  * 需要的服务。
@@ -54,7 +54,7 @@ export const name = "dsh-sidebar-mobile";
 export const inject = ["tools"];
 
 /** 默认路由前缀。与 cordis.patch.yml 的 routePrefix 保持一致。 */
-const DEFAULT_ROUTE_PREFIX = "/_dsh/dsh-sidebar-mobile";
+const DEFAULT_ROUTE_PREFIX = "/_dsh/dsh-toolkit-mobile";
 
 /**
  * 码率上限（bps）。mobilecli 允许的范围是 100000–10000000，这里取到顶。
@@ -194,9 +194,9 @@ export function apply(ctx: any, config: MobilePluginConfig = {}): void {
     try {
       const logger = ctx.logger;
       if (logger && typeof logger[level] === "function") {
-        logger[level](`dsh-sidebar-mobile: ${message}`);
+        logger[level](`dsh-toolkit-mobile: ${message}`);
       } else if (level === "error" || level === "warn") {
-        console.error(`dsh-sidebar-mobile: ${message}`);
+        console.error(`dsh-toolkit-mobile: ${message}`);
       }
     } catch {
       // 忽略
@@ -577,7 +577,7 @@ export function apply(ctx: any, config: MobilePluginConfig = {}): void {
     disposers.push(
       ctx.effect(
         () => ctx.tools.register(definition),
-        `dsh-sidebar-mobile:tool:${toolName}`,
+        `dsh-toolkit-mobile:tool:${toolName}`,
       ),
     );
   }
@@ -608,7 +608,7 @@ export function apply(ctx: any, config: MobilePluginConfig = {}): void {
       log("warn", `停止流失败：${(error as any)?.message ?? error}`);
     }
     log("info", "已卸载");
-  }, "dsh-sidebar-mobile:teardown");
+  }, "dsh-toolkit-mobile:teardown");
 }
 
 /**

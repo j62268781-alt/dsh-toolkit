@@ -247,7 +247,7 @@ test('archived bundle owns its page, CSS lifecycle, and local React JSX binding'
     },
   }
   client.apply(ctx)
-  assert.equal(document.querySelectorAll('style[data-plugin="toolkit-archived"]').length, 1)
+  assert.equal(document.querySelectorAll('style[data-plugin="dsh-toolkit-archived"]').length, 1)
   const html = renderToStaticMarkup(React.createElement(Component))
   assert.match(html, /已归档的会话/)
   assert.match(html, /搜索、恢复或永久删除已归档的会话/)

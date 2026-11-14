@@ -52,13 +52,13 @@ function installThemeCenter(ctx) {
 }
 
 export function apply(ctx) {
-  ctx.effect(registerScenes, "toolkit-theme:scene-builders");
-  ctx.effect(() => installSceneClock(updateHopeSceneTime), "toolkit-theme:scene-clock");
-  ctx.effect(installShellMarkers, "toolkit-theme:shell-markers");
+  ctx.effect(registerScenes, "dsh-toolkit-theme:scene-builders");
+  ctx.effect(() => installSceneClock(updateHopeSceneTime), "dsh-toolkit-theme:scene-clock");
+  ctx.effect(installShellMarkers, "dsh-toolkit-theme:shell-markers");
   // Global by definition: the palette rewrites the host shell itself (sidebar, right bar,
   // settings chrome) through `[class*="_xxx"]` host-hash selectors, so no panel subtree owns it.
-  ctx.effect(() => installStylesheet(css, "toolkit-theme"), "toolkit-theme:stylesheet");
-  ctx.effect(() => installPalette(ctx), "toolkit-theme:palette");
+  ctx.effect(() => installStylesheet(css, "dsh-toolkit-theme"), "dsh-toolkit-theme:stylesheet");
+  ctx.effect(() => installPalette(ctx), "dsh-toolkit-theme:palette");
   ctx.effect(() => installCodexShell(ctx, [
     installRailTitles,
     installRailUnpin,
@@ -67,8 +67,8 @@ export function apply(ctx) {
     installSidebarWidth,
     installWorkspaceCollapse,
     installUpdateTile,
-  ], { nativeInstallers: [(ctx) => installSidebarWidth(ctx, { native: true })] }), "toolkit-theme:codex-shell");
-  ctx.effect(() => installSettingsNav(ctx), "toolkit-theme:settings-nav");
-  ctx.effect(() => registerSettingsIcon(ctx, "theme", "palette"), "toolkit-theme:settings-icon");
-  ctx.effect(() => installThemeCenter(ctx), "toolkit-theme:settings-section");
+  ], { nativeInstallers: [(ctx) => installSidebarWidth(ctx, { native: true })] }), "dsh-toolkit-theme:codex-shell");
+  ctx.effect(() => installSettingsNav(ctx), "dsh-toolkit-theme:settings-nav");
+  ctx.effect(() => registerSettingsIcon(ctx, "theme", "palette"), "dsh-toolkit-theme:settings-icon");
+  ctx.effect(() => installThemeCenter(ctx), "dsh-toolkit-theme:settings-section");
 }

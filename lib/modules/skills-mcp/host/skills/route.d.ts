@@ -1,4 +1,4 @@
-export declare const SKILLS_PATH = "/dsh-skills-mcp-manager/skills";
+export declare const SKILLS_PATH = "/dsh-toolkit-skills-mcp/skills";
 /**
  * Register the skill-write route.
  *

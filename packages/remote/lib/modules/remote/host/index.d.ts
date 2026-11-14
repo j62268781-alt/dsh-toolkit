@@ -23,7 +23,7 @@
  *   POST /api/plugins/dsh-toolkit/remote/local-state/purge?serverUrl= 解绑后清本机配对残留
  */
 import { Config } from './wechat/config.js';
-export declare const name = "toolkit-remote";
+export declare const name = "dsh-toolkit-remote";
 /**
  * 登录只需要这三样；双向桥额外依赖的宿主服务在服务创建时用 `ctx.inject` 按需装载，
  * 这样缺服务时登录/二维码仍然可用，不会把整个模块卡在 pending。

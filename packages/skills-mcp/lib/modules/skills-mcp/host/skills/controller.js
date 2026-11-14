@@ -34,7 +34,7 @@ export function createSkillsController(ctx, { agents, lastBeat, refresh }) {
             discoveryInfo = { at: new Date().toISOString(), roots, count: 0, error: String(error?.message ?? error) };
             beat({ ...lastBeat(), at: new Date().toISOString(), discovery: discoveryInfo });
             if (process.env.SMP_DEBUG)
-                console.error('[dsh-skills-mcp-manager] skill scan failed', error);
+                console.error('[dsh-toolkit-skills-mcp] skill scan failed', error);
             discoveredSkills = [];
         }
     };
@@ -123,7 +123,7 @@ export function createSkillsController(ctx, { agents, lastBeat, refresh }) {
                 }
                 catch (error) {
                     if (process.env.SMP_DEBUG)
-                        console.error('[dsh-skills-mcp-manager] post-write rescan failed', error);
+                        console.error('[dsh-toolkit-skills-mcp] post-write rescan failed', error);
                 }
             }
             return result;
@@ -139,7 +139,7 @@ export function createSkillsController(ctx, { agents, lastBeat, refresh }) {
                 refresh();
             }
             catch (error) {
-                console.error('[dsh-skills-mcp-manager] post-skill refresh failed:', error);
+                console.error('[dsh-toolkit-skills-mcp] post-skill refresh failed:', error);
             }
         };
         ctx.inject(['webServer', 'connection'], (skillRouteCtx) => registerSkillRoute(skillRouteCtx, {
@@ -180,7 +180,7 @@ export function createSkillsController(ctx, { agents, lastBeat, refresh }) {
                 }
                 catch (error) {
                     if (process.env.SMP_DEBUG)
-                        console.error('[dsh-skills-mcp-manager] read rescan failed', error);
+                        console.error('[dsh-toolkit-skills-mcp] read rescan failed', error);
                 }
             }
             if (!isKnown())

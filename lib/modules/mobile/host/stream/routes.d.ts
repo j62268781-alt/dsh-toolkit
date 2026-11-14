@@ -185,7 +185,7 @@ export declare function validateInput(action: string, body: any): any;
  *
  * @param {object} ctx 插件上下文（需要 webServer、connection 与 effect）
  * @param {StreamRoutes} routes
- * @param {string} prefix 形如 /_dsh/dsh-sidebar-mobile
+ * @param {string} prefix 形如 /_dsh/dsh-toolkit-mobile
  * @returns {(() => void)|null} disposer；null 表示环境没有 webServer
  */
 export declare function mountRoutes(ctx: any, routes: any, prefix: string): any;

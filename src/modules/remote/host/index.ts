@@ -33,7 +33,7 @@ import { maskId, normalizeBaseUrl } from './wechat/ilink.js'
 import { readTrustedPeers } from './mobile/peers.js'
 import { purgePairingState } from './mobile/local-state.js'
 
-export const name = 'toolkit-remote'
+export const name = 'dsh-toolkit-remote'
 /**
  * 登录只需要这三样；双向桥额外依赖的宿主服务在服务创建时用 `ctx.inject` 按需装载，
  * 这样缺服务时登录/二维码仍然可用，不会把整个模块卡在 pending。

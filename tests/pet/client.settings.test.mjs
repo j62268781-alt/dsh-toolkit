@@ -152,7 +152,7 @@ test('settings use root-scoped accepted config writes, independent toggles, runt
   assert.deepEqual(runtime.opened, ['unarchive:archived', 'open:archived'])
   await act(async () => { runtime.dispose(); await flush() })
   assert.equal(runtime.subscribers.size, 0)
-  assert.equal(document.querySelector('style[data-plugin=toolkit-pet]'), null)
+  assert.equal(document.querySelector('style[data-plugin=dsh-toolkit-pet]'), null)
   assert.equal(net.streams[0].cancelled, true)
 })
 

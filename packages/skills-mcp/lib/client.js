@@ -27,7 +27,7 @@ window.__ModuleLoader__.load({
     ));
 
     // src/modules/skills-mcp/host/identity.ts
-    var NAME = "dsh-skills-mcp-manager";
+    var NAME = "dsh-toolkit-skills-mcp";
 
     // src/client/config.ts
     var ROOT_ENTRIES = ["shell-kit", "dsh-toolkit", "dsh-shell-kit"];
@@ -444,7 +444,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/skills-mcp/host/mcp/oauth/channel.ts
-    var AUTH_CHANNEL = "dsh-skills-mcp-manager/oauth";
+    var AUTH_CHANNEL = "dsh-toolkit-skills-mcp/oauth";
     var AUTH_DONE = "authorized";
 
     // src/client/http.ts
@@ -2956,7 +2956,7 @@ window.__ModuleLoader__.load({
             label: () => "Skills & MCP",
             inject: () => ({ form, entryId, inventory })
           }, Panel));
-          ctx.effect(() => registerSettingsIcon(ctx, "skills-mcp", "plug"), "toolkit-skills-mcp:settings-icon");
+          ctx.effect(() => registerSettingsIcon(ctx, "skills-mcp", "plug"), "dsh-toolkit-skills-mcp:settings-icon");
         }
       };
     }

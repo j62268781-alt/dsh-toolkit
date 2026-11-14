@@ -17,7 +17,7 @@ import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import { Config, type AgentBrowserConfig, type ResolvedConfig } from './config.js';
 import { type TaskSubgoal } from './task.js';
 /** loader 诊断用的插件名。 */
-export declare const name = "agent-browser";
+export declare const name = "dsh-toolkit-browser";
 export { Config };
 export type { AgentBrowserConfig };
 /**

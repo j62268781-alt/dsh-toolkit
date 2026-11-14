@@ -23,7 +23,7 @@
  * 与 dsh-android 的做法一致：`ctx.inject(['skills'])` 拿不到就静默跳过，
  * 插件其余部分照常工作。
  *
- * @module dsh-sidebar-mobile/lib/skills
+ * @module dsh-toolkit-mobile/lib/skills
  */
 /**
  * 解析 Markdown 的 YAML frontmatter。

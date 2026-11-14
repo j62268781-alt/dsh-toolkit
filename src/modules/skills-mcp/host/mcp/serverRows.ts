@@ -41,7 +41,7 @@
  *
  * Pure: rows in, servers out. No cordis, no IO, so the two-tier rules are testable.
  *
- * @module dsh-skills-mcp-manager/mcp/serverRows
+ * @module dsh-toolkit-skills-mcp/mcp/serverRows
  */
 
 /**

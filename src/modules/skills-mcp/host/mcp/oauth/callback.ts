@@ -163,7 +163,7 @@ export function registerOAuthCallback(ctx: any, options: any = {}) {
         const done = await flow.complete(serverName, String(matched.server.url ?? ''), matched.code)
         if (done.ok !== true) {
           remember(serverName, { ok: false, reason: done.reason, text: done.text, detail: done.detail, at: new Date().toISOString() })
-          log?.warn?.(`dsh-skills-mcp-manager: ${serverName} 的授权回调无法完成：${String(done.detail || done.reason)}`)
+          log?.warn?.(`dsh-toolkit-skills-mcp: ${serverName} 的授权回调无法完成：${String(done.detail || done.reason)}`)
           sendHtml(res, 502, '授权未完成', `<p>${escapeHtml(done.text)}</p>` +
             (done.detail === '' ? '' : `<p><code>${escapeHtml(done.detail)}</code></p>`))
           return
@@ -180,7 +180,7 @@ export function registerOAuthCallback(ctx: any, options: any = {}) {
           await onAuthorized?.(serverName)
         } catch (error: any) {
           // 刷新失败不该把一次成功的授权标成失败。
-          log?.warn?.(`dsh-skills-mcp-manager: 授权成功后刷新状态失败：${String(error?.message ?? error)}`)
+          log?.warn?.(`dsh-toolkit-skills-mcp: 授权成功后刷新状态失败：${String(error?.message ?? error)}`)
         }
       },
     })
@@ -190,7 +190,7 @@ export function registerOAuthCallback(ctx: any, options: any = {}) {
     // `webServer.register` 对重复 (kind, path) 抛错。HMR 重载时旧 effect 会先被释放，
     // 正常不会撞；真撞上就如实上报，而不是让插件加载失败。
     const reason = String(error?.message ?? error)
-    log?.warn?.(`dsh-skills-mcp-manager: 注册 OAuth 回调路由失败：${reason}`)
+    log?.warn?.(`dsh-toolkit-skills-mcp: 注册 OAuth 回调路由失败：${reason}`)
     return { installed: false, reason }
   }
 }

@@ -198,7 +198,7 @@ export function createOAuthFlow({ store, getSdk, makeProvider, allowInsecure, cu
     // 没有可比对的东西，交给 SDK 自己处理。
     if (bound.length === 0) return false
     if (bound.includes(current)) return false
-    log?.info?.(`dsh-skills-mcp-manager: ${serverName} 的 OAuth 客户端绑定在旧回调地址上（${bound.join(', ')} → ${current}），将重新注册`)
+    log?.info?.(`dsh-toolkit-skills-mcp: ${serverName} 的 OAuth 客户端绑定在旧回调地址上（${bound.join(', ')} → ${current}），将重新注册`)
     await store.update(serverName, url, (next: any) => {
       // 只清「注册产物」和「与之绑定的进行中状态」：令牌不动 —— 它们可能仍然有效，
       // 清掉等于让一台本来能用的服务器掉线。
@@ -329,7 +329,7 @@ export function createOAuthFlow({ store, getSdk, makeProvider, allowInsecure, cu
     const saved = await snapshot()
     return { ok: true, reason: '', detail: '', text: '令牌已刷新', ...tokenStatus(saved) }
   } catch (error: any) {
-    log?.warn?.(`dsh-skills-mcp-manager: 刷新 ${serverName} 的令牌失败：${String(error?.message ?? error)}`)
+    log?.warn?.(`dsh-toolkit-skills-mcp: 刷新 ${serverName} 的令牌失败：${String(error?.message ?? error)}`)
     return { ok: false, reason: FLOW_ERRORS.refreshFailed, detail: describeFlowError(error), text: flowReasonText(FLOW_ERRORS.refreshFailed) }
   }
   }
@@ -446,7 +446,7 @@ export function createOAuthFlow({ store, getSdk, makeProvider, allowInsecure, cu
         }
         return { kind: 'redirect', reason: '', detail: '', text: '请在浏览器里打开下面的链接完成登录', authorizeUrl }
       } catch (error: any) {
-        log?.warn?.(`dsh-skills-mcp-manager: 发起 ${serverName} 的授权失败：${String(error?.message ?? error)}`)
+        log?.warn?.(`dsh-toolkit-skills-mcp: 发起 ${serverName} 的授权失败：${String(error?.message ?? error)}`)
         return {
           kind: 'error',
           reason: FLOW_ERRORS.beginFailed,
@@ -547,7 +547,7 @@ export function createOAuthFlow({ store, getSdk, makeProvider, allowInsecure, cu
         forget(serverName)
         return { ok: true, reason: '', detail: '', text: '授权完成', ...tokenStatus(record) }
       } catch (error: any) {
-        log?.warn?.(`dsh-skills-mcp-manager: 完成 ${serverName} 的授权失败：${String(error?.message ?? error)}`)
+        log?.warn?.(`dsh-toolkit-skills-mcp: 完成 ${serverName} 的授权失败：${String(error?.message ?? error)}`)
         return {
           ok: false,
           reason: FLOW_ERRORS.completeFailed,
@@ -589,7 +589,7 @@ export function createOAuthFlow({ store, getSdk, makeProvider, allowInsecure, cu
       // 也做一次校验（要求字符串），传对象会得到 server-has-no-url。
       const refreshed = await refreshTokens(serverName, url)
       if (refreshed.ok === true) return { done: true }
-      log?.warn?.(`dsh-skills-mcp-manager: ${serverName} 在 401 后自行刷新失败（${refreshed.reason}），将走一次新的授权`)
+      log?.warn?.(`dsh-toolkit-skills-mcp: ${serverName} 在 401 后自行刷新失败（${refreshed.reason}），将走一次新的授权`)
       return { forceReauthorization: true }
     },
 

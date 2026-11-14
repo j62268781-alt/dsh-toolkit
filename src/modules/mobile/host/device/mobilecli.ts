@@ -13,7 +13,7 @@
  * runJson() 使用有限输出和可取消的进程执行器；spawnStream() 单独保留长驻字节流，
  * 不把 H.264/MJPEG 缓冲到内存。
  *
- * @module dsh-sidebar-mobile/lib/mobilecli
+ * @module dsh-toolkit-mobile/lib/mobilecli
  */
 
 import { spawn } from "node:child_process";
