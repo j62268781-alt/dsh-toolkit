@@ -135,7 +135,11 @@ src/modules/<module>/host/
 
 - 路由骨架统一走 `src/host/routes.ts` 的 `registerJsonRoutes` + `jsonRoute`，**不要**手写 method 守卫 /
   body 上限 / no-store / 错误映射。
-- 领域层返回**域结果**（`{ok:true,…}` / `{ok:false,reason}`），HTTP 状态码映射留在 `routes/`。
+- 领域层返回**域结果**（`{ok:true,…}` / `{ok:false,…}`），HTTP 状态码映射留在 `routes/`。
+- 失败用**稳定的业务 `code`**（`"not-found"` / `"session-busy"` / `"unknown"` …），需要原文时另给
+  `detail`；**不要把文案塞进 code，也不要让 client 靠 `reason.startsWith(...)` 反推状态**。
+  `code` 与 HTTP 的 `statusCode` 各管一件事，`routes/` 用一张 `Record<code, status>` 映射，
+  不要在 payload 里把 code 改写成另一个 code。
 - 禁止出现 `.tsx`、`document`、`window`、React。
 - `inject` 数组顺序被测试断言（例：`tests/integration/archived-deletion.test.mjs:107`），改动要同步测试。
 
@@ -202,6 +206,7 @@ for (const surface of SURFACES) ctx.effect(() => surface.install(ctx, host), `ds
 | --- | --- |
 | `routes.ts` | `registerRoute` / `registerAuthenticatedRoute` / `jsonRoute` / `registerJsonRoutes` / `HttpFailure`；全仓唯一 `ctx.webServer.register` 调用点 |
 | `paths.ts` | `PLUGIN_API_ROOT = '/api/plugins/toolkit'` + `pluginApiPath(module)`；**路由前缀的唯一来源**（无 Node 依赖，client 也会求值） |
+| `dsh-home.ts` | `dshHome(env = process.env, home = homedir())`；**`$DSH_HOME` 的唯一解析点**（`DSH_HOME` 非空即用、两端裁空白，否则 `~/.dsh`；每次调用重读环境）。带 `node:os`/`node:path`，只能 host 用 |
 | `http.ts` | `readBody`（按**字节**限流）、`readCharBody`（按**解码字符**限流，超限静默 destroy）、`sendJson` |
 | `config.ts` | 根 Config 聚合（十个模块的 `Config` 拼成宿主配置表单） |
 | `serial.ts` / `singleflight.ts` / `operation.ts` | 队列、去重、超时与取消 |
@@ -220,6 +225,7 @@ for (const surface of SURFACES) ctx.effect(() => surface.install(ctx, host), `ds
 | `ui/slot.ts` / `ui/store.ts` / `ui/locale.ts` | `installSlot` / `createStore`+`useStore` / `installDictionary` |
 | `ui/stylesheet.ts` | `installStylesheet` / `installMutableStylesheet` / `composeStyles` |
 | `ui/components/<name>/` | 跨模块组件，`index.tsx` + `style.css` 成对 |
+| `ui/components/confirm-dialog/` | 公用确认弹窗外壳：宿主 `Modal` + 标题/说明/`children`/页脚；确认按钮默认宿主黑色 `primary`，危险操作用 `confirmButton` 换成模块自己的按钮（archived ×2、judgment、skills-mcp 在用） |
 | `styles/settings.*` | 面板骨架样式与 `settingsStyles('sk')` |
 
 ---
