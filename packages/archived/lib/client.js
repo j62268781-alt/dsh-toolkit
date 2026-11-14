@@ -519,8 +519,10 @@ window.__ModuleLoader__.load({
         subscribe: store.subscribe,
         snapshot: store.snapshot,
         syncTombstones,
+        // `note` carries the result of the last run; opening a new request clears it so the
+        // line under the panel can only ever describe the action the user is looking at.
         request(row) {
-          if (!store.get().busy) store.set({ request: { kind: "one", rows: [row] }, error: "" });
+          if (!store.get().busy) store.set({ request: { kind: "one", rows: [row] }, error: "", note: "" });
         },
         requestAll(groups) {
           const state = store.get();
@@ -528,7 +530,7 @@ window.__ModuleLoader__.load({
             groups.flatMap((group) => group.rows).filter((row) => !state.removed.has(row.id)).map((row) => [row.id, row])
           ).values()];
           if (state.busy || rows.length === 0) return;
-          store.set({ request: { kind: "all", rows }, error: "" });
+          store.set({ request: { kind: "all", rows }, error: "", note: "" });
         },
         cancel() {
           if (!store.get().busy) store.set({ request: null, error: "" });
