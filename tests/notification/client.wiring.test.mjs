@@ -19,7 +19,7 @@ const DESKTOP_ID_PREFIX = 'n#dsh-app://app#'.length
 
 /** 组装一次完整接线：jsdom + 通知桩 + 假 ctx + 真实 apply。 */
 async function boot(options = {}) {
-  const page = makeDom()
+  const page = makeDom({ url: options.url })
   // jsdom 没实现 Window.focus()，把它换成一个可断言的空实现（测试自己会覆盖计数）。
   page.window.focus = () => {}
   const stub = createNotificationStub({ permission: options.permission ?? 'granted' })
@@ -32,7 +32,12 @@ async function boot(options = {}) {
     throw new Error(`unexpected module ${id}`)
   })
   client.apply(runtime.ctx)
-  assert.deepEqual(fetch.requests, [], 'registration must not fetch sounds before mount or notification event')
+  // 只关心「注册阶段没有去取音频」：被新开的页面按通知片段跳会话时会合法地 POST 一次 raise。
+  assert.deepEqual(
+    fetch.requests.filter(({ url }) => String(url.pathname).endsWith('/sound')),
+    [],
+    'registration must not fetch sounds before mount or notification event',
+  )
   return {
     page,
     stub,
@@ -454,4 +459,27 @@ test('灵动岛在线时前台不再响提示音：标记消失后恢复', async
   assert.equal(app.stub.instances.length, 0, '前台仍然不弹横幅')
   const audio = app.fetch.requests.filter(({ url }) => url.pathname === '/api/plugins/toolkit/notification/sound')
   assert.equal(audio.length, 1, '没有岛时前台回到提示音反馈')
+})
+
+test('冷启动：页面带会话片段时，等宿主把会话读进列表再切过去', async (t) => {
+  // 这正是「页面关掉后点通知」的场景：地址里带 #dsh-toolkit-session=s1，但宿主还在拉列表。
+  // 旧实现在这一步直接调 openSession，宿主抛 `sessions.retain: unknown session`，用户点了没反应。
+  const app = await boot({
+    url: 'https://dsh.example.test/#dsh-toolkit-session=s1',
+    sessions: {},
+    chats: {},
+  })
+  t.after(() => app.dispose())
+
+  await act(async () => {
+    await sleep(120)
+  })
+  assert.deepEqual(app.runtime.openedSessions, [], '会话还没进列表时不要硬跳')
+  assert.equal(app.page.window.location.hash, '', '片段读完就清掉，刷新时不该再跳一次')
+
+  app.runtime.setSession('s1', { displayTitle: '迟到的会话' })
+  await act(async () => {
+    await sleep(250)
+  })
+  assert.deepEqual(app.runtime.openedSessions, ['s1'], '列表同步回来后要真的切过去')
 })

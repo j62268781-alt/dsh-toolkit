@@ -244,8 +244,40 @@ export default function createNotification(require) {
         }
       }
 
-      /** 导航本身：归档会话先取消归档（否则列表刷新会把选择清掉），再打开会话。 */
+      /**
+       * 等宿主把目标会话读进列表。
+       *
+       * 冷启动时（正是「页面关掉后点通知」这个场景）宿主先渲染空列表，`installed` 的客户端插件
+       * 却已经开始跑：此时 `uiWorkspace.openSession` 会在 `SessionManager.resolveTarget` 里抛
+       * `sessions.retain: unknown session <id>`，导航必然失败。这里在调用前先等列表里出现该 id，
+       * 拿不到也照样往下走（归档会话、老宿主都可能不在 `byId` 里），让 openSession 自己报错。
+       * @param {string} sessionId 目标会话。
+       * @returns {Promise<boolean>} 是否在超时前看到它。
+       */
+      /** 会话此刻是否已经在宿主列表里（同步判定，热路径要靠它避免多余的一个微任务）。 */
+      const sessionKnown = (sessionId) => {
+        try {
+          return ctx.sessions?.list?.getSnapshot?.()?.byId?.[sessionId] !== undefined
+        } catch {
+          return false
+        }
+      }
+
+      const waitForSession = async (sessionId, timeoutMs = 4000) => {
+        const deadline = Date.now() + timeoutMs
+        for (;;) {
+          if (sessionKnown(sessionId)) return true
+          if (Date.now() >= deadline) return false
+          // 60ms 一跳：宿主首帧之后才会拉列表，更密的轮询没有意义。
+          await new Promise((resolve) => { setTimeout(resolve, 60) })
+        }
+      }
+
+      /** 导航本身：会话还没进列表就先等它（冷启动）→ 归档会话先取消归档 → 打开会话。 */
       const navigate = async (sessionId) => {
+        // 已经认识这个会话时不要额外 await：页面开着点通知必须当拍就切，晚一个微任务
+        // 都可能被宿主自己的选择覆盖。
+        if (!sessionKnown(sessionId)) await waitForSession(sessionId)
         const archived = ctx.workspaces?.list?.getSnapshot?.()?.archivedSessionIds
         const isArchived = Array.isArray(archived) && archived.includes(sessionId)
         if (isArchived && typeof ctx.uiWorkspace?.unarchiveSession === 'function') {
@@ -309,14 +341,16 @@ export default function createNotification(require) {
             return false
           }
         }
-        await attempt()
-        await nextTask()
-        let retained = mainViewRetains(sessionId)
-        if (retained === false) {
-          // 第一次导航被别的东西盖掉了：再试一次（仍不生效才算失败）。
+        // 三次、退避 0/200/600ms：冷启动时宿主可能还在拉列表（第一次必然抛 unknown session），
+        // 或者主视图的选择被别的东西盖掉；三次都拿不到才判定失败。
+        const backoff = [0, 200, 600]
+        let retained
+        for (const wait of backoff) {
+          if (wait > 0) await new Promise((resolve) => { setTimeout(resolve, wait) })
           await attempt()
           await nextTask()
           retained = mainViewRetains(sessionId)
+          if (retained !== false) break
         }
         if (retained !== false) dismissBlockingModal()
         if (retained === false) {
@@ -582,15 +616,10 @@ export default function createNotification(require) {
           void Promise.resolve(openSession(sessionId)).catch((error) => warn('notification navigation failed', error))
         }
         // 提前注册：第一条通知往往比用户操作来得还早，等到发通知那一刻再注册就来不及接管页面。
+        // 没有 SW 的环境（不安全的源、隐私模式、老浏览器）这里返回 undefined，不影响下面的片段处理。
         void ensureNotificationServiceWorker()
-        const worker = typeof navigator === 'undefined' ? undefined : navigator.serviceWorker
-        if (worker === undefined || worker === null) return undefined
-        const onMessage = (event) => {
-          const data = event?.data
-          if (!data || data.type !== OPEN_MESSAGE) return
-          openFromNotification(data.sessionId)
-        }
-        worker.addEventListener('message', onMessage)
+        // 片段这一路不依赖 Service Worker：有的浏览器能开通知却拿不到 serviceWorker，
+        // 而「被新开的页面应该跳到对应会话」只跟地址栏有关。
         try {
           const match = /#dsh-toolkit-session=([^&]+)/.exec(window.location.hash)
           if (match) {
@@ -601,6 +630,14 @@ export default function createNotification(require) {
         } catch (error) {
           warn('could not read the launch session from the url', error)
         }
+        const worker = typeof navigator === 'undefined' ? undefined : navigator.serviceWorker
+        if (worker === undefined || worker === null) return undefined
+        const onMessage = (event) => {
+          const data = event?.data
+          if (!data || data.type !== OPEN_MESSAGE) return
+          openFromNotification(data.sessionId)
+        }
+        worker.addEventListener('message', onMessage)
         return () => worker.removeEventListener('message', onMessage)
       }, 'dsh-toolkit-notification:sw-clicks')
 

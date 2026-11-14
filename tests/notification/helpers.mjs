@@ -41,10 +41,13 @@ export function loadNotificationModule(name = 'notification-client') {
   return loadClientEntry('src/modules/notification/client/index.tsx', name)
 }
 
-/** 安装 jsdom 全局；返回 restore()。 */
-export function makeDom() {
+/**
+ * 安装 jsdom 全局；返回 restore()。
+ * @param {{url?: string}} [options] `url` 用来摆出「页面是被点通知新开出来的」那种带 `#…` 的地址。
+ */
+export function makeDom(options = {}) {
   const dom = new JSDOM('<!doctype html><html><head></head><body><div id="root"></div></body></html>', {
-    url: 'https://dsh.example.test',
+    url: options.url ?? 'https://dsh.example.test',
   })
   const saved = new Map()
   for (const [key, value] of Object.entries({
