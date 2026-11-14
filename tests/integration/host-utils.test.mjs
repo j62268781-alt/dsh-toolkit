@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
+import { dshHome } from '../../src/host/dsh-home.ts'
 import { readBody, sendJson } from '../../src/host/http.ts'
 import { sleep } from '../../src/host/time.ts'
 import { findOnPath } from '../../src/modules/mobile/host/device/path.ts'
@@ -153,6 +154,27 @@ async function bundleModule(contents, plugins = []) {
   })
   return import(`data:text/javascript;base64,${Buffer.from(output.outputFiles[0].text).toString('base64')}`)
 }
+
+test('dshHome is the one place that decides where $DSH_HOME points', () => {
+  // 共享解析器：DSH_HOME 非空即用（两端空白裁掉），否则退回 `~/.dsh`。
+  assert.equal(dshHome({ DSH_HOME: '/tmp/dsh-home' }, '/home/u'), '/tmp/dsh-home')
+  assert.equal(dshHome({ DSH_HOME: '  /tmp/spaced  ' }, '/home/u'), '/tmp/spaced')
+  assert.equal(dshHome({ DSH_HOME: '   ' }, '/home/u'), join('/home/u', '.dsh'))
+  assert.equal(dshHome({ DSH_HOME: '' }, '/home/u'), join('/home/u', '.dsh'))
+  assert.equal(dshHome({}, '/home/u'), join('/home/u', '.dsh'))
+  assert.equal(dshHome(null, '/home/u'), join('/home/u', '.dsh'))
+  // 默认参数读进程环境，并且**每次调用重新读**：测试与宿主都可能中途改它。
+  const previous = process.env.DSH_HOME
+  try {
+    process.env.DSH_HOME = '/tmp/live-dsh-home'
+    assert.equal(dshHome(), '/tmp/live-dsh-home')
+    delete process.env.DSH_HOME
+    assert.equal(dshHome(), join(homedir(), '.dsh'))
+  } finally {
+    if (previous === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = previous
+  }
+})
 
 test('Judgment request validation uses the shared finite JSON predicate', async () => {
   const { isJson, isJsonValue, validateRequest } = await bundleModule(`

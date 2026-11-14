@@ -1,7 +1,7 @@
 import { access, chmod, mkdir, mkdtemp, rename, stat } from 'node:fs/promises'
 import { constants } from 'node:fs'
-import { homedir } from 'node:os'
 import path from 'node:path'
+import { dshHome } from '../../../host/dsh-home.js'
 
 export const ELECTRON_VERSION = '43.3.0'
 
@@ -17,7 +17,7 @@ async function executable(file: string): Promise<boolean> {
 }
 
 export function runtimeDirectory(): string {
-  return path.join(process.env.DSH_HOME || path.join(homedir(), '.dsh'), 'toolkit', 'pet', 'electron', `${ELECTRON_VERSION}-${process.platform}-${process.arch}`)
+  return path.join(dshHome(), 'toolkit', 'pet', 'electron', `${ELECTRON_VERSION}-${process.platform}-${process.arch}`)
 }
 
 export interface ResolveElectronOptions {

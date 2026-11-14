@@ -58,7 +58,7 @@ export interface QuotaUsage {
     calls: number;
     inputTokens: number;
 }
-/** $DSH_HOME 优先，退回 `~/.dsh`。 */
+/** `$DSH_HOME` 优先，退回 `~/.dsh`（规则在 `host/dsh-home.js`，全仓一份）。 */
 export declare function defaultLedgerPath(): string;
 export interface QuotaReservation {
     /** Atomically convert the reserved call into a dispatch record. */

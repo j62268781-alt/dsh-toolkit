@@ -1,10 +1,10 @@
 import { readFile, mkdir, rename, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { sendJson } from '../../../host/http.js'
+import { dshHome } from '../../../host/dsh-home.js'
 import { registerAuthenticatedRoute } from '../../../host/routes.js'
 import { readSettings } from './config.js'
 import { createHelperBridge, attachEvents, parseAction, type HelperBridge } from './bridge.js'
@@ -41,7 +41,7 @@ function installFailed(result: InstallResult): result is { ok: false; reason: st
 
 /** 插件自己的数据目录：安装的宠物、已读记录、预览图缓存都在这下面。 */
 function petHome() {
-  return join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'toolkit', 'pet')
+  return join(dshHome(), 'toolkit', 'pet')
 }
 
 /** Petdex 安装目录：与内置形象物理隔离，卸载/损坏都不会碰到插件自带的四款。 */
@@ -51,7 +51,7 @@ function petsRoot() {
 
 // 「已经看过的会话」落盘：否则重启后半小时内已读的结果又会被当成「有新结果」弹出来。
 function seenFile() {
-  return join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'toolkit', 'pet', 'seen.json')
+  return join(petHome(), 'seen.json')
 }
 
 async function loadSeen() {

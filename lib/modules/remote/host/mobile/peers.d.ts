@@ -14,11 +14,11 @@
  *   · 只回身份字段（deviceId/name/platform/fingerprint/trustedAt），不回 publicKey。
  */
 /**
- * 与上游一致：DSH_HOME 优先，否则 ~/.dsh。
+ * 与上游一致：DSH_HOME 优先，否则 ~/.dsh（规则本身在 `host/dsh-home.js`，全仓一份）。
  *
- * 默认值用 `/` 手工拼接而不是 `join`：这个值会被写进面板、日志和跨端比较里，
- * Windows 的 `join` 会把它变成 `C:\Users\x\.dsh` 这种只在 Windows 成立的串。
- * 混用斜杠对 Node 的 fs 是合法的，所以盘符路径也一样能读。
+ * 这里额外把分隔符统一成正斜杠：这个值会被写进面板、日志和跨端比较里，Windows 的
+ * `join` 会把它变成 `C:\Users\x\.dsh` 这种只在 Windows 成立的串。混用斜杠对 Node 的
+ * fs 是合法的，所以盘符路径也一样能读。
  */
 export declare function dshHomePath(env?: NodeJS.ProcessEnv, home?: string): string;
 /** 服务器地址 → 上游的存储目录名（sha256(origin) 前 24 位十六进制）。 */

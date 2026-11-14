@@ -11,16 +11,15 @@
  */
 import { randomUUID } from 'node:crypto';
 import { appendFile, mkdir, open } from 'node:fs/promises';
-import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { dshHome } from '../../../../host/dsh-home.js';
 /** 配额窗口固定 1 小时（配置里只暴露"每小时多少次/多少 token"）。 */
 export const WINDOW_MS = 60 * 60 * 1000;
 /** 回读文件尾部这么多字节来找窗口内的记录。 */
 const TAIL_BYTES = 256 * 1024;
-/** $DSH_HOME 优先，退回 `~/.dsh`。 */
+/** `$DSH_HOME` 优先，退回 `~/.dsh`（规则在 `host/dsh-home.js`，全仓一份）。 */
 export function defaultLedgerPath() {
-    const home = process.env.DSH_HOME ?? join(homedir(), '.dsh');
-    return join(home, 'judgment-ledger.jsonl');
+    return join(dshHome(), 'judgment-ledger.jsonl');
 }
 export class Ledger {
     path;
