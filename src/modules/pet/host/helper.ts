@@ -8,6 +8,15 @@ import type { HelperBridge } from './bridge.js'
 /** 与 `spawn` 的三参数重载同形；测试用假实现替换它（见 tests/pet/host.helper.test.mjs）。 */
 type Launch = (command: string, args: readonly string[], options: SpawnOptions) => ChildProcess
 
+/**
+ * helper 进程入口的绝对路径，分隔符统一成 `/`。
+ *
+ * spawn 在 Windows 上同样接受 `/`；统一成一种形状，日志、测试断言和跨端排查就不用各自兼容。
+ */
+function runtimeEntry(): string {
+  return fileURLToPath(new URL('./runtime/main.cjs', import.meta.url)).replace(/\\/g, '/')
+}
+
 /** 客户端只看 `status` 决定画什么；`error` 是给人看的诊断文本，会原样进 /state。 */
 export interface HelperState {
   status: 'stopped' | 'starting' | 'running' | 'error'
@@ -84,7 +93,7 @@ export class HelperManager {
     let child: ChildProcess
     try {
       // binary 可能是 undefined（下载未启用或找不到）：spawn 会立刻抛错，由下面的 catch 转成 error 状态。
-      child = this.launch(binary as string, [fileURLToPath(new URL('./runtime/main.cjs', import.meta.url))], {
+      child = this.launch(binary as string, [runtimeEntry()], {
         cwd: tmpdir(), env: helperEnvironment(this.bridge.url, this.bridge.token), stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
       })
     } catch (error: any) { this.update({ status: 'error', error: error.message }); return }

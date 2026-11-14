@@ -93,12 +93,23 @@ function assetPath(state, rawUrl) {
     if (segments[1] !== 'motion') return null
     const motion = file.replace(/\.webp$/i, '')
     const clip = /^[a-z][a-zA-Z]{0,31}\.webp$/.test(file) ? clipFile(pet, motion) : null
-    return clip ? path.join(pet.assetDir, clip) : null
+    return clip ? assetJoin(pet.assetDir, clip) : null
   }
   // 只允许 png/webp、且必须与这只宠物登记的精灵表同名：路径不再由 URL 决定。
   if (!/^[a-z0-9][a-z0-9._-]{0,127}\.(?:png|webp)$/i.test(file)) return null
   if (file !== (pet.sheetFile || 'spritesheet.png')) return null
-  return path.join(pet.assetDir, file)
+  return assetJoin(pet.assetDir, file)
+}
+
+/**
+ * 拼资源路径并统一成 `/` 分隔。
+ *
+ * 这不是装饰：`pet-asset://` 是跨端协议，渲染端按 `/` 解析；而 Windows 的 `path.join`
+ * 会把分隔符换成 `\`，同一条 URL 在两个平台上给出两种串。Node 的 fs 接受 `/`，
+ * 所以这里连同真实盘符路径一起规范化，只在边界（isAbsolute 判断）保留平台语义。
+ */
+function assetJoin(dir, name) {
+  return path.join(dir, name).split(path.sep).join('/')
 }
 
 function validatedAction(value) {
