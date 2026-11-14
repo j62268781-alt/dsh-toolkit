@@ -154,22 +154,6 @@ function createHooksSection(ctx: any) {
     const history = showAllHistory ? snapshot.history : snapshot.history.slice(0, 8);
     const timeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: "medium" });
 
-    const stateLabel = (state: string) => {
-      switch (state) {
-        case "ok": return t("stateOk");
-        case "invalid": return t("stateInvalid");
-        case "unreadable": return t("stateUnreadable");
-        default: return t("stateMissing");
-      }
-    };
-
-    const fileLabel = (id: string, fallback: string) => {
-      if (id === "user") return t("fileUser");
-      if (id === "project") return t("fileProject");
-      if (id === "local") return t("fileLocal");
-      return fallback;
-    };
-
     const sourceLabel = (source: string) => {
       if (source === "project") return t("sourceProject");
       if (source === "local") return t("sourceLocal");
@@ -282,21 +266,6 @@ function createHooksSection(ctx: any) {
 
         {error !== "" ? <p className="sk-hooks__error">{t("error", { reason: error })}</p> : null}
         {loaded && !snapshot.enabled ? <p className="sk-hooks__notice">{t("disabled")}</p> : null}
-
-        <div className="sk-hooks__files">
-          {snapshot.files.map((file) => (
-            <div className="sk-hooks__file" key={file.id}>
-              <div className="sk-hooks__fileHead">
-                <span className="sk-hooks__fileName">{fileLabel(file.id, file.label)}</span>
-                <span className={`sk-hooks__state is-${file.state}`}>{stateLabel(file.state)}</span>
-              </div>
-              <button type="button" className="sk-hooks__path" title={file.path} onClick={() => copy(file.path)}>
-                {copiedPath === file.path ? t("copied") : file.path}
-              </button>
-              {file.error !== "" ? <p className="sk-hooks__hint">{file.error}</p> : null}
-            </div>
-          ))}
-        </div>
 
         {snapshot.issues.length > 0 ? (
           <div className="sk-hooks__issues">
