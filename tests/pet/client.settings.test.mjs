@@ -37,6 +37,7 @@ function network() {
 function context() {
   let snapshot = { value: { pet: { ...DEFAULT_SETTINGS }, notification: { enabled: true } } }
   let reject = false
+  let gate = null
   const subscribers = new Set()
   const effects = []
   const cleanups = []
@@ -49,6 +50,7 @@ function context() {
   const form = { getSnapshot: () => snapshot, subscribe(listener) { subscribers.add(listener); return () => subscribers.delete(listener) }, async mutate(operations) {
     writes.push(operations)
     if (reject) return false
+    if (gate !== null) await gate.promise
     const pet = { ...snapshot.value.pet }
     for (const operation of operations) pet[operation.path[1]] = operation.value
     snapshot = { value: { ...snapshot.value, pet } }
@@ -61,8 +63,15 @@ function context() {
       sessionList = { byId: id === undefined ? {} : { [id]: { id, retainedBy: { mainView: 1 } } } }
       for (const listener of [...sessionSubscribers]) listener()
     },
-    reject(value) { reject = value }, dispose() { for (const off of cleanups.reverse()) off() } }
-}
+    reject(value) { reject = value },
+    /** 让写入挂起，用于观察「写这条配置时其它控件是否还可用」；返回放行函数。 */
+    hold() {
+      let release
+      const promise = new Promise((resolve) => { release = resolve })
+      gate = { promise }
+      return () => { gate = null; release() }
+    },
+    dispose() { for (const off of cleanups.reverse()) off() } }}
 
 test('authenticated SSE baselines navigation, deduplicates sequence, and cancels reader on disposal', async (t) => {
   const net = network()
@@ -371,4 +380,37 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   assert.equal(document.querySelectorAll('.pet-tile').length, 1)
   const options = [...document.querySelectorAll('select option')].map((option) => option.textContent)
   assert.ok(options.includes('Qoduck'))
+})
+
+test('writing one setting only disables that control instead of greying out the whole panel', async (t) => {
+  const dom = new JSDOM('<html><head></head><body><div id="root"></div></body></html>', { url: 'https://dsh.test' })
+  const saved = new Map()
+  for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, IS_REACT_ACT_ENVIRONMENT: true })) { saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key)); Object.defineProperty(globalThis, key, { configurable: true, writable: true, value }) }
+  const net = network()
+  const runtime = context()
+  const module = await clientModule()
+  const HostSwitch = ({ checked, disabled, label, onChange }) => React.createElement('button', { type: 'button', className: 'host-switch', role: 'switch', 'aria-checked': checked, 'aria-label': label, disabled, onClick: () => onChange(!checked) })
+  const client = module.default((name) => name === 'react' ? React : { Switch: HostSwitch })
+  client.apply(runtime.ctx)
+  const { Component } = runtime.sections[0]
+  const root = createRoot(document.getElementById('root'))
+  t.after(async () => { await act(async () => root.unmount()); runtime.dispose(); net.restore(); for (const [key, value] of saved) { if (value) Object.defineProperty(globalThis, key, value); else delete globalThis[key] }; dom.window.close() })
+  await act(async () => { root.render(React.createElement(Component)); await flush() })
+  const petToggle = document.querySelector('[aria-label="Show floating pet"]')
+  const islandToggle = document.querySelector('[aria-label="Show island"]')
+  const sliders = [...document.querySelectorAll('input[type=range]')]
+  const browse = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Browse library')
+  assert.ok(petToggle && islandToggle && sliders.length === 4 && browse)
+  // 让这次的配置写入挂起，检查「写进行中」那一帧的可用性。
+  const release = runtime.hold()
+  await act(async () => { petToggle.click(); await flush() })
+  assert.deepEqual(runtime.writes.at(-1), [{ op: 'set', path: ['pet', 'petEnabled'], value: true }])
+  assert.equal(petToggle.disabled, true, 'the control being written is disabled')
+  assert.equal(islandToggle.disabled, false, 'the other switches stay usable during a write')
+  assert.equal(sliders.every((slider) => slider.disabled === false), true, 'the sliders stay usable during a write')
+  assert.equal(browse.disabled, false, 'the library button stays usable during a write')
+  release()
+  await act(async () => { await flush() })
+  assert.equal(petToggle.getAttribute('aria-checked'), 'true', 'the write still lands once it resolves')
+  assert.equal(petToggle.disabled, false, 'the control comes back after the write settles')
 })
