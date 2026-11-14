@@ -218,7 +218,7 @@ for (const surface of SURFACES) ctx.effect(() => surface.install(ctx, host), `ds
 | `http.ts` | `readBody`（按**字节**限流）、`readCharBody`（按**解码字符**限流，超限静默 destroy）、`sendJson` |
 | `config.ts` | 根 Config 聚合（十个模块的 `Config` 拼成宿主配置表单） |
 | `serial.ts` / `singleflight.ts` / `operation.ts` | 队列、去重、超时与取消 |
-| `process.ts` / `executable.ts` | `runProcess`（deadline、输出上限）、查找可执行文件 |
+| `process.ts` / `executable.ts` | `runProcess`（deadline、输出上限）；`findExecutableOnPath`（只认原生映像）/ `findCommandOnPath`（Windows 连 `.cmd`/`.bat` 一起认）/ `resolveSpawnTarget`（把 shim 翻成 `cmd.exe /d /s /c`） |
 | `plugins.ts` / `migration.ts` / `time.ts` | 插件配置助手、补丁迁移、时钟 |
 
 **`src/client/`**
