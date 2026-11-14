@@ -1,6 +1,6 @@
 .boot-page { box-sizing: border-box; width: 100%; max-width: 960px; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }
-.boot-head h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }
-.boot-head p { margin: 4px 0 0; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; }
+.boot-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.boot-head p { margin: 12px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 13px; line-height: 20px; }
 .boot-section,.boot-preview-section { min-width: 0; }
 .boot-section-title { margin: 0 0 10px; font-size: 14px; line-height: 20px; font-weight: 500; }
 .boot-section-heading,.boot-preview-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }

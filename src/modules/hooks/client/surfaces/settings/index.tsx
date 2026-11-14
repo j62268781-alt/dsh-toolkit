@@ -144,6 +144,12 @@ function createHooksSection(ctx: any) {
 
     const groups = groupHooks(snapshot, HOOK_EVENTS);
     const total = snapshot.hooks.length;
+    // 五个已接线的事件永远各占一行（没配也列出来，方便照着填配置）；其余事件只在真配了才出现。
+    const rows = HOOK_EVENTS.filter((event) => event.supported).map((event) => ({
+      event,
+      hooks: groups.find((group) => group.event.id === event.id)?.hooks ?? [],
+    }));
+    const otherRows = groups.filter((group) => !group.event.supported);
     const userFile = snapshot.files.find((file) => file.id === "user");
     const history = showAllHistory ? snapshot.history : snapshot.history.slice(0, 8);
     const timeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: "medium" });
@@ -220,24 +226,31 @@ function createHooksSection(ctx: any) {
       );
     };
 
-    const renderEvent = (event: HookEventDefinition, hooks: HookRow[]) => {
-      const open = expanded[event.id] === true;
+    const renderRow = (event: HookEventDefinition, hooks: HookRow[], key: string) => {
+      const open = expanded[key] === true;
       const named = t(`event_${event.id}`);
       const name = named === `event_${event.id}` ? event.label : named;
       return (
-        <section className="sk-hooks__event" key={event.id}>
-          <button type="button" className="sk-hooks__eventHead" onClick={() => toggle(event.id)} aria-expanded={open}>
+        <div className="sk-hooks__row" key={key}>
+          <button type="button" className="sk-hooks__rowHead" onClick={() => toggle(key)} aria-expanded={open}>
+            <span className="sk-hooks__rowText">
+              <span className="sk-hooks__rowTitle">
+                {name}
+                <span className="sk-hooks__count">{hooks.length}</span>
+              </span>
+              {event.hint !== "" ? <span className="sk-hooks__rowHint">{event.hint}</span> : null}
+            </span>
             <span className={`sk-hooks__chevron ${open ? "is-open" : ""}`} aria-hidden="true" />
-            <span className="sk-hooks__eventName">{name}</span>
-            <span className="sk-hooks__eventCount">{hooks.length}</span>
           </button>
           {open ? (
-            <div className="sk-hooks__eventBody">
-              <p className="sk-hooks__eventHint">{event.hint}</p>
-              <ul className="sk-hooks__hooks">{hooks.map(renderHook)}</ul>
+            <div className="sk-hooks__rowBody">
+              {hooks.length === 0
+                ? <p className="sk-hooks__hint">{t("eventEmpty")}</p>
+                : <ul className="sk-hooks__hooks">{hooks.map(renderHook)}</ul>}
+              {!event.supported ? <p className="sk-hooks__hint">{t("unsupportedHint")}</p> : null}
             </div>
           ) : null}
-        </section>
+        </div>
       );
     };
 
@@ -300,7 +313,15 @@ function createHooksSection(ctx: any) {
         ) : null}
 
         <h3 className="sk-hooks__sectionTitle">{t("eventsTitle")} · {total}</h3>
-        {groups.length === 0 ? (
+        <div className="sk-hooks__card">
+          {rows.map((row) => renderRow(row.event, row.hooks, row.event.id))}
+        </div>
+        {otherRows.length > 0 ? (
+          <div className="sk-hooks__card">
+            {otherRows.map((row) => renderRow(row.event, row.hooks, row.event.id))}
+          </div>
+        ) : null}
+        {total === 0 ? (
           <div className="sk-hooks__empty">
             <p className="sk-hooks__emptyTitle">{t("emptyTitle")}</p>
             <p className="sk-hooks__hint">{t("emptyHint")}</p>
@@ -311,9 +332,7 @@ function createHooksSection(ctx: any) {
               </button>
             ) : null}
           </div>
-        ) : (
-          <div className="sk-hooks__events">{groups.map((group) => renderEvent(group.event, group.hooks))}</div>
-        )}
+        ) : null}
 
         <h3 className="sk-hooks__sectionTitle">{t("historyTitle")}</h3>
         {snapshot.history.length === 0 ? (

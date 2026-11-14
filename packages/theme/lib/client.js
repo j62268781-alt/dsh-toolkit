@@ -1492,7 +1492,7 @@ window.__ModuleLoader__.load({
       max-width: 52ch;
       font-size: 13px;
       line-height: 20px;
-      color: var(--dsw-alias-label-secondary);
+      color: var(--dsw-alias-label-tertiary);
     }
 
     .sk-theme-badge {

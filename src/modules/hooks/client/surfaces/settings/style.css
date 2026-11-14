@@ -2,7 +2,7 @@
   max-width: 760px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   color: var(--dsw-alias-label-primary);
 }
 
@@ -17,18 +17,18 @@
   min-width: 0;
 }
 
+/* 标题排版对齐内置插件页：18/600、副标题 13px 三级色、间距 12px。 */
 .sk-hooks__title {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
-  line-height: 22px;
 }
 
 .sk-hooks__subtitle {
-  margin: 4px 0 0;
+  margin: 12px 0 0;
   font-size: 13px;
   line-height: 20px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--dsw-alias-label-tertiary);
 }
 
 .sk-hooks__error,
@@ -159,21 +159,24 @@
   font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
 }
 
-.sk-hooks__events {
-  display: flex;
-  flex-direction: column;
+/* 事件卡组：照桌面宠物面板的 .pet-card（0.5px 描边 + 12px 圆角 + 行间分隔线）。 */
+.sk-hooks__card {
+  box-sizing: border-box;
+  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
+  border-radius: 12px;
+  padding: 0 16px;
 }
 
-.sk-hooks__event {
+.sk-hooks__row + .sk-hooks__row {
   border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
 }
 
-.sk-hooks__eventHead {
+.sk-hooks__rowHead {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0;
+  gap: 12px;
+  padding: 16px 0;
   border: 0;
   background: none;
   font: inherit;
@@ -182,15 +185,57 @@
   cursor: pointer;
 }
 
-.sk-hooks__eventHead:focus-visible {
+.sk-hooks__rowHead:focus-visible {
   outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: 1px;
+}
+
+.sk-hooks__rowText {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sk-hooks__rowTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.sk-hooks__count {
+  flex: none;
+  font-size: 12px;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--dsw-alias-label-secondary);
+  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.12));
+}
+
+.sk-hooks__rowHint {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+  overflow-wrap: anywhere;
+}
+
+.sk-hooks__rowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 0 16px;
 }
 
 .sk-hooks__chevron {
   width: 0;
   height: 0;
   flex: none;
+  color: var(--dsw-alias-label-tertiary);
   border-left: 4px solid currentColor;
   border-top: 4px solid transparent;
   border-bottom: 4px solid transparent;
@@ -199,28 +244,6 @@
 
 .sk-hooks__chevron.is-open {
   transform: rotate(90deg);
-}
-
-.sk-hooks__eventName {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.sk-hooks__eventCount {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.sk-hooks__eventBody {
-  padding: 0 0 10px 16px;
-}
-
-.sk-hooks__eventHint {
-  margin: 0 0 8px;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
 }
 
 .sk-hooks__hooks {

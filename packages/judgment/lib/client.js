@@ -646,7 +646,7 @@ window.__ModuleLoader__.load({
     .ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}
     /* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */
     .ab-pageTitle,.jdg-pageTitle,.smp-pageTitle,.ntf-pageTitle,.sk-arch__title{color:var(--dsw-alias-label-primary);margin:0;font-size:18px;font-weight:600}
-    .ab-pageIntro,.jdg-pageIntro,.smp-pageIntro,.ntf-pageIntro,.sk-arch__subtitle{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:13px}
+    .ab-pageIntro,.jdg-pageIntro,.smp-pageIntro,.ntf-pageIntro,.sk-arch__subtitle{color:var(--dsw-alias-label-tertiary);margin:12px 0 0;font-size:13px}
     .ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}
     .ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
     .ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}

@@ -862,7 +862,7 @@ window.__ModuleLoader__.load({
     // src/modules/pet/client/style.css
     var style_default = `.pet-page { box-sizing: border-box; color: var(--dsw-alias-label-primary); font-size: 13px; padding-bottom: 24px; max-width: 960px; }
     .pet-pageTitle { font-size: 18px; font-weight: 600; margin: 0; }
-    .pet-pageIntro { font-size: 13px; color: var(--dsw-alias-label-secondary); margin: 12px 0 24px; line-height: 1.5; }
+    .pet-pageIntro { font-size: 13px; color: var(--dsw-alias-label-tertiary); margin: 12px 0 24px; line-height: 1.5; }
     .pet-section { margin-top: 24px; }
     .pet-section h3 { font-size: 14px; font-weight: 500; margin: 0 0 10px; }
     .pet-sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
