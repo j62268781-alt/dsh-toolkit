@@ -1,18 +1,7 @@
-/* Notification cards use the same title/description metrics as General settings.
- * 页头（标题 + 副标题）直接复用 src/client/styles/settings.css 的 .ntf-pageTitle /
- * .ntf-pageIntro（index.jsx 用 settingsStyles('ntf') 拼在前），这里不再重复声明。 */
+/* 页头 / 卡片 / 行由 src/client/ui/components/settings-parts 统一提供（.sk-ui-*），
+ * 这里只留通知自己的控件：开关、下拉、按钮、声音试听。 */
 .ntf-page { box-sizing: border-box; width: 100%; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }
 .ntf-page > * { width: 100%; max-width: 960px; }
-.ntf-pageHead { box-sizing: border-box; display: flex; flex-direction: column; }
-.ntf-section { min-width: 0; }
-.ntf-sectionTitle { margin: 0 0 10px; color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 500; line-height: 20px; }
-.ntf-card { border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; padding: 0 16px; min-width: 0; }
-.ntf-row { box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 16px 0; border-bottom: 0.5px solid var(--dsw-alias-border-l2); }
-.ntf-row:last-child { border-bottom: none; }
-.ntf-rowText { display: flex; flex-direction: column; flex: 1 1 auto; gap: 4px; min-width: 0; }
-.ntf-title { color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 400; line-height: 20px; overflow-wrap: anywhere; }
-.ntf-desc { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
-.ntf-rowControl { flex: none; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 55%; }
 .ntf-selectSound { width: 156px; }
 .ntf-button:focus-visible, .ntf-switch:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }
 .ntf-range:disabled, .ntf-switch:disabled, .ntf-button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -29,8 +18,6 @@
 .ntf-error, .ntf-notice, .ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
 .ntf-error { color: var(--dsw-alias-state-error-primary); }
 @media (max-width: 720px) {
-  .ntf-row { gap: 12px; }
-  .ntf-rowControl { max-width: 60%; }
   .ntf-selectSound { width: 120px; }
   .ntf-range { width: 80px; }
 }

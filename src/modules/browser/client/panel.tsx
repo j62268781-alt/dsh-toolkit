@@ -18,6 +18,7 @@ import { SESSION_PATTERN, arrayOf, objectOf, parseDomains, snapshotOf, statusOf 
 import panelCss from './styles.css'
 import { settingsStyles } from '../../../client/styles/settings.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
+import { PageHeader } from '../../../client/ui/components/settings-parts/index.jsx'
 
 const CSS = `${settingsStyles('ab')}\n${panelCss}`
 
@@ -203,13 +204,10 @@ export function Panel(props) {
     <div className="ab-page">
       <style>{CSS}</style>
 
-      <header className="ab-pageHead">
-        <h2 className="ab-pageTitle">浏览器</h2>
-        <p className="ab-pageIntro">
-          agent-browser（Rust + CDP）的窄工具面：快照、一个动作、读取、会话；可选一个由
-          ctx.judgment 判断的目标循环。工具只在开启时进模型上下文，关掉即零成本。
-        </p>
-      </header>
+      <PageHeader
+        title="浏览器"
+        subtitle="agent-browser（Rust + CDP）的窄工具面：快照、一个动作、读取、会话；可选一个由 ctx.judgment 判断的目标循环。工具只在开启时进模型上下文，关掉即零成本。"
+      />
 
       {status === 'loading' ? <p className="ab-note">正在读取设置…</p> : null}
       {writable ? null : <p className="ab-note">当前设置文档不可写：这个 profile 里该插件的配置被更高层覆盖了。</p>}

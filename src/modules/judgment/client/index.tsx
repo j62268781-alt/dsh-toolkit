@@ -11,6 +11,7 @@ import { ENTRY_CANDIDATES } from './config.js'
 import { judgmentContribution } from './judgment-remote.js'
 import { primitives } from './primitives.js'
 import { registerSettingsIcon } from '../../../client/ui/components/settings-icon/index.jsx'
+import { installSettingsParts } from '../../../client/ui/components/settings-parts/install.js'
 import { Panel } from './panel.jsx'
 
 /** 浏览器侧需要的服务：槽位 + 配置表单 + 凭据读写面（remote.credentials）。 */
@@ -55,5 +56,7 @@ export async function apply(ctx) {
     // primitives 见 client/primitives.js：走宿主模块表的同步 require。
     inject: () => ({ form, entryId, credentials, primitives, judgment }),
   }, Panel))
+  // 页头/卡片/行是九个设置面板共用的骨架，共享样式在 client 根只插一次。
+  ctx.effect(() => installSettingsParts(), 'dsh-toolkit-judgment:settings-parts')
   ctx.effect(() => registerSettingsIcon(ctx, 'judgment', 'scale'), 'dsh-toolkit-judgment:settings-icon')
 }

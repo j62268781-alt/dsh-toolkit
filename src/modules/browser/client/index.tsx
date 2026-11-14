@@ -11,6 +11,7 @@ import { findScopedForm } from '../../../client/config.js'
 import { ENTRY_CANDIDATES } from './config.js'
 import { primitives } from './primitives.js'
 import { registerSettingsIcon } from '../../../client/ui/components/settings-icon/index.jsx'
+import { installSettingsParts } from '../../../client/ui/components/settings-parts/install.js'
 import { Panel } from './panel.jsx'
 
 /** 浏览器侧需要的服务：槽位 + 配置表单 + remote（自检走它）。 */
@@ -43,5 +44,7 @@ export async function apply(ctx) {
     label: () => '浏览器',
     inject: () => ({ form, entryId, primitives, browser }),
   }, Panel))
+  // 页头/卡片/行是九个设置面板共用的骨架，共享样式在 client 根只插一次。
+  ctx.effect(() => installSettingsParts(), 'dsh-toolkit-browser:settings-parts')
   ctx.effect(() => registerSettingsIcon(ctx, 'browser', 'globe'), 'dsh-toolkit-browser:settings-icon')
 }

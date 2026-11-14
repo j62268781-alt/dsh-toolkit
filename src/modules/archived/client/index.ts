@@ -2,6 +2,7 @@ import { composeStyles, installStylesheet } from "../../../client/ui/stylesheet.
 import { settingsStyles } from "../../../client/styles/settings.js";
 import { installDictionary } from "../../../client/ui/locale.js";
 import { registerSettingsIcon } from "../../../client/ui/components/settings-icon/index.jsx";
+import { installSettingsParts } from "../../../client/ui/components/settings-parts/install.js";
 import { ARCH_COPY, ARCH_NS } from "./locale.js";
 import { createRemoval } from "./state/removal.js";
 import { createArchiveConfirm } from "./state/archive-confirm.js";
@@ -28,6 +29,8 @@ export function apply(ctx) {
     "dsh-toolkit-archived",
   ), "dsh-toolkit-archived:stylesheet");
 
+  // 页头/卡片/行是九个设置面板共用的骨架，共享样式在 client 根只插一次。
+  ctx.effect(() => installSettingsParts(), "dsh-toolkit-archived:settings-parts");
   installDictionary(ctx, ARCH_NS, ARCH_COPY);
   ctx.effect(() => installHiddenRows(host.removal), "dsh-toolkit-archived:hidden-rows");
   for (const surface of SURFACES) {

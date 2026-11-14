@@ -37,6 +37,7 @@ import { createRecentStore } from './recent.js'
 import { OPEN_MESSAGE, ensureNotificationServiceWorker } from './service-worker.js'
 import { createNotificationPanel } from './panel.jsx'
 import { registerSettingsIcon } from '../../../client/ui/components/settings-icon/index.jsx'
+import { installSettingsParts } from '../../../client/ui/components/settings-parts/install.js'
 
 /** 宿主 locale 的语言提示（拿不到就用运行时默认 locale）。 */
 function localeHint(ctx) {
@@ -529,6 +530,9 @@ export default function createNotification(require) {
 
       // 样式挂在全局而不是设置页里：`.ntf-*` 同时服务于设置页与（此前的）浮层元素，
       // 而设置页在降级宿主里可能根本不挂载。
+      // 页头 / 卡片 / 行是九个面板共用的骨架，样式在 client 根只插一次（见 settings-parts/install.ts）。
+      install(() => installSettingsParts(), 'dsh-toolkit-notification:settings-parts')
+
       install(() => {
         if (typeof document === 'undefined') return () => {}
         return installStylesheet(`${settingsStyles('ntf')}\n${css}`, 'dsh-toolkit-notification')

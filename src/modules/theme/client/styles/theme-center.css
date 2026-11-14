@@ -8,30 +8,6 @@
   color: var(--dsw-alias-label-primary);
 }
 
-.sk-theme-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.sk-theme-head__copy { min-width: 0; }
-
-.sk-theme-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 26px;
-  color: var(--dsw-alias-label-primary);
-}
-
-.sk-theme-subtitle {
-  margin: 12px 0 0;
-  max-width: 52ch;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--dsw-alias-label-tertiary);
-}
 
 .sk-theme-badge {
   flex: none;
@@ -363,37 +339,10 @@
 }
 
 /* Grid ------------------------------------------------------------------- */
+/* 分组标题、宫格骨架由 settings-parts 的 CardSection(bare) + OptionGrid 提供，
+ * 这里只剩外观页自己的卡片艺术（两种颜色模式的比例与下面 .sk-theme-card 本体）。 */
 
-.sk-theme-grid-section { display: flex; flex-direction: column; gap: 12px; }
-
-.sk-theme-grid-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.sk-theme-grid-head h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 20px;
-  color: var(--dsw-alias-label-primary);
-}
-
-.sk-theme-grid-head span {
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.sk-theme-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.sk-theme-grid--modes .sk-theme-card__art { aspect-ratio: 2.4; }
+.sk-theme-modes .sk-theme-card__art { aspect-ratio: 2.4; }
 
 .sk-theme-card {
   display: flex;
@@ -482,8 +431,6 @@
 .sk-theme-card__art[data-preview-palette="native"] { background: var(--dsw-alias-bg-base); }
 
 @media (max-width: 760px) {
-  .sk-theme-grid { gap: 10px; }
-  .sk-theme-grid-head { align-items: flex-start; flex-direction: column; gap: 4px; }
   .sk-theme-stage { padding: 10px; }
   .sk-theme-preview-rail { width: 76px; padding: 16px 8px; }
   .sk-theme-preview-hero { padding: 24px 14px; }

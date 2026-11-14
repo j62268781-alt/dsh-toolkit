@@ -1,6 +1,7 @@
 import React from "react";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
+import { PageHeader } from "../../../../../client/ui/components/settings-parts/index.jsx";
 import { useStore } from "../../../../../client/ui/store.js";
 import { ARCH_NS } from "../../locale.js";
 import { readArchived } from "../../model.js";

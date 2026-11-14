@@ -59,9 +59,9 @@ test('设置页画出了页头、所有行（标题 + 子标题）与两行开�
     browser: undefined,
   }))
 
-  // 页头：18px 标题 + 13px 副标题
-  assert.match(html, /ab-pageTitle[^>]*>浏览器</)
-  assert.match(html, /ab-pageIntro/)
+  // 页头：18px 标题 + 13px 副标题（页头骨架由公共 settings-parts 提供）
+  assert.match(html, /sk-ui-pageTitle[^>]*>浏览器</)
+  assert.match(html, /sk-ui-pageIntro/)
   // 两行开关：标题 + 子标题都在
   assert.match(html, /浏览器功能/)
   assert.match(html, /关闭后不注册任何工具/)

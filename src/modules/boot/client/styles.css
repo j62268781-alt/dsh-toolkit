@@ -1,15 +1,10 @@
 .boot-page { box-sizing: border-box; width: 100%; max-width: 960px; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }
-.boot-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
-.boot-head p { margin: 12px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 13px; line-height: 20px; }
-.boot-section,.boot-preview-section { min-width: 0; }
-.boot-section-title { margin: 0 0 10px; font-size: 14px; line-height: 20px; font-weight: 500; }
-.boot-section-heading,.boot-preview-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.boot-section-heading .boot-section-title { margin: 0; }
+.boot-preview-section { min-width: 0; }
+.boot-preview-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .boot-preview-title h3 { margin: 0; font-size: 14px; line-height: 20px; font-weight: 500; }
 .boot-preview-title h3 span { color: var(--dsw-alias-label-secondary); font-size: 12px; font-weight: 400; }
 .boot-preview { display: block; box-sizing: border-box; width: 100%; height: clamp(240px, 30vw, 340px); border: .5px solid var(--dsw-alias-border-l2); border-radius: 16px; background: var(--dsw-alias-bg-layer-1); }
 .boot-preview-caption { margin-top: 9px !important; }
-.boot-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .boot-mode { box-sizing: border-box; min-width: 0; padding: 5px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; transition: border-color 140ms ease, background 140ms ease; }
 .boot-mode:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
 .boot-mode[aria-pressed=true] { border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); }
@@ -26,7 +21,6 @@
 .boot-mode-art--water::after { content: ''; position: absolute; inset: 60% -15% auto; height: 64px; border: 1px solid #dcfaff66; border-radius: 50%; box-shadow: 0 8px 0 3px #dcfaff22; }
 .boot-mode-art--abyss { color: #d9fcff; background: radial-gradient(ellipse at 50% 48%, #164c6d, #061b32 78%); }
 .boot-mode-art--abyss img { filter: drop-shadow(0 0 12px #73deff55); }
-.boot-controls { min-width: 0; padding: 0 16px; border: .5px solid var(--dsw-alias-border-l2); border-radius: 12px; }
 .boot-row { box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 72px; padding: 16px 0; border-bottom: .5px solid var(--dsw-alias-border-l2); }
 .boot-row:last-child { border-bottom: 0; }
 .boot-row-text { min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 20px; }
@@ -51,6 +45,6 @@
 .boot-error { color: var(--dsw-alias-state-error-primary, #b42318); }
 .boot-ok { color: var(--dsw-alias-state-success-primary, #11745f); }
 .boot-feedback:empty { display: none; }
-@media (max-width: 620px) { .boot-options { gap: 8px; } .boot-mode-art { height: 82px; } .boot-mode-copy { padding: 8px 3px; } .boot-mode-title { align-items: flex-start; flex-direction: column; } .boot-mode-selected { font-size: 9px; } .boot-mode small { font-size: 10px; } .boot-row { gap: 12px; } .boot-preview { height: 240px; } }
-@media (max-width: 420px) { .boot-options { grid-template-columns: 1fr; } .boot-mode { display: flex; align-items: center; gap: 8px; } .boot-mode-art { flex: none; width: 96px; height: 72px; } .boot-mode-title { flex-direction: row; gap: 8px; } .boot-mode-copy { flex: 1; } }
+@media (max-width: 620px) { .boot-mode-art { height: 82px; } .boot-mode-copy { padding: 8px 3px; } .boot-mode-title { align-items: flex-start; flex-direction: column; } .boot-mode-selected { font-size: 9px; } .boot-mode small { font-size: 10px; } .boot-row { gap: 12px; } .boot-preview { height: 240px; } }
+@media (max-width: 420px) { .boot-mode { display: flex; align-items: center; gap: 8px; } .boot-mode-art { flex: none; width: 96px; height: 72px; } .boot-mode-title { flex-direction: row; gap: 8px; } .boot-mode-copy { flex: 1; } }
 @media (prefers-reduced-motion: reduce) { .boot-mode,.boot-switch > span { transition: none; } }

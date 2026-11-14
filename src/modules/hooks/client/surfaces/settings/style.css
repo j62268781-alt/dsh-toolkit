@@ -6,30 +6,8 @@
   color: var(--dsw-alias-label-primary);
 }
 
-.sk-hooks__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
+/* 页头由 src/client/ui/components/settings-parts 提供（.sk-ui-pageHead*）。 */
 
-.sk-hooks__headText {
-  min-width: 0;
-}
-
-/* 标题排版对齐内置插件页：18/600、副标题 13px 三级色、间距 12px。 */
-.sk-hooks__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.sk-hooks__subtitle {
-  margin: 12px 0 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--dsw-alias-label-tertiary);
-}
 
 .sk-hooks__error,
 .sk-hooks__notice {

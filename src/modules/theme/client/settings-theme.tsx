@@ -5,6 +5,7 @@ import { DSH_DESKTOP_LOGO } from '../../../client/ui/components/dsh-logo/index.j
 import { HERO_FISH_PATH, HERO_ICONS, SEND_PATH } from './hero-art.js'
 import { createPaletteScene, readPalette } from './palette.js'
 import { isCodexShell } from './platform.js'
+import { CardSection, OptionGrid, PageHeader } from '../../../client/ui/components/settings-parts/index.jsx'
 
 const MODE_CARDS = [
   { id: 'light', label: '浅色', hint: '明亮界面' },
@@ -231,24 +232,18 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
 
   return (
     <section className="sk-theme-page" aria-label="外观">
-      <header className="sk-theme-head">
-        <div className="sk-theme-head__copy">
-          <h2 className="sk-theme-title">外观</h2>
-          <p className="sk-theme-subtitle">分别选择界面明暗与主题风格，搭配你喜欢的外观。</p>
-        </div>
-        <span className="sk-theme-badge">实时预览</span>
-      </header>
+      <PageHeader
+        title="外观"
+        subtitle="分别选择界面明暗与主题风格，搭配你喜欢的外观。"
+        actions={<span className="sk-theme-badge">实时预览</span>}
+      />
 
       <div className="sk-theme-stage" aria-label="主题实时预览">
         <PreviewWindow palette={palette} colorScheme={colorScheme} />
       </div>
 
-      <div className="sk-theme-grid-section">
-        <div className="sk-theme-grid-head">
-          <h3>颜色模式</h3>
-          <span>控制界面明暗</span>
-        </div>
-        <div className="sk-theme-grid sk-theme-grid--modes" role="radiogroup" aria-label="颜色模式">
+      <CardSection bare title="颜色模式" hint="控制界面明暗">
+        <OptionGrid columns={2} className="sk-theme-modes" role="radiogroup" aria-label="颜色模式">
           {MODE_CARDS.map((card) => (
             <ThemeCard
               key={card.id}
@@ -261,15 +256,11 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
               <span className="sk-theme-mode-art" data-mode={card.id} data-resolved-mode={colorScheme} />
             </ThemeCard>
           ))}
-        </div>
-      </div>
+        </OptionGrid>
+      </CardSection>
 
-      <div className="sk-theme-grid-section">
-        <div className="sk-theme-grid-head">
-          <h3>主题风格</h3>
-          <span>保留所选颜色模式</span>
-        </div>
-        <div className="sk-theme-grid" role="radiogroup" aria-label="主题风格">
+      <CardSection bare title="主题风格" hint="保留所选颜色模式">
+        <OptionGrid columns={4} className="sk-theme-palettes" role="radiogroup" aria-label="主题风格">
           {PALETTE_CARDS.map((card) => (
             <ThemeCard
               key={card.id}
@@ -286,8 +277,8 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
                 : <SceneBox palette={card.id} compact />}
             </ThemeCard>
           ))}
-        </div>
-      </div>
+        </OptionGrid>
+      </CardSection>
 
       {palette === 'codex' && !isCodexShell() ? (
         <p className="sk-theme-note" role="note">

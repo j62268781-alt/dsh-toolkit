@@ -10,6 +10,8 @@ import { settingsStyles } from '../../../client/styles/settings.js'
 import { DSH_DESKTOP_LOGO } from '../../../client/ui/components/dsh-logo/index.js'
 import { registerSettingsIcon } from '../../../client/ui/components/settings-icon/index.jsx'
 import panelStyles from './styles.css'
+import { CardSection, OptionGrid, PageHeader } from '../../../client/ui/components/settings-parts/index.jsx'
+import { installSettingsParts } from '../../../client/ui/components/settings-parts/install.js'
 
 export const inject = ['slots', 'configForms']
 // 面板样式 = 跨面板共用的设置页规则（按 `boot-` 前缀裁剪）+ 本模块自己的规则。
@@ -39,9 +41,6 @@ function ModeArt({ mode }) {
   </span>
 }
 
-function Group({ title, children }) {
-  return <section className="boot-section" aria-label={title}><h3 className="boot-section-title">{title}</h3><div className="boot-controls">{children}</div></section>
-}
 
 function Toggle({ label, checked, disabled, onChange }) {
   return <button type="button" className="boot-switch" role="switch" aria-label={label} aria-checked={checked} disabled={disabled} onClick={() => onChange(!checked)}><span className="boot-switch-thumb" aria-hidden="true" /></button>
@@ -110,26 +109,25 @@ export function BootPanel({ form }) {
   }
 
   return <main className="boot-page">
-    <header className="boot-head"><h2>启动动画</h2><p>让每一次启程，都有自己的仪式感。</p></header>
+    <PageHeader title="启动动画" subtitle="让每一次启程，都有自己的仪式感。" />
     {!writable ? <p className="boot-note" role="status">当前配置不可写，此页只读。</p> : null}
     <section className="boot-preview-section" aria-label="动画预览">
       <div className="boot-preview-title"><h3>实时预览 <span>· {mode.name}</span></h3><button type="button" className="boot-button" onClick={() => setReplay((value) => value + 1)}>重新播放</button></div>
       <iframe key={replay} className="boot-preview" title="启动画面实时预览" sandbox="" srcDoc={doc} />
       <p className="boot-note boot-preview-caption">{mode.detail}</p>
     </section>
-    <section className="boot-section" aria-label="动画模式">
-      <div className="boot-section-heading"><h3 className="boot-section-title">选择动画</h3><span className="boot-note">点选即用</span></div>
-      <div className="boot-options">{MODES.map((item) => <button key={item.id} type="button" className="boot-mode" disabled={controlsDisabled} aria-pressed={current.animation === item.id} aria-label={`${item.name}，${item.caption}`} onClick={() => void choose(item.id)}>
+    <CardSection bare title="选择动画" hint={<span className="boot-note">点选即用</span>} aria-label="动画模式">
+      <OptionGrid>{MODES.map((item) => <button key={item.id} type="button" className="boot-mode" disabled={controlsDisabled} aria-pressed={current.animation === item.id} aria-label={`${item.name}，${item.caption}`} onClick={() => void choose(item.id)}>
         <ModeArt mode={item.id} />
         <span className="boot-mode-copy"><span className="boot-mode-title"><b>{item.name}</b>{current.animation === item.id ? <span className="boot-mode-selected">使用中</span> : null}</span><small>{pendingAnimation === item.id ? '正在应用…' : item.caption}</small></span>
-      </button>)}</div>
-    </section>
+      </button>)}</OptionGrid>
+    </CardSection>
     <div className="boot-feedback" aria-live="polite">{error ? <p className="boot-error" role="alert">{error}</p> : notice ? <p className="boot-ok" role="status">{notice}</p> : null}</div>
-    <Group title="显示设置">
+    <CardSection title="显示设置" aria-label="显示设置">
       <label className="boot-row"><span className="boot-row-text"><span>画面配色</span><small>独立设置启动画面的明暗</small></span><select className="boot-select" disabled={controlsDisabled} value={current.theme} onChange={(event) => void write('theme', event.target.value)}><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
       <div className="boot-row"><span className="boot-row-text"><span>显示文字标识</span><small>在鲸标下方显示 DEEPSEEK HARNESS</small></span><Toggle label="显示文字标识" checked={current.showWordmark} disabled={controlsDisabled} onChange={(value) => void write('showWordmark', value)} /></div>
-    </Group>
-    <Group title="交互设置"><div className="boot-row"><span className="boot-row-text"><span>允许跳过</span><small>点击画面，或按 Esc、空格、Enter 跳过</small></span><Toggle label="允许跳过" checked={current.allowSkip} disabled={controlsDisabled} onChange={(value) => void write('allowSkip', value)} /></div></Group>
+    </CardSection>
+    <CardSection title="交互设置" aria-label="交互设置"><div className="boot-row"><span className="boot-row-text"><span>允许跳过</span><small>点击画面，或按 Esc、空格、Enter 跳过</small></span><Toggle label="允许跳过" checked={current.allowSkip} disabled={controlsDisabled} onChange={(value) => void write('allowSkip', value)} /></div></CardSection>
     <footer className="boot-footer"><span className="boot-note">{saving === '' ? '以上设置点选即写入配置，下次启动生效。' : `正在保存${LABELS[saving]}…`}</span></footer>
   </main>
 }
@@ -139,6 +137,7 @@ export function apply(ctx) {
   // Panel-local CSS injected globally: every selector is a `.boot-*` class under the settings
   // panel, so an inline <style> would work too — kept as-is so the plugin keeps using the host's
   // `data-plugin` reclaim contract (tests assert `style[data-plugin="dsh-toolkit-boot-panel"]`).
+  ctx.effect(() => installSettingsParts(), 'dsh-toolkit-boot:settings-parts')
   ctx.effect(() => installStylesheet(panelCss, 'dsh-toolkit-boot-panel'), 'dsh-toolkit-boot:settings-styles')
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: 'boot', order: 15,

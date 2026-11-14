@@ -14,6 +14,7 @@ import { installPalette, installSceneClock, registerPaletteScene } from "./palet
 import { createOceanScene } from "./scenes/ocean.js";
 import { createHopeScene, updateHopeSceneTime } from "./scenes/hope.js";
 import { ThemeCenterPanel } from "./settings-theme.jsx";
+import { installSettingsParts } from "../../../client/ui/components/settings-parts/install.js";
 import { registerSettingsIcon } from "../../../client/ui/components/settings-icon/index.jsx";
 
 export const inject = ["layout", "slots", "locale", "configForms", "theme"];
@@ -58,6 +59,8 @@ export function apply(ctx) {
   // Global by definition: the palette rewrites the host shell itself (sidebar, right bar,
   // settings chrome) through `[class*="_xxx"]` host-hash selectors, so no panel subtree owns it.
   ctx.effect(() => installStylesheet(css, "dsh-toolkit-theme"), "dsh-toolkit-theme:stylesheet");
+  // 页头/卡片/行是九个设置面板共用的骨架，共享样式在 client 根只插一次。
+  ctx.effect(() => installSettingsParts(), "dsh-toolkit-theme:settings-parts");
   ctx.effect(() => installPalette(ctx), "dsh-toolkit-theme:palette");
   ctx.effect(() => installCodexShell(ctx, [
     installRailTitles,

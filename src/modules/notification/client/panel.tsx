@@ -1,5 +1,6 @@
 /** Notification preferences, using the host General settings item typography. */
 import { CURRENT_MODES, KINDS } from './model.js'
+import { CardSection, PageHeader, Row } from '../../../client/ui/components/settings-parts/index.jsx'
 
 const KIND_COPY = { completed: 'typeCompleted', failed: 'typeFailed', question: 'typeQuestion', permission: 'typePermission' }
 const MODE_COPY = { never: 'currentNever', unfocused: 'currentUnfocused', always: 'currentAlways' }
@@ -67,12 +68,6 @@ export function createNotificationPanel(React, options: NotificationPanelOptions
   function ActionButton({ disabled, onClick, children }) {
     if (typeof Button === 'function') return <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={onClick}>{children}</Button>
     return <button type="button" className="ntf-button" data-variant="outline" disabled={disabled} onClick={onClick}>{children}</button>
-  }
-  function Row({ title, description, children }) {
-    return <div className="ntf-row"><div className="ntf-rowText"><div className="ntf-title">{title}</div>{description ? <div className="ntf-desc">{description}</div> : null}</div><div className="ntf-rowControl">{children}</div></div>
-  }
-  function Group({ title, children }) {
-    return <section className="ntf-section" aria-label={title}><h3 className="ntf-sectionTitle">{title}</h3><div className="ntf-card">{children}</div></section>
   }
 
   /** 三个互斥选项，原生 <select>：弹出列表交还系统，键盘与 Escape 都由浏览器和设置弹窗处理。 */
@@ -181,21 +176,21 @@ export function createNotificationPanel(React, options: NotificationPanelOptions
     const modeValue = valueOf('currentMode')
     const currentMode = CURRENT_MODES.includes(modeValue) ? modeValue : 'unfocused'
     return <div className="ntf-page">
-      <header className="ntf-pageHead"><h2 className="ntf-pageTitle">{translate('title')}</h2><p className="ntf-pageIntro">{translate('intro')}</p></header>
-      <Group title={translate('preferencesHeading')}>
+      <PageHeader title={translate('title')} subtitle={translate('intro')} />
+      <CardSection title={translate('preferencesHeading')} aria-label={translate('preferencesHeading')}>
         <Row title={translate('enabledTitle')} description={translate('enabledDesc')}><Toggle checked={enabled} disabled={readOnly} label={translate('enabledTitle')} onChange={(next) => changeField('enabled', next, () => actions.setEnabled(next))} /></Row>
         <Row title={translate('currentTitle')} description={translate('currentDesc')}><Timing value={currentMode} disabled={inactive} translate={translate} onChange={(next) => changeField('currentMode', next, () => actions.setCurrentMode(next))} /></Row>
         <Row title={translate('testTitle')} description={translate('testHint')}><div className="ntf-actions"><ActionButton disabled={inactive || busy || permission === 'denied' || permission === 'unsupported'} onClick={testNotification}>{translate('testButton')}</ActionButton></div></Row>
         <Row title={translate('permissionTitle')} description={translate(permissionHint)}><div className="ntf-actions">{permission === 'default' ? <ActionButton disabled={busy} onClick={requestPermission}>{translate('grantButton')}</ActionButton> : permission === 'unsupported' ? null : <ActionButton disabled={busy} onClick={recheckPermission}>{translate('recheckButton')}</ActionButton>}</div></Row>
-      </Group>
-      <Group title={translate('typesHeading')}>
+      </CardSection>
+      <CardSection title={translate('typesHeading')} aria-label={translate('typesHeading')}>
         {KINDS.map((kind) => { const title = translate(`${KIND_COPY[kind]}Title`); const field = `${kind}Enabled`; return <Row key={kind} title={title} description={translate(`${KIND_COPY[kind]}Desc`)}><Toggle checked={valueOf(field) === true} disabled={inactive} label={title} onChange={(next) => changeField(field, next, () => actions.setKindEnabled(kind, next))} /></Row> })}
-      </Group>
-      <Group title={translate('soundsHeading')}>
+      </CardSection>
+      <CardSection title={translate('soundsHeading')} aria-label={translate('soundsHeading')}>
         <Row title={translate('soundTitle')} description={translate('soundDesc')}><Toggle checked={soundEnabled} disabled={inactive} label={translate('soundTitle')} onChange={(next) => changeField('soundEnabled', next, () => actions.setSoundEnabled(next))} /></Row>
         <Row title={translate('soundTypeTitle')} description={translate(soundStatus === 'unavailable' ? 'soundCatalogUnavailable' : 'soundTypeDesc')}><div className="ntf-actions"><select className="ntf-select ntf-selectSound" aria-label={translate('soundTypeTitle')} value={selectedSound} disabled={inactive || soundStatus === 'loading'} onChange={(event) => changeField('sound', event.target.value, () => actions.setSound(event.target.value))}>{soundChoices.map(({ id, label }) => <option value={id} key={id}>{label}</option>)}</select><ActionButton disabled={inactive || soundStatus !== 'ready' || busy} onClick={preview}>{translate('previewButton')}</ActionButton></div></Row>
         <Row title={translate('volumeTitle')} description={translate('volumeDesc')}><div className="ntf-volume"><input className="ntf-range" type="range" min="0" max="100" step="1" value={Math.round(volume * 100)} aria-label={translate('volumeTitle')} disabled={inactive} onChange={(event) => changeVolume(Number(event.target.value) / 100)} /><span className="ntf-volumeValue">{translate('volumeValue', { percent: Math.round(volume * 100) })}</span></div></Row>
-      </Group>
+      </CardSection>
       {error !== '' ? <p className="ntf-error" role="alert">{error}</p> : null}
       {notice !== '' ? <p className="ntf-notice" role="status">{notice}</p> : null}
       {readOnly ? <p className="ntf-note">{translate('readOnly')}</p> : null}

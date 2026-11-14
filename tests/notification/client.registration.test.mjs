@@ -78,7 +78,8 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
   // 插件不再自己渲染应用内卡片，所以不需要 react-dom。
   assert.deepEqual([...new Set(required)].sort(), ['@deepseek-ai/dsh-client-ui-primitives', 'react'])
   assert.deepEqual(runtime.effects, [
-    'dsh-toolkit-notification:dictionary', 'dsh-toolkit-notification:stylesheet',
+    'dsh-toolkit-notification:dictionary', 'dsh-toolkit-notification:settings-parts',
+    'dsh-toolkit-notification:stylesheet',
     'dsh-toolkit-notification:settings', 'dsh-toolkit-notification:sessions',
     'dsh-toolkit-notification:pending', 'dsh-toolkit-notification:audio-unlock',
     'dsh-toolkit-notification:sw-clicks', 'dsh-toolkit-notification:sounds',
@@ -96,15 +97,20 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
   assert.ok(style)
   const css = style.textContent.replace(/\s+/g, '')
   assert.match(css, /\.ntf-page\{/)
-  assert.match(css, /\.ntf-row\{[^}]*padding:16px0/)
-  assert.match(css, /\.ntf-row\{[^}]*border-bottom:0\.5pxsolidvar\(--dsw-alias-border-l2\)/)
-  assert.match(css, /\.ntf-title\{[^}]*font-size:14px/)
-  assert.match(css, /\.ntf-desc\{[^}]*font-size:12px/)
-  assert.match(css, /\.ntf-card\{/)
+  // 页头/卡片/行是九个面板共用的骨架，规则在共享样式表里；本模块只留 .ntf- 自有控件。
+  assert.doesNotMatch(css, /\.ntf-(pageTitle|section|card|row|title|desc)\b/)
   assert.match(css, /\.ntf-select\{[^}]*appearance:none/)
   assert.match(css, /\.ntf-select\{[^}]*background-position:right10pxcenter/)
   assert.match(css, /var\(--dsw-alias-/)
   assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}/)
+  // 共享骨架确实插进来了，且只插了一次。
+  const shared = page.document.querySelector('style[data-plugin="dsh-toolkit-settings-parts"]')
+  assert.ok(shared)
+  assert.equal(page.document.querySelectorAll('style[data-plugin="dsh-toolkit-settings-parts"]').length, 1)
+  const sharedCss = shared.textContent.replace(/\s+/g, '')
+  assert.match(sharedCss, /\.sk-ui-row\{/)
+  assert.match(sharedCss, /\.sk-ui-card\{/)
+  assert.match(sharedCss, /\.sk-ui-pageTitle\{[^}]*font-size:18px/)
   const sections = runtime.sections.filter(({ meta }) => meta.name === 'settings.section')
   assert.equal(sections.length, 1)
   // 只有设置页一个注册点：应用内卡片通道已经移除。
@@ -122,12 +128,12 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
 test('页面：四张分组卡片、全局声音与四种类型开关，无最近通知和范围控件', async (t) => {
   const { page, fetch, runtime, app } = await bootPanel(t)
   const document = page.document
-  assert.equal(document.querySelector('.ntf-pageTitle').textContent, '通知')
-  assert.deepEqual([...document.querySelectorAll('.ntf-section')].map((section) => section.getAttribute('aria-label')), ['通知', '提醒类型', '声音'])
-  assert.equal(document.querySelectorAll('.ntf-card').length, 3)
-  for (const row of document.querySelectorAll('.ntf-row')) {
-    assert.ok(row.querySelector('.ntf-title'))
-    assert.ok(row.querySelector('.ntf-desc'))
+  assert.equal(document.querySelector('.sk-ui-pageTitle').textContent, '通知')
+  assert.deepEqual([...document.querySelectorAll('.sk-ui-cardSection')].map((section) => section.getAttribute('aria-label')), ['通知', '提醒类型', '声音'])
+  assert.equal(document.querySelectorAll('.sk-ui-card').length, 3)
+  for (const row of document.querySelectorAll('.sk-ui-row')) {
+    assert.ok(row.querySelector('.sk-ui-rowTitle'))
+    assert.ok(row.querySelector('.sk-ui-rowDesc'))
   }
   assert.doesNotMatch(document.body.textContent, /最近通知|通知范围/)
   assert.equal(document.querySelector('[class*="ntf-recent"]'), null)
@@ -277,7 +283,7 @@ test('configForms 缺失时页面只读，禁用所有配置控件', async (t) =
 
 test('缺少会话服务时页面照常注册和挂载', async (t) => {
   const { page } = await bootPanel(t, { withServices: false })
-  assert.ok(page.document.querySelector('.ntf-pageTitle'))
+  assert.ok(page.document.querySelector('.sk-ui-pageTitle'))
 })
 
 test('测试通知仍可申请权限并发送；配置保存失败不会乐观更新', async (t) => {

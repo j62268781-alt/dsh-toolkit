@@ -8,6 +8,7 @@ import { CONFIG_NS, formSnapshot, readSettings } from './model.js'
 import { createTranslator, PET_COPY, PET_NS } from './locale.js'
 import { createPetPanel } from './panel.jsx'
 import { registerSettingsIcon } from '../../../client/ui/components/settings-icon/index.jsx'
+import { installSettingsParts } from '../../../client/ui/components/settings-parts/install.js'
 import css from './style.css'
 
 export default function createPet(require) {
@@ -49,7 +50,8 @@ export default function createPet(require) {
       // panel, so an inline <style> would work too — kept as-is so the plugin keeps using the
       // host's `data-plugin` reclaim contract (tests assert `style[data-plugin=dsh-toolkit-pet]`).
       // 分页控件是共享件（src/client/ui/components/pagination/index.jsx），样式随本模块的样式表一起注入。
-      ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet(css + paginationCss + resizableDialogCss, 'dsh-toolkit-pet'), 'dsh-toolkit-pet:stylesheet')
+      ctx.effect(() => installSettingsParts(), 'dsh-toolkit-pet:settings-parts')
+ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet(css + paginationCss + resizableDialogCss, 'dsh-toolkit-pet'), 'dsh-toolkit-pet:stylesheet')
       ctx.effect(() => {
         // `subscribe()` 在 ScopedForm 上的返回类型是 `unknown`（宿主实现可能返回 disposer 或句柄），
         // 这里只按「函数就调用」使用，故显式收窄成可选 disposer。

@@ -379,6 +379,58 @@ window.__ModuleLoader__.load({
       }
     }
 
+    // src/client/ui/stylesheet.ts
+    function installStylesheet(css, id) {
+      const tag = document.createElement("style");
+      tag.dataset.plugin = id;
+      tag.dataset.pluginCss = `${id}/styles.css`;
+      tag.textContent = css;
+      (document.head ?? document.documentElement).appendChild(tag);
+      return () => tag.remove();
+    }
+
+    // src/client/ui/components/settings-parts/style.css
+    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@media (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@media (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}';
+
+    // src/client/ui/components/settings-parts/install.ts
+    var SETTINGS_PARTS_ID = "dsh-toolkit-settings-parts";
+    var SETTINGS_PARTS_CSS = style_default;
+    var sheets = /* @__PURE__ */ new WeakMap();
+    function refFor(doc, id) {
+      let map = sheets.get(doc);
+      if (map === void 0) {
+        map = /* @__PURE__ */ new Map();
+        sheets.set(doc, map);
+      }
+      return map;
+    }
+    function installSharedStylesheet(text, id) {
+      if (typeof document === "undefined" || typeof document.querySelector !== "function") return () => {
+      };
+      const map = refFor(document, id);
+      const selector = `style[data-plugin="${id}"]`;
+      const existing = document.querySelector(selector);
+      let ref = map.get(id);
+      if (ref === void 0) {
+        ref = { count: 0, owned: existing === null };
+        map.set(id, ref);
+      }
+      ref.count += 1;
+      if (existing === null && ref.owned) installStylesheet(text, id);
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        ref.count -= 1;
+        if (ref.count > 0) return;
+        map.delete(id);
+        if (ref.owned) document.querySelector(selector)?.remove();
+      };
+    }
+    function installSettingsParts() {
+      return installSharedStylesheet(SETTINGS_PARTS_CSS, SETTINGS_PARTS_ID);
+    }
+
     // src/modules/judgment/client/panel.tsx
     var import_react7 = require("react");
 
@@ -641,12 +693,19 @@ window.__ModuleLoader__.load({
     .jdg-error{color:var(--dsw-alias-state-error-primary,var(--dsw-alias-label-primary));font-size:12px;line-height:18px;margin:0}
     `;
 
+    // src/client/ui/components/settings-parts/index.tsx
+    function PageHeader(props) {
+      const { title, subtitle, actions, className, ...rest } = props;
+      return /* @__PURE__ */ __dshReact.createElement("header", { className: joinClass("sk-ui-pageHead", className), ...rest }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-ui-pageHeadText" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "sk-ui-pageTitle" }, title), subtitle === void 0 || subtitle === "" ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-ui-pageIntro" }, subtitle)), actions === void 0 || actions === null ? null : actions);
+    }
+    function joinClass(base, extra) {
+      return extra === void 0 || extra === "" ? base : `${base} ${extra}`;
+    }
+
     // src/client/styles/settings.css
     var settings_default = `/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */
     .ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}
     /* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */
-    .ab-pageTitle,.jdg-pageTitle,.smp-pageTitle,.ntf-pageTitle,.sk-arch__title{color:var(--dsw-alias-label-primary);margin:0;font-size:18px;font-weight:600}
-    .ab-pageIntro,.jdg-pageIntro,.smp-pageIntro,.ntf-pageIntro,.sk-arch__subtitle{color:var(--dsw-alias-label-tertiary);margin:12px 0 0;font-size:13px}
     .ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}
     .ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
     .ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}
@@ -1171,7 +1230,13 @@ window.__ModuleLoader__.load({
       };
       const active = lists[tab] ?? lists.connections;
       void tick;
-      return /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-page" }, /* @__PURE__ */ __dshReact.createElement("style", null, CSS), /* @__PURE__ */ __dshReact.createElement("header", { className: "jdg-pageHead" }, /* @__PURE__ */ __dshReact.createElement("div", null, /* @__PURE__ */ __dshReact.createElement("h2", { className: "jdg-pageTitle" }, "决策"), /* @__PURE__ */ __dshReact.createElement("p", { className: "jdg-pageIntro" }, "结构化判断能力：一次调用 = 一份状态 + 一批命名问题 → 概率答案。它判断，消费者决定。"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-tabs" }, Object.entries(lists).map(([id, list]) => /* @__PURE__ */ __dshReact.createElement("button", { type: "button", key: id, className: "jdg-tab", "data-active": tab === id, onClick: () => selectTab(id) }, list.tab))), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-summary" }, active.summary), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-filterRow" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-search" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-searchIcon" }, /* @__PURE__ */ __dshReact.createElement(SearchIcon, null)), /* @__PURE__ */ __dshReact.createElement(
+      return /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-page" }, /* @__PURE__ */ __dshReact.createElement("style", null, CSS), /* @__PURE__ */ __dshReact.createElement(
+        PageHeader,
+        {
+          title: "决策",
+          subtitle: "结构化判断能力：一次调用 = 一份状态 + 一批命名问题 → 概率答案。它判断，消费者决定。"
+        }
+      ), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-tabs" }, Object.entries(lists).map(([id, list]) => /* @__PURE__ */ __dshReact.createElement("button", { type: "button", key: id, className: "jdg-tab", "data-active": tab === id, onClick: () => selectTab(id) }, list.tab))), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-summary" }, active.summary), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-filterRow" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-search" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-searchIcon" }, /* @__PURE__ */ __dshReact.createElement(SearchIcon, null)), /* @__PURE__ */ __dshReact.createElement(
         "input",
         {
           className: "jdg-searchInput",
@@ -1248,6 +1313,7 @@ window.__ModuleLoader__.load({
         // primitives 见 client/primitives.js：走宿主模块表的同步 require。
         inject: () => ({ form, entryId, credentials, primitives, judgment })
       }, Panel));
+      ctx.effect(() => installSettingsParts(), "dsh-toolkit-judgment:settings-parts");
       ctx.effect(() => registerSettingsIcon(ctx, "judgment", "scale"), "dsh-toolkit-judgment:settings-icon");
     }
 

@@ -1470,30 +1470,6 @@ window.__ModuleLoader__.load({
       color: var(--dsw-alias-label-primary);
     }
 
-    .sk-theme-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .sk-theme-head__copy { min-width: 0; }
-
-    .sk-theme-title {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-      line-height: 26px;
-      color: var(--dsw-alias-label-primary);
-    }
-
-    .sk-theme-subtitle {
-      margin: 12px 0 0;
-      max-width: 52ch;
-      font-size: 13px;
-      line-height: 20px;
-      color: var(--dsw-alias-label-tertiary);
-    }
 
     .sk-theme-badge {
       flex: none;
@@ -1825,37 +1801,10 @@ window.__ModuleLoader__.load({
     }
 
     /* Grid ------------------------------------------------------------------- */
+    /* 分组标题、宫格骨架由 settings-parts 的 CardSection(bare) + OptionGrid 提供，
+     * 这里只剩外观页自己的卡片艺术（两种颜色模式的比例与下面 .sk-theme-card 本体）。 */
 
-    .sk-theme-grid-section { display: flex; flex-direction: column; gap: 12px; }
-
-    .sk-theme-grid-head {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .sk-theme-grid-head h3 {
-      margin: 0;
-      font-size: 14px;
-      font-weight: 500;
-      line-height: 20px;
-      color: var(--dsw-alias-label-primary);
-    }
-
-    .sk-theme-grid-head span {
-      font-size: 12px;
-      line-height: 18px;
-      color: var(--dsw-alias-label-secondary);
-    }
-
-    .sk-theme-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .sk-theme-grid--modes .sk-theme-card__art { aspect-ratio: 2.4; }
+    .sk-theme-modes .sk-theme-card__art { aspect-ratio: 2.4; }
 
     .sk-theme-card {
       display: flex;
@@ -1944,8 +1893,6 @@ window.__ModuleLoader__.load({
     .sk-theme-card__art[data-preview-palette="native"] { background: var(--dsw-alias-bg-base); }
 
     @media (max-width: 760px) {
-      .sk-theme-grid { gap: 10px; }
-      .sk-theme-grid-head { align-items: flex-start; flex-direction: column; gap: 4px; }
       .sk-theme-stage { padding: 10px; }
       .sk-theme-preview-rail { width: 76px; padding: 16px 8px; }
       .sk-theme-preview-hero { padding: 24px 14px; }
@@ -4724,6 +4671,24 @@ window.__ModuleLoader__.load({
     };
     var SEND_PATH = "M8.3125 0.980183C8.66767 1.0531 8.97902 1.20418 9.2627 1.43233C9.48724 1.61297 9.73029 1.85793 9.97949 2.10714L14.707 6.83468L13.293 8.24874L9 3.95577V15.0417H7V3.95577L2.70703 8.24874L1.29297 6.83468L6.02051 2.10714C6.26971 1.85793 6.51277 1.61297 6.7373 1.43233C6.97662 1.23986 7.28445 1.04402 7.6875 0.980183C7.8973 0.947006 8.1031 0.95516 8.3125 0.980183Z";
 
+    // src/client/ui/components/settings-parts/index.tsx
+    function PageHeader(props) {
+      const { title, subtitle, actions, className, ...rest } = props;
+      return /* @__PURE__ */ __dshReact.createElement("header", { className: joinClass("sk-ui-pageHead", className), ...rest }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-ui-pageHeadText" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "sk-ui-pageTitle" }, title), subtitle === void 0 || subtitle === "" ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-ui-pageIntro" }, subtitle)), actions === void 0 || actions === null ? null : actions);
+    }
+    function CardSection(props) {
+      const { title, hint, bare = false, className, cardClassName, children, ...rest } = props;
+      const heading = title === void 0 && hint === void 0 ? null : /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-ui-cardTitleRow" }, title === void 0 ? null : /* @__PURE__ */ __dshReact.createElement("h3", { className: "sk-ui-cardTitle" }, title), hint === void 0 || hint === null ? null : /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-ui-cardHint" }, hint));
+      return /* @__PURE__ */ __dshReact.createElement("section", { className: joinClass("sk-ui-cardSection", className), ...rest }, heading, bare ? children : /* @__PURE__ */ __dshReact.createElement("div", { className: joinClass("sk-ui-card", cardClassName) }, children));
+    }
+    function OptionGrid(props) {
+      const { columns = 3, className, children, ...rest } = props;
+      return /* @__PURE__ */ __dshReact.createElement("div", { className: joinClass("sk-ui-grid", className), "data-columns": String(columns), ...rest }, children);
+    }
+    function joinClass(base, extra) {
+      return extra === void 0 || extra === "" ? base : `${base} ${extra}`;
+    }
+
     // src/modules/theme/client/settings-theme.tsx
     var MODE_CARDS = [
       { id: "light", label: "浅色", hint: "明亮界面" },
@@ -4840,7 +4805,14 @@ window.__ModuleLoader__.load({
           setBusy(false);
         }
       };
-      return /* @__PURE__ */ __dshReact.createElement("section", { className: "sk-theme-page", "aria-label": "外观" }, /* @__PURE__ */ __dshReact.createElement("header", { className: "sk-theme-head" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-head__copy" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "sk-theme-title" }, "外观"), /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-subtitle" }, "分别选择界面明暗与主题风格，搭配你喜欢的外观。")), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-badge" }, "实时预览")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-stage", "aria-label": "主题实时预览" }, /* @__PURE__ */ __dshReact.createElement(PreviewWindow, { palette, colorScheme })), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid-section" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid-head" }, /* @__PURE__ */ __dshReact.createElement("h3", null, "颜色模式"), /* @__PURE__ */ __dshReact.createElement("span", null, "控制界面明暗")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid sk-theme-grid--modes", role: "radiogroup", "aria-label": "颜色模式" }, MODE_CARDS.map((card) => /* @__PURE__ */ __dshReact.createElement(
+      return /* @__PURE__ */ __dshReact.createElement("section", { className: "sk-theme-page", "aria-label": "外观" }, /* @__PURE__ */ __dshReact.createElement(
+        PageHeader,
+        {
+          title: "外观",
+          subtitle: "分别选择界面明暗与主题风格，搭配你喜欢的外观。",
+          actions: /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-badge" }, "实时预览")
+        }
+      ), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-stage", "aria-label": "主题实时预览" }, /* @__PURE__ */ __dshReact.createElement(PreviewWindow, { palette, colorScheme })), /* @__PURE__ */ __dshReact.createElement(CardSection, { bare: true, title: "颜色模式", hint: "控制界面明暗" }, /* @__PURE__ */ __dshReact.createElement(OptionGrid, { columns: 2, className: "sk-theme-modes", role: "radiogroup", "aria-label": "颜色模式" }, MODE_CARDS.map((card) => /* @__PURE__ */ __dshReact.createElement(
         ThemeCard,
         {
           key: card.id,
@@ -4851,7 +4823,7 @@ window.__ModuleLoader__.load({
           onClick: () => pickMode(card.id)
         },
         /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-mode-art", "data-mode": card.id, "data-resolved-mode": colorScheme })
-      )))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid-section" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid-head" }, /* @__PURE__ */ __dshReact.createElement("h3", null, "主题风格"), /* @__PURE__ */ __dshReact.createElement("span", null, "保留所选颜色模式")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-grid", role: "radiogroup", "aria-label": "主题风格" }, PALETTE_CARDS.map((card) => /* @__PURE__ */ __dshReact.createElement(
+      )))), /* @__PURE__ */ __dshReact.createElement(CardSection, { bare: true, title: "主题风格", hint: "保留所选颜色模式" }, /* @__PURE__ */ __dshReact.createElement(OptionGrid, { columns: 4, className: "sk-theme-palettes", role: "radiogroup", "aria-label": "主题风格" }, PALETTE_CARDS.map((card) => /* @__PURE__ */ __dshReact.createElement(
         ThemeCard,
         {
           key: card.id,
@@ -4872,6 +4844,48 @@ window.__ModuleLoader__.load({
       order: 5,
       label: () => "外观"
     });
+
+    // src/client/ui/components/settings-parts/style.css
+    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@media (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@media (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}';
+
+    // src/client/ui/components/settings-parts/install.ts
+    var SETTINGS_PARTS_ID = "dsh-toolkit-settings-parts";
+    var SETTINGS_PARTS_CSS = style_default;
+    var sheets = /* @__PURE__ */ new WeakMap();
+    function refFor(doc, id) {
+      let map = sheets.get(doc);
+      if (map === void 0) {
+        map = /* @__PURE__ */ new Map();
+        sheets.set(doc, map);
+      }
+      return map;
+    }
+    function installSharedStylesheet(text, id) {
+      if (typeof document === "undefined" || typeof document.querySelector !== "function") return () => {
+      };
+      const map = refFor(document, id);
+      const selector = `style[data-plugin="${id}"]`;
+      const existing = document.querySelector(selector);
+      let ref = map.get(id);
+      if (ref === void 0) {
+        ref = { count: 0, owned: existing === null };
+        map.set(id, ref);
+      }
+      ref.count += 1;
+      if (existing === null && ref.owned) installStylesheet(text, id);
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        ref.count -= 1;
+        if (ref.count > 0) return;
+        map.delete(id);
+        if (ref.owned) document.querySelector(selector)?.remove();
+      };
+    }
+    function installSettingsParts() {
+      return installSharedStylesheet(SETTINGS_PARTS_CSS, SETTINGS_PARTS_ID);
+    }
 
     // src/client/ui/components/settings-icon/index.tsx
     var import_react4 = __toESM(require("react"), 1);
@@ -4972,6 +4986,7 @@ window.__ModuleLoader__.load({
       ctx.effect(() => installSceneClock(updateHopeSceneTime), "dsh-toolkit-theme:scene-clock");
       ctx.effect(installShellMarkers, "dsh-toolkit-theme:shell-markers");
       ctx.effect(() => installStylesheet(styles_default, "dsh-toolkit-theme"), "dsh-toolkit-theme:stylesheet");
+      ctx.effect(() => installSettingsParts(), "dsh-toolkit-theme:settings-parts");
       ctx.effect(() => installPalette(ctx), "dsh-toolkit-theme:palette");
       ctx.effect(() => installCodexShell(ctx, [
         installRailTitles,

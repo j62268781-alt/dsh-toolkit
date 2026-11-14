@@ -41,6 +41,12 @@ export async function resolve(specifier, context, nextResolve) {
 }
 
 export async function load(url, context, nextLoad) {
+  // `.css` 在真实构建里由 esbuild 的 text loader 变成字符串；node:test 直接 import 源码时
+  // 也要给同样的形状，否则 `import css from "./style.css"` 会撞 ERR_UNKNOWN_FILE_EXTENSION。
+  if (url.endsWith('.css')) {
+    const text = await readFile(new URL(url), 'utf8')
+    return { format: 'module', source: `export default ${JSON.stringify(text)}`, shortCircuit: true }
+  }
   const extension = /\.(ts|tsx|jsx)$/.exec(url)?.[0]
   if (extension === undefined) return nextLoad(url, context)
   const source = await readFile(new URL(url))

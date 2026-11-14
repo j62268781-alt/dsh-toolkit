@@ -16,6 +16,7 @@ import {
 import { Chevron, Field, MoreMenu, SearchIcon, Status, Tag } from './components.jsx'
 import { ConfirmDialog } from './dialog.jsx'
 import panelCss from './styles.css'
+import { PageHeader } from '../../../client/ui/components/settings-parts/index.jsx'
 import { settingsStyles } from '../../../client/styles/settings.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
 
@@ -682,14 +683,10 @@ export function Panel(props) {
   return (
     <div className="jdg-page">
       <style>{CSS}</style>
-      <header className="jdg-pageHead">
-        <div>
-          <h2 className="jdg-pageTitle">决策</h2>
-          <p className="jdg-pageIntro">
-            结构化判断能力：一次调用 = 一份状态 + 一批命名问题 → 概率答案。它判断，消费者决定。
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="决策"
+        subtitle="结构化判断能力：一次调用 = 一份状态 + 一批命名问题 → 概率答案。它判断，消费者决定。"
+      />
 
       <div className="jdg-tabs">
         {Object.entries(lists).map(([id, list]) => (

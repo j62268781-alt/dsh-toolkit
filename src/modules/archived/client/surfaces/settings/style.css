@@ -6,15 +6,6 @@
   color: var(--dsw-alias-label-primary);
 }
 
-.sk-arch__head {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.sk-arch__headText {
-  min-width: 0;
-}
 
 .sk-arch__bar {
   display: flex;

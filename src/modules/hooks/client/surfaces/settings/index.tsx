@@ -2,6 +2,7 @@ import React from "react";
 import { fetchJson } from "../../../../../client/http.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
+import { PageHeader } from "../../../../../client/ui/components/settings-parts/index.jsx";
 import { settingsStyles } from "../../../../../client/styles/settings.js";
 import panelCss from "./style.css";
 import { HOOK_EVENTS, HOOKS_REFRESH_PATH, HOOKS_SNAPSHOT_PATH, HOOKS_TEST_PATH } from "../../constants.js";
@@ -270,15 +271,15 @@ function createHooksSection(ctx: any) {
     return (
       <div className="sk-hooks">
         <style>{CSS}</style>
-        <div className="sk-hooks__head">
-          <div className="sk-hooks__headText">
-            <h2 className="sk-hooks__title">{t("title")}</h2>
-            <p className="sk-hooks__subtitle">{t("subtitle")}</p>
-          </div>
-          <ActionButton busy={busy} onClick={refresh}>
-            {busy ? t("refreshing") : t("refresh")}
-          </ActionButton>
-        </div>
+        <PageHeader
+          title={t("title")}
+          subtitle={t("subtitle")}
+          actions={(
+            <ActionButton busy={busy} onClick={refresh}>
+              {busy ? t("refreshing") : t("refresh")}
+            </ActionButton>
+          )}
+        />
 
         {error !== "" ? <p className="sk-hooks__error">{t("error", { reason: error })}</p> : null}
         {loaded && !snapshot.enabled ? <p className="sk-hooks__notice">{t("disabled")}</p> : null}

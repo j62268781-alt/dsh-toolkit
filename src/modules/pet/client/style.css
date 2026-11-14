@@ -1,17 +1,9 @@
 .pet-page { box-sizing: border-box; color: var(--dsw-alias-label-primary); font-size: 13px; padding-bottom: 24px; max-width: 960px; }
-.pet-pageTitle { font-size: 18px; font-weight: 600; margin: 0; }
-.pet-pageIntro { font-size: 13px; color: var(--dsw-alias-label-tertiary); margin: 12px 0 24px; line-height: 1.5; }
 .pet-section { margin-top: 24px; }
-.pet-section h3 { font-size: 14px; font-weight: 500; margin: 0 0 10px; }
 .pet-sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
 .pet-sectionHeader h3 { margin: 0; }
-.pet-card { border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 12px; padding: 0 16px; }
-.pet-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 0; border-bottom: 0.5px solid var(--dsw-alias-border-l2); }
-.pet-row:last-child { border-bottom: 0; }
-.pet-rowCopy { min-width: 0; flex: 1; }
 .pet-title { font-size: 14px; font-weight: 400; line-height: 20px; overflow-wrap: anywhere; }
 .pet-desc { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; margin: 4px 0 0; overflow-wrap: anywhere; }
-.pet-control { flex: none; max-width: 45%; }
 .pet-page button, .pet-page select, .pet-page input { font: inherit; }
 /* 形象下拉与启动动画、通知两个面板同款：去掉平台自带箭头（macOS 会把它紧贴右边框），
  * 自绘 14px chevron 距右边缘 10px，三个设置面板的下拉外观因此一致。 */
@@ -47,8 +39,6 @@
 .pet-notice, .pet-error { font-size: 12px; line-height: 1.5; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 10px 12px; }
 .pet-error { color: var(--dsw-alias-state-error-primary); }
 @media (max-width: 620px) {
-  .pet-row { gap: 12px; }
-  .pet-control { max-width: 46%; }
   .pet-slider { width: 160px; }
   .pet-slider input { width: 100px; }
   .pet-previews { gap: 16px; }
@@ -65,10 +55,10 @@
 .pet-libraryNote { margin-top: 10px; }
 
 /* 宠物库弹窗：一行 6 个的紧凑宫格，每页 20 只；卡片=预览图 + 右侧名称/ID 与安装按钮。 */
-.pet-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+/* 宫格由 settings-parts 的 OptionGrid 提供；这里只把它压到 8px（6 列密集排列要更紧）。 */
+.pet-grid { --sk-ui-grid-gap: 8px; }
 /* 重新搜索/翻页期间保留旧卡片、不压暗也不重建：只挡住点击，避免明暗切换又来一次「闪」。 */
 .pet-gridBusy { pointer-events: none; }
-.pet-grid .pet-tile { min-width: 0; }
 .pet-tile { display: flex; flex-direction: column; min-width: 0; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 10px; overflow: hidden; background: var(--dsw-alias-bg-layer-1); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease; }
 .pet-tile:hover, .pet-tile:focus-within { transform: translateY(-2px); border-color: var(--dsw-alias-border-l3); background: var(--dsw-alias-interactive-bg-hover); box-shadow: 0 8px 18px rgba(0, 0, 0, .16); }
 .pet-tileArt { display: block; aspect-ratio: 192 / 208; background-color: var(--dsw-alias-bg-layer-1); background-repeat: no-repeat; background-position: 0 0; background-size: 600% 100%; transition: transform .18s ease; }
