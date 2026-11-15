@@ -17,12 +17,14 @@ import {
   HELLO_TIMEOUT_MS_RANGE,
   HEARTBEAT_INTERVAL_MS_RANGE,
   MAX_FRAMES_PER_SEC_RANGE,
+  SLOW_CONSUMER_BYTES_RANGE,
   normalizeForceTerminateGraceMs,
   normalizeGatewayOptions,
   normalizeHeartbeatDisconnectMs,
   normalizeHeartbeatIntervalMs,
   normalizeHelloTimeoutMs,
   normalizeMaxFramesPerSec,
+  normalizeSlowConsumerBytes,
 } from './config.js'
 
 export interface Config {
@@ -36,6 +38,8 @@ export interface Config {
   heartbeatDisconnectMs?: number
   forceTerminateGraceMs?: number
   maxFramesPerSec?: number
+  /** Socket backlog in bytes that marks a peer as gone (SLOW_CONSUMER). */
+  slowConsumerBytes?: number
   logLevel?: LogLevel
   ice?: IceConfig
   /** Pairing session lifetime in ms; production keeps the protocol's 180s. */
@@ -72,6 +76,10 @@ export function parseMaxFramesPerSec(val: string | undefined): number {
   return normalizeMaxFramesPerSec(val)
 }
 
+export function parseSlowConsumerBytes(val: string | undefined): number {
+  return normalizeSlowConsumerBytes(val)
+}
+
 export {
   normalizeGatewayOptions,
   normalizeHelloTimeoutMs,
@@ -79,11 +87,13 @@ export {
   normalizeHeartbeatDisconnectMs,
   normalizeForceTerminateGraceMs,
   normalizeMaxFramesPerSec,
+  normalizeSlowConsumerBytes,
   HELLO_TIMEOUT_MS_RANGE,
   HEARTBEAT_INTERVAL_MS_RANGE,
   HEARTBEAT_DISCONNECT_MS_MAX,
   FORCE_TERMINATE_GRACE_MS_RANGE,
   MAX_FRAMES_PER_SEC_RANGE,
+  SLOW_CONSUMER_BYTES_RANGE,
 }
 export type { GatewayTimingOptions, NormalizedGatewayOptions } from './config.js'
 
@@ -228,6 +238,7 @@ export function createRemoteServer(config: Config) {
   const gateway = new Gateway(server, store, url.origin, {
     ...timing,
     maxFramesPerSec: normalizeMaxFramesPerSec(config.maxFramesPerSec),
+    slowConsumerBytes: normalizeSlowConsumerBytes(config.slowConsumerBytes),
     logLevel: config.logLevel,
     logger: logger.child('gateway'),
     turnEnabled: ice.turnUrls.length > 0,

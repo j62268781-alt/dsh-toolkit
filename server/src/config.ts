@@ -22,6 +22,15 @@ export const HELLO_TIMEOUT_MS_RANGE = { min: 1000, max: 60_000, fallback: 5000 }
 export const HEARTBEAT_INTERVAL_MS_RANGE = { min: 5000, max: 120_000, fallback: 25_000 } as const
 export const FORCE_TERMINATE_GRACE_MS_RANGE = { min: 100, max: 10_000, fallback: 1000 } as const
 export const MAX_FRAMES_PER_SEC_RANGE = { min: 64, max: 65_536, fallback: 512 } as const
+/**
+ * Bytes allowed to queue in one peer's socket before it is treated as gone
+ * (`SLOW_CONSUMER`). Frames are up to 1 MiB, so a short stall on a cellular
+ * downlink used to fill the hardcoded 4 MiB in a couple of seconds and close
+ * the socket, turning a hiccup into a full reconnect. A genuinely dead peer is
+ * still caught by the heartbeat. The upper bound keeps worst-case memory at
+ * 64 MiB per connection.
+ */
+export const SLOW_CONSUMER_BYTES_RANGE = { min: 1024 * 1024, max: 64 * 1024 * 1024, fallback: 16 * 1024 * 1024 } as const
 /** A heartbeat disconnect threshold below two intervals drops healthy peers. */
 export const HEARTBEAT_DISCONNECT_MS_MIN_FACTOR = 2
 export const HEARTBEAT_DISCONNECT_MS_MAX = 600_000
@@ -94,6 +103,15 @@ export function normalizeForceTerminateGraceMs(value: unknown): number {
 
 export function normalizeMaxFramesPerSec(value: unknown): number {
   return normalizeMs(value, MAX_FRAMES_PER_SEC_RANGE, 'DSH_SERVER_MAX_FRAMES_PER_SEC')
+}
+
+/**
+ * `normalizeMs` is a generic "finite integer inside [min, max]" check; the unit
+ * only lives in the range constant and the warning label, so it also covers the
+ * byte-valued setting below.
+ */
+export function normalizeSlowConsumerBytes(value: unknown): number {
+  return normalizeMs(value, SLOW_CONSUMER_BYTES_RANGE, 'DSH_SERVER_SLOW_CONSUMER_BYTES')
 }
 
 /**

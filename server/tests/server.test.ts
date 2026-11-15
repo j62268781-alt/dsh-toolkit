@@ -12,16 +12,19 @@ import {
   createRemoteServer,
   normalizeGatewayOptions,
   normalizeMaxFramesPerSec,
+  normalizeSlowConsumerBytes,
   normalizeIp,
   normalizeTrustedProxyIps,
   parseHelloTimeout,
   parseHeartbeatInterval,
   parseHeartbeatDisconnect,
   parseMaxFramesPerSec,
+  parseSlowConsumerBytes,
+  SLOW_CONSUMER_BYTES_RANGE,
   type Config,
 } from '../src/server.js'
 import { Logger, redactSensitive, parseLogLevel, type LogEntry } from '../src/logger.js'
-import { MAX_ICE_CANDIDATES_PER_CONNECTION } from '../src/gateway.js'
+import { MAX_ICE_CANDIDATES_PER_CONNECTION, backpressureExceeded } from '../src/gateway.js'
 import { parseIceConfig } from '../src/ice.js'
 import { deviceKeys } from './pairing-helpers.js'
 
@@ -726,6 +729,19 @@ describe('gateway frame limits', () => {
     const [closeCode] = await noisyClosed
     expect(closeCode).toBe(4001)
   })
+
+  it('takes the slow-consumer backlog limit from configuration instead of a hardcoded 4 MiB', async () => {
+    await app.close()
+    await start(password, [], { slowConsumerBytes: 2 * 1024 * 1024 })
+    accountToken = (await request('/auth/login', 'POST', { email: account, password })).data.token
+    expect(app.gateway.slowConsumerBytes).toBe(2 * 1024 * 1024)
+    expect(app.gateway.slowConsumerBytes).not.toBe(4 * 1024 * 1024)
+    // Strict boundary: exactly at the limit is still allowed, one byte past it is not.
+    expect(backpressureExceeded(2 * 1024 * 1024, app.gateway.slowConsumerBytes)).toBe(false)
+    expect(backpressureExceeded(2 * 1024 * 1024 + 1, app.gateway.slowConsumerBytes)).toBe(true)
+    // Defaults are the documented range fallback, not the old hardcoded value.
+    expect(SLOW_CONSUMER_BYTES_RANGE.fallback).toBe(16 * 1024 * 1024)
+  })
 })
 
 describe('structured logger and sensitive data redaction', () => {
@@ -834,6 +850,15 @@ describe('structured logger and sensitive data redaction', () => {
     expect(parseMaxFramesPerSec('32')).toBe(512)
     expect(parseMaxFramesPerSec('100000')).toBe(512)
     expect(normalizeMaxFramesPerSec(Number.NaN)).toBe(512)
+
+    // Slow-consumer backlog: 1 MiB..64 MiB, default 16 MiB.
+    expect(parseSlowConsumerBytes(undefined)).toBe(16 * 1024 * 1024)
+    expect(parseSlowConsumerBytes('8388608')).toBe(8 * 1024 * 1024)
+    expect(parseSlowConsumerBytes('1048576')).toBe(1024 * 1024)
+    expect(parseSlowConsumerBytes('512')).toBe(16 * 1024 * 1024)
+    expect(parseSlowConsumerBytes('134217728')).toBe(16 * 1024 * 1024)
+    expect(parseSlowConsumerBytes('16MB')).toBe(16 * 1024 * 1024)
+    expect(normalizeSlowConsumerBytes(Number.NaN)).toBe(16 * 1024 * 1024)
   })
 })
 

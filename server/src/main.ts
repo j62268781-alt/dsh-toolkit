@@ -6,6 +6,7 @@ import {
   parseHeartbeatDisconnect,
   parseForceTerminateGrace,
   parseMaxFramesPerSec,
+  parseSlowConsumerBytes,
 } from './server.js'
 import { parseLogLevel } from './logger.js'
 import { parseIceConfig } from './ice.js'
@@ -18,6 +19,7 @@ const heartbeatDisconnectMs = parseHeartbeatDisconnect(process.env.DSH_SERVER_HE
 const helloTimeoutMs = parseHelloTimeout(process.env.DSH_SERVER_HELLO_TIMEOUT_MS)
 const forceTerminateGraceMs = parseForceTerminateGrace(process.env.DSH_SERVER_FORCE_TERMINATE_GRACE_MS)
 const maxFramesPerSec = parseMaxFramesPerSec(process.env.DSH_SERVER_MAX_FRAMES_PER_SEC)
+const slowConsumerBytes = parseSlowConsumerBytes(process.env.DSH_SERVER_SLOW_CONSUMER_BYTES)
 const logLevel = parseLogLevel(process.env.DSH_SERVER_LOG_LEVEL)
 
 const app = createRemoteServer({
@@ -31,6 +33,7 @@ const app = createRemoteServer({
   heartbeatDisconnectMs,
   forceTerminateGraceMs,
   maxFramesPerSec,
+  slowConsumerBytes,
   logLevel,
   ice: parseIceConfig(process.env),
 })

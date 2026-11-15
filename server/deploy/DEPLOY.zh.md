@@ -125,6 +125,27 @@ sudo nginx -t && sudo systemctl reload nginx
 
 必须保留的三点：`proxy_http_version 1.1`、`Upgrade`/`Connection` 头、`X-Forwarded-For $remote_addr`（单值覆盖，不要 `$proxy_add_x_forwarded_for`）。模板按 Debian 12 自带的 nginx 1.18–1.22 写成 `listen 443 ssl http2`；nginx ≥ 1.25.1 改成 `listen 443 ssl;` + `http2 on;`。
 
+### C. 不用反代：云负载均衡 / 直接跑
+
+Server 进程本身**只监听 http**（`src/server.ts:207` 用 `node:http` 建服务，没有任何 TLS 选项），所以
+"直接跑"能不能用，取决于前面有没有东西替它终结 TLS：
+
+| 你的实际形态 | 结论 |
+| --- | --- |
+| 云厂商 HTTPS 负载均衡 → 你的 `:8080` | 可用。把 LB 的**空闲超时**（阿里云 SLB「连接空闲超时」/ 腾讯云 CLB「空闲超时」）从默认 60s 调到 **≥ 900s**，否则长连接会被 LB 静默掐断 |
+| 公网裸跑 `http://1.2.3.4:8080` | **不可用**。DSH-Go 只接受 `https://`，或**私网地址**上的 `http://`（`packages/dsh_remote/lib/src/relay/dsh_remote_backend.dart:57-60` 的 `normalizeServerUrl`） |
+| 纯内网/VPN 内 `http://10.x.x.x:8080` | 可用，此时没有 TLS 也没有 LB，`DSH_SERVER_PUBLIC_URL=http://10.x.x.x:8080` |
+
+必须放在同一个 HTTPS 域名后面的原因不只是加密：客户端发 `hello` 时 `Origin` 必须等于 `PUBLIC_URL`，
+并且 `X-Forwarded-For` 得是**单个**客户端 IP（`DSH_SERVER_TRUSTED_PROXY_IPS` 只认裸 IP，不支持 CIDR）。
+
+如果只是想省掉 nginx，用 Caddy 一个文件仍然是最省事的（自动证书 + 自动处理 Upgrade + 单值 XFF）：
+
+```bash
+# 系统里已有 80/443 证书时也可换成 tls /path/cert.pem /path/key.pem
+sudo apt install -y caddy && sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+```
+
 ## 6. 验证
 
 ```bash
@@ -147,9 +168,49 @@ npx wscat -c "wss://remote.example.com/ws/v1/connect" -H "origin: https://remote
 3. 手机显示 8 位验证码 → 桌面输入 → 显示「手机已绑定到本机」；
 4. 面板里断线原因、重连都正常（说明 WebSocket 与心跳都通了）。
 
-## 7. 可选：TURN（只有 WebRTC 打洞失败才需要）
+## 6.1 手机端长连接调参（手机 4G/5G 强烈建议）
 
-不配 TURN 也能工作：Server 会走 Relay 中转，只是延迟略高。需要 P2P 直连时：
+手机在移动网络 + 后台调度下，WS 会周期性"卡住"几秒到一分钟。服务端侧有三处默认值对这种情况偏紧，
+`deploy/env.example` 里已经是下面这组推荐值，**代码里的 fallback 仍是上游原值**（不配就用原值）：
+
+| 变量 | 默认（代码 fallback） | 推荐值 | 为什么 |
+| --- | --- | --- | --- |
+| `DSH_SERVER_HEARTBEAT_DISCONNECT_MS` | 75000 | `180000` | 3 轮心跳没回 pong 就判死；180s ≈ 容忍 5 轮丢包，手机进隧道/电梯不再一断到底 |
+| `DSH_SERVER_HEARTBEAT_INTERVAL_MS` | 25000 | `30000` | 兼作 NAT/LB 保活；同时把上面那条的"判死窗口"拉长 |
+| `DSH_SERVER_HELLO_TIMEOUT_MS` | 5000 | `12000` | 弱网冷启动时 hello 往返常常超过 5s，超时直接踢连接 |
+| `DSH_SERVER_MAX_FRAMES_PER_SEC` | 512 | `2048` | 超限是**直接关连接**（close 4001），不是回错误；大段输出/日志刷屏时会被误判成断网 |
+| `DSH_SERVER_SLOW_CONSUMER_BYTES` | 16 MiB | `16777216` | 单帧上限 1 MiB，手机下行一卡发送缓冲就堆到 4 MiB（旧硬编码阈值）→ `SLOW_CONSUMER` 断线；本版已可配 |
+
+改完 `systemctl restart dsh-server`（这些值在启动时读一次）。先测量再调整：
+
+```bash
+# 按断线原因分类，决定动哪个参数
+journalctl -u dsh-server | grep -o 'ws_peer_disconnected.*code[^,]*' | sort | uniq -c | sort -rn
+# SLOW_CONSUMER        → 调大 DSH_SERVER_SLOW_CONSUMER_BYTES
+# RATE_LIMITED         → 调大 DSH_SERVER_MAX_FRAMES_PER_SEC
+# CONNECTION_REPLACED  → 客户端重复连（同一设备来了新 socket），查客户端重连退避
+# CONNECTION_FAILED    → 心跳超时，查 ws_heartbeat_timeout 那行的 elapsedMs / thresholdMs
+```
+
+客户端侧（DSH-Go）有两件事不在服务端控制范围内：
+
+- 它的 WS 看门狗是 `3 × heartbeatIntervalMs`（服务端下发的 `heartbeatIntervalMs`，默认 25s → 75s 无任何帧就自己关掉 socket 重连），
+  所以服务端把 interval 调大，客户端容忍窗口会**同步变大**；
+- 重连是指数退避 `1→30s`、最多 8 次，用完进入 `failed`，需要人工点重试（或 app 回到前台/网络切换时才再试）。
+
+
+
+不配 STUN/TURN 也能工作，但要分清三种情形（客户端 `preferredTransports` 默认是 `lan → p2p → turn → relay`）：
+
+| 手机与桌面所在网络 | 未配 STUN/TURN 时的实际路径 |
+| --- | --- |
+| 同一个局域网（同一 Wi-Fi / 同一 VPC 内网可互通） | 仍然是**直连**：双方交换 host candidate，Server 只转发信令，业务数据不过服务器 |
+| 不同网络（手机 4G/5G、公司网与家里网） | 直连打不通，回落 **Relay**：所有帧经 Server 的加密 WebSocket 转发 |
+| 配了 TURN | 直连失败时经 TURN 中转，比 Relay 少一次应用层转发，但流量仍过 TURN |
+
+未配 ICE 时客户端会用一个较短的协商超时快速失败（`DEFAULT_EMPTY_ICE_NEGOTIATE_TIMEOUT_MS`）再回落 Relay，所以跨网场景不会长时间卡在打洞上。
+
+注意：Relay 模式下手机切换网络（Wi-Fi ↔ 4G）、进后台被 Doze 冻结、或反向代理把空闲 WebSocket 掐断，都会表现为「断线重连」——这类现象与 Server 是否同区域无关，根因在长连接本身。想让手机离开局域网也能直连（低延迟、少抖动），才需要下面的 TURN：
 
 ```bash
 sudo apt install -y coturn
@@ -175,9 +236,34 @@ DSH_SERVER_TURN_SECRET=<与 static-auth-secret 相同>
 
 > 只想打洞、不中继流量时，可以只配 STUN：coturn 配置文件里加一行 `stun-only`，
 > 然后把 `DSH_SERVER_STUN_URLS` 指向这台机器即可——STUN 绑定请求只有几个 UDP 包，
-> 几乎不占上行带宽。国内可直连的公共 STUN（第三方，无 SLA，2026-11 实测可用）：
-> `stun:stun.hitv.com:3478`（最快）、`stun:stun.chat.bilibili.com:3478`；
-> `stun.miwifi.com:3478` 目前无响应，`stun.wxlivecdn.com` 域名已失效。
+> 几乎不占上行带宽。
+
+### 7.1 先做这一步：只配 STUN（零成本，通常已经够用）
+
+客户端**没有内置 ICE 服务器**（`packages/webrtc/src/adaptive-transport.ts` 的
+`fetchIceServers` 在没有配置时返回空数组），因此不配 STUN 时只能收集 host candidate：
+同局域网仍直连，跨网（手机 4G/5G）在约 4 秒内失败（`DEFAULT_EMPTY_ICE_NEGOTIATE_TIMEOUT_MS`）
+后回落 Relay。只补 STUN 就能尝试 P2P 打洞，多数「手机流量必须绕服务器」的情况到此为止。
+
+国内公共 STUN（2026-11-15 从国内宽带实测，UDP 绑定请求应答；第三方服务，无 SLA，失效就删）：
+
+| 地址 | 实测延迟 | 备注 |
+| --- | --- | --- |
+| `stun:stun.hitv.com:3478` | 29–242 ms | 芒果TV（hitv.com 是其站点域名），有按源 IP 的限速 |
+| `stun:stun.chat.bilibili.com:3478` | 40–76 ms | B站，最稳 |
+| `stun:stun.miwifi.com:3478` | 66–104 ms | 小米路由器 |
+| `stun:stun.douyucdn.cn:18000` | 152 ms | 斗鱼，端口是 **18000**（3478 关闭） |
+
+已失效 / 不可达，别抄：`stun.l.google.com:19302`、`stun.qq.com:3478`、`stun.douyucdn.cn:3478`、
+`stun.cdnbye.com:3478`、`openrelay.metered.ca`（免费 Open Relay Project 已停服，DNS 现指向
+`192.0.2.1`）。`stun.mgtv.com`、`stun.hunantv.com`、`stun.bytedance.com`、`stun.iqiyi.com` 等
+域名都不存在，别去找。
+
+```bash
+DSH_SERVER_STUN_URLS=stun:stun.hitv.com:3478,stun:stun.chat.bilibili.com:3478,stun:stun.miwifi.com:3478,stun:stun.douyucdn.cn:18000
+```
+
+重启后用手机**关闭 Wi-Fi 走流量**重连，看链路是否从 Relay 变成 P2P；仍是 Relay 再往下做 TURN。
 
 ## 8. 升级与回滚
 

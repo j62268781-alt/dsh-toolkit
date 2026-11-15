@@ -17,10 +17,17 @@ import {
 } from './protocol/index.js'
 import { ApiError, Store } from './store.js'
 import { Logger, type LogLevel } from './logger.js'
-import { normalizeGatewayOptions, normalizeMaxFramesPerSec, type GatewayTimingOptions } from './config.js'
+import { normalizeGatewayOptions, normalizeMaxFramesPerSec, normalizeSlowConsumerBytes, type GatewayTimingOptions } from './config.js'
 
 export interface GatewayOptions extends GatewayTimingOptions {
   maxFramesPerSec?: number
+  /**
+   * Socket backlog (bytes) that marks a peer as gone. Defaults to
+   * `SLOW_CONSUMER_BYTES_RANGE.fallback` (16 MiB); a phone that briefly stalls
+   * on a cellular downlink must not be closed, because reconnecting costs a
+   * full handshake plus a new Noise session.
+   */
+  slowConsumerBytes?: number
   logLevel?: LogLevel
   logger?: Logger
   /** Advertise `transport.turn` (and accept TURN credential requests). */
@@ -45,6 +52,15 @@ function closeCodeFor(code: string): number {
   if (code === 'CONNECTION_REPLACED') return 4003
   if (code === 'DEVICE_REVOKED') return 4004
   return 4001
+}
+
+/**
+ * True when a peer's socket backlog makes the peer effectively unreachable.
+ * Exported so the threshold policy can be unit-tested without a real socket;
+ * the limit itself comes from `DSH_SERVER_SLOW_CONSUMER_BYTES`.
+ */
+export function backpressureExceeded(bufferedAmount: number, limitBytes: number): boolean {
+  return bufferedAmount > limitBytes
 }
 
 type Peer = { ws: WebSocket; id: string; role: 'host' | 'client'; capabilities: string[]; version: string; lastPong: number; nonce?: string; evictedTombstoneUntil?: number }
@@ -130,6 +146,7 @@ export class Gateway {
   readonly heartbeatDisconnectMs: number
   readonly forceTerminateGraceMs: number
   readonly maxFramesPerSec: number
+  readonly slowConsumerBytes: number
   readonly logger: Logger
 
   constructor(server: Server, private store: Store, origin: string, options: GatewayOptions = {}) {
@@ -142,6 +159,7 @@ export class Gateway {
     this.heartbeatDisconnectMs = timing.heartbeatDisconnectMs
     this.forceTerminateGraceMs = timing.forceTerminateGraceMs
     this.maxFramesPerSec = normalizeMaxFramesPerSec(options.maxFramesPerSec)
+    this.slowConsumerBytes = normalizeSlowConsumerBytes(options.slowConsumerBytes)
     this.logger = options.logger ?? new Logger('gateway', options.logLevel ?? 'info')
     this.turnEnabled = options.turnEnabled === true
 
@@ -270,7 +288,7 @@ export class Gateway {
 
   private send(peer: Peer, frame: ControlFrame): void {
     if (peer.ws.readyState !== WebSocket.OPEN) return
-    if (peer.ws.bufferedAmount > 4 * MAX_RELAY_FRAME_BYTES) { this.disconnect(peer.id, 'SLOW_CONSUMER'); return }
+    if (backpressureExceeded(peer.ws.bufferedAmount, this.slowConsumerBytes)) { this.disconnect(peer.id, 'SLOW_CONSUMER'); return }
     peer.ws.send(JSON.stringify(frame))
   }
   private drop(link: Link, code: string): void {
