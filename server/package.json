@@ -1,6 +1,6 @@
 {
   "name": "dsh-toolkit-server",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "private": true,
   "type": "module",
   "description": "Self-hosted single-account Remote Server (vendored from liguobao/ds-harness-remote, MIT) with device-pairing v1",
