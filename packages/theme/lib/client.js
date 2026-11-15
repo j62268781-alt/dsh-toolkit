@@ -4887,6 +4887,7 @@ window.__ModuleLoader__.load({
       plug: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M6 2.3v3.2M10 2.3v3.2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.4 5.5h7.2v1.6a3.6 3.6 0 0 1-7.2 0V5.5Z" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 10.7v2.6" })),
       // 钩子：带环的鱼钩（环 + 下沉的钩身 + 倒刺），和 Qoder 那套面板的钩子图标同义。
       hook: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "5.7", cy: "3.2", r: "1.1" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M5.7 4.3v4.4a2.9 2.9 0 0 0 5.8 0V7.5" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M11.5 7.5 9.7 6.9" })),
+      phone: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: "4.4", y: "2.1", width: "7.2", height: "11.8", rx: "1.6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M7 4h2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M7.3 12.4h1.4" })),
       gear: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "4.6" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" }))
     };
     function createGlyph(key) {

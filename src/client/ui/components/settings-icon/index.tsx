@@ -85,6 +85,13 @@ const SHAPES: Record<string, any> = {
       <path d="M11.5 7.5 9.7 6.9" />
     </>
   ),
+  phone: (
+    <>
+      <rect x="4.4" y="2.1" width="7.2" height="11.8" rx="1.6" />
+      <path d="M7 4h2" />
+      <path d="M7.3 12.4h1.4" />
+    </>
+  ),
   gear: (
     <>
       <circle cx="8" cy="8" r="4.6" />

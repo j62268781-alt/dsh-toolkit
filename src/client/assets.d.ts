@@ -16,3 +16,9 @@ declare module '*.svg' {
   const text: string
   export default text
 }
+
+/** 图片走 dataurl loader：`build-client.mjs` 把二进制内联成 data: URI。 */
+declare module '*.webp' {
+  const url: string
+  export default url
+}

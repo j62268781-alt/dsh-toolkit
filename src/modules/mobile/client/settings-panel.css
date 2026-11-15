@@ -1,0 +1,105 @@
+/* 「移动端」设置面板自己的样式：面板内的卡片与开关，宿主之外没人用，按 AGENTS §8 写在组件内。 */
+
+.mbm-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+  max-width: 760px;
+}
+
+.mbm-group {
+  min-width: 0;
+}
+
+.mbm-groupTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mbm-link {
+  color: var(--dsw-alias-brand-primary-new-color, #4d6bfe);
+  font-size: 12px;
+  line-height: 18px;
+  text-decoration: none;
+}
+
+.mbm-link:hover {
+  text-decoration: underline;
+}
+
+/* 横幅整张显示：它自带文案与三台手机的截图，再裁一半就会把手机切掉。 */
+.mbm-heroLink {
+  display: block;
+  margin: 0 -16px;
+  border-radius: 12px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.mbm-heroLink:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary-new-color, #4d6bfe);
+  outline-offset: 2px;
+}
+
+.mbm-hero {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.mbm-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-state-danger-primary, #d0453f);
+}
+
+/* 宿主没提供 Switch 时用的降级开关，观感与 .sk-ui-* 一路。 */
+.mbm-switch {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  corner-shape: round;
+  background-color: var(--dsw-alias-bg-layer-3, rgba(128, 128, 128, 0.24));
+  cursor: pointer;
+  transition: background-color 0.14s ease-in-out;
+}
+
+.mbm-switch[data-on="true"] {
+  background-color: var(--dsw-alias-brand-primary-new-color, #4d6bfe);
+}
+
+.mbm-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.mbm-switchKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  corner-shape: round;
+  background-color: #ffffff;
+  transition: transform 0.14s ease-in-out;
+}
+
+.mbm-switch[data-on="true"] .mbm-switchKnob {
+  transform: translateX(16px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mbm-switch,
+  .mbm-switchKnob {
+    transition: none;
+  }
+}

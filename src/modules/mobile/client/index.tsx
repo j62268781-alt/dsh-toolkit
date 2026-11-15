@@ -8,6 +8,9 @@ import { createIcons } from "./components/icons.jsx";
 import { createDeviceOptions } from "./components/device-options.jsx";
 import { createStreamView } from "./components/stream-view.jsx";
 import { createMobilePanel } from "./panel.jsx";
+import { createMobileSettings } from "./settings-panel.js";
+import { installSettingsParts } from "../../../client/ui/components/settings-parts/install.js";
+import { registerSettingsIcon } from "../../../client/ui/components/settings-icon/index.js";
 // 宿主注入依赖；带状态的运行时必须在每次工厂调用内创建。
 export default function createClient(require) {
   const React = require("react");
@@ -50,6 +53,7 @@ export default function createClient(require) {
   const useH264Canvas = createUseH264Canvas(React, canvasRuntime);
   const StreamView = createStreamView(React, { api, prefix: PREFIX, useH264Canvas });
   const MobilePanel = createMobilePanel(React, { primitives, api, CSS, canvasRuntime, StreamView, icons, renderDeviceOptions });
+  const MobileSettings = createMobileSettings(React, { primitives });
   function MobileTitle({ useTabInfo }) {
     const { tab } = useTabInfo();
     return <>
@@ -94,6 +98,16 @@ export default function createClient(require) {
       }
     },
     apply(ctx) {
+      // 设置面板：页头/卡片/行由 settings-parts 提供，样式只插一次。
+      ctx.effect(() => installSettingsParts(), "dsh-toolkit-mobile:settings-parts");
+      ctx.effect(() => registerSettingsIcon(ctx, "mobile", "phone"), "dsh-toolkit-mobile:settings-icon");
+      ctx.effect(
+        () => ctx.slots.register(
+          { name: "settings.section", id: "mobile", order: 41, label: () => "移动端" },
+          MobileSettings
+        ),
+        "dsh-toolkit-mobile:settings-section"
+      );
       // 模型打开面板的长轮询必须在插件加载期启动，不能等面板挂载。
       ctx.inject(["sidebarRight"], (scope) => {
         scope.effect(() => {
