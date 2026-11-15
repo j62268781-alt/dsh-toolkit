@@ -339,60 +339,16 @@
 }
 
 /* Grid ------------------------------------------------------------------- */
-/* 分组标题、宫格骨架由 settings-parts 的 CardSection(bare) + OptionGrid 提供，
- * 这里只剩外观页自己的卡片艺术（两种颜色模式的比例与下面 .sk-theme-card 本体）。 */
+/* 分组标题、宫格与卡片本体由 settings-parts 的 CardSection(bare) + OptionGrid + OptionCard 提供，
+ * 这里只剩外观页自己的画面层（明暗预览、主题缩略图）。 */
 
-.sk-theme-modes .sk-theme-card__art { aspect-ratio: 2.4; }
-
-.sk-theme-card {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 8px;
-  padding: 5px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  background: var(--dsw-alias-bg-layer-1);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  border-radius: 12px;
-  transition: border-color 0.16s ease, background-color 0.16s ease;
-}
-
-.sk-theme-card:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); outline-offset: 3px; }
-.sk-theme-card:hover:not(:disabled) { background: var(--dsw-alias-bg-layer-2); }
-.sk-theme-card.is-selected { border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); }
-
+/* 卡片的边框、圆角、内边距、字号与选中环由公共 settings-parts 的 OptionCard 提供；
+ * 这里只剩卡片上半区的画面层：铺满 media 盒子，圆角跟着盒子裁。 */
 .sk-theme-card__art {
-  position: relative;
+  position: absolute;
+  inset: 0;
   display: block;
-  box-sizing: border-box;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  background: var(--dsw-alias-bg-layer-1);
 }
-
-.sk-theme-card__caption { display: flex; flex-direction: column; gap: 4px; padding: 2px 5px 5px; }
-
-.sk-theme-card__name {
-  color: var(--dsw-alias-label-primary);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 20px;
-}
-
-.sk-theme-card__hint {
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.sk-theme-card:disabled { cursor: default; }
-.sk-theme-card:disabled .sk-theme-card__art { opacity: 0.65; }
 
 /* Card art --------------------------------------------------------------- */
 
@@ -477,5 +433,4 @@ html[data-sk-palette="hope"] [data-slot="main.conversation"] > [data-phase="hero
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sk-theme-card { transition: none; }
 }

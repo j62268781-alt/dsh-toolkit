@@ -273,7 +273,8 @@ test('theme center CSS and selector keep the hero scoping and visual states', as
   const panel = await readFile(`${ROOT}src/modules/theme/client/settings-theme.tsx`, 'utf8')
 
   assert.match(palette, /\[data-slot="main\.conversation"\] > \[data-phase="hero"\] > \[data-conversation-content\]\[data-content-phase="hero"\]/)
-  assert.match(css, /\.sk-theme-card\.is-selected\s*\{/)
+  assert.match(panel, /OptionCard/)
+  assert.doesNotMatch(css, /\.sk-theme-card\s*\{/)
   assert.match(css, /sk-theme-preview-window/)
   assert.match(css, /prefers-reduced-motion/)
   assert.match(css, /z-index: -1/)

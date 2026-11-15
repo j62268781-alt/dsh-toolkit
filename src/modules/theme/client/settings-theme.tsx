@@ -5,7 +5,7 @@ import { DSH_DESKTOP_LOGO } from '../../../client/ui/components/dsh-logo/index.j
 import { HERO_FISH_PATH, HERO_ICONS, SEND_PATH } from './hero-art.js'
 import { createPaletteScene, readPalette } from './palette.js'
 import { isCodexShell } from './platform.js'
-import { CardSection, OptionGrid, PageHeader } from '../../../client/ui/components/settings-parts/index.jsx'
+import { CardSection, OptionCard, OptionGrid, PageHeader } from '../../../client/ui/components/settings-parts/index.jsx'
 
 const MODE_CARDS = [
   { id: 'light', label: '浅色', hint: '明亮界面' },
@@ -164,21 +164,15 @@ interface ThemeCardProps {
 
 function ThemeCard({ selected, label, hint, onClick, children, disabled = false, colorScheme, palette }: ThemeCardProps) {
   return (
-    <button
-      type="button"
+    <OptionCard
       role="radio"
-      aria-label={label}
-      aria-checked={selected}
+      selected={selected}
+      label={label}
+      hint={hint}
       disabled={disabled}
-      className={`sk-theme-card${selected ? ' is-selected' : ''}`}
-      onClick={onClick}
-    >
-      <span className="sk-theme-card__art" data-preview-mode={colorScheme} data-preview-palette={palette}>{children}</span>
-      <span className="sk-theme-card__caption">
-        <span className="sk-theme-card__name">{label}</span>
-        <span className="sk-theme-card__hint">{hint}</span>
-      </span>
-    </button>
+      onSelect={onClick}
+      media={<span className="sk-theme-card__art" data-preview-mode={colorScheme} data-preview-palette={palette}>{children}</span>}
+    />
   )
 }
 
@@ -243,7 +237,7 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
       </div>
 
       <CardSection bare title="颜色模式" hint="控制界面明暗">
-        <OptionGrid columns={2} className="sk-theme-modes" role="radiogroup" aria-label="颜色模式">
+        <OptionGrid columns={4} className="sk-theme-modes" role="radiogroup" aria-label="颜色模式">
           {MODE_CARDS.map((card) => (
             <ThemeCard
               key={card.id}

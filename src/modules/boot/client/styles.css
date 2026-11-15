@@ -5,16 +5,10 @@
 .boot-preview-title h3 span { color: var(--dsw-alias-label-secondary); font-size: 12px; font-weight: 400; }
 .boot-preview { display: block; box-sizing: border-box; width: 100%; height: clamp(240px, 30vw, 340px); border: .5px solid var(--dsw-alias-border-l2); border-radius: 16px; background: var(--dsw-alias-bg-layer-1); }
 .boot-preview-caption { margin-top: 9px !important; }
-.boot-mode { box-sizing: border-box; min-width: 0; padding: 5px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; transition: border-color 140ms ease, background 140ms ease; }
-.boot-mode:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
-.boot-mode[aria-pressed=true] { border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); }
-.boot-mode-copy { display: flex; flex-direction: column; gap: 5px; padding: 10px 7px 8px; }
-.boot-mode-title { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
-.boot-mode b { font-size: 13px; line-height: 18px; font-weight: 500; }
-.boot-mode small { color: var(--dsw-alias-label-secondary); font-size: 11px; line-height: 16px; }
-.boot-mode-selected { color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); font-size: 10px; line-height: 16px; white-space: nowrap; }
 /* All three static cards use the same unmodified desktop mark. */
-.boot-mode-art { position: relative; display: grid; place-items: center; height: 100px; overflow: hidden; isolation: isolate; border-radius: 8px; }
+/* 卡片本体（边框/圆角/内边距/字号/选中环）由公共 settings-parts 的 OptionCard 提供，
+ * 这里只剩图区自己的画面：宽高吃完 media 盒子，圆角由盒子裁。 */
+.boot-mode-art { position: relative; display: grid; place-items: center; width: 100%; height: 100%; overflow: hidden; isolation: isolate; }
 .boot-mode-art img { position: relative; z-index: 1; width: 64px; height: 64px; object-fit: contain; user-select: none; }
 .boot-mode-art--draw { color: #34545c; background: #edf3f3; }
 .boot-mode-art--water { color: #f1fdff; background: linear-gradient(180deg, #79cbd7, #247e99); }
@@ -38,13 +32,12 @@
 .boot-footer { display: flex; align-items: center; gap: 16px; }
 .boot-button { display: inline-flex; align-items: center; justify-content: center; flex: none; min-height: 30px; padding: 0 10px; border: .5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); color: inherit; background: transparent; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
 .boot-button:hover { background: var(--dsw-alias-interactive-bg-hover); }
-.boot-mode:disabled,.boot-switch:disabled { opacity: .5; cursor: not-allowed; }
+.boot-switch:disabled { opacity: .5; cursor: not-allowed; }
 .boot-page button:focus-visible,.boot-page input:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 3px; }
 .boot-note,.boot-error,.boot-ok { margin: 0; font-size: 12px; line-height: 18px; }
 .boot-note { color: var(--dsw-alias-label-secondary); }
 .boot-error { color: var(--dsw-alias-state-error-primary, #b42318); }
 .boot-ok { color: var(--dsw-alias-state-success-primary, #11745f); }
 .boot-feedback:empty { display: none; }
-@media (max-width: 620px) { .boot-mode-art { height: 82px; } .boot-mode-copy { padding: 8px 3px; } .boot-mode-title { align-items: flex-start; flex-direction: column; } .boot-mode-selected { font-size: 9px; } .boot-mode small { font-size: 10px; } .boot-row { gap: 12px; } .boot-preview { height: 240px; } }
-@media (max-width: 420px) { .boot-mode { display: flex; align-items: center; gap: 8px; } .boot-mode-art { flex: none; width: 96px; height: 72px; } .boot-mode-title { flex-direction: row; gap: 8px; } .boot-mode-copy { flex: 1; } }
-@media (prefers-reduced-motion: reduce) { .boot-mode,.boot-switch > span { transition: none; } }
+@media (max-width: 620px) { .boot-row { gap: 12px; } .boot-preview { height: 240px; } }
+@media (prefers-reduced-motion: reduce) { .boot-switch > span { transition: none; } }

@@ -1801,60 +1801,16 @@ window.__ModuleLoader__.load({
     }
 
     /* Grid ------------------------------------------------------------------- */
-    /* 分组标题、宫格骨架由 settings-parts 的 CardSection(bare) + OptionGrid 提供，
-     * 这里只剩外观页自己的卡片艺术（两种颜色模式的比例与下面 .sk-theme-card 本体）。 */
+    /* 分组标题、宫格与卡片本体由 settings-parts 的 CardSection(bare) + OptionGrid + OptionCard 提供，
+     * 这里只剩外观页自己的画面层（明暗预览、主题缩略图）。 */
 
-    .sk-theme-modes .sk-theme-card__art { aspect-ratio: 2.4; }
-
-    .sk-theme-card {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      gap: 8px;
-      padding: 5px;
-      border: 1px solid var(--dsw-alias-border-l2);
-      background: var(--dsw-alias-bg-layer-1);
-      color: inherit;
-      font: inherit;
-      text-align: left;
-      cursor: pointer;
-      border-radius: 12px;
-      transition: border-color 0.16s ease, background-color 0.16s ease;
-    }
-
-    .sk-theme-card:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); outline-offset: 3px; }
-    .sk-theme-card:hover:not(:disabled) { background: var(--dsw-alias-bg-layer-2); }
-    .sk-theme-card.is-selected { border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe); }
-
+    /* 卡片的边框、圆角、内边距、字号与选中环由公共 settings-parts 的 OptionCard 提供；
+     * 这里只剩卡片上半区的画面层：铺满 media 盒子，圆角跟着盒子裁。 */
     .sk-theme-card__art {
-      position: relative;
+      position: absolute;
+      inset: 0;
       display: block;
-      box-sizing: border-box;
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      overflow: hidden;
-      border-radius: 8px;
-      border: 1px solid var(--dsw-alias-border-l2);
-      background: var(--dsw-alias-bg-layer-1);
     }
-
-    .sk-theme-card__caption { display: flex; flex-direction: column; gap: 4px; padding: 2px 5px 5px; }
-
-    .sk-theme-card__name {
-      color: var(--dsw-alias-label-primary);
-      font-size: 14px;
-      font-weight: 400;
-      line-height: 20px;
-    }
-
-    .sk-theme-card__hint {
-      font-size: 12px;
-      line-height: 18px;
-      color: var(--dsw-alias-label-secondary);
-    }
-
-    .sk-theme-card:disabled { cursor: default; }
-    .sk-theme-card:disabled .sk-theme-card__art { opacity: 0.65; }
 
     /* Card art --------------------------------------------------------------- */
 
@@ -1939,7 +1895,6 @@ window.__ModuleLoader__.load({
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .sk-theme-card { transition: none; }
     }
 
     /* Ocean pack: sea-glass surfaces and a quiet marine scene.
@@ -4688,6 +4643,39 @@ window.__ModuleLoader__.load({
     function joinClass(base, extra) {
       return extra === void 0 || extra === "" ? base : `${base} ${extra}`;
     }
+    function OptionCard(props) {
+      const {
+        selected = false,
+        label,
+        hint,
+        badge,
+        media,
+        role = "radio",
+        disabled = false,
+        onSelect,
+        className,
+        mediaClassName,
+        children,
+        ...rest
+      } = props;
+      const state = role === "radio" ? { role: "radio", "aria-checked": selected } : { "aria-pressed": selected };
+      return /* @__PURE__ */ __dshReact.createElement(
+        "button",
+        {
+          type: "button",
+          ...state,
+          "aria-label": label,
+          disabled,
+          onClick: onSelect,
+          className: joinClass("sk-ui-option", className),
+          "data-selected": selected ? "true" : "false",
+          ...rest
+        },
+        media === void 0 || media === null ? null : /* @__PURE__ */ __dshReact.createElement("span", { className: joinClass("sk-ui-option__media", mediaClassName) }, media),
+        /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-ui-option__caption" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-ui-option__name" }, label, badge === void 0 || badge === null || badge === "" ? null : /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-ui-option__badge" }, badge)), hint === void 0 || hint === null || hint === "" ? null : /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-ui-option__hint" }, hint)),
+        children
+      );
+    }
 
     // src/modules/theme/client/settings-theme.tsx
     var MODE_CARDS = [
@@ -4749,18 +4737,16 @@ window.__ModuleLoader__.load({
     }
     function ThemeCard({ selected, label, hint, onClick, children, disabled = false, colorScheme, palette }) {
       return /* @__PURE__ */ __dshReact.createElement(
-        "button",
+        OptionCard,
         {
-          type: "button",
           role: "radio",
-          "aria-label": label,
-          "aria-checked": selected,
+          selected,
+          label,
+          hint,
           disabled,
-          className: `sk-theme-card${selected ? " is-selected" : ""}`,
-          onClick
-        },
-        /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-card__art", "data-preview-mode": colorScheme, "data-preview-palette": palette }, children),
-        /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-card__caption" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-card__name" }, label), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-card__hint" }, hint))
+          onSelect: onClick,
+          media: /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-card__art", "data-preview-mode": colorScheme, "data-preview-palette": palette }, children)
+        }
       );
     }
     function ThemeCenterPanel({ form, theme, subscribeTheme }) {
@@ -4812,7 +4798,7 @@ window.__ModuleLoader__.load({
           subtitle: "分别选择界面明暗与主题风格，搭配你喜欢的外观。",
           actions: /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-badge" }, "实时预览")
         }
-      ), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-stage", "aria-label": "主题实时预览" }, /* @__PURE__ */ __dshReact.createElement(PreviewWindow, { palette, colorScheme })), /* @__PURE__ */ __dshReact.createElement(CardSection, { bare: true, title: "颜色模式", hint: "控制界面明暗" }, /* @__PURE__ */ __dshReact.createElement(OptionGrid, { columns: 2, className: "sk-theme-modes", role: "radiogroup", "aria-label": "颜色模式" }, MODE_CARDS.map((card) => /* @__PURE__ */ __dshReact.createElement(
+      ), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-theme-stage", "aria-label": "主题实时预览" }, /* @__PURE__ */ __dshReact.createElement(PreviewWindow, { palette, colorScheme })), /* @__PURE__ */ __dshReact.createElement(CardSection, { bare: true, title: "颜色模式", hint: "控制界面明暗" }, /* @__PURE__ */ __dshReact.createElement(OptionGrid, { columns: 4, className: "sk-theme-modes", role: "radiogroup", "aria-label": "颜色模式" }, MODE_CARDS.map((card) => /* @__PURE__ */ __dshReact.createElement(
         ThemeCard,
         {
           key: card.id,
@@ -4846,7 +4832,7 @@ window.__ModuleLoader__.load({
     });
 
     // src/client/ui/components/settings-parts/style.css
-    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@media (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@media (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}';
+    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@media (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@media (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}\n/* 宫格里的可点选卡片 ------------------------------------------------------ */\n\n.sk-ui-option {\n  box-sizing: border-box;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  padding: 5px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 12px;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n  transition: border-color 0.14s ease, background-color 0.14s ease;\n}\n\n.sk-ui-option:hover:not(:disabled) {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n.sk-ui-option[data-selected="true"] {\n  border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n}\n\n.sk-ui-option:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  outline-offset: 3px;\n}\n\n.sk-ui-option:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n.sk-ui-option__media {\n  position: relative;\n  box-sizing: border-box;\n  display: grid;\n  place-items: center;\n  width: 100%;\n  height: 100px;\n  overflow: hidden;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-ui-option__caption {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding: 10px 7px 8px;\n}\n\n.sk-ui-option__name {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 5px;\n  font-size: 13px;\n  line-height: 18px;\n  font-weight: 500;\n  color: inherit;\n}\n\n.sk-ui-option__badge {\n  flex: none;\n  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  font-size: 10px;\n  line-height: 16px;\n  font-weight: 400;\n  white-space: nowrap;\n}\n\n.sk-ui-option__hint {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 16px;\n}\n\n@media (max-width: 620px) {\n  .sk-ui-option__media {\n    height: 82px;\n  }\n\n  .sk-ui-option__caption {\n    padding: 8px 3px;\n  }\n\n  .sk-ui-option__name {\n    align-items: flex-start;\n    flex-direction: column;\n  }\n\n  .sk-ui-option__badge {\n    font-size: 9px;\n  }\n\n  .sk-ui-option__hint {\n    font-size: 10px;\n  }\n}\n\n/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。 */\n@media (max-width: 420px) {\n  .sk-ui-option {\n    flex-direction: row;\n    align-items: center;\n    gap: 8px;\n  }\n\n  .sk-ui-option__media {\n    flex: none;\n    width: 96px;\n    height: 72px;\n  }\n\n  .sk-ui-option__name {\n    flex-direction: row;\n    gap: 8px;\n  }\n\n  .sk-ui-option__caption {\n    flex: 1;\n    padding: 8px 0;\n  }\n}\n@media (prefers-reduced-motion: reduce) {\n  .sk-ui-option {\n    transition: none;\n  }\n}\n';
 
     // src/client/ui/components/settings-parts/install.ts
     var SETTINGS_PARTS_ID = "dsh-toolkit-settings-parts";

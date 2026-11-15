@@ -119,3 +119,78 @@ export function OptionGrid(props: OptionGridProps) {
 function joinClass(base: string, extra?: string): string {
   return extra === undefined || extra === "" ? base : `${base} ${extra}`;
 }
+
+export interface OptionCardProps {
+  /** 选中态：描边与 1px 内环都换成品牌色，和启动动画的当前卡片一致。 */
+  selected?: boolean;
+  label: string;
+  /** 名称下面那行小字（启动动画的 caption、外观页的 hint）。 */
+  hint?: string;
+  /** 名称右侧的小徽标（启动动画的「使用中」）。 */
+  badge?: string;
+  /** 上半区的图/预览；不传则只渲染文字卡片。 */
+  media?: any;
+  /** `radio` 用于单选组（外观页），`button` 用于按下式（启动动画、宠物库）。 */
+  role?: "radio" | "button";
+  disabled?: boolean;
+  onSelect?: () => void;
+  className?: string;
+  mediaClassName?: string;
+  [key: string]: any;
+}
+
+/**
+ * 宫格里那张可点选的卡片。
+ *
+ * 之前启动动画、外观页各写一份（`.boot-mode` / `.sk-theme-card`），于是同一个
+ * OptionGrid 里两种字号、两种底色、两种图区高度 —— 看上去就是两个组件。这里把
+ * 边框、圆角、内边距、图区高度、名称/说明字号、选中环、徽标全部收进一处，
+ * 模块只提供图（`media`）和文案。
+ */
+export function OptionCard(props: OptionCardProps) {
+  const {
+    selected = false,
+    label,
+    hint,
+    badge,
+    media,
+    role = "radio",
+    disabled = false,
+    onSelect,
+    className,
+    mediaClassName,
+    children,
+    ...rest
+  } = props;
+  const state = role === "radio"
+    ? { role: "radio" as const, "aria-checked": selected }
+    : { "aria-pressed": selected };
+  return (
+    <button
+      type="button"
+      {...state}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onSelect}
+      className={joinClass("sk-ui-option", className)}
+      data-selected={selected ? "true" : "false"}
+      {...rest}
+    >
+      {media === undefined || media === null ? null : (
+        <span className={joinClass("sk-ui-option__media", mediaClassName)}>{media}</span>
+      )}
+      <span className="sk-ui-option__caption">
+        <span className="sk-ui-option__name">
+          {label}
+          {badge === undefined || badge === null || badge === "" ? null : (
+            <span className="sk-ui-option__badge">{badge}</span>
+          )}
+        </span>
+        {hint === undefined || hint === null || hint === "" ? null : (
+          <span className="sk-ui-option__hint">{hint}</span>
+        )}
+      </span>
+      {children}
+    </button>
+  );
+}

@@ -158,3 +158,138 @@
     grid-template-columns: 1fr;
   }
 }
+/* 宫格里的可点选卡片 ------------------------------------------------------ */
+
+.sk-ui-option {
+  box-sizing: border-box;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background-color 0.14s ease;
+}
+
+.sk-ui-option:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.sk-ui-option[data-selected="true"] {
+  border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);
+  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);
+}
+
+.sk-ui-option:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);
+  outline-offset: 3px;
+}
+
+.sk-ui-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sk-ui-option__media {
+  position: relative;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100px;
+  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.sk-ui-option__caption {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 7px 8px;
+}
+
+.sk-ui-option__name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: inherit;
+}
+
+.sk-ui-option__badge {
+  flex: none;
+  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.sk-ui-option__hint {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+@media (max-width: 620px) {
+  .sk-ui-option__media {
+    height: 82px;
+  }
+
+  .sk-ui-option__caption {
+    padding: 8px 3px;
+  }
+
+  .sk-ui-option__name {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sk-ui-option__badge {
+    font-size: 9px;
+  }
+
+  .sk-ui-option__hint {
+    font-size: 10px;
+  }
+}
+
+/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。 */
+@media (max-width: 420px) {
+  .sk-ui-option {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sk-ui-option__media {
+    flex: none;
+    width: 96px;
+    height: 72px;
+  }
+
+  .sk-ui-option__name {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .sk-ui-option__caption {
+    flex: 1;
+    padding: 8px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-ui-option {
+    transition: none;
+  }
+}

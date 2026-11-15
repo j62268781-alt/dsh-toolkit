@@ -10,7 +10,7 @@ import { settingsStyles } from '../../../client/styles/settings.js'
 import { DSH_DESKTOP_LOGO } from '../../../client/ui/components/dsh-logo/index.js'
 import { registerSettingsIcon } from '../../../client/ui/components/settings-icon/index.jsx'
 import panelStyles from './styles.css'
-import { CardSection, OptionGrid, PageHeader } from '../../../client/ui/components/settings-parts/index.jsx'
+import { CardSection, OptionCard, OptionGrid, PageHeader } from '../../../client/ui/components/settings-parts/index.jsx'
 import { installSettingsParts } from '../../../client/ui/components/settings-parts/install.js'
 
 export const inject = ['slots', 'configForms']
@@ -117,10 +117,17 @@ export function BootPanel({ form }) {
       <p className="boot-note boot-preview-caption">{mode.detail}</p>
     </section>
     <CardSection bare title="选择动画" hint={<span className="boot-note">点选即用</span>} aria-label="动画模式">
-      <OptionGrid>{MODES.map((item) => <button key={item.id} type="button" className="boot-mode" disabled={controlsDisabled} aria-pressed={current.animation === item.id} aria-label={`${item.name}，${item.caption}`} onClick={() => void choose(item.id)}>
-        <ModeArt mode={item.id} />
-        <span className="boot-mode-copy"><span className="boot-mode-title"><b>{item.name}</b>{current.animation === item.id ? <span className="boot-mode-selected">使用中</span> : null}</span><small>{pendingAnimation === item.id ? '正在应用…' : item.caption}</small></span>
-      </button>)}</OptionGrid>
+      <OptionGrid>{MODES.map((item) => <OptionCard
+        key={item.id}
+        role="button"
+        selected={current.animation === item.id}
+        label={item.name}
+        hint={pendingAnimation === item.id ? '正在应用…' : item.caption}
+        badge={current.animation === item.id ? '使用中' : undefined}
+        media={<ModeArt mode={item.id} />}
+        disabled={controlsDisabled}
+        onSelect={() => void choose(item.id)}
+      />)}</OptionGrid>
     </CardSection>
     <div className="boot-feedback" aria-live="polite">{error ? <p className="boot-error" role="alert">{error}</p> : notice ? <p className="boot-ok" role="status">{notice}</p> : null}</div>
     <CardSection title="显示设置" aria-label="显示设置">

@@ -221,8 +221,8 @@ test('settings panel previews above choices and writes every control through the
   assert.match(frame.getAttribute('srcdoc'), /@media \(prefers-color-scheme:\s*dark\)/)
   assert.ok(document.querySelector('.boot-preview-section').compareDocumentPosition(document.querySelector('.sk-ui-grid')) & app.dom.window.Node.DOCUMENT_POSITION_FOLLOWING)
   assert.equal(document.querySelectorAll('.sk-ui-card').length, 2)
-  assert.equal(document.querySelectorAll('.boot-mode').length, 3)
-  assert.equal(document.querySelectorAll('.boot-mode[aria-pressed="true"]').length, 1)
+  assert.equal(document.querySelectorAll('.sk-ui-option').length, 3)
+  assert.equal(document.querySelectorAll('.sk-ui-option[aria-pressed="true"]').length, 1)
   assert.equal(document.querySelectorAll('input[type="range"],.boot-duration').length, 0)
   assert.doesNotMatch(app.text(), /最短展示|展示时间|展示时长/)
   assert.match(frame.srcdoc, /data-sk-duration="2400"/)
@@ -293,7 +293,9 @@ test('mode cards reuse the desktop whale and toggles match General Settings geom
   const rule = (selector) => rules.find((item) => item.selectorText === selector).style
   assert.equal(rule('.boot-switch[aria-checked=true]').getPropertyValue('background'), 'var(--dsw-alias-brand-primary)')
   assert.equal(rule('.boot-switch[aria-checked=false] .boot-switch-thumb').getPropertyValue('background'), 'var(--dsw-alias-switch-thumb)')
-  assert.match(rule('.boot-mode[aria-pressed=true]').getPropertyValue('border-color'), /--dsw-alias-brand-primary-new-colorprimary-new-color/)
+  // 卡片本体的选中环已上收到公共 settings-parts，不再由启动面板自己声明。
+  const partsSheet = document.querySelector('style[data-plugin="dsh-toolkit-settings-parts"]').textContent
+  assert.match(partsSheet, /\.sk-ui-option\[data-selected="true"\][^{]*\{[^}]*border-color:\s*var\(--dsw-alias-brand-primary-new-colorprimary-new-color/)
   await act(async () => toggle.click())
   assert.equal(toggle.getAttribute('aria-checked'), 'false')
   assert.notEqual(getComputedStyle(thumb).transform, 'translate(16px)')
@@ -304,7 +306,7 @@ test('read-only config disables editors but keeps the local replay available', a
   const app = await mountPanel(t, form)
   const { document } = app.dom.window
   assert.match(app.text(), /当前配置不可写/)
-  for (const control of document.querySelectorAll('.boot-mode,[role="switch"],select,input')) assert.equal(control.disabled, true, control.outerHTML)
+  for (const control of document.querySelectorAll('.sk-ui-option,[role="switch"],select,input')) assert.equal(control.disabled, true, control.outerHTML)
   const replayButton = document.querySelector('.boot-button')
   assert.equal(replayButton.disabled, false)
   await act(async () => replayButton.click())
@@ -320,7 +322,7 @@ test('rejected animation writes restore the persisted selection and report the f
   const { document } = app.dom.window
   await act(async () => document.querySelector('.boot-mode-art--abyss').closest('button').click())
   assert.match(document.querySelector('[role="alert"]').textContent, /宿主拒绝/)
-  assert.match(document.querySelector('.boot-mode[aria-pressed="true"]').textContent, /经典描摹/)
+  assert.match(document.querySelector('.sk-ui-option[aria-pressed="true"]').textContent, /经典描摹/)
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="draw"/)
   assert.doesNotMatch(app.text(), /已使用鲸跃归海/)
 })
@@ -337,11 +339,11 @@ test('animation writes disable competing edits until accepted and persist only a
   const { document } = app.dom.window
   await act(async () => document.querySelector('.boot-mode-art--abyss').closest('button').click())
   assert.match(app.text(), /正在应用/)
-  for (const control of document.querySelectorAll('.boot-mode,[role="switch"],select,input')) assert.equal(control.disabled, true)
+  for (const control of document.querySelectorAll('.sk-ui-option,[role="switch"],select,input')) assert.equal(control.disabled, true)
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="abyss"/)
   await act(async () => release())
   assert.deepEqual(writes, [['animation', 'abyss']])
-  assert.match(document.querySelector('.boot-mode[aria-pressed="true"]').textContent, /鲸跃归海/)
+  assert.match(document.querySelector('.sk-ui-option[aria-pressed="true"]').textContent, /鲸跃归海/)
 })
 
 test('ocean scenes own their light/dark palette and the draw lockup stays motionless', () => {
