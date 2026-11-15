@@ -209,7 +209,7 @@ test('settings panel previews above choices and writes every control through the
   const { form, writes, value } = makeForm({ animation: 'draw', durationMs: 2400, theme: 'auto', showWordmark: true, allowSkip: true })
   const app = await mountPanel(t, form)
   const { document } = app.dom.window
-  assert.equal(app.panel.meta.order, 15)
+  assert.equal(app.panel.meta.order, 7)
   assert.equal(app.panel.meta.name, 'settings.section')
   const style = document.querySelector('style[data-plugin="dsh-toolkit-boot-panel"]')
   assert.ok(style)

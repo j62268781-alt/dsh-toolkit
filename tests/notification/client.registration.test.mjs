@@ -117,7 +117,7 @@ test('createNotification 工厂：全局 React、inject 契约、effect 顺序�
   assert.deepEqual(runtime.overlays, [])
   const [{ meta, Component }] = sections
   assert.equal(meta.id, 'notification')
-  assert.equal(meta.order, 24)
+  assert.equal(meta.order, 9)
   assert.equal(meta.locale, NOTIFICATION_NS)
   assert.equal(meta.label(), '通知')
   assert.equal(typeof Component, 'function')

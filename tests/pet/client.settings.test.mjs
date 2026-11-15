@@ -132,7 +132,7 @@ test('settings use root-scoped accepted config writes, independent toggles, runt
   client.apply(runtime.ctx)
   const { meta, Component } = runtime.sections[0]
   assert.equal(meta.id, 'desktop-pet')
-  assert.equal(meta.order, 25)
+  assert.equal(meta.order, 8)
   assert.equal(meta.locale, 'dsh-toolkit.pet')
   assert.deepEqual(client.inject, ['slots', 'locale', 'configForms', 'uiWorkspace', 'workspaces', 'sessions'])
   const root = createRoot(document.getElementById('root'))
