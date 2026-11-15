@@ -30,18 +30,20 @@
   text-decoration: underline;
 }
 
-/* 横幅整张显示：它自带文案与三台手机的截图，再裁一半就会把手机切掉。 */
-.mbm-heroLink {
-  display: block;
-  margin: 0 -16px;
+/* 横幅整张显示：它自带文案与三台手机的截图，再裁一半就会把手机切掉。
+ * 卡片自己不要边框与内边距 —— 边框交给图片框，这样它和下面卡组的边框一模一样，
+ * 也不会因为图片压住 0.5px 描边而在四角露出黑边。 */
+.mbm-download {
+  border: 0;
+  padding: 0;
+  background: none;
+}
+
+.mbm-heroFrame {
+  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
   border-radius: 12px;
   overflow: hidden;
   line-height: 0;
-}
-
-.mbm-heroLink:focus-visible {
-  outline: 2px solid var(--dsw-alias-brand-primary-new-color, #4d6bfe);
-  outline-offset: 2px;
 }
 
 .mbm-hero {

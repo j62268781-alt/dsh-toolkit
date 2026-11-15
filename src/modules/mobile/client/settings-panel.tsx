@@ -17,7 +17,7 @@ import { CardSection, PageHeader, Row } from '../../../client/ui/components/sett
 import { Tag } from '../../../client/ui/components/tag/index.jsx'
 import { API_PREFIX } from '../../remote/host/constants.js'
 import panelCss from './settings-panel.css'
-import hero from './assets/hero.webp'
+import heroUrl from './assets/hero.webp'
 
 /** 与 ds-harness-remote 的本地控制路由前缀一致（见 remote/client/mobile/pairing.ts）。 */
 const CONTROL_PREFIX = '/ds-harness-remote'
@@ -109,38 +109,71 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
   return function MobileSettings() {
     const [features, setFeatures] = React.useState({ phone: false, wechat: false, wechatRunning: false })
     const [ready, setReady] = React.useState(false)
-    const [busy, setBusy] = React.useState(null)
+    // 每个开关各自忙：一个在等回执时另一个还能点，也不会把整页一起刷一遍。
+    const [pending, setPending] = React.useState({ phone: false, wechat: false })
     const [error, setError] = React.useState(null)
 
-    const refresh = React.useCallback(async () => {
-      const next = await readFeatures()
-      setFeatures(next)
-      setReady(true)
+    React.useEffect(() => {
+      let alive = true
+      void readFeatures().then((next) => {
+        if (!alive) return
+        setFeatures(next)
+        setReady(true)
+      })
+      return () => {
+        alive = false
+      }
     }, [])
 
-    React.useEffect(() => {
-      void refresh()
-    }, [refresh])
+    const patch = React.useCallback((key: 'phone' | 'wechat', next: boolean) => {
+      setFeatures((prev: any) => ({ ...prev, [key]: next }))
+    }, [])
 
-    const apply = React.useCallback(async (key: 'phone' | 'wechat', next: boolean) => {
-      setBusy(key)
+    const mark = React.useCallback((key: 'phone' | 'wechat', next: boolean) => {
+      setPending((prev: any) => ({ ...prev, [key]: next }))
+    }, [])
+
+    /**
+     * 先让开关跟手再发请求：切开关是一次明确的意图，等 RPC 回来才动会显得「卡一下」。
+     * 失败就退回原值，并把原因写在这一行下面。
+     */
+    const apply = React.useCallback(async (key: 'phone' | 'wechat', next: boolean, current: boolean) => {
+      mark(key, true)
       setError(null)
+      patch(key, next)
       try {
         if (key === 'phone') {
           await control('host.authorization.set', { enabled: next })
         } else {
           const response = await fetchJson(`${API_PREFIX}/preferences`, { method: 'POST', json: { wechat: next } })
           const payload: any = await response.json()
-          if (typeof payload?.error === 'string' && payload.error !== '') setError(payload.error)
+          if (typeof payload?.error === 'string' && payload.error !== '') {
+            patch(key, current)
+            setError(payload.error)
+          } else {
+            setFeatures((prev: any) => ({ ...prev, wechatRunning: payload?.running === true }))
+          }
         }
-        await refresh()
       } catch (failure: any) {
+        patch(key, current)
         setError(String(failure?.message ?? failure))
-        await refresh()
       } finally {
-        setBusy(null)
+        mark(key, false)
       }
-    }, [refresh])
+    }, [patch, mark])
+
+    // 横幅走 data URL，重新创建 <img> 会让浏览器重新解码一次；渲染一次就固定下来，
+    // 这样切换开关时不会因为整块子树重建而闪一下。
+    const hero = React.useMemo(() => h(
+      'div',
+      { className: 'mbm-heroFrame' },
+      h('img', {
+        className: 'mbm-hero',
+        src: heroUrl,
+        alt: 'dsh-go：把 DeepSeek Harness 装进口袋，手机本机运行，也能遥控你的电脑',
+        draggable: false,
+      }),
+    ), [])
 
     const enabled = features.phone || features.wechat
     return (
@@ -152,15 +185,14 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
         />
         <CardSection
           className="mbm-group"
+          cardClassName="mbm-download"
           title="下载移动端"
           hint={(
             <a className="mbm-link" href={DOWNLOAD_URL} target="_blank" rel="noreferrer">下载</a>
           )}
           aria-label="下载移动端"
         >
-          <a className="mbm-heroLink" href={DOWNLOAD_URL} target="_blank" rel="noreferrer">
-            <img className="mbm-hero" src={hero} alt="dsh-go：把 DeepSeek Harness 装进口袋，手机本机运行，也能遥控你的电脑" />
-          </a>
+          {hero}
         </CardSection>
         <CardSection
           className="mbm-group"
@@ -178,9 +210,9 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
           >
             <Toggle
               checked={features.phone}
-              disabled={!ready || busy !== null}
+              disabled={!ready || pending.phone}
               label="允许手机控制此设备"
-              onChange={(next) => void apply('phone', next)}
+              onChange={(next: boolean) => void apply('phone', next, features.phone)}
             />
           </Row>
           <Row
@@ -189,9 +221,9 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
           >
             <Toggle
               checked={features.wechat}
-              disabled={!ready || busy !== null}
+              disabled={!ready || pending.wechat}
               label="微信 ClawBot"
-              onChange={(next) => void apply('wechat', next)}
+              onChange={(next: boolean) => void apply('wechat', next, features.wechat)}
             />
           </Row>
         </CardSection>
