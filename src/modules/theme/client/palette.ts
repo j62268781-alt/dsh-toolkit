@@ -7,10 +7,12 @@
  */
 import { findScopedForm } from '../../../client/config.js'
 
-export const PALETTES = Object.freeze(['native', 'codex', 'ocean', 'hope'])
+export const PALETTES = Object.freeze(['native', 'codex', 'ocean', 'sunset', 'cyberpunk'])
 
 export const PALETTE_ATTR = 'data-sk-palette'
 export const SCENE_CLASS = 'sk-theme-scene'
+/** How far the hero layer grows above its content box; written by `syncSceneLift`. */
+export const SCENE_LIFT_VAR = '--sk-hero-lift'
 export const HERO_SELECTOR =
   '[data-slot="main.conversation"] > [data-phase="hero"] > [data-conversation-content][data-content-phase="hero"]'
 
@@ -36,6 +38,7 @@ export interface InstallPaletteOptions extends SceneClockOptions {
   readPalette?: (form: any) => string
   MutationObserver?: typeof MutationObserver
   heroSelector?: string
+  view?: any
 }
 
 const BUILDERS = new Map<string, SceneFactory>()
@@ -83,6 +86,36 @@ function scenesIn(scope) {
   return scope ? [...scope.children].filter((child) => child.classList?.contains(SCENE_CLASS)) : []
 }
 
+/**
+ * The host draws a transparent header row above the hero content (the panel toggle lives
+ * there), so a scene pinned to the content box stops short of the column edge and shows a
+ * bare strip. Measure that gap and hand it to CSS, which lifts the layer by the same amount.
+ */
+function syncSceneLift(scene) {
+  const hero = scene?.parentElement
+  const column = hero?.parentElement
+  const box = hero?.getBoundingClientRect?.()
+  const top = column?.getBoundingClientRect?.()
+  if (!box || !top || typeof box.top !== 'number' || typeof top.top !== 'number') return
+  const gap = Math.round(box.top - top.top)
+  const value = `${Number.isFinite(gap) && gap > 0 ? gap : 0}px`
+  if (scene.style?.getPropertyValue?.(SCENE_LIFT_VAR) === value) return
+  scene.style?.setProperty?.(SCENE_LIFT_VAR, value)
+}
+
+/**
+ * The Desktop preload mirrors the caption strip colours into Windows' own title bar, but it
+ * re-probes only when body's style or the dark-mode flag changes — it watches `html` not at
+ * all, and a palette switch only rewrites `html[data-sk-palette]`. Writing a body property
+ * is the cheapest way to get it to read the pair again after the switch.
+ */
+let captionTick = 0
+function nudgeCaptionColors(doc: any) {
+  const body = doc?.body
+  if (!body?.style?.setProperty) return
+  body.style.setProperty('--sk-palette-tick', String(++captionTick))
+}
+
 /** Replace any previous scene in `hero` with the one for `palette`. */
 export function mountPaletteScene(hero, palette, options = {}) {
   if (!hero) return null
@@ -91,6 +124,9 @@ export function mountPaletteScene(hero, palette, options = {}) {
   if (!scene) return null
   const first = hero.firstElementChild
   hero.insertBefore(scene, first ?? null)
+  syncSceneLift(scene)
+  // The commit frame may not be laid out yet; measure again once the browser has laid out.
+  globalThis.requestAnimationFrame?.(() => { if (scene.isConnected) syncSceneLift(scene) })
   return scene
 }
 
@@ -111,7 +147,7 @@ export function installSceneClock(
   const refresh = () => {
     if (disposed || doc?.hidden) return
     const date = now()
-    for (const scene of doc?.querySelectorAll?.('.sk-scene--hope') ?? []) updateScene(scene, date)
+    for (const scene of doc?.querySelectorAll?.('.sk-scene--sunset') ?? []) updateScene(scene, date)
   }
   const timer = clock.setInterval(refresh, 60_000)
   doc?.addEventListener?.('visibilitychange', refresh)
@@ -137,10 +173,17 @@ export function installPalette(ctx: any, options: InstallPaletteOptions = {}) {
   let queued = false
   let active = true
   let mountedHero = null
+  let lastPalette = ''
   const render = () => {
     if (!active) return
     const palette = read()
     applyPalette(palette, root)
+    // The caption colours live in the native title bar, so the shell has to be told again
+    // whenever the palette (and with it the strip fill) moves.
+    if (palette !== lastPalette) {
+      lastPalette = palette
+      nudgeCaptionColors(doc)
+    }
     const hero = doc?.querySelector?.(options.heroSelector ?? HERO_SELECTOR) ?? null
     if (mountedHero !== hero) {
       for (const scene of scenesIn(mountedHero)) scene.remove()
@@ -156,6 +199,8 @@ export function installPalette(ctx: any, options: InstallPaletteOptions = {}) {
     const current = scenesIn(hero).find((scene) => scene.dataset?.skScene === palette)
     if (current) {
       for (const scene of scenesIn(hero)) if (scene !== current) scene.remove()
+      // Re-measure on every pass: the header row above the hero resizes with the layout.
+      syncSceneLift(current)
       return
     }
     mountPaletteScene(hero, palette)
@@ -177,12 +222,18 @@ export function installPalette(ctx: any, options: InstallPaletteOptions = {}) {
     })
   }
   const off = typeof form?.subscribe === 'function' ? form.subscribe(schedule) : undefined
+  // The header row is sized by its content, and the host trades it for a titled row (or
+  // drops it entirely) when the window gets narrow. A resize fires no attribute mutation,
+  // so the lift would keep the width it was first measured at until something else moved.
+  const view = options.view ?? globalThis
+  view?.addEventListener?.('resize', schedule)
   render()
 
   return () => {
     active = false
     off?.()
     observer?.disconnect()
+    view?.removeEventListener?.('resize', schedule)
     root?.removeAttribute?.(PALETTE_ATTR)
     for (const scene of scenesIn(mountedHero)) scene.remove()
     mountedHero = null

@@ -1,5 +1,5 @@
 import s from '@deepseek-ai/schemastery';
-/** Independent style packs; the two scenic packs use the original DSH shell. */
+/** Independent style packs; the scenic packs use the original DSH shell. */
 export declare const PALETTES: readonly string[];
 export declare const Config: s<Schemastery.ObjectS<NoInfer<{
     palette: s<string, string, "volatile-defined">;

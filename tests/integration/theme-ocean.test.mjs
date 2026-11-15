@@ -1,4 +1,5 @@
-/** The "ocean" palette scene: a self-contained decorative layer plus CSS that stays inside the palette scope. */
+/** The "ocean" palette scene: the approved whale art as a calm, self-contained backdrop
+ *  plus CSS that stays inside the palette scope. */
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
@@ -16,25 +17,9 @@ const SCENE_SCOPE = '.sk-scene--ocean'
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
 
 const LAYER_ORDER = [
-  'sk-ocean-sky',
-  'sk-ocean-surface',
-  'sk-ocean-beams',
-  'sk-ocean-stars',
-  'sk-ocean-distant-whale',
-  'sk-ocean-whale',
-  'sk-ocean-caustics',
-  'sk-ocean-waves',
-  'sk-ocean-splash',
-  'sk-ocean-bubbles',
+  'sk-ocean-art',
+  'sk-ocean-glow',
   'sk-ocean-scrim',
-]
-
-const WHALE_STOP_CLASSES = [
-  'sk-ocean-body-low',
-  'sk-ocean-body-mid',
-  'sk-ocean-body-top',
-  'sk-ocean-fin-low',
-  'sk-ocean-fin-top',
 ]
 
 const CLASS_TOKEN = /^sk-(?:theme-scene|scene--ocean|ocean-[a-z0-9-]+)$/
@@ -63,10 +48,8 @@ function readBlockEnd(css, open) {
   let depth = 0
   for (let index = open; index < css.length; index += 1) {
     if (css[index] === '{') depth += 1
-    else if (css[index] === '}') {
-      depth -= 1
-      if (depth === 0) return index
-    }
+    else if (css[index] === '}') depth -= 1
+    if (depth === 0 && css[index] === '}') return index
   }
   throw new Error('unbalanced CSS block')
 }
@@ -186,16 +169,15 @@ test('createOceanScene refuses to run without a DOM document', () => {
   assert.throws(() => createOceanScene(), /needs a DOM document/)
 })
 
-test('layers stack bottom-up with the sea above the whale and the splash on top of it', (t) => {
+test('layers stack bottom-up: artwork, glow, then the scrim on top', (t) => {
   const document = installDocument(t)
   document.body.append(createOceanScene())
   const scene = document.querySelector('.sk-scene--ocean')
   const layers = [...scene.children].map((node) => node.className)
 
   assert.deepEqual(layers, LAYER_ORDER)
-  assert.ok(layers.indexOf('sk-ocean-whale') < layers.indexOf('sk-ocean-waves'), 'waves overlap the tail')
-  assert.ok(layers.indexOf('sk-ocean-waves') < layers.indexOf('sk-ocean-splash'), 'rings sit on the surface')
-  assert.ok(layers.indexOf('sk-ocean-splash') < layers.indexOf('sk-ocean-scrim'), 'the scrim is the last paint')
+  assert.equal(layers[0], 'sk-ocean-art')
+  assert.equal(layers[layers.length - 1], 'sk-ocean-scrim', 'the scrim is the last paint')
 })
 
 test('the scene is inert: no focus targets, no interactive or embedded content', (t) => {
@@ -206,71 +188,52 @@ test('the scene is inert: no focus targets, no interactive or embedded content',
   assert.equal(scene.querySelectorAll('a, button, input, textarea, select, [tabindex], [contenteditable]').length, 0)
   assert.equal(scene.querySelectorAll('img, iframe, video, audio, object, embed, link, script').length, 0)
   assert.equal(scene.querySelectorAll('[href], [src]').length, 0)
-  const ids = [...scene.querySelectorAll('[id]')]
-  assert.equal(ids.length, 2, 'only the SVG gradients carry ids')
-  for (const node of ids) assert.ok(node.closest('.sk-ocean-whale-svg'), 'ids stay inside the whale SVG')
+  assert.equal(scene.querySelectorAll('[id]').length, 0, 'no id collisions across mounted scenes')
 })
 
-test('the hero scene paints the full particle budget', (t) => {
+test('paints the approved art as an inlined background, never an <img>', (t) => {
   installDocument(t)
   const scene = createOceanScene()
+  const art = scene.querySelector('.sk-ocean-art')
+  const image = scene.style.getPropertyValue('--sk-ocean-art-image')
 
-  assert.equal(scene.querySelectorAll('.sk-ocean-wave').length, 3)
-  assert.equal(scene.querySelectorAll('.sk-ocean-splash-ring').length, 3)
-  assert.equal(scene.querySelectorAll('.sk-ocean-beam').length, 3)
-  assert.equal(scene.querySelectorAll('.sk-ocean-star').length, 22)
-  assert.equal(scene.querySelectorAll('.sk-ocean-bubble').length, 10)
+  assert.ok(art, 'expected the artwork layer')
+  assert.match(image, /^url\("data:image\/webp;base64,/, 'the art resolves to a local data URI')
+  assert.ok(image.length > 20_000, 'the inlined art should carry the real artwork, not a stub')
+  assert.equal(scene.querySelectorAll('img').length, 0)
+  assert.equal(scene.querySelectorAll('[src]').length, 0)
 })
 
-test('the compact card preview paints fewer particles and marks itself', (t) => {
+test('the compact card preview keeps the same structure and marks itself', (t) => {
   installDocument(t)
-  const scene = createOceanScene({ compact: true })
+  const card = createOceanScene({ compact: true })
 
-  assert.equal(scene.dataset.skCompact, 'true')
-  assert.ok(scene.classList.contains('sk-theme-scene'))
-  assert.ok(scene.classList.contains('sk-scene--ocean'))
-  assert.equal(scene.getAttribute('aria-hidden'), 'true')
-  assert.deepEqual([...scene.children].map((node) => node.className), LAYER_ORDER)
-  assert.equal(scene.querySelectorAll('.sk-ocean-splash-ring').length, 2)
-  assert.equal(scene.querySelectorAll('.sk-ocean-beam').length, 2)
-  assert.equal(scene.querySelectorAll('.sk-ocean-star').length, 6)
-  assert.equal(scene.querySelectorAll('.sk-ocean-bubble').length, 3)
-  assert.equal(scene.querySelectorAll('.sk-ocean-wave').length, 3)
+  assert.equal(card.dataset.skCompact, 'true')
+  assert.ok(card.classList.contains('sk-scene--ocean'))
+  assert.deepEqual([...card.children].map((node) => node.className), LAYER_ORDER)
+  assert.match(card.style.getPropertyValue('--sk-ocean-art-image'), /^url\("data:image\/webp;base64,/)
 })
 
-test('the whale is inline SVG with per-instance gradient ids and no external paint', (t) => {
-  installDocument(t)
-  const first = createOceanScene()
-  const second = createOceanScene()
-  const svg = first.querySelector('.sk-ocean-whale-svg')
+test('two scenes stay independent when appended side by side', (t) => {
+  const document = installDocument(t)
+  const hero = createOceanScene()
+  const card = createOceanScene({ compact: true })
+  document.body.append(hero, card)
 
-  assert.ok(svg, 'the whale layer carries an SVG drawing')
-  assert.equal(svg.namespaceURI, 'http://www.w3.org/2000/svg')
-  assert.equal(svg.getAttribute('viewBox'), '0 0 320 220')
-  const body = svg.querySelector('.sk-ocean-whale-body')
-  assert.match(body.getAttribute('d'), /^M /, 'the whale body is a hand-authored path')
-  assert.equal(svg.querySelectorAll('image, use, foreignObject, pattern').length, 0)
-
-  const idsOf = (root) => [...root.querySelectorAll('[id]')].map((node) => node.id)
-  const firstIds = idsOf(first)
-  const secondIds = idsOf(second)
-  assert.equal(firstIds.length, 2, 'one body gradient and one fin gradient')
-  assert.equal(new Set(firstIds).size, firstIds.length)
-  for (const id of firstIds) assert.match(id, /^sk-ocean-(body|fin)-\d+$/)
-  assert.equal(firstIds.filter((id) => secondIds.includes(id)).length, 0, 'a second instance never reuses ids')
-
-  const references = [...svg.querySelectorAll('[fill^="url(#"]')]
-    .map((node) => node.getAttribute('fill').slice('url(#'.length, -1))
-  assert.ok(references.length >= 2)
-  for (const id of references) assert.ok(firstIds.includes(id), `dangling gradient reference: ${id}`)
+  assert.equal(document.querySelectorAll('.sk-scene--ocean').length, 2)
+  assert.notEqual(hero.style.getPropertyValue('--sk-ocean-art-image'), '')
+  assert.notEqual(card.style.getPropertyValue('--sk-ocean-art-image'), '')
+  assert.notEqual(hero.dataset.skCompact, card.dataset.skCompact)
 })
 
-test('scene source fetches nothing, imports nothing, and never touches React', () => {
+test('scene source fetches nothing, imports nothing but the bundled art, and ships no URL', () => {
   assert.doesNotMatch(sceneSource, /\bfetch\s*\(/)
   assert.doesNotMatch(sceneSource, /\bXMLHttpRequest\b/)
   assert.doesNotMatch(sceneSource, /\bimport\s*\(/, 'no dynamic imports')
   assert.doesNotMatch(sceneSource, /from\s+['"]react/)
   assert.doesNotMatch(sceneSource, /React\.|__dshReact/)
+  assert.doesNotMatch(sceneSource, /\bdocument\.write\b/)
+  assert.match(sceneSource, /from\s+'\.\.\/assets\/ocean-art\.webp'/, 'the art is a local bundled asset')
   assert.doesNotMatch(
     sceneSource,
     /https?:\/\/(?!www\.w3\.org\/2000\/svg)/,
@@ -278,7 +241,6 @@ test('scene source fetches nothing, imports nothing, and never touches React', (
   )
   assert.doesNotMatch(cssSource, /@import/i)
   assert.doesNotMatch(cssSource, /url\(\s*['"]?https?:/i)
-  assert.doesNotMatch(sceneSource + cssSource, /77Pn0W/)
 })
 
 test('neither the markup nor the stylesheet leaks bundled or hashed class names', (t) => {
@@ -298,7 +260,7 @@ test('neither the markup nor the stylesheet leaks bundled or hashed class names'
 
 test('scene, selected-pack shell and local preview rules keep their own scopes', () => {
   assert.equal(stylesheet.atRules.length, 0, 'only plain rules, @media and @keyframes are used')
-  assert.ok(stylesheet.rules.length >= 20)
+  assert.ok(stylesheet.rules.length >= 12)
   const scopes = new Set()
   for (const rule of stylesheet.rules) {
     assert.ok(ruleSelectors(rule).length > 0)
@@ -325,9 +287,9 @@ test('scene, selected-pack shell and local preview rules keep their own scopes',
 
 test('every keyframe is sk-ocean- prefixed and the references are a closed set', () => {
   const names = stylesheet.keyframes.map((frame) => frame.name)
-  assert.ok(names.length >= 3, 'the scene animates more than one layer')
+  assert.ok(names.length >= 2, 'the art and the glow both breathe')
   assert.equal(new Set(names).size, names.length)
-  for (const name of names) assert.match(name, /^sk-ocean-[a-z0-9-]+$/)
+  for (const name of names) assert.match(name, /^sk-ocean-[a-z0-9-]+$/, `unprefixed keyframes ${name}`)
   for (const frame of stylesheet.keyframes) {
     assert.equal(frame.media, '', 'keyframes are declared once at the top level')
     assert.ok(declarations(frame.body).size > 0)
@@ -348,11 +310,15 @@ test('every keyframe is sk-ocean- prefixed and the references are a closed set',
 
 test('light and dark palettes declare the same token set', () => {
   const { light, dark } = sceneTokenSets()
-  assert.ok(light.size >= 15, 'the palette is token driven')
+  assert.ok(light.size >= 5, 'the palette is token driven')
   assert.deepEqual([...dark.keys()].sort(), [...light.keys()].sort(), 'every light token has a dark twin')
 
   for (const name of light.keys()) {
     assert.match(cssSource, new RegExp(`var\\(${name}\\)`), `unused custom property: ${name}`)
+  }
+  // Brightness adaptation lives in the veil, the glow and the art dimmer.
+  for (const name of ['--sk-ocean-art-dim', '--sk-ocean-glow', '--sk-ocean-scrim', '--sk-ocean-art-y']) {
+    assert.notEqual(light.get(name), dark.get(name), `${name} must adapt to dark mode`)
   }
 })
 
@@ -367,7 +333,7 @@ test('scene tokens honor body and preview brightness in all 18 selected-style co
   for (const bodyDark of [false, true]) {
     document.body.toggleAttribute('data-ds-dark-theme', bodyDark)
     for (const previewMode of [null, 'light', 'dark']) {
-      for (const selected of ['codex', 'ocean', 'hope']) {
+      for (const selected of ['codex', 'ocean', 'sunset']) {
         document.documentElement.dataset.skPalette = selected
         const preview = document.createElement('div')
         if (previewMode) {
@@ -393,40 +359,9 @@ test('scene tokens honor body and preview brightness in all 18 selected-style co
   assert.equal(combinations, 18)
 })
 
-test('whale gradient stops and ink resolve through scene tokens in both modes', (t) => {
-  const document = installDocument(t)
-  const style = document.createElement('style')
-  style.textContent = cssSource
-  document.head.append(style)
-  const scene = createOceanScene()
-  document.body.append(scene)
-  const stops = [...scene.querySelectorAll('.sk-ocean-whale-svg stop')]
-  assert.deepEqual(stops.map((stop) => stop.getAttribute('class')).sort(), WHALE_STOP_CLASSES)
-  const colors = []
-
-  for (const dark of [false, true]) {
-    document.body.toggleAttribute('data-ds-dark-theme', dark)
-    const tokens = document.defaultView.getComputedStyle(scene)
-    const resolved = new Map()
-    const paints = [...stops.map((stop) => [stop, 'stop-color']),
-      [scene.querySelector('.sk-ocean-whale-eye'), 'fill'],
-      [scene.querySelector('.sk-ocean-whale-mouth'), 'stroke']]
-    for (const [node, property] of paints) {
-      const paint = document.defaultView.getComputedStyle(node).getPropertyValue(property).trim()
-      const reference = /^var\((--sk-ocean-[a-z0-9-]+)\)$/.exec(paint)
-      assert.ok(reference, `${node.getAttribute('class')} ${property} must use a scene token`)
-      const color = tokens.getPropertyValue(reference[1]).trim()
-      assert.ok(color, `unresolved whale color: ${reference[1]}`)
-      resolved.set(node.getAttribute('class'), color)
-    }
-    colors.push(resolved)
-  }
-  for (const [name, light] of colors[0]) assert.notEqual(light, colors[1].get(name), `${name} must adapt to dark mode`)
-})
-
-test('reduced motion freezes every animation and parks the whale in a static pose', () => {
+test('reduced motion freezes every animation and parks the art in a static pose', () => {
   const frozen = stylesheet.rules.filter((rule) => rule.media.includes(REDUCED_MOTION))
-  assert.ok(frozen.length >= 3, 'the reduce block covers the scene, the splash and the whale')
+  assert.ok(frozen.length >= 2, 'the reduce block covers the scene and the art layer')
 
   const animated = frozen.filter((rule) => declarations(rule.body).get('animation')?.includes('none'))
   assert.ok(animated.length >= 1)
@@ -439,13 +374,9 @@ test('reduced motion freezes every animation and parks the whale in a static pos
     assert.match(declarations(rule.body).get('transition'), /none\s*!important/)
   }
 
-  const splash = frozen.find((rule) => ruleSelectors(rule).some((selector) => selector.endsWith('.sk-ocean-splash')))
-  assert.ok(splash, 'the splash rings keep a static footprint under reduced motion')
-  assert.match(declarations(splash.body).get('opacity'), /^0?\.\d+$/)
-
-  const whale = frozen.find((rule) => ruleSelectors(rule).some((selector) => selector.endsWith('.sk-ocean-whale')))
-  assert.ok(whale, 'the whale keeps its breach angle under reduced motion')
-  assert.match(declarations(whale.body).get('transform'), /rotate\(-?\d+deg\)/)
+  const art = frozen.find((rule) => ruleSelectors(rule).some((selector) => selector.endsWith('.sk-ocean-art')))
+  assert.ok(art, 'the artwork keeps a static framing under reduced motion')
+  assert.match(declarations(art.body).get('transform'), /scale\(/)
 })
 
 test('every class the scene rules paint is rendered by the scene', (t) => {
@@ -461,17 +392,4 @@ test('every class the scene rules paint is rendered by the scene', (t) => {
   }
 
   for (const token of painted) assert.ok(rendered.has(token), `CSS paints a class the scene never renders: ${token}`)
-})
-
-test('two scenes stay independent when appended side by side', (t) => {
-  const document = installDocument(t)
-  const hero = createOceanScene()
-  const card = createOceanScene({ compact: true })
-  document.body.append(hero, card)
-
-  assert.equal(document.querySelectorAll('.sk-scene--ocean').length, 2)
-  assert.equal(hero.querySelectorAll('.sk-ocean-star').length, 22)
-  assert.equal(card.querySelectorAll('.sk-ocean-star').length, 6)
-  const classNames = (root) => [...root.children].map((node) => node.className)
-  assert.deepEqual(classNames(hero), classNames(card), 'both sizes share the same layer stack')
 })

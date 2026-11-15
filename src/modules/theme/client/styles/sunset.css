@@ -1,0 +1,245 @@
+/* Sunset pack: a warm dusk over water, deep violet sky and a low golden sun.
+ * Shell rules follow the selected pack; artwork is scene-scoped so every card
+ * thumbnail paints independently. Explicit preview modes own scene brightness.
+ */
+
+html[data-sk-palette="sunset"] body {
+  --sk-sunset-line: color-mix(in srgb, var(--dsw-alias-border-l3) 86%, #c2795c);
+  --sk-sunset-menu: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 96%, #d18a63);
+  --sk-sunset-content: color-mix(in srgb, var(--dsw-alias-bg-base) 98%, #dc9e77);
+
+  /* The DSH system layer follows the pack: send key, primary buttons and
+   * focus rings pick up the dusk accents. Mock previews stay neutral. */
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #e07b45;
+  --dsw-alias-brand-primary-new-color: #e07b45;
+  --dsw-alias-brand-primary: #e07b45;
+  --dsw-alias-state-business-primary: #e07b45;
+  --dsw-alias-state-focus-primary: #e07b45;
+  --dsw-focus-ring-color: #e07b45;
+  --dsw-alias-button-primary-fill: #c25a3e;
+  --dsw-alias-button-primary-hover: #a44a30;
+  --dsw-alias-interactive-bg-hover: color-mix(in srgb, #e07b45 12%, transparent);
+  --dsw-alias-interactive-bg-active: color-mix(in srgb, #e07b45 22%, transparent);
+
+  /* Conversation surfaces — the canvas, the sender bubbles and the composer
+   * card take the dusk palette, and the rail stays a shade deeper so the
+   * conversation still reads as the brightest sheet. */
+  --dsw-alias-bg-base: #fdf6ec;
+  --dsw-alias-bg-layer-1: #fdf7ef;
+  --dsw-alias-bg-layer-2: #f6e9da;
+  --dsw-alias-bg-layer-3: #efdfcc;
+  --dsw-alias-bg-l1: #fbf2e6;
+  --dsw-alias-border-l2: #eeddca;
+  --dsw-alias-border-l3: #e3cbb1;
+  --dsw-alias-border-l4: #d5b595;
+  --dsh-bg-secondary: rgb(224 123 69 / 0.07);
+
+  /* Surfaces the host paints from its own tokens: the rail, the title bar, the
+   * sender bubble, the composer card, the send key and the status strip all
+   * read those, never the alias palette above. They have to be declared on
+   * body — the host declares the same names on body, and a custom property set
+   * on html loses to the nearer body declaration. */
+  --dsw-specific-sidebar-fill: #f6e8d6;
+  --dsw-specific-bubble: #fbe3cd;
+  --dsw-specific-bubble-highlight: #f8d2b2;
+  --dsw-specific-input-major: #fffdfa;
+  --dsw-specific-selector: #f4e9db;
+  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #e07b45 13%, transparent);
+  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, #e07b45 20%, transparent);
+  --dsw-alias-button-info-fill: #e07b45;
+  --dsw-alias-button-info-hover: #c2632f;
+  --dsw-alias-markdown-code-block: #faf1e6;
+  --dsw-alias-markdown-code-block-banner: #f4e7d5;
+  /* The hero artwork now runs behind the blank header row, so the panel toggle keeps a
+     tone that still reads on the dusk sky instead of the host's grey. */
+  --sk-hero-fg: #fdf0e2;
+  /* The dusk sky is mid to dark in both modes, so a soft dark halo carries the glyph. */
+  --sk-hero-halo: rgb(0 0 0 / 0.45);
+  /* Windows draws the caption buttons itself, over the strip the shell fills with
+     --dsw-specific-sidebar-fill; this is the glyph tone that sits on that strip. */
+  --sk-caption-fg: #5b3524;
+}
+
+/* Dark keeps the same hue family around the host-dark canvas so bubbles still
+ * read as raised cards. */
+html[data-sk-palette="sunset"] body[data-ds-dark-theme] {
+  --dsw-alias-bg-base: #211525;
+  --dsw-alias-bg-layer-1: #2d2130;
+  --dsw-alias-bg-layer-2: #251b28;
+  --dsw-alias-bg-layer-3: #1d1520;
+  --dsw-alias-bg-l1: #352739;
+  --dsw-alias-border-l2: #463042;
+  --dsw-alias-border-l3: #563d50;
+  --dsw-alias-border-l4: #674c60;
+  --dsh-bg-secondary: rgb(224 123 69 / 0.1);
+
+  --dsw-specific-sidebar-fill: #17101b;
+  --dsw-specific-bubble: #3b2a39;
+  --dsw-specific-bubble-highlight: #4b3547;
+  --dsw-specific-input-major: #2a1e2c;
+  --dsw-specific-selector: #34263a;
+  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #ef8f57 16%, transparent);
+  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, #ef8f57 24%, transparent);
+  --dsw-alias-button-info-fill: #ef8f57;
+  --dsw-alias-button-info-hover: #f7a877;
+  --dsw-alias-markdown-code-block: #281c2a;
+  --dsw-alias-markdown-code-block-banner: #2f2231;
+  --sk-hero-fg: #f7e2d2;
+  --sk-caption-fg: #f0c9a8;
+}
+
+/* The status strip is the shell.bottom seat: a full-width row under the three
+ * columns that keeps the plain canvas otherwise. */
+html[data-sk-palette="sunset"] [data-shell-bottom] {
+  background-color: var(--dsw-specific-sidebar-fill);
+  border-top: .5px solid var(--dsw-alias-border-l3);
+}
+
+html[data-sk-palette="sunset"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav {
+  background: var(--sk-sunset-menu);
+  border-inline-end-color: var(--sk-sunset-line);
+}
+
+html[data-sk-palette="sunset"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > :is([class*="_content"], [class*="_header"], [class*="_options"]) {
+  background: var(--sk-sunset-content);
+}
+
+html[data-sk-palette="sunset"] .sk-setnav__search {
+  border-color: var(--sk-sunset-line);
+  background: var(--dsw-alias-bg-base);
+}
+
+html[data-sk-palette="sunset"] .sk-setnav__item[aria-current="true"] {
+  box-shadow: inset 2px 0 0 #d4703f;
+}
+
+/* Preview surfaces are local: selecting another card never borrows this pack. */
+[data-preview-palette="sunset"] {
+  --sk-sunset-preview-radius: 10px;
+  --sk-sunset-preview-rail: #f6e7d6;
+  --sk-sunset-preview-composer: #fff6ea;
+  --sk-sunset-preview-line: rgb(160 90 60 / 0.2);
+}
+
+[data-preview-palette="sunset"][data-preview-mode="dark"] {
+  --sk-sunset-preview-rail: #2b1c26;
+  --sk-sunset-preview-composer: #32202b;
+  --sk-sunset-preview-line: rgb(214 140 100 / 0.22);
+}
+
+.sk-theme-card__art[data-preview-palette="sunset"] { border-radius: 9px; }
+.sk-theme-preview-window[data-preview-palette="sunset"] { border-radius: var(--sk-sunset-preview-radius); }
+
+.sk-theme-preview-window[data-preview-palette="sunset"] .sk-theme-preview-rail {
+  background: var(--sk-sunset-preview-rail);
+  border-right-color: var(--sk-sunset-preview-line);
+}
+
+.sk-theme-preview-window[data-preview-palette="sunset"] .sk-theme-preview-logo {
+  border-radius: 5px;
+  background: #e07b45;
+}
+
+.sk-theme-preview-window[data-preview-palette="sunset"] .sk-theme-preview-nav { border-radius: 2px; }
+
+.sk-theme-preview-window[data-preview-palette="sunset"] .sk-theme-preview-composer {
+  border-radius: var(--sk-sunset-preview-radius);
+  border-color: var(--sk-sunset-preview-line);
+  background: var(--sk-sunset-preview-composer);
+  box-shadow: none;
+}
+
+.sk-theme-preview-window[data-preview-palette="sunset"] .sk-theme-preview-send {
+  border-radius: 6px;
+  background: #e07b45;
+}
+
+/* Light is the scene default, including Light previews inside a dark page. */
+.sk-scene--sunset {
+  --sk-sunset-art-x: 50%;
+  --sk-sunset-art-y: 56%;
+  --sk-sunset-art-dim: rgb(255 234 210 / 0);
+  --sk-sunset-glow: rgb(255 168 92 / 0.38);
+  --sk-sunset-scrim: rgb(255 238 216 / 0.66);
+  isolation: isolate;
+  pointer-events: none;
+}
+
+body[data-ds-dark-theme] .sk-scene--sunset:not([data-preview-mode="light"] *),
+[data-preview-mode="dark"] .sk-scene--sunset {
+  --sk-sunset-art-x: 50%;
+  --sk-sunset-art-y: 58%;
+  --sk-sunset-art-dim: rgb(32 12 24 / 0.42);
+  --sk-sunset-glow: rgb(255 130 70 / 0.16);
+  --sk-sunset-scrim: rgb(28 12 22 / 0.72);
+}
+
+.sk-scene--sunset > * {
+  position: absolute;
+  pointer-events: none;
+}
+
+.sk-scene--sunset .sk-sunset-art,
+.sk-scene--sunset .sk-sunset-glow,
+.sk-scene--sunset .sk-sunset-scrim { inset: 0; }
+
+/* The approved dusk art replaces the old vector seascape: one warm,
+ * cover-filled layer. Compact previews reframe toward the boy on the cliff. */
+.sk-scene--sunset .sk-sunset-art {
+  background-image: var(--sk-sunset-art-image);
+  background-repeat: no-repeat;
+  background-position: var(--sk-sunset-art-x) var(--sk-sunset-art-y);
+  background-size: cover;
+  animation: sk-sunset-art-drift 96s ease-in-out infinite alternate;
+}
+
+.sk-scene--sunset .sk-sunset-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sk-sunset-art-dim);
+}
+
+/* The wall clock feeds --sk-sunset-glow-strength / --sk-sunset-solar-x, so the
+ * glow burns brightest through golden hour and the light creeps across the sky.
+ * The keyframes read the same variables so the clock keeps steering the glow
+ * while the breathe animation runs. */
+.sk-scene--sunset .sk-sunset-glow {
+  background: radial-gradient(ellipse 52% 42% at var(--sk-sunset-solar-x, 58%) 32%, var(--sk-sunset-glow), transparent 78%);
+  opacity: var(--sk-sunset-glow-strength, 1);
+  animation: sk-sunset-glow-breathe 46s ease-in-out infinite alternate;
+}
+
+.sk-scene--sunset .sk-sunset-scrim {
+  background: radial-gradient(ellipse 58% 50% at 43% 36%, var(--sk-sunset-scrim), transparent 82%);
+}
+
+.sk-scene--sunset[data-sk-compact="true"] .sk-sunset-art {
+  background-position: 38% 60%;
+  animation-duration: 132s;
+}
+.sk-scene--sunset[data-sk-compact="true"] .sk-sunset-glow { animation-duration: 68s; }
+.sk-scene--sunset[data-sk-compact="true"] .sk-sunset-scrim { opacity: 0.34; }
+
+@keyframes sk-sunset-art-drift {
+  from { transform: translate3d(-1%, -0.6%, 0) scale(1.05); }
+  to { transform: translate3d(1%, 0.6%, 0) scale(1.09); }
+}
+
+@keyframes sk-sunset-glow-breathe {
+  from { opacity: calc(var(--sk-sunset-glow-strength, 1) * 0.6); }
+  to { opacity: var(--sk-sunset-glow-strength, 1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-scene--sunset,
+  .sk-scene--sunset *,
+  .sk-scene--sunset *::before,
+  .sk-scene--sunset *::after {
+    animation: none !important;
+    transition: none !important;
+    will-change: auto !important;
+  }
+
+  .sk-scene--sunset .sk-sunset-art { transform: translate3d(0, 0, 0) scale(1.05); }
+}

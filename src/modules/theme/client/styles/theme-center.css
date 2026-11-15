@@ -39,6 +39,28 @@
   overflow: hidden;
   background: #f3f5f9;
   box-shadow: inset 0 0 0 1px rgb(15 17 21 / 0.06);
+
+  /* Pack shell tokens must not leak into the mock: each preview depicts its
+   * own style only through the scoped overrides, never the selected shell. */
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #4176e6;
+  --dsw-alias-brand-primary-new-color: #4176e6;
+  --dsw-alias-brand-primary: #4176e6;
+  --dsw-alias-state-business-primary: #4176e6;
+  --dsw-alias-state-focus-primary: #4176e6;
+  --dsw-focus-ring-color: #4176e6;
+  --dsw-alias-button-primary-fill: #4176e6;
+  --dsw-alias-button-primary-hover: #3566cf;
+  --dsw-alias-interactive-bg-hover: rgb(65 118 230 / 0.1);
+  --dsw-alias-interactive-bg-active: rgb(65 118 230 / 0.18);
+  --dsw-alias-bg-base: #f6f7f9;
+  --dsw-alias-bg-layer-1: #ffffff;
+  --dsw-alias-bg-layer-2: #eef0f3;
+  --dsw-alias-bg-layer-3: #e6e8ec;
+  --dsw-alias-bg-l1: #f0f1f4;
+  --dsw-alias-border-l2: #e3e5e9;
+  --dsw-alias-border-l3: #d5d8de;
+  --dsw-alias-border-l4: #c3c7cf;
+  --dsh-bg-secondary: rgb(15 17 21 / 0.07);
 }
 
 .sk-theme-preview-window[data-preview-mode="dark"] {
@@ -383,8 +405,12 @@
 }
 
 .sk-theme-emblem--native { height: 72%; }
-.sk-theme-card__art[data-preview-palette="codex"] { background: var(--dsw-alias-bg-layer-2); }
-.sk-theme-card__art[data-preview-palette="native"] { background: var(--dsw-alias-bg-base); }
+/* Thumbnails depict other packs: pinned to neutral host values so the live
+ * shell's tinted surfaces never repaint them. */
+.sk-theme-card__art[data-preview-palette="codex"] { background: #eef0f3; }
+.sk-theme-card__art[data-preview-palette="native"] { background: #f6f7f9; }
+body[data-ds-dark-theme] .sk-theme-card__art[data-preview-palette="codex"] { background: #24272d; }
+body[data-ds-dark-theme] .sk-theme-card__art[data-preview-palette="native"] { background: #191b20; }
 
 @media (max-width: 760px) {
   .sk-theme-stage { padding: 10px; }
@@ -421,15 +447,55 @@
 .sk-theme-scene {
   position: absolute;
   inset: 0;
+  /* The blank hero header row (the panel toggle lives there) sits above the hero content,
+     so a scene pinned to the content box leaves a bare strip behind that toggle. palette.ts
+     measures the gap into --sk-hero-lift and the layer grows upward by exactly that much;
+     card previews keep `inset: 0` from the more specific mount rule. */
+  top: calc(-1 * var(--sk-hero-lift, 0px));
   overflow: hidden;
   pointer-events: none;
   z-index: -1;
 }
 
 html[data-sk-palette="ocean"] [data-slot="main.conversation"] > [data-phase="hero"] > [data-conversation-content][data-content-phase="hero"],
-html[data-sk-palette="hope"] [data-slot="main.conversation"] > [data-phase="hero"] > [data-conversation-content][data-content-phase="hero"] {
+html[data-sk-palette="sunset"] [data-slot="main.conversation"] > [data-phase="hero"] > [data-conversation-content][data-content-phase="hero"],
+html[data-sk-palette="cyberpunk"] [data-slot="main.conversation"] > [data-phase="hero"] > [data-conversation-content][data-content-phase="hero"] {
   position: relative;
   isolation: isolate;
+}
+
+/* The hero content is a positioned sibling, so the lifted scene paints over the header row
+   and would swallow the panel toggle; the header has to win the stacking order instead. */
+html[data-sk-palette="ocean"] [data-slot="main.conversation"] > [data-phase="hero"] > [data-slot="conversation.header"] > header,
+html[data-sk-palette="sunset"] [data-slot="main.conversation"] > [data-phase="hero"] > [data-slot="conversation.header"] > header,
+html[data-sk-palette="cyberpunk"] [data-slot="main.conversation"] > [data-phase="hero"] > [data-slot="conversation.header"] > header {
+  position: relative;
+  z-index: 1;
+}
+
+/* The artwork is that row's background now, and the host paints the icon from its own
+   button rule (a colour on the header would be overridden), so each pack hands the row a
+   foreground that reads on its own sky. The halo keeps the glyph legible where the art is
+   as bright as the glyph — the top of the illustration changes with the window aspect. */
+html[data-sk-palette="ocean"] [data-slot="main.conversation"] > [data-phase="hero"] > [data-slot="conversation.header"] > header button,
+html[data-sk-palette="sunset"] [data-slot="main.conversation"] > [data-phase="hero"] > [data-slot="conversation.header"] > header button,
+html[data-sk-palette="cyberpunk"] [data-slot="main.conversation"] > [data-phase="hero"] > [data-slot="conversation.header"] > header button {
+  color: var(--sk-hero-fg);
+  filter: drop-shadow(0 0 1.5px var(--sk-hero-halo, rgb(0 0 0 / 0.4)));
+}
+
+/* Windows paints the caption buttons (minimise / maximise / close) itself, on top of the
+   strip the shell fills with --dsw-specific-sidebar-fill, and takes the glyph tone from
+   the Desktop preload: it probes a hidden span whose inline style is
+   `background-color: var(--dsw-specific-sidebar-fill); color: var(--dsw-alias-label-primary)`
+   and mirrors the computed pair into `titleBarOverlay`. The label token is the host's own
+   near-black, so the caption stays dark on every palette. `!important` is what lets an
+   author rule beat the probe's inline `color`; palette.ts then nudges body's style so the
+   preload re-reads the pair after a switch. */
+html[data-sk-palette="ocean"] body > span[style*="--dsw-specific-sidebar-fill"],
+html[data-sk-palette="sunset"] body > span[style*="--dsw-specific-sidebar-fill"],
+html[data-sk-palette="cyberpunk"] body > span[style*="--dsw-specific-sidebar-fill"] {
+  color: var(--sk-caption-fg) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

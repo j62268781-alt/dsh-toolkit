@@ -64,12 +64,12 @@ async function renderPanel(t, { palette = 'ocean', preference = 'light', writabl
   }
 }
 
-test('color mode and style stay independently selected across all twelve combinations', async t => {
+test('color mode and style stay independently selected across all fifteen combinations', async t => {
   const panel = await renderPanel(t)
-  const palettes = ['原始 DSH', 'Codex', '大海蓝鲸', '昼夜流光']
+  const palettes = ['原始 DSH', 'Codex', '大海蓝鲸', '夕阳红', '赛博朋克2077']
   const modes = ['浅色', '深色', '跟随系统']
   assert.equal(document.querySelectorAll('[role="radiogroup"]').length, 2)
-  assert.equal(document.querySelectorAll('[role="radio"]').length, 7)
+  assert.equal(document.querySelectorAll('[role="radio"]').length, 8)
   for (const palette of palettes) {
     const beforeModeWrites = panel.modeWrites.length
     await panel.click(palette)
@@ -85,7 +85,7 @@ test('color mode and style stay independently selected across all twelve combina
   }
   await panel.systemColor('dark')
   assert.deepEqual(panel.selected('颜色模式'), ['跟随系统'])
-  assert.deepEqual(panel.selected('主题风格'), ['昼夜流光'])
+  assert.deepEqual(panel.selected('主题风格'), ['赛博朋克2077'])
   for (const preview of document.querySelectorAll('[data-preview-palette]')) {
     assert.equal(preview.dataset.previewMode, 'dark', 'system changes refresh every style preview')
   }
@@ -98,22 +98,22 @@ test('rejected async palette writes keep the selected style and show the error',
     if (response instanceof Error) throw response
     return response
   } })
-  await panel.click('昼夜流光')
+  await panel.click('夕阳红')
   assert.deepEqual(panel.selected('主题风格'), ['大海蓝鲸'])
   assert.match(document.querySelector('[role="status"]').textContent, /宿主拒绝/)
   response = new Error('保存失败')
-  await panel.click('昼夜流光')
+  await panel.click('夕阳红')
   assert.deepEqual(panel.selected('主题风格'), ['大海蓝鲸'])
   assert.match(document.querySelector('[role="status"]').textContent, /保存失败/)
   response = undefined
-  await panel.click('昼夜流光')
-  assert.deepEqual(panel.selected('主题风格'), ['昼夜流光'])
+  await panel.click('夕阳红')
+  assert.deepEqual(panel.selected('主题风格'), ['夕阳红'])
   assert.equal(document.querySelector('[role="status"]'), null)
 })
 
 test('read-only palette config does not disable the independent native color mode', async t => {
   const panel = await renderPanel(t, { writable: false })
-  assert.equal(panel.radio('昼夜流光').disabled, true)
+  assert.equal(panel.radio('夕阳红').disabled, true)
   assert.equal(panel.radio('深色').disabled, false)
   await panel.click('深色')
   assert.deepEqual(panel.selected('颜色模式'), ['深色'])

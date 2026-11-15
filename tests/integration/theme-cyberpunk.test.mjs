@@ -3,13 +3,13 @@ import { readFile } from 'node:fs/promises'
 import { after, before, describe, test } from 'node:test'
 import { JSDOM } from 'jsdom'
 
-import { createHopeScene, updateHopeSceneTime } from '../../src/modules/theme/client/scenes/hope.ts'
+import { createCyberpunkScene } from '../../src/modules/theme/client/scenes/cyberpunk.ts'
 
-const SCENE_URL = new URL('../../src/modules/theme/client/scenes/hope.ts', import.meta.url)
-const CSS_URL = new URL('../../src/modules/theme/client/styles/hope.css', import.meta.url)
-const SCOPE = 'html[data-sk-palette="hope"]'
-const PREVIEW_SCOPE = '[data-preview-palette="hope"]'
-const SCENE_SCOPE = '.sk-scene--hope'
+const SCENE_URL = new URL('../../src/modules/theme/client/scenes/cyberpunk.ts', import.meta.url)
+const CSS_URL = new URL('../../src/modules/theme/client/styles/cyberpunk.css', import.meta.url)
+const SCOPE = 'html[data-sk-palette="cyberpunk"]'
+const PREVIEW_SCOPE = '[data-preview-palette="cyberpunk"]'
+const SCENE_SCOPE = '.sk-scene--cyberpunk'
 
 const sceneSource = await readFile(SCENE_URL, 'utf8')
 const sceneCss = await readFile(CSS_URL, 'utf8')
@@ -99,7 +99,7 @@ function declarationsOf(body) {
 function tokensOf(body) {
   const tokens = new Map()
   for (const { property, value } of declarationsOf(body)) {
-    if (property.startsWith('--sk-hope-')) tokens.set(property, value)
+    if (property.startsWith('--sk-cyberpunk-')) tokens.set(property, value)
   }
   return tokens
 }
@@ -115,172 +115,99 @@ function sceneTokenSets() {
 }
 
 const parsed = parseCss(sceneCss)
-const CLASS_TOKEN = /^(sk-theme-scene|sk-scene--hope|sk-hope-[a-z0-9-]+)$/
+const CLASS_TOKEN = /^(sk-theme-scene|sk-scene--cyberpunk|sk-cyberpunk-[a-z0-9-]+)$/
+const LAYER_ORDER = [
+  'sk-cyberpunk-sky',
+  'sk-cyberpunk-glow',
+  'sk-cyberpunk-city',
+  'sk-cyberpunk-signs',
+  'sk-cyberpunk-rain',
+  'sk-cyberpunk-street',
+  'sk-cyberpunk-rider',
+  'sk-cyberpunk-lights',
+  'sk-cyberpunk-scan',
+  'sk-cyberpunk-scrim',
+]
 
-describe('hope scene', () => {
+describe('cyberpunk scene', () => {
   test('retains native DSH geometry and needs no Codex tokens', () => {
     assert.doesNotMatch(sceneCss, /--cx-/)
     assert.doesNotMatch(sceneCss, /--dsw-radius-[\w-]+\s*:/)
   })
 
-  test('local time selects dawn, day, dusk and a fully starry night', () => {
-    for (const [hour, phase] of [[6, 'dawn'], [12, 'day'], [18, 'dusk'], [23, 'night'], [0, 'night']]) {
-      const timed = createHopeScene({ now: new Date(2026, 10, 5, hour) })
-      assert.equal(timed.dataset.skTimePhase, phase)
-      const night = Number(timed.style.getPropertyValue('--sk-hope-night'))
-      assert.ok(night >= 0 && night <= 1)
-      if (phase === 'night') {
-        assert.equal(night, 1)
-        assert.equal(timed.style.getPropertyValue('--sk-hope-solar-opacity'), '0')
-      }
-      if (phase === 'day') assert.equal(night, 0)
-    }
-  })
-
-  test('refresh moves the sun and sky in place after sleep without changing sibling scenes', () => {
-    const morning = new Date(2026, 10, 5, 6)
-    const noon = new Date(2026, 10, 5, 12)
-    const timed = createHopeScene({ now: morning })
-    const sibling = createHopeScene({ compact: true, now: morning })
-    const siblingStyle = sibling.style.cssText
-    const sun = timed.querySelector('.sk-hope-sun')
-    const oldX = Number.parseFloat(timed.style.getPropertyValue('--sk-hope-solar-x'))
-    const oldY = Number.parseFloat(timed.style.getPropertyValue('--sk-hope-solar-y'))
-    const oldSky = timed.style.getPropertyValue('--sk-hope-time-top')
-    assert.equal(updateHopeSceneTime(timed, noon), timed)
-    assert.equal(timed.querySelector('.sk-hope-sun'), sun)
-    assert.ok(Number.parseFloat(timed.style.getPropertyValue('--sk-hope-solar-x')) > oldX)
-    assert.ok(Number.parseFloat(timed.style.getPropertyValue('--sk-hope-solar-y')) < oldY)
-    assert.notEqual(timed.style.getPropertyValue('--sk-hope-time-top'), oldSky)
-    assert.equal(sibling.style.cssText, siblingStyle)
-    assert.equal(sibling.dataset.skTimePhase, 'dawn')
-  })
-
-  test('midnight wraps continuously and card night stars use a reduced budget', () => {
-    const timed = createHopeScene({ now: new Date(2026, 10, 5, 23, 59, 59) })
-    const sky = timed.style.getPropertyValue('--sk-hope-time-top')
-    updateHopeSceneTime(timed, new Date(2026, 10, 6, 0, 0, 0))
-    assert.equal(timed.style.getPropertyValue('--sk-hope-time-top'), sky)
-    assert.equal(timed.style.getPropertyValue('--sk-hope-night'), '1.000')
-    assert.equal(timed.querySelectorAll('.sk-hope-star').length, 100)
-    const compact = createHopeScene({ compact: true, now: new Date(2026, 10, 6, 0) })
-    assert.equal(compact.querySelectorAll('.sk-hope-star').length, 32)
-    assert.ok(compact.querySelector('.sk-hope-moon'))
-    assert.equal(compact.querySelectorAll('.sk-hope-ridge').length, 3)
-  })
-
   test('exports a decorative element matching the palette contract', () => {
-    scene = createHopeScene()
+    scene = createCyberpunkScene()
     assert.ok(scene instanceof dom.window.HTMLElement)
     assert.equal(scene.tagName, 'DIV')
     assert.ok(scene.classList.contains('sk-theme-scene'))
-    assert.ok(scene.classList.contains('sk-scene--hope'))
-    assert.equal(scene.dataset.skScene, 'hope')
+    assert.ok(scene.classList.contains('sk-scene--cyberpunk'))
+    assert.equal(scene.dataset.skScene, 'cyberpunk')
     assert.equal(scene.getAttribute('aria-hidden'), 'true')
     assert.equal(scene.querySelectorAll('[aria-hidden="false"]').length, 0)
     assert.equal(scene.dataset.skCompact, undefined)
-    // The factory only builds a detached tree; palette.js mounts it.
     assert.equal(document.body.childElementCount, 0)
   })
 
-  test('paints the dawn layer stack: sky, rays, horizon, sun, embers, scrim', () => {
-    const sky = scene.querySelector('.sk-hope-sky')
-    const dawn = scene.querySelector('.sk-hope-dawn')
-    const rays = scene.querySelector('.sk-hope-rays')
-    const horizon = scene.querySelector('.sk-hope-horizon')
-    const sun = scene.querySelector('.sk-hope-sun')
-    const embers = scene.querySelector('.sk-hope-embers')
-    const scrim = scene.querySelector('.sk-hope-scrim')
-
-    for (const layer of [sky, dawn, rays, horizon, sun, embers, scrim]) {
-      assert.ok(layer, 'expected every dawn layer to exist')
-    }
-    assert.equal(scene.firstElementChild, sky)
-    assert.equal(scene.lastElementChild, scrim)
-    // Layer order: embers above the sun, scrim above everything.
+  test('paints the neon layer stack: sky, city, signs, rain, street, rider, scrim', () => {
     const children = [...scene.children]
-    assert.deepEqual(
-      children.map((child) => child.getAttribute('class')),
-      [
-        'sk-hope-sky',
-        'sk-hope-dawn',
-        'sk-hope-night',
-        'sk-hope-clouds',
-        'sk-hope-rays',
-        'sk-hope-horizon',
-        'sk-hope-sun',
-        'sk-hope-landscape',
-        'sk-hope-embers',
-        'sk-hope-scrim',
-      ],
-    )
+    assert.deepEqual(children.map((child) => child.getAttribute('class')), LAYER_ORDER)
+    assert.equal(scene.firstElementChild.getAttribute('class'), 'sk-cyberpunk-sky')
+    assert.equal(scene.lastElementChild.getAttribute('class'), 'sk-cyberpunk-scrim')
   })
 
-  test('draws the radial beams as inline SVG with a unique gradient id', () => {
-    const rays = scene.querySelector('.sk-hope-rays')
-    assert.ok(rays instanceof dom.window.SVGElement)
-    assert.equal(rays.tagName.toLowerCase(), 'svg')
-    assert.equal(rays.getAttribute('viewBox'), '0 0 1000 640')
-    assert.equal(rays.getAttribute('preserveAspectRatio'), 'none')
-    assert.equal(rays.getAttribute('aria-hidden'), 'true')
-    assert.equal(rays.getAttribute('focusable'), 'false')
+  test('builds a seeded skyline with lit windows and neon signage', () => {
+    const city = scene.querySelector('.sk-cyberpunk-city-svg')
+    assert.ok(city)
+    assert.equal(city.getAttribute('viewBox'), '0 0 1000 640')
+    assert.equal(city.querySelectorAll('.sk-cyberpunk-building').length, 9)
+    assert.ok(city.querySelectorAll('.sk-cyberpunk-window').length > 20)
+    assert.ok(city.querySelectorAll('.sk-cyberpunk-window--lit').length > 0)
 
-    const gradient = rays.querySelector('radialGradient')
-    assert.ok(gradient)
-    assert.ok(gradient.id.startsWith('sk-hope-ray-'))
-    assert.equal(rays.querySelectorAll('stop').length, 3)
-
-    const beams = rays.querySelectorAll('.sk-hope-beam')
-    assert.equal(beams.length, 23)
-    for (const beam of beams) {
-      assert.equal(beam.tagName.toLowerCase(), 'path')
-      assert.match(beam.getAttribute('d'), /^M [\d.]+ [\d.]+ L /)
-      assert.match(beam.getAttribute('fill'), /^url\(#sk-hope-ray-\d+\)$/)
-      assert.ok(Number(beam.getAttribute('opacity')) > 0)
+    const signs = scene.querySelectorAll('.sk-cyberpunk-sign')
+    assert.equal(signs.length, 6)
+    for (const variant of ['tower', 'bar', 'block', 'ring']) {
+      assert.ok(scene.querySelector(`.sk-cyberpunk-sign--${variant}`), `missing ${variant} sign`)
     }
-
-    const other = createHopeScene()
-    const otherGradient = other.querySelector('radialGradient')
-    assert.notEqual(otherGradient.id, gradient.id)
   })
 
-  test('builds the sun, horizon and embers from plain DOM nodes', () => {
-    const sun = scene.querySelector('.sk-hope-sun')
-    assert.ok(sun.querySelector('.sk-hope-sun-halo'))
-    assert.ok(sun.querySelector('.sk-hope-sun-core'))
+  test('draws the street kid with glowing visor, belt and collar', () => {
+    const rider = scene.querySelector('.sk-cyberpunk-rider-svg')
+    assert.ok(rider)
+    assert.equal(rider.getAttribute('viewBox'), '0 0 320 480')
+    assert.ok(rider.querySelectorAll('.sk-cyberpunk-rider-fill').length >= 9)
+    assert.ok(rider.querySelector('.sk-cyberpunk-rider-visor'))
+    assert.ok(rider.querySelector('.sk-cyberpunk-rider-belt'))
+    assert.equal(rider.querySelectorAll('.sk-cyberpunk-rider-collar').length, 2)
+    assert.ok(rider.querySelector('.sk-cyberpunk-rider-seam'))
+  })
 
-    const horizon = scene.querySelector('.sk-hope-horizon')
-    assert.ok(horizon.querySelector('.sk-hope-horizon-glow'))
-    assert.ok(horizon.querySelector('.sk-hope-horizon-line'))
-
-    const embers = [...scene.querySelectorAll('.sk-hope-ember')]
-    assert.equal(embers.length, 20)
-    for (const ember of embers) {
-      assert.ok(Number.parseFloat(ember.style.getPropertyValue('--sk-hope-ember-size')) > 0)
-      assert.ok(Number.parseFloat(ember.style.getPropertyValue('--sk-hope-ember-rise')) > 0)
-      assert.ok(ember.style.animationDuration.endsWith('s'))
-      assert.ok(ember.style.animationDelay.endsWith('s'))
+  test('paints the rain, trails and street sheen with a full particle budget', () => {
+    assert.equal(scene.querySelectorAll('.sk-cyberpunk-drop').length, 26)
+    for (const drop of scene.querySelectorAll('.sk-cyberpunk-drop')) {
+      assert.ok(Number.parseFloat(drop.style.getPropertyValue('--sk-cyberpunk-drop-h')) > 0)
+      assert.ok(drop.style.animationDuration.endsWith('s'))
     }
+    assert.equal(scene.querySelectorAll('.sk-cyberpunk-trail').length, 3)
+    assert.ok(scene.querySelector('.sk-cyberpunk-street-sheen'))
+    assert.ok(scene.querySelector('.sk-cyberpunk-scan'))
   })
 
   test('compact paints the sparser card preview with the same structure', () => {
-    const card = createHopeScene({ compact: true })
+    const card = createCyberpunkScene({ compact: true })
     assert.equal(card.dataset.skCompact, 'true')
-    assert.ok(card.classList.contains('sk-scene--hope'))
-    assert.ok(card.querySelector('.sk-hope-sun'))
-    assert.ok(card.querySelector('.sk-hope-scrim'))
+    assert.ok(card.classList.contains('sk-scene--cyberpunk'))
+    assert.deepEqual([...card.children].map((child) => child.getAttribute('class')), LAYER_ORDER)
 
-    assert.equal(card.querySelectorAll('.sk-hope-beam').length, 12)
-    assert.ok(card.querySelectorAll('.sk-hope-beam').length < scene.querySelectorAll('.sk-hope-beam').length)
-    assert.equal(card.querySelectorAll('.sk-hope-ember').length, 6)
-    assert.ok(card.querySelectorAll('.sk-hope-ember').length < scene.querySelectorAll('.sk-hope-ember').length)
-    assert.equal(card.children.length, scene.children.length)
+    assert.equal(card.querySelectorAll('.sk-cyberpunk-building').length, 5)
+    assert.equal(card.querySelectorAll('.sk-cyberpunk-drop').length, 10)
+    assert.equal(card.querySelectorAll('.sk-cyberpunk-sign').length, 3)
+    assert.equal(card.querySelectorAll('.sk-cyberpunk-trail').length, 1)
+    assert.ok(card.querySelectorAll('.sk-cyberpunk-drop').length < scene.querySelectorAll('.sk-cyberpunk-drop').length)
 
-    // Deterministic scatter: the same seed paints the same embers on every mount.
-    const cardStyles = [...card.querySelectorAll('.sk-hope-ember')].map((ember) => ember.style.cssText)
-    const again = createHopeScene({ compact: true })
+    const cardStyles = [...card.querySelectorAll('.sk-cyberpunk-drop')].map((drop) => drop.style.cssText)
+    const again = createCyberpunkScene({ compact: true })
     assert.deepEqual(
-      [...again.querySelectorAll('.sk-hope-ember')].map((ember) => ember.style.cssText),
+      [...again.querySelectorAll('.sk-cyberpunk-drop')].map((drop) => drop.style.cssText),
       cardStyles,
     )
   })
@@ -320,16 +247,16 @@ describe('hope scene', () => {
   })
 })
 
-describe('hope stylesheet', () => {
+describe('cyberpunk stylesheet', () => {
   test('scene, selected-pack shell and local preview rules keep their own scopes', () => {
     assert.ok(parsed.rules.length >= 20, 'expected a full layer sheet')
     const scopes = new Set()
     for (const rule of parsed.rules) {
       for (const selector of selectorsOf(rule)) {
         const classes = (selector.match(/\.[A-Za-z0-9_-]+/g) ?? []).map((token) => token.slice(1))
-        if (classes.some((token) => token === 'sk-scene--hope' || token.startsWith('sk-hope-'))) {
+        if (classes.some((token) => token === 'sk-scene--cyberpunk' || token.startsWith('sk-cyberpunk-'))) {
           scopes.add('scene')
-          assert.ok(classes.includes('sk-scene--hope'), `artwork escapes its scene: ${selector}`)
+          assert.ok(classes.includes('sk-scene--cyberpunk'), `artwork escapes its scene: ${selector}`)
           assert.doesNotMatch(selector, /data-sk-palette|data-preview-palette/, 'unselected scenes must still paint')
         } else if (selector.includes(PREVIEW_SCOPE)) {
           scopes.add('preview')
@@ -350,7 +277,7 @@ describe('hope stylesheet', () => {
     assert.ok(parsed.keyframes.length >= 3)
     const defined = new Set(parsed.keyframes.map((keyframe) => keyframe.name))
     for (const keyframe of parsed.keyframes) {
-      assert.match(keyframe.name, /^sk-hope-[a-z0-9-]+$/, `unprefixed keyframes ${keyframe.name}`)
+      assert.match(keyframe.name, /^sk-cyberpunk-[a-z0-9-]+$/, `unprefixed keyframes ${keyframe.name}`)
       const stops = [...keyframe.body.matchAll(/{([^{}]*)}/g)]
       assert.ok(stops.length >= 2, `${keyframe.name} needs at least two stops`)
       for (const [, declarations] of stops) {
@@ -364,7 +291,7 @@ describe('hope stylesheet', () => {
     for (const rule of parsed.rules) {
       for (const { property, value } of declarationsOf(rule.body)) {
         if (property !== 'animation' && property !== 'animation-name') continue
-        for (const name of value.match(/sk-hope-[a-z0-9-]+/g) ?? []) used.add(name)
+        for (const name of value.match(/sk-cyberpunk-[a-z0-9-]+/g) ?? []) used.add(name)
       }
     }
     assert.ok(used.size >= 3, 'expected the sheet to drive the keyframes')
@@ -376,15 +303,14 @@ describe('hope stylesheet', () => {
     assert.equal(reduced.length, 1)
     assert.match(reduced[0].css, /animation:\s*none\s*!important/)
     assert.match(reduced[0].css, /transition:\s*none\s*!important/)
-    assert.match(reduced[0].css, /\.sk-scene--hope \*/)
+    assert.match(reduced[0].css, /\.sk-scene--cyberpunk \*/)
   })
 
   test('ships matched light and dark token sets on the scene root', () => {
     const { light, dark } = sceneTokenSets()
     assert.ok(light.size >= 15, 'expected a complete light token set')
     assert.deepEqual([...dark.keys()].sort(), [...light.keys()].sort())
-    // Light is warm and bright; dark turns deep red with golden edges.
-    for (const name of ['--sk-hope-sky-top', '--sk-hope-sun-core', '--sk-hope-ember']) {
+    for (const name of ['--sk-cyberpunk-sky-top', '--sk-cyberpunk-scrim', '--sk-cyberpunk-rain']) {
       assert.notEqual(light.get(name), dark.get(name), `${name} must adapt to dark mode`)
     }
   })
@@ -405,22 +331,21 @@ describe('hope stylesheet', () => {
     for (const bodyDark of [false, true]) {
       document.body.toggleAttribute('data-ds-dark-theme', bodyDark)
       for (const previewMode of [null, 'light', 'dark']) {
-        for (const selected of ['codex', 'ocean', 'hope']) {
+        for (const selected of ['codex', 'ocean', 'sunset']) {
           document.documentElement.dataset.skPalette = selected
           const preview = document.createElement('div')
           if (previewMode) {
             preview.dataset.previewMode = previewMode
-            preview.dataset.previewPalette = 'hope'
+            preview.dataset.previewPalette = 'cyberpunk'
           }
-          const scene = createHopeScene({ compact: previewMode !== null })
-          preview.append(scene)
+          const mounted = createCyberpunkScene({ compact: previewMode !== null })
+          preview.append(mounted)
           document.body.replaceChildren(preview)
 
           const expected = tokens[previewMode === 'dark' || (previewMode === null && bodyDark) ? 'dark' : 'light']
-          const computed = dom.window.getComputedStyle(scene)
+          const computed = dom.window.getComputedStyle(mounted)
           const context = `body=${bodyDark ? 'dark' : 'light'}, preview=${previewMode ?? 'none'}, selected=${selected}`
           for (const [name, value] of expected) {
-            // CSSOM removes optional whitespace around the alpha separator.
             const actual = computed.getPropertyValue(name).trim().replace(/\s*\/\s*/g, '/')
             assert.equal(actual, value.replace(/\s*\/\s*/g, '/'), `${context}: ${name}`)
           }
@@ -434,12 +359,11 @@ describe('hope stylesheet', () => {
   test('keeps the card preview readable at thumbnail size', () => {
     const compactRules = parsed.rules.filter((rule) => rule.selector.includes('[data-sk-compact="true"]'))
     assert.ok(compactRules.length >= 3, 'expected compact overrides')
-    const sunRule = compactRules.find((rule) => /\.sk-hope-sun\b/.test(rule.selector))
-    assert.ok(sunRule)
-    assert.match(sunRule.body, /width:\s*min\(/)
-    assert.match(sunRule.body, /animation-duration:/)
-    const raysRule = compactRules.find((rule) => /\.sk-hope-rays\b/.test(rule.selector))
-    assert.ok(raysRule)
-    assert.match(raysRule.body, /opacity:/)
+    const riderRule = compactRules.find((rule) => /\.sk-cyberpunk-rider\b/.test(rule.selector))
+    assert.ok(riderRule)
+    assert.match(riderRule.body, /height:/)
+    const scanRule = compactRules.find((rule) => /\.sk-cyberpunk-scan\b/.test(rule.selector))
+    assert.ok(scanRule)
+    assert.match(scanRule.body, /opacity:/)
   })
 })

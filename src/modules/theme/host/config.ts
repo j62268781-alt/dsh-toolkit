@@ -1,7 +1,7 @@
 import s from '@deepseek-ai/schemastery'
 
-/** Independent style packs; the two scenic packs use the original DSH shell. */
-export const PALETTES = Object.freeze(['native', 'codex', 'ocean', 'hope'])
+/** Independent style packs; the scenic packs use the original DSH shell. */
+export const PALETTES = Object.freeze(['native', 'codex', 'ocean', 'sunset', 'cyberpunk'])
 
 // `native` is the shipped DSH look: installing the toolkit must not restyle the
 // app on its own, so the Codex shell is an opt-in pack rather than the default.

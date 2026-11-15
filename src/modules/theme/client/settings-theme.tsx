@@ -17,7 +17,8 @@ const PALETTE_CARDS = [
   { id: 'native', label: '原始 DSH', hint: '纯粹，熟悉的界面' },
   { id: 'codex', label: 'Codex', hint: '专注的工作空间' },
   { id: 'ocean', label: '大海蓝鲸', hint: '潜入深蓝，与巨鲸同行' },
-  { id: 'hope', label: '昼夜流光', hint: '随当地时间，日升星落' },
+  { id: 'sunset', label: '夕阳红', hint: '悬崖远眺，落日归舟' },
+  { id: 'cyberpunk', label: '赛博朋克2077', hint: '霓虹街头，未来都市' },
 ]
 
 const isWritable = (form) => {

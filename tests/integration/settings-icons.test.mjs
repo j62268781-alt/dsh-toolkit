@@ -109,7 +109,9 @@ async function buildBundle(entry) {
     external: ["react", "react/*", "@deepseek-ai/*"],
     jsxFactory: "__dshReact.createElement",
     jsxFragment: "__dshReact.Fragment",
-    loader: {  ".ts": "ts", ".tsx": "tsx",".js": "jsx", ".css": "text", ".html": "text", ".svg": "text" },
+    // `.webp` 跟 shipped client build 一样走 dataurl：面板插图是二进制资源，
+    // 不配置 loader 时 esbuild 会直接报 "No loader is configured"。
+    loader: {  ".ts": "ts", ".tsx": "tsx",".js": "jsx", ".css": "text", ".html": "text", ".svg": "text", ".webp": "dataurl" },
     logLevel: "silent",
   });
   await writeFile(outfile, result.outputFiles[0].text, "utf8");

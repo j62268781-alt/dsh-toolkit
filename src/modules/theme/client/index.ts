@@ -12,7 +12,8 @@ import { installCodexShell } from "./shell.js";
 import { installSettingsNav } from "./settings-nav.js";
 import { installPalette, installSceneClock, registerPaletteScene } from "./palette.js";
 import { createOceanScene } from "./scenes/ocean.js";
-import { createHopeScene, updateHopeSceneTime } from "./scenes/hope.js";
+import { createSunsetScene, updateSunsetSceneTime } from "./scenes/sunset.js";
+import { createCyberpunkScene } from "./scenes/cyberpunk.js";
 import { ThemeCenterPanel } from "./settings-theme.jsx";
 import { installSettingsParts } from "../../../client/ui/components/settings-parts/install.js";
 import { registerSettingsIcon } from "../../../client/ui/components/settings-icon/index.jsx";
@@ -22,7 +23,8 @@ export const inject = ["layout", "slots", "locale", "configForms", "theme"];
 function registerScenes() {
   const disposers = [
     registerPaletteScene("ocean", createOceanScene),
-    registerPaletteScene("hope", createHopeScene),
+    registerPaletteScene("sunset", createSunsetScene),
+    registerPaletteScene("cyberpunk", createCyberpunkScene),
   ];
   return () => disposers.reverse().forEach(dispose => dispose());
 }
@@ -55,7 +57,7 @@ function installThemeCenter(ctx) {
 
 export function apply(ctx) {
   ctx.effect(registerScenes, "dsh-toolkit-theme:scene-builders");
-  ctx.effect(() => installSceneClock(updateHopeSceneTime), "dsh-toolkit-theme:scene-clock");
+  ctx.effect(() => installSceneClock(updateSunsetSceneTime), "dsh-toolkit-theme:scene-clock");
   ctx.effect(installShellMarkers, "dsh-toolkit-theme:shell-markers");
   // Global by definition: the palette rewrites the host shell itself (sidebar, right bar,
   // settings chrome) through `[class*="_xxx"]` host-hash selectors, so no panel subtree owns it.

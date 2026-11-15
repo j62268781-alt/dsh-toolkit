@@ -1,5 +1,5 @@
 /**
- * Theme center contract: the palette is plugin config (codex/ocean/hope), the
+ * Theme center contract: the palette is plugin config (codex/ocean/sunset/cyberpunk), the
  * native Light/Dark/System preference stays untouched, and animated scenes are
  * mounted only inside the main empty-conversation hero.
  */
@@ -12,6 +12,7 @@ import { Config, PALETTES, readThemeConfig } from '../../src/modules/theme/host/
 import {
   HERO_SELECTOR,
   PALETTE_ATTR,
+  SCENE_LIFT_VAR,
   applyPalette,
   clearPaletteScenes,
   createPaletteScene,
@@ -93,7 +94,7 @@ test('one scene clock refreshes every mounted time scene and disposes cleanly', 
   let cleared
   const doc = {
     hidden: false,
-    querySelectorAll: selector => selector === '.sk-scene--hope' ? scenes : [],
+    querySelectorAll: selector => selector === '.sk-scene--sunset' ? scenes : [],
     addEventListener: (name, callback) => listeners.set(name, callback),
     removeEventListener: (name, callback) => { if (listeners.get(name) === callback) listeners.delete(name) },
   }
@@ -120,12 +121,12 @@ test('one scene clock refreshes every mounted time scene and disposes cleanly', 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 15))
 
 test('theme host config keeps the palette a volatile, clamped enum', () => {
-  assert.deepEqual([...PALETTES], ['native', 'codex', 'ocean', 'hope'])
+  assert.deepEqual([...PALETTES], ['native', 'codex', 'ocean', 'sunset', 'cyberpunk'])
   const parsed = Config({})
   const field = parsed.palette
   assert.equal(typeof field?.get, 'function')
   assert.equal(readThemeConfig(parsed).palette, 'native')
-  assert.equal(readThemeConfig(Config({ palette: 'hope' })).palette, 'hope')
+  assert.equal(readThemeConfig(Config({ palette: 'sunset' })).palette, 'sunset')
   assert.throws(() => Config({ palette: 'nope' }), /palette/)
   assert.equal(readThemeConfig({ palette: { get: () => 'bogus' } }).palette, 'native')
   assert.equal(readThemeConfig({ palette: { get: () => 'ocean' } }).palette, 'ocean')
@@ -137,7 +138,7 @@ test('theme host config keeps the palette a volatile, clamped enum', () => {
 
 test('readPalette accepts snapshots and clamps unknown values', () => {
   assert.equal(readPalette(fakeForm('ocean')), 'ocean')
-  assert.equal(readPalette({ getSnapshot: () => ({ value: { palette: 'hope' } }) }), 'hope')
+  assert.equal(readPalette({ getSnapshot: () => ({ value: { palette: 'sunset' } }) }), 'sunset')
   assert.equal(readPalette({ getSnapshot: () => ({ palette: 'nope' }) }), 'native')
   assert.equal(readPalette(null), 'native')
 })
@@ -147,8 +148,8 @@ test('applyPalette marks every style explicitly and clamps invalid values', () =
   const root = dom.window.document.documentElement
   applyPalette('ocean', root)
   assert.equal(root.getAttribute(PALETTE_ATTR), 'ocean')
-  applyPalette('hope', root)
-  assert.equal(root.getAttribute(PALETTE_ATTR), 'hope')
+  applyPalette('sunset', root)
+  assert.equal(root.getAttribute(PALETTE_ATTR), 'sunset')
   applyPalette('codex', root)
   assert.equal(root.getAttribute(PALETTE_ATTR), 'codex')
   applyPalette('native', root)
@@ -161,7 +162,7 @@ test('applyPalette marks every style explicitly and clamps invalid values', () =
 test('mountPaletteScene inserts first and swaps builders', (t) => {
   const { document } = heroPage(t)
   registerPaletteScene('ocean', sceneBuilder('ocean'))
-  registerPaletteScene('hope', sceneBuilder('hope'))
+  registerPaletteScene('sunset', sceneBuilder('sunset'))
   const hero = document.querySelector(HERO_SELECTOR)
   assert.ok(hero)
 
@@ -169,19 +170,50 @@ test('mountPaletteScene inserts first and swaps builders', (t) => {
   assert.equal(hero.firstElementChild, ocean)
   assert.equal(hero.querySelectorAll('.sk-theme-scene').length, 1)
 
-  const hope = mountPaletteScene(hero, 'hope', { compact: true })
+  const swapped = mountPaletteScene(hero, 'sunset', { compact: true })
   assert.equal(hero.querySelectorAll('.sk-theme-scene').length, 1)
-  assert.equal(hope.dataset.skScene, 'hope')
-  assert.equal(hope.dataset.compact, 'yes')
+  assert.equal(swapped.dataset.skScene, 'sunset')
+  assert.equal(swapped.dataset.compact, 'yes')
   assert.equal(createPaletteScene('codex'), null)
   clearPaletteScenes(document)
   assert.equal(hero.querySelectorAll('.sk-theme-scene').length, 0)
 })
 
+test('the hero scene is lifted by the blank header row above it', async (t) => {
+  const { document } = heroPage(t)
+  registerPaletteScene('ocean', sceneBuilder('ocean'))
+  const hero = document.querySelector(HERO_SELECTOR)
+  assert.ok(hero)
+  const column = hero.parentElement
+
+  // jsdom measures everything as 0; the host really leaves a 30px header row above the hero.
+  assert.equal(mountPaletteScene(hero, 'ocean').style.getPropertyValue(SCENE_LIFT_VAR), '0px')
+  hero.getBoundingClientRect = () => ({ top: 30 })
+  column.getBoundingClientRect = () => ({ top: 0 })
+  const lifted = mountPaletteScene(hero, 'ocean')
+  assert.equal(lifted.style.getPropertyValue(SCENE_LIFT_VAR), '30px')
+
+  // A scene that already exists is re-measured when the layout moves under it.
+  column.getBoundingClientRect = () => ({ top: 10 })
+  const form = fakeForm('ocean')
+  const view = new EventTarget()
+  const dispose = installPalette({}, { form, document, root: document.documentElement, view })
+  assert.equal(lifted.style.getPropertyValue(SCENE_LIFT_VAR), '20px')
+
+  // Resizing fires no attribute mutation, so the resize listener is what keeps a narrower
+  // window (where the host trades the blank row for a titled one) from going stale.
+  column.getBoundingClientRect = () => ({ top: 0 })
+  hero.getBoundingClientRect = () => ({ top: 42 })
+  view.dispatchEvent(new Event('resize'))
+  await flush()
+  assert.equal(lifted.style.getPropertyValue(SCENE_LIFT_VAR), '42px')
+  dispose()
+})
+
 test('installPalette mounts scenes only in the main empty-conversation hero', async (t) => {
   const { document } = heroPage(t)
   registerPaletteScene('ocean', sceneBuilder('ocean'))
-  registerPaletteScene('hope', sceneBuilder('hope'))
+  registerPaletteScene('sunset', sceneBuilder('sunset'))
   const form = fakeForm('ocean')
   const dispose = installPalette({}, { form, document, root: document.documentElement })
 
@@ -197,10 +229,10 @@ test('installPalette mounts scenes only in the main empty-conversation hero', as
   assert.equal(activeHero.querySelectorAll('.sk-theme-scene').length, 0)
   assert.equal(sideHero.querySelectorAll('.sk-theme-scene').length, 0)
 
-  form.write('hope')
+  form.write('sunset')
   await flush()
   assert.equal(mainHero.querySelectorAll('.sk-theme-scene').length, 1)
-  assert.equal(mainHero.querySelector('.sk-theme-scene').dataset.skScene, 'hope')
+  assert.equal(mainHero.querySelector('.sk-theme-scene').dataset.skScene, 'sunset')
   assert.equal(document.querySelectorAll('.sk-theme-scene').length, 1)
 
   form.write('codex')
@@ -231,10 +263,10 @@ test('installPalette mounts scenes only in the main empty-conversation hero', as
 test('hero lifecycle preserves settings preview scenes through active chats and teardown', async (t) => {
   const { document } = heroPage(t)
   registerPaletteScene('ocean', sceneBuilder('ocean'))
-  registerPaletteScene('hope', sceneBuilder('hope'))
+  registerPaletteScene('sunset', sceneBuilder('sunset'))
   const previews = document.createElement('section')
   previews.className = 'sk-theme-page'
-  const previewScene = createPaletteScene('hope', { compact: true })
+  const previewScene = createPaletteScene('sunset', { compact: true })
   previews.append(previewScene)
   document.body.append(previews)
   const hero = document.querySelector(HERO_SELECTOR)
@@ -259,7 +291,7 @@ test('hero lifecycle preserves settings preview scenes through active chats and 
   hero.closest('[data-phase]').setAttribute('data-phase', 'hero')
   hero.setAttribute('data-content-phase', 'hero')
   await flush()
-  form.write('hope') // Queued render must not run after disposal.
+  form.write('sunset') // Queued render must not run after disposal.
   dispose()
   await flush()
   assert.equal(hero.querySelector('.sk-theme-scene'), null)
@@ -278,8 +310,18 @@ test('theme center CSS and selector keep the hero scoping and visual states', as
   assert.match(css, /sk-theme-preview-window/)
   assert.match(css, /prefers-reduced-motion/)
   assert.match(css, /z-index: -1/)
+  assert.match(css, /top: calc\(-1 \* var\(--sk-hero-lift, 0px\)\)/)
+  assert.match(css, /\[data-slot="conversation\.header"\] > header/)
+  assert.match(css, /\[data-slot="conversation\.header"\] > header button \{/)
+  assert.match(css, /color: var\(--sk-hero-fg\)/)
+  assert.match(css, /drop-shadow\(0 0 1\.5px var\(--sk-hero-halo, rgb\(0 0 0 \/ 0\.4\)\)\)/)
+  // Windows paints the caption buttons from the Desktop preload's hidden probe span.
+  assert.match(css, /body > span\[style\*="--dsw-specific-sidebar-fill"\]/)
+  assert.match(css, /color: var\(--sk-caption-fg\) !important/)
+  assert.match(palette, /SCENE_LIFT_VAR/)
   assert.match(css, /html\[data-sk-palette="ocean"\]/)
-  assert.match(css, /html\[data-sk-palette="hope"\]/)
+  assert.match(css, /html\[data-sk-palette="sunset"\]/)
+  assert.match(css, /html\[data-sk-palette="cyberpunk"\]/)
   assert.doesNotMatch(css, /class\*="_[A-Za-z0-9]{5,}_/)
   assert.match(panel, /aria-label="颜色模式"/)
   assert.match(panel, /aria-label="主题风格"/)
@@ -287,6 +329,113 @@ test('theme center CSS and selector keep the hero scoping and visual states', as
   assert.match(panel, /深色/)
   assert.match(panel, /跟随系统/)
   assert.match(panel, /大海蓝鲸/)
-  assert.match(panel, /昼夜流光/)
+  assert.match(panel, /夕阳红/)
+  assert.match(panel, /赛博朋克2077/)
   assert.doesNotMatch(panel, /敬请期待/)
 })
+
+// 宿主把 --dsw-alias-* / --dsw-specific-* 声明在 body 上（design-platform.css），
+// 自定义属性按最近祖先继承：同一名字写在 html 上会被 body 遮蔽，主题包当时就是
+// 这样丢了侧栏、标题条、气泡与状态条的底色。这条断言把「必须写在 body」钉住。
+const HOST_SURFACE_TOKENS = [
+  '--dsw-alias-bg-base',
+  '--dsw-specific-sidebar-fill',
+  '--dsw-specific-bubble',
+  '--dsw-specific-bubble-highlight',
+  '--dsw-specific-input-major',
+  '--dsw-specific-selector',
+  '--dsw-alias-button-info-fill',
+  '--dsw-alias-markdown-code-block',
+]
+
+test('pack colours for host-owned surfaces are declared on body, never on html', async () => {
+  for (const pack of ['ocean', 'sunset', 'cyberpunk']) {
+    const css = await readFile(`${ROOT}src/modules/theme/client/styles/${pack}.css`, 'utf8')
+    for (const token of HOST_SURFACE_TOKENS) {
+      const declarations = [...css.matchAll(new RegExp(`${token}\\s*:`, 'g'))]
+      assert.ok(declarations.length > 0, `${pack} declares ${token}`)
+      for (const { index } of declarations) {
+        const selector = blockSelector(css, index)
+        assert.match(selector, /\bbody\b/, `${pack}: ${token} must sit on a body rule (got "${selector}")`)
+      }
+    }
+  }
+})
+
+test('every pack hands the hero header row a foreground that reads on its own sky', async () => {
+  for (const pack of ['ocean', 'sunset', 'cyberpunk']) {
+    const css = await readFile(`${ROOT}src/modules/theme/client/styles/${pack}.css`, 'utf8')
+    const foreground = [...css.matchAll(/--sk-hero-fg\s*:\s*([^;]+);/g)]
+    assert.equal(foreground.length, 2, `${pack} declares one hero foreground per brightness`)
+    for (const { index } of foreground) {
+      const selector = blockSelector(css, index)
+      assert.match(selector, /\bbody\b/, `${pack}: --sk-hero-fg must sit on a body rule (got "${selector}")`)
+    }
+    // The header row is outside the scene element, so the token has to reach it by inheritance.
+    assert.notEqual(foreground[0][1].trim(), foreground[1][1].trim(), `${pack}: the dark sky needs its own tone`)
+
+    const halo = [...css.matchAll(/--sk-hero-halo\s*:\s*([^;]+);/g)]
+    assert.ok(halo.length >= 1, `${pack} keeps the glyph legible on a bright patch of its art`)
+    for (const { index } of halo) {
+      const selector = blockSelector(css, index)
+      assert.match(selector, /\bbody\b/, `${pack}: --sk-hero-halo must sit on a body rule (got "${selector}")`)
+    }
+  }
+})
+
+// Windows 自己画标题栏右侧那三个按钮，颜色由 Desktop preload 探测一个隐藏 span 得来，
+// 探测的是 --dsw-specific-sidebar-fill 与宿主的 label-primary。主题包只能给一个色调：
+// 若某个包漏了 --sk-caption-fg，按钮会退回宿主近黑色，与浅色侧栏/深色侧栏都不搭。
+test('every pack tints the native caption glyphs to its own strip', async () => {
+  for (const pack of ['ocean', 'sunset', 'cyberpunk']) {
+    const css = await readFile(`${ROOT}src/modules/theme/client/styles/${pack}.css`, 'utf8')
+    const caption = [...css.matchAll(/--sk-caption-fg\s*:\s*([^;]+);/g)]
+    assert.equal(caption.length, 2, `${pack} declares one caption tone per brightness`)
+    for (const { index } of caption) {
+      const selector = blockSelector(css, index)
+      assert.match(selector, /\bbody\b/, `${pack}: --sk-caption-fg must sit on a body rule (got "${selector}")`)
+    }
+    assert.notEqual(caption[0][1].trim(), caption[1][1].trim(), `${pack}: the dark strip needs its own tone`)
+  }
+})
+
+test('a palette switch asks the Desktop shell to re-read the caption colours', async (t) => {
+  const { document } = heroPage(t)
+  registerPaletteScene('ocean', sceneBuilder('ocean'))
+  const form = fakeForm('ocean')
+  const dispose = installPalette({}, { form, document, root: document.documentElement })
+  const tick = () => document.body.style.getPropertyValue('--sk-palette-tick')
+
+  // The preload only re-probes on a body style (or dark-mode) change, and none happens when
+  // the palette just rewrites html[data-sk-palette] — so the first paint nudges it once.
+  const first = tick()
+  assert.notEqual(first, '')
+
+  form.write('sunset')
+  await flush()
+  const second = tick()
+  assert.notEqual(second, first)
+
+  // Re-rendering the same palette must not keep touching the host DOM.
+  form.write('sunset')
+  await flush()
+  assert.equal(tick(), second)
+  dispose()
+})
+
+/** 从一条声明回溯到包住它的那条规则的头部；往后跳过的 `}` 说明是在外层块里。 */
+function blockSelector(css, index) {
+  let cursor = index
+  let depth = 0
+  while (cursor >= 0) {
+    const char = css[cursor]
+    if (char === '}') depth += 1
+    else if (char === '{') {
+      if (depth === 0) break
+      depth -= 1
+    }
+    cursor -= 1
+  }
+  const head = Math.max(css.lastIndexOf('{', cursor - 1), css.lastIndexOf('}', cursor - 1)) + 1
+  return css.slice(head, cursor).trim()
+}

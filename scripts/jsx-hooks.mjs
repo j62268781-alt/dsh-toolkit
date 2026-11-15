@@ -47,6 +47,12 @@ export async function load(url, context, nextLoad) {
     const text = await readFile(new URL(url), 'utf8')
     return { format: 'module', source: `export default ${JSON.stringify(text)}`, shortCircuit: true }
   }
+  // `.webp` 在真实构建里走 esbuild 的 dataurl loader（见 build-client.mjs）：默认导出一个
+  // data: URI 字符串。测试期给同样的形状，`import art from './x.webp'` 才能跑通。
+  if (url.endsWith('.webp')) {
+    const bytes = await readFile(new URL(url))
+    return { format: 'module', source: `export default "data:image/webp;base64,${bytes.toString('base64')}"`, shortCircuit: true }
+  }
   const extension = /\.(ts|tsx|jsx)$/.exec(url)?.[0]
   if (extension === undefined) return nextLoad(url, context)
   const source = await readFile(new URL(url))
