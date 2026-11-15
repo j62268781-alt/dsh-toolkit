@@ -60,26 +60,15 @@ export default function createRemote(require) {
       const features = createFeatures()
       const Entry = createPanel(ReactRuntime, { t, connection, portal, features })
 
-      // 「移动端」面板里的两个开关决定这个入口出不出现：都关着就整块不渲染，
-      // 侧栏也就没有那个图标了（包一层是为了把 useSyncExternalStore 留在组件里）。
-      function GatedEntry() {
-        const enabled = ReactRuntime.useSyncExternalStore(
-          features.subscribe,
-          features.getSnapshot,
-          features.getSnapshot,
-        )
-        if (!enabled.phone && !enabled.wechat) return null
-        return ReactRuntime.createElement(Entry)
-      }
-
       ctx.effect(() => ctx.locale?.register?.(WC_NS, WC_COPY) ?? (() => {}), 'dsh-toolkit-remote:dictionary')
       ctx.effect(() => installStylesheet(css, 'dsh-toolkit-remote'), 'dsh-toolkit-remote:stylesheet')
       ctx.effect(() => features.start(), 'dsh-toolkit-remote:features')
       ctx.effect(() => {
         connection.dispose()
       }, 'dsh-toolkit-remote:connection')
+      // 入口与面板里的两个 tab 常驻：开关只决定 tab 里显示什么，不让菜单按钮忽隐忽现。
       ctx.effect(
-        () => installEntry(ctx, { React: ReactRuntime, createRoot, Entry: GatedEntry }),
+        () => installEntry(ctx, { React: ReactRuntime, createRoot, Entry }),
         'dsh-toolkit-remote:entry-icon',
       )
     },

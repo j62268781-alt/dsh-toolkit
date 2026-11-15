@@ -355,6 +355,28 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   overflow-wrap: anywhere;
 }
 
+/* 入口在「设置 › 移动端」里关着时的占位：不摆按钮，只说明状态和去哪儿开。 */
+.wc-off {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px 16px 24px;
+}
+
+.wc-off__title {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.wc-off__hint {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 /* ── 顶部 tab（复刻插件页「已安装 / 发现」的 SegmentedTabs，size=sm） ── */
 
 /* 官方实现：灰色轨道 + 绝对定位的白色指示块，切换时指示块用 transform 滑动，

@@ -72,21 +72,15 @@ export function createPanel(React, { t, connection, portal, features }) {
   const { PairingTab } = createPairingTab({ React, t, useCountdown, QrCode, pairing })
 
   /**
-   * 顶部 tab：浅灰胶囊容器 + 白色内嵌选中块（对齐插件页「已安装 / 发现」的分段控件）。
-   * 用两段式：容器只做底色与内边距，按钮自己画选中块，这样切换时不会整条重排。
+   * 顶部 tab：两个入口始终都在。
+   *
+   * 早先是「关掉的入口不露 tab」，但这样菜单入口和 tab 条会跟着设置页的开关一起
+   * 消失、又突然长回来，用户不知道发生了什么。现在 tab 固定，关掉的那个在里面
+   * 直说「已在设置里关闭」并指出去哪儿打开。
    */
   function TabBar({ tab, onTab }) {
-    // 开关在「移动端」设置面板里：关掉的入口不再露出 tab，只剩开着的那个。
-    const enabled = useSyncExternalStore(
-      features === undefined ? noopSubscribe : features.subscribe,
-      features === undefined ? readAllEnabled : features.getSnapshot,
-      features === undefined ? readAllEnabled : features.getSnapshot,
-    )
     const all = [['pair', t('tabPair')], ['claw', t('tabClaw')]]
-    const items = all.filter(([key]) => (key === 'pair' ? enabled.phone : enabled.wechat))
-    // 两个都关时理论上入口已经隐藏；真走到这里就都露出来，不要给一张空卡片。
-    const visible = items.length === 0 ? all : items
-    const index = Math.max(0, visible.findIndex(([key]) => key === tab))
+    const index = Math.max(0, all.findIndex(([key]) => key === tab))
     const item = (key, label) => h('button', {
       type: 'button',
       role: 'tab',
@@ -103,7 +97,7 @@ export function createPanel(React, { t, connection, portal, features }) {
         'aria-hidden': 'true',
         style: { transform: `translateX(${index * 100}%)` },
       }),
-      ...visible.map(([key, label]) => item(key, label)))
+      ...all.map(([key, label]) => item(key, label)))
   }
 
   /**
@@ -126,20 +120,26 @@ export function createPanel(React, { t, connection, portal, features }) {
     const [viewport, setViewport] = useState(readViewport)
     // 两个入口：手机配对（默认，新能力）与原有微信 ClawBot。
     const [tab, setTab] = useState('pair')
-    // 关掉的那个入口不留 tab：当前 tab 不可用时落到仍然开着的那个。
+    // 入口始终在，tab 也始终都在；关掉的那个在面板里说明「去哪儿打开」。
     const enabled = useSyncExternalStore(
       features === undefined ? noopSubscribe : features.subscribe,
       features === undefined ? readAllEnabled : features.getSnapshot,
       features === undefined ? readAllEnabled : features.getSnapshot,
     )
-    const activeTab = tab === 'pair' && !enabled.phone && enabled.wechat
-      ? 'claw'
-      : tab === 'claw' && !enabled.wechat && enabled.phone ? 'pair' : tab
+    const activeTab = tab
+    const offHere = activeTab === 'pair' ? !enabled.phone : !enabled.wechat
 
     // 打开时读一次状态；读完之前只转圈，避免先闪「连接微信」再翻成已连接。
+    // 微信入口关着时不碰连接：既省一次请求，也不会在状态里留下假象。
     const [ready, setReady] = useState(false)
     useEffect(() => {
       let alive = true
+      if (!enabled.wechat) {
+        setReady(true)
+        return () => {
+          alive = false
+        }
+      }
       void connection.open().finally(() => {
         if (alive) setReady(true)
       })
@@ -147,10 +147,11 @@ export function createPanel(React, { t, connection, portal, features }) {
         alive = false
         connection.close()
       }
-    }, [])
+    }, [enabled.wechat])
 
     // 轮询：只在需要时走，间隔随状态变化；页面隐藏时跳过。
     useEffect(() => {
+      if (!enabled.wechat || offHere) return undefined
       const interval = pollInterval(value.state)
       if (interval === 0) return undefined
       const timer = setInterval(() => {
@@ -158,7 +159,7 @@ export function createPanel(React, { t, connection, portal, features }) {
         void connection.refresh()
       }, interval)
       return () => clearInterval(timer)
-    }, [value.state])
+    }, [value.state, enabled.wechat, offHere])
 
     // Esc 关闭。
     useEffect(() => {
@@ -279,7 +280,7 @@ export function createPanel(React, { t, connection, portal, features }) {
       }, h(CloseIcon))),
     h(TabBar, { tab: activeTab, onTab: setTab }),
     // 两个 tab 的错误互不影响：微信的错误只在微信 tab 里显示，配对错误由 PairingTab 自己渲染。
-    activeTab !== 'claw' || error === undefined
+    activeTab !== 'claw' || offHere || error === undefined
       ? null
       : h('div', { className: 'wc-error' }, t('failed', { reason: error })),
     h('div', {
@@ -287,7 +288,20 @@ export function createPanel(React, { t, connection, portal, features }) {
       id: 'wc-tabpanel',
       role: 'tabpanel',
       'aria-labelledby': `wc-tab-${tab}`,
-    }, activeTab === 'pair' ? h(PairingTab, { active: true }) : clawBody))
+    }, offHere
+      ? h(OffNotice, { name: activeTab === 'pair' ? t('tabPair') : t('tabClaw') })
+      : activeTab === 'pair' ? h(PairingTab, { active: true }) : clawBody))
+  }
+
+  /**
+   * 入口在「设置 › 移动端」里关掉时的占位。
+   * 只说明状态与去处：面板里没有「跳过去并选中那一节」的公开能力，
+   * 与其给一个点了没反应的按钮，不如把路径写清楚。
+   */
+  function OffNotice({ name }) {
+    return h('div', { className: 'wc-off' },
+      h('p', { className: 'wc-off__title' }, t('offTitle', { name })),
+      h('p', { className: 'wc-off__hint' }, t('offHint')))
   }
 
   /**
@@ -308,12 +322,25 @@ export function createPanel(React, { t, connection, portal, features }) {
     const state = value.state === 'failed' || value.state === 'reconnecting'
       ? value.state
       : value.connected ? 'connected' : value.state
-    // 小圆点跟随真实连接状态；面板开不开都不影响它（见 model.js 里 close() 的注释）。
     const tone = toneOf(state)
+    const featuresValue = useSyncExternalStore(
+      features === undefined ? noopSubscribe : features.subscribe,
+      features === undefined ? readAllEnabled : features.getSnapshot,
+      features === undefined ? readAllEnabled : features.getSnapshot,
+    )
+    /*
+     * 圆点只表示「有东西要处理」。
+     *
+     * 这里有两个远程入口：手机配对是每次扫码的会话，微信 ClawBot 才是常驻连接。
+     * 拿一个点同时表示两边，用户看到的永远是「看起来连上了但手机连不上」这种矛盾；
+     * 干脆不再冒充连接状态 —— 正常/空闲时不画点，失败、二维码过期、断线重连才亮，
+     * 点开面板后每个 tab 自己会写清楚各自的状态。
+     */
+    const attention = featuresValue.wechat && tone === 'bad'
 
-    // 首次挂载同步一次状态，让没打开过面板时小圆点也是准的。
+    // 首次挂载同步一次状态，让没打开过面板时小圆点也是准的；微信入口关着就不打扰通道。
     useEffect(() => {
-      void connection.refresh()
+      if (featuresValue.wechat) void connection.refresh()
       return () => clearTimeout(closeTimer.current)
     }, [])
 
@@ -399,7 +426,9 @@ export function createPanel(React, { t, connection, portal, features }) {
       h('path', { d: 'M6.5 13.2h3.4M7.6 10.8v2.4M9.4 10.8v2.4' }),
       // 手机：压在显示器右下角。
       h('rect', { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 }))),
-    h('span', { className: 'wc-dot', 'data-state': tone, 'aria-hidden': true }))
+    attention
+      ? h('span', { className: 'wc-dot', 'data-state': tone, title: t('dotAttention'), 'aria-label': t('dotAttention') })
+      : null)
 
     // 卡片是 portal 到 body 的，所以状态与关闭逻辑都挂在入口这一层。
     const popover = open

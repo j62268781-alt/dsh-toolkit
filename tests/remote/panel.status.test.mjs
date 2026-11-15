@@ -77,6 +77,20 @@ function snapshot(overrides) {
   }
 }
 
+/**
+ * 「移动端」设置面板里的两个开关。面板只读这两个值：关着的 tab 换成一句提示，
+ * 入口圆点也只在微信开着的时候才表示需要注意。
+ */
+function fakeFeatures(value) {
+  return {
+    getSnapshot: () => value,
+    subscribe: () => () => {},
+    refresh: async () => value,
+    invalidate: () => {},
+    start: () => () => {},
+  }
+}
+
 function fakeConnection(initial) {
   const value = snapshot(initial)
   const calls = []
@@ -97,7 +111,7 @@ function fakeConnection(initial) {
   }
 }
 
-async function mountPanel({ initial, open = true, tab = 'claw' } = {}) {
+async function mountPanel({ initial, open = true, tab = 'claw', features } = {}) {
   const { createPanel } = await loadPanel()
 
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
@@ -124,6 +138,7 @@ async function mountPanel({ initial, open = true, tab = 'claw' } = {}) {
     t: (key, vars) => String(vars === undefined ? key : `${key}:${JSON.stringify(vars)}`),
     connection,
     portal: createPortal,
+    features: features === undefined ? undefined : fakeFeatures(features),
   })
 
   const root = createRoot(dom.window.document.getElementById('root'))
@@ -305,30 +320,76 @@ test('requesting: 还没拿到二维码时用「正在申请二维码…」占�
   }
 })
 
-test('入口圆点：data-state 跟随连接状态，与面板开关无关', async () => {
+test('入口圆点：只在「有东西要处理」时出现，正常与忙碌态不画点', async () => {
   const cases = [
-    { initial: { state: 'connected', connected: true }, expected: 'ok' },
-    { initial: { state: 'waiting_qr' }, expected: 'busy' },
+    // 正常/空闲/扫码中都不该有点：这里有两个远程入口，拿一个点冒充连接状态只会自相矛盾。
+    { initial: { state: 'connected', connected: true }, expected: null },
+    { initial: { state: 'waiting_qr' }, expected: null },
+    { initial: { state: 'idle' }, expected: null },
     { initial: { state: 'failed', error: 'boom' }, expected: 'bad' },
-    { initial: { state: 'idle' }, expected: 'idle' },
     /**
      * 掉线回归：model.js 在 refresh/act 失败时只把 state 改成 'failed'，
-     * 保留上一次快照里的 connected=true。若圆点让 connected 先决，掉线时它就一直绿着
-     * （B17 实测：面板已经显示「操作失败：连不上插件路由」，圆点还是 ok）。
+     * 保留上一次快照里的 connected=true。若让 connected 先决，告警就永远不亮
+     * （B17 实测：面板已经显示「操作失败：连不上插件路由」，圆点却还在装作没事）。
      */
     { initial: { state: 'failed', connected: true, error: '连不上插件路由' }, expected: 'bad' },
-    // 被别处登录顶掉：凭据还在（connected=true），但长轮询已被服务端拒（-14），圆点必须报红。
+    // 被别处登录顶掉：凭据还在（connected=true），但长轮询已被服务端拒（-14），必须告警。
     { initial: { state: 'reconnecting', connected: true, monitor: { enabled: true, running: true, connected: false, phase: 'stale', received: 3 } }, expected: 'bad' },
+    // 二维码过期不是故障，但需要用户动手刷新，同样算需要处理。
+    { initial: { state: 'expired' }, expected: 'bad' },
   ]
   for (const item of cases) {
     const panel = await mountPanel({ initial: item.initial, open: false })
     try {
       const dot = panel.document.querySelector('.wc-icon .wc-dot')
-      assert.ok(dot !== null, '入口按钮上应一直有状态圆点')
+      if (item.expected === null) {
+        assert.equal(dot, null, `状态 ${item.initial.state} 不该画圆点`)
+        continue
+      }
+      assert.ok(dot !== null, `状态 ${item.initial.state} 应该有告警圆点`)
       assert.equal(dot.getAttribute('data-state'), item.expected, `状态 ${item.initial.state} 的圆点分档应为 ${item.expected}`)
+      assert.equal(dot.getAttribute('title'), 'dotAttention', '告警圆点要有说明文案')
     } finally {
       await panel.unmount()
     }
+  }
+})
+
+test('入口圆点：微信入口在设置里关掉后连告警都不显示', async () => {
+  const panel = await mountPanel({
+    initial: { state: 'failed', connected: true, error: '连不上插件路由' },
+    open: false,
+    features: { phone: true, wechat: false },
+  })
+  try {
+    assert.equal(panel.document.querySelector('.wc-icon .wc-dot'), null, '关掉的入口不该再有告警点')
+  } finally {
+    await panel.unmount()
+  }
+})
+
+test('设置里关掉的 tab 换成一句提示：说清关了哪个、去哪儿打开', async () => {
+  // 注意：断言里不要拿 DOM 节点去 assert.equal(..., null) —— 失败时 Node 会 inspect
+  // 整个 JSDOM 图，直接几百 MB 内存打不住。统一先转成布尔再断言。
+  const panel = await mountPanel({ initial: { state: 'idle' }, tab: 'claw', features: { phone: true, wechat: false } })
+  try {
+    const popover = panel.popover()
+    // mountPanel 挂载时已经切到 ClawBot，所以此刻应该已经是占位提示。
+    const offAtMount = popover.querySelector('.wc-off')
+    assert.equal(offAtMount !== null, true, '微信关掉后 ClawBot tab 应换成占位提示')
+    assert.match(offAtMount.textContent, /offTitle/)
+    assert.match(offAtMount.textContent, /offHint/)
+    assert.equal(popover.querySelector('.wc-error') === null, true, '关掉时不显示旧的失败信息')
+
+    // 手机连接没关，切过去要看到正常内容，而不是占位。
+    await panel.click(popover.querySelector('#wc-tab-pair'))
+    assert.equal(panel.popover().querySelector('.wc-off') === null, true, '开着的 tab 不该被占位提示顶掉')
+
+    // 再切回来仍然是提示。
+    await panel.click(panel.popover().querySelector('#wc-tab-claw'))
+    assert.equal(panel.popover().querySelector('.wc-off') !== null, true, '切回关掉的 tab 仍然是占位提示')
+  } finally {
+    await panel.unmount()
   }
 })
 

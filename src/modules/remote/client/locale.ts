@@ -26,6 +26,10 @@ const SHELL_COPY = {
     loading: '正在读取状态…',
     close: '关闭',
     retry: '重试',
+
+    offTitle: '{name}已在设置里关闭',
+    offHint: '到「设置 › 移动端」重新打开后，这里就能继续用。',
+    dotAttention: '有需要处理的远程状态',
   },
   en: {
     entry: 'Remote',
@@ -44,6 +48,10 @@ const SHELL_COPY = {
     loading: 'Reading state…',
     close: 'Close',
     retry: 'Retry',
+
+    offTitle: '{name} is turned off in Settings',
+    offHint: 'Turn it back on in Settings › Mobile, and it works here again.',
+    dotAttention: 'A remote connection needs attention',
   },
 }
 
