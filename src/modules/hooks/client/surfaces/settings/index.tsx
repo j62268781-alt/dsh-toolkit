@@ -2,7 +2,7 @@ import React from "react";
 import { fetchJson } from "../../../../../client/http.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
-import { PageHeader } from "../../../../../client/ui/components/settings-parts/index.jsx";
+import { CardSection, PageHeader } from "../../../../../client/ui/components/settings-parts/index.jsx";
 import { settingsStyles } from "../../../../../client/styles/settings.js";
 import panelCss from "./style.css";
 import { HOOK_EVENTS, HOOKS_REFRESH_PATH, HOOKS_SNAPSHOT_PATH, HOOKS_TEST_PATH } from "../../constants.js";
@@ -15,17 +15,6 @@ export const NAME = "settings";
 
 // 只服务本面板：样式随组件走宿主自管的 <style>，模块卸载时宿主一并清理。
 const CSS = `${settingsStyles("sk")}\n${panelCss}`;
-
-const TEMPLATE = `{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "bash",
-        "hooks": [{ "type": "command", "command": "echo hello" }]
-      }
-    ]
-  }
-}`;
 
 function createHooksSection(ctx: any) {
   const Button = primitives.Button;
@@ -151,7 +140,6 @@ function createHooksSection(ctx: any) {
       hooks: groups.find((group) => group.event.id === event.id)?.hooks ?? [],
     }));
     const otherRows = groups.filter((group) => !group.event.supported);
-    const userFile = snapshot.files.find((file) => file.id === "user");
     const history = showAllHistory ? snapshot.history : snapshot.history.slice(0, 8);
     const timeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: "medium" });
 
@@ -298,41 +286,28 @@ function createHooksSection(ctx: any) {
           </div>
         ) : null}
 
-        <h3 className="sk-hooks__sectionTitle">{t("eventsTitle")} · {total}</h3>
-        <div className="sk-hooks__card">
+        <CardSection title={`${t("eventsTitle")} · ${total}`} aria-label={t("eventsTitle")}>
           {rows.map((row) => renderRow(row.event, row.hooks, row.event.id))}
-        </div>
+        </CardSection>
         {otherRows.length > 0 ? (
-          <div className="sk-hooks__card">
+          <CardSection title={t("otherEventsTitle")} aria-label={t("otherEventsTitle")}>
             {otherRows.map((row) => renderRow(row.event, row.hooks, row.event.id))}
-          </div>
-        ) : null}
-        {total === 0 ? (
-          <div className="sk-hooks__empty">
-            <p className="sk-hooks__emptyTitle">{t("emptyTitle")}</p>
-            <p className="sk-hooks__hint">{t("emptyHint")}</p>
-            <pre className="sk-hooks__pre">{TEMPLATE}</pre>
-            {userFile ? (
-              <button type="button" className="sk-hooks__path" onClick={() => copy(userFile.path)}>
-                {copiedPath === userFile.path ? t("copied") : userFile.path}
-              </button>
-            ) : null}
-          </div>
+          </CardSection>
         ) : null}
 
-        <h3 className="sk-hooks__sectionTitle">{t("historyTitle")}</h3>
-        {snapshot.history.length === 0 ? (
-          <p className="sk-hooks__hint">{t("historyEmpty")}</p>
-        ) : (
-          <div className="sk-hooks__history">
-            <div className="sk-hooks__card">{history.map(renderHistoryRow)}</div>
-            {snapshot.history.length > 8 && !showAllHistory ? (
-              <button type="button" className="sk-hooks__link" onClick={() => setShowAllHistory(true)}>
-                {t("showMore")}
-              </button>
-            ) : null}
-          </div>
-        )}
+        <CardSection
+          title={t("historyTitle")}
+          aria-label={t("historyTitle")}
+          hint={snapshot.history.length > 8 && !showAllHistory ? (
+            <button type="button" className="sk-hooks__link" onClick={() => setShowAllHistory(true)}>
+              {t("showMore")}
+            </button>
+          ) : undefined}
+        >
+          {snapshot.history.length === 0
+            ? <p className="sk-hooks__hint">{t("historyEmpty")}</p>
+            : history.map(renderHistoryRow)}
+        </CardSection>
       </div>
     );
   };

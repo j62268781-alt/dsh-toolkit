@@ -124,12 +124,7 @@ function createArchivedSection(ctx, removal) {
     };
     return (
       <div className="sk-arch">
-        <div className="sk-arch__head">
-          <div className="sk-arch__headText">
-            <h2 className="sk-arch__title">{t("title")}</h2>
-            <p className="sk-arch__subtitle">{t("removeHint")}</p>
-          </div>
-        </div>
+        <PageHeader title={t("title")} subtitle={t("removeHint")} />
 
         <div className="sk-arch__bar">
           <label className="sk-search">

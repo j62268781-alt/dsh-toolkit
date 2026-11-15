@@ -28,27 +28,6 @@
   color: var(--dsw-alias-label-secondary);
 }
 
-.sk-hooks__path {
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: 12px;
-  line-height: 16px;
-  text-align: left;
-  color: var(--dsw-alias-label-tertiary);
-  cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sk-hooks__path:hover {
-  color: var(--dsw-alias-label-primary);
-  text-decoration: underline;
-}
-
 .sk-hooks__hint {
   margin: 0;
   font-size: 12px;
@@ -88,14 +67,6 @@
 .sk-hooks__issueCode {
   color: var(--dsw-alias-label-tertiary);
   font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-}
-
-/* 事件卡组：照桌面宠物面板的 .pet-card（0.5px 描边 + 12px 圆角 + 行间分隔线）。 */
-.sk-hooks__card {
-  box-sizing: border-box;
-  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
-  border-radius: 12px;
-  padding: 0 16px;
 }
 
 .sk-hooks__row + .sk-hooks__row {
@@ -285,33 +256,6 @@
   font-size: 12px;
   line-height: 18px;
   color: var(--dsw-alias-label-secondary);
-}
-
-.sk-hooks__empty {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px;
-  border: 0.5px dashed var(--dsw-alias-border-l3);
-  border-radius: var(--dsw-radius-md);
-}
-
-.sk-hooks__emptyTitle {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.sk-hooks__pre {
-  margin: 0;
-  padding: 8px 10px;
-  overflow-x: auto;
-  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--dsw-alias-label-secondary);
-  background-color: var(--dsw-alias-bg-layer-1);
-  border-radius: var(--dsw-radius-md);
 }
 
 /* 最近执行：与上面事件卡组同一套行结构（同一边框卡片、16px 行距、行间 0.5px 分隔线）。 */

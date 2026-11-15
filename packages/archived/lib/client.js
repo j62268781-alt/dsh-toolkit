@@ -931,6 +931,15 @@ window.__ModuleLoader__.load({
     });
     var import_react7 = __toESM(require("react"), 1);
 
+    // src/client/ui/components/settings-parts/index.tsx
+    function PageHeader(props) {
+      const { title, subtitle, actions, className, ...rest } = props;
+      return /* @__PURE__ */ __dshReact.createElement("header", { className: joinClass("sk-ui-pageHead", className), ...rest }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-ui-pageHeadText" }, /* @__PURE__ */ __dshReact.createElement("h2", { className: "sk-ui-pageTitle" }, title), subtitle === void 0 || subtitle === "" ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-ui-pageIntro" }, subtitle)), actions === void 0 || actions === null ? null : actions);
+    }
+    function joinClass(base, extra) {
+      return extra === void 0 || extra === "" ? base : `${base} ${extra}`;
+    }
+
     // src/modules/archived/client/surfaces/settings/style.css
     var style_default3 = `.sk-arch {
       max-width: 760px;
@@ -1193,7 +1202,7 @@ window.__ModuleLoader__.load({
             setBusyId(null);
           }
         };
-        return /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__head" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__headText" }, /* @__PURE__ */ import_react7.default.createElement("h2", { className: "sk-arch__title" }, t("title")), /* @__PURE__ */ import_react7.default.createElement("p", { className: "sk-arch__subtitle" }, t("removeHint")))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__bar" }, /* @__PURE__ */ import_react7.default.createElement("label", { className: "sk-search" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-searchIcon" }, /* @__PURE__ */ import_react7.default.createElement(SearchIcon, { "aria-hidden": "true" })), /* @__PURE__ */ import_react7.default.createElement(
+        return /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch" }, /* @__PURE__ */ import_react7.default.createElement(PageHeader, { title: t("title"), subtitle: t("removeHint") }), /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__bar" }, /* @__PURE__ */ import_react7.default.createElement("label", { className: "sk-search" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-searchIcon" }, /* @__PURE__ */ import_react7.default.createElement(SearchIcon, { "aria-hidden": "true" })), /* @__PURE__ */ import_react7.default.createElement(
           "input",
           {
             className: "sk-searchInput",
