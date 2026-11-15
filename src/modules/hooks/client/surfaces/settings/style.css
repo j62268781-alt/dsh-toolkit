@@ -8,8 +8,8 @@
 
 /* 页头由 src/client/ui/components/settings-parts 提供（.sk-ui-pageHead*）。 */
 
-/* 组与组之间取宠物面板的 24px 间距；容器已有 12px gap，这里补上差额。 */
-.sk-hooks__group + .sk-hooks__group {
+/* 每组与上方内容（页头或上一组）都取宠物面板的 24px 间距；容器本身已有 12px gap，这里补上差额。 */
+.sk-hooks__group {
   margin-top: 12px;
 }
 
@@ -114,6 +114,13 @@
   overflow-wrap: anywhere;
 }
 
+.sk-hooks__groupTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .sk-hooks__count {
   flex: none;
   font-size: 12px;
@@ -165,8 +172,8 @@
 .sk-hooks__hook {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 12px 14px;
   border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: var(--dsw-radius-md);
   background-color: var(--dsw-alias-bg-layer-1);
@@ -174,9 +181,90 @@
 
 .sk-hooks__hookHead {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sk-hooks__hookHead:focus-visible {
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+
+.sk-hooks__hookText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sk-hooks__hookTitle {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: anywhere;
+}
+
+.sk-hooks__hookSource {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* 展开后的参数表：左边一列字段名，右边值；命令行允许换行。 */
+.sk-hooks__fields {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--dsw-radius-md);
+  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.06));
+}
+
+.sk-hooks__field {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.sk-hooks__field dt {
+  flex: none;
+  width: 76px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.sk-hooks__field dd {
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: anywhere;
+}
+
+.sk-hooks__code {
+  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+}
+
+.sk-hooks__sourcePath {
+  color: var(--dsw-alias-label-secondary);
+  word-break: break-all;
 }
 
 .sk-hooks__badge {
@@ -197,49 +285,6 @@
   color: var(--dsw-alias-state-warning-primary, #b7791f);
 }
 
-.sk-hooks__command {
-  min-width: 0;
-  flex: 1;
-  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 12px;
-  line-height: 18px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sk-hooks__meta {
-  flex: none;
-  font-size: 11px;
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.sk-hooks__hookFoot {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.sk-hooks__matcher {
-  font-size: 11px;
-  line-height: 16px;
-  padding: 0 6px;
-  border-radius: 4px;
-  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  color: var(--dsw-alias-label-secondary);
-  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.12));
-}
-
-.sk-hooks__status {
-  font-size: 11px;
-  color: var(--dsw-alias-label-tertiary);
-}
-
-.sk-hooks__status.is-unsupported {
-  color: var(--dsw-alias-state-warning-primary, #b7791f);
-}
-
 .sk-hooks__link {
   margin-left: auto;
   padding: 0;
@@ -254,13 +299,6 @@
 .sk-hooks__link:hover {
   color: var(--dsw-alias-label-primary);
   text-decoration: underline;
-}
-
-.sk-hooks__result {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--dsw-alias-label-secondary);
 }
 
 /* 最近执行：与上面事件卡组同一套行结构（同一边框卡片、16px 行距、行间 0.5px 分隔线）。 */

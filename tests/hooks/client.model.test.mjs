@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 // 纯投影不碰 DOM/ctx，直接 import 源码（jsx-register 负责把 .ts 说明符解析到源码）。
-import { formatDuration, groupHooks, matcherLabel, readSnapshot, runProblem } from '../../src/modules/hooks/client/model.ts'
+import { baseName, commandName, formatDuration, groupHooks, matcherLabel, readSnapshot, runProblem } from '../../src/modules/hooks/client/model.ts'
 
 const EVENTS = [
   { id: 'SessionStart', label: '会话开始', hint: '', matcher: 'source', supported: true },
@@ -92,4 +92,14 @@ test('runProblem：失败优先于理由，超时优先于退出码', () => {
   assert.deepEqual(runProblem({ ...base, decision: 'deny', reason: 'blocked by guard' }, LABELS), { text: 'blocked by guard', tone: 'reason' })
   assert.deepEqual(runProblem(base, LABELS), { text: '', tone: 'none' })
   assert.deepEqual(runProblem({ ...base, reason: '   ' }, LABELS), { text: '', tone: 'none' }, '空白理由不算理由')
+})
+test('commandName / baseName：钩子标题取可执行文件名，路径两种分隔符都认', () => {
+  assert.equal(commandName('echo dsh-toolkit hooks: session start fired'), 'echo')
+  assert.equal(commandName('  ~/bin/notify.sh --level=warn '), 'notify.sh')
+  assert.equal(commandName('"C:\\tools\\qoder-context-hook.exe" session-start'), 'qoder-context-hook.exe')
+  assert.equal(commandName("'/opt/hooks/check.sh' Bash"), 'check.sh')
+  assert.equal(commandName('   '), '')
+  assert.equal(baseName('D:\\DeepSeekHarness-home\\hooks.json'), 'hooks.json')
+  assert.equal(baseName('/home/user/.dsh/hooks.local.json'), 'hooks.local.json')
+  assert.equal(baseName(''), '')
 })

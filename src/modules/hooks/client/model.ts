@@ -157,6 +157,26 @@ export function matcherLabel(matcher: string, allLabel: string): string {
   return trimmed === "" || trimmed === "*" ? allLabel : trimmed;
 }
 
+/**
+ * 钩子的显示名：取命令里的可执行文件名（`~/bin/notify.sh --flag` → `notify.sh`）。
+ *
+ * 面板按事件分组，每条钩子只需要一个能认出来的名字；完整命令放在展开后的「命令」字段里，
+ * 所以这里刻意不返回整条命令，否则长命令会把行挤满。
+ */
+export function commandName(command: string): string {
+  const text = command.trim();
+  if (text === "") return "";
+  const quoted = /^"([^"]+)"|^'([^']+)'/.exec(text);
+  const head = quoted === null ? text.split(/\s+/)[0] ?? "" : quoted[1] ?? quoted[2] ?? "";
+  return baseName(head) || text;
+}
+
+/** 路径（或含分隔符的命令首段）的文件名部分，兼容 Windows 与 POSIX 分隔符。 */
+export function baseName(value: string): string {
+  const parts = value.split(/[\\/]/).filter((part) => part !== "" && part !== ".");
+  return parts.length > 0 ? parts[parts.length - 1] ?? "" : "";
+}
+
 export interface RunProblemLabels {
   timedOut: string;
   exit: (code: number) => string;

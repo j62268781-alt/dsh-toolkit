@@ -5,11 +5,11 @@ import { installSlot } from "../../../../../client/ui/slot.js";
 import { CardSection, PageHeader } from "../../../../../client/ui/components/settings-parts/index.jsx";
 import { settingsStyles } from "../../../../../client/styles/settings.js";
 import panelCss from "./style.css";
-import { HOOK_EVENTS, HOOKS_REFRESH_PATH, HOOKS_SNAPSHOT_PATH, HOOKS_TEST_PATH } from "../../constants.js";
+import { HOOK_EVENTS, HOOKS_REFRESH_PATH, HOOKS_SNAPSHOT_PATH } from "../../constants.js";
 import type { HookEventDefinition } from "../../constants.js";
 import { HOOKS_NS } from "../../locale.js";
 import type { HookSnapshotView, HookRow, HookRunRow } from "../../model.js";
-import { formatDuration, groupHooks, matcherLabel, readSnapshot, runProblem } from "../../model.js";
+import { baseName, commandName, formatDuration, groupHooks, matcherLabel, readSnapshot, runProblem } from "../../model.js";
 
 export const NAME = "settings";
 
@@ -47,9 +47,6 @@ function createHooksSection(ctx: any) {
     const [error, setError] = React.useState("");
     const [busy, setBusy] = React.useState(false);
     const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
-    const [testingId, setTestingId] = React.useState("");
-    const [testResults, setTestResults] = React.useState<Record<string, string>>({});
-    const [copiedPath, setCopiedPath] = React.useState("");
     const [showAllHistory, setShowAllHistory] = React.useState(false);
 
     const load = React.useCallback(async (announce: boolean) => {
@@ -98,40 +95,6 @@ function createHooksSection(ctx: any) {
       }
     };
 
-    const runTest = async (hook: HookRow) => {
-      setTestingId(hook.id);
-      setTestResults((current) => ({ ...current, [hook.id]: t("testing") }));
-      try {
-        const response = await fetchJson(HOOKS_TEST_PATH, { json: { hookId: hook.id } });
-        const body = await response.json();
-        const result = body?.result ?? {};
-        const decision = typeof result?.decision === "string" ? result.decision : "allow";
-        const verdict = t(decisionKeys[decision] ?? "decisionAllow");
-        const line = t("testDone", { decision: verdict, ms: formatDuration(Number(result?.durationMs) || 0) });
-        const detail = typeof result?.error === "string" && result.error !== ""
-          ? ` · ${result.error}`
-          : typeof result?.reason === "string" && result.reason !== ""
-            ? ` · ${result.reason}`
-            : "";
-        setTestResults((current) => ({ ...current, [hook.id]: `${line}${detail}` }));
-        await load(false);
-      } catch (reason) {
-        setTestResults((current) => ({ ...current, [hook.id]: t("testFailed", { reason: String((reason as any)?.message ?? reason) }) }));
-      } finally {
-        setTestingId("");
-      }
-    };
-
-    const copy = async (path: string) => {
-      try {
-        await navigator.clipboard.writeText(path);
-        setCopiedPath(path);
-        setTimeout(() => setCopiedPath(""), 1200);
-      } catch {
-        setCopiedPath("");
-      }
-    };
-
     const groups = groupHooks(snapshot, HOOK_EVENTS);
     const total = snapshot.hooks.length;
     // 五个已接线的事件永远各占一行（没配也列出来，方便照着填配置）；其余事件只在真配了才出现。
@@ -162,38 +125,46 @@ function createHooksSection(ctx: any) {
     };
 
     const renderHook = (hook: HookRow) => {
-      const result = testResults[hook.id];
+      // 展开态默认打开：一个事件下通常只有一两条，参数直接摊开比再点一次更有用。
+      const open = expanded[hook.id] !== false;
+      const name = commandName(hook.command);
+      const file = baseName(hook.sourcePath);
       return (
         <li className="sk-hooks__hook" key={hook.id}>
-          <div className="sk-hooks__hookHead">
-            <span className={`sk-hooks__badge sk-hooks__badge--${hook.source}`}>{sourceLabel(hook.source)}</span>
-            <code className="sk-hooks__command" title={hook.command}>{hook.command}</code>
-            <span className="sk-hooks__meta">
-              {hook.supported ? t("timeout", { s: Math.round(hook.timeoutMs / 1000) }) : t("unsupported")}
+          <button type="button" className="sk-hooks__hookHead" onClick={() => toggle(hook.id)} aria-expanded={open}>
+            <span className="sk-hooks__hookText">
+              <span className="sk-hooks__hookTitle">{name === "" ? t("unnamed") : name}</span>
+              <span className="sk-hooks__hookSource">
+                {sourceLabel(hook.source)}
+                {file === "" ? "" : ` · ${file}`}
+              </span>
             </span>
-          </div>
-          <div className="sk-hooks__hookFoot">
-            <span className="sk-hooks__matcher">{matcherLabel(hook.matcher, t("matcherAll"))}</span>
-            <span className={`sk-hooks__status ${hook.supported ? "is-supported" : "is-unsupported"}`}>
-              {hook.supported ? t("supported") : t("unsupported")}
-            </span>
-            {hook.supported ? (
-              <ActionButton
-                busy={testingId === hook.id}
-                onClick={() => runTest(hook)}
-              >
-                {testingId === hook.id ? t("testing") : t("test")}
-              </ActionButton>
-            ) : null}
-            <button
-              type="button"
-              className="sk-hooks__link"
-              onClick={() => copy(hook.sourcePath)}
-            >
-              {copiedPath === hook.sourcePath ? t("copied") : t("copyPath")}
-            </button>
-          </div>
-          {result ? <p className="sk-hooks__result">{result}</p> : null}
+            <span className={`sk-hooks__chevron ${open ? "is-open" : ""}`} aria-hidden="true" />
+          </button>
+          {open ? (
+            <dl className="sk-hooks__fields">
+              <div className="sk-hooks__field">
+                <dt>{t("fieldType")}</dt>
+                <dd>command</dd>
+              </div>
+              <div className="sk-hooks__field">
+                <dt>{t("fieldCommand")}</dt>
+                <dd><code className="sk-hooks__code">{hook.command}</code></dd>
+              </div>
+              <div className="sk-hooks__field">
+                <dt>{t("fieldTimeout")}</dt>
+                <dd>{Math.round(hook.timeoutMs / 1000)}</dd>
+              </div>
+              <div className="sk-hooks__field">
+                <dt>{t("fieldMatcher")}</dt>
+                <dd><code className="sk-hooks__code">{matcherLabel(hook.matcher, t("matcherAll"))}</code></dd>
+              </div>
+              <div className="sk-hooks__field">
+                <dt>{t("fieldSource")}</dt>
+                <dd className="sk-hooks__sourcePath">{hook.sourcePath}</dd>
+              </div>
+            </dl>
+          ) : null}
           {!hook.supported ? <p className="sk-hooks__hint">{t("unsupportedHint")}</p> : null}
         </li>
       );
@@ -259,15 +230,7 @@ function createHooksSection(ctx: any) {
     return (
       <div className="sk-hooks">
         <style>{CSS}</style>
-        <PageHeader
-          title={t("title")}
-          subtitle={t("subtitle")}
-          actions={(
-            <ActionButton busy={busy} onClick={refresh}>
-              {busy ? t("refreshing") : t("refresh")}
-            </ActionButton>
-          )}
-        />
+        <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
         {error !== "" ? <p className="sk-hooks__error">{t("error", { reason: error })}</p> : null}
         {loaded && !snapshot.enabled ? <p className="sk-hooks__notice">{t("disabled")}</p> : null}
@@ -286,7 +249,21 @@ function createHooksSection(ctx: any) {
           </div>
         ) : null}
 
-        <CardSection className="sk-hooks__group" title={`${t("eventsTitle")} · ${total}`} aria-label={t("eventsTitle")}>
+        <CardSection
+          className="sk-hooks__group"
+          title={(
+            <span className="sk-hooks__groupTitle">
+              {t("eventsTitle")}
+              <span className="sk-hooks__count">{total}</span>
+            </span>
+          )}
+          aria-label={t("eventsTitle")}
+          hint={(
+            <ActionButton busy={busy} onClick={refresh}>
+              {busy ? t("refreshing") : t("refresh")}
+            </ActionButton>
+          )}
+        >
           {rows.map((row) => renderRow(row.event, row.hooks, row.event.id))}
         </CardSection>
         {otherRows.length > 0 ? (

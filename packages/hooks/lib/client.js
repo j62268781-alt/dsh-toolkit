@@ -172,17 +172,14 @@ window.__ModuleLoader__.load({
         eventsTitle: "已配置的钩子",
         eventEmpty: "这个事件下还没有配置钩子。",
         otherEventsTitle: "暂不支持的事件",
-        copyPath: "复制路径",
-        copied: "已复制",
-        test: "试跑",
-        testing: "试跑中…",
-        testDone: "决策 {decision} · {ms} ms",
-        testFailed: "试跑失败：{reason}",
-        supported: "已支持",
-        unsupported: "暂不支持",
         unsupportedHint: "当前 DSH 版本没有这个事件的触发点；配置可以留着，但不会生效。",
         matcherAll: "全部",
-        timeout: "超时 {s}s",
+        unnamed: "未命名命令",
+        fieldType: "类型",
+        fieldCommand: "命令",
+        fieldTimeout: "超时（秒）",
+        fieldMatcher: "匹配",
+        fieldSource: "来源文件",
         historyTitle: "最近执行",
         historyEmpty: "还没有执行记录。钩子跑过一次之后会显示在这里。",
         showMore: "展开全部",
@@ -228,17 +225,14 @@ window.__ModuleLoader__.load({
         eventsTitle: "Configured hooks",
         eventEmpty: "No hooks configured for this event yet.",
         otherEventsTitle: "Unsupported events",
-        copyPath: "Copy path",
-        copied: "Copied",
-        test: "Test run",
-        testing: "Running…",
-        testDone: "{decision} · {ms} ms",
-        testFailed: "Test failed: {reason}",
-        supported: "Supported",
-        unsupported: "Not supported",
         unsupportedHint: "This DSH version has no trigger point for this event; the configuration is kept but never fires.",
         matcherAll: "All",
-        timeout: "timeout {s}s",
+        unnamed: "Unnamed command",
+        fieldType: "Type",
+        fieldCommand: "Command",
+        fieldTimeout: "Timeout (s)",
+        fieldMatcher: "Matcher",
+        fieldSource: "Source file",
         historyTitle: "Recent runs",
         historyEmpty: "Nothing has run yet. A hook shows up here after its first run.",
         showMore: "Show all",
@@ -379,7 +373,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/hooks/client/surfaces/settings/style.css
-    var style_default2 = ".sk-hooks {\n  max-width: 760px;\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  color: var(--dsw-alias-label-primary);\n}\n\n/* 页头由 src/client/ui/components/settings-parts 提供（.sk-ui-pageHead*）。 */\n\n/* 组与组之间取宠物面板的 24px 间距；容器已有 12px gap，这里补上差额。 */\n.sk-hooks__group + .sk-hooks__group {\n  margin-top: 12px;\n}\n\n\n.sk-hooks__error,\n.sk-hooks__notice {\n  margin: 0;\n  padding: 8px 10px;\n  font-size: 13px;\n  line-height: 18px;\n  border-radius: var(--dsw-radius-md);\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  background-color: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-hooks__error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__notice {\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-hooks__hint {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__sectionTitle {\n  margin: 0;\n  font-size: 13px;\n  font-weight: 600;\n  line-height: 20px;\n}\n\n.sk-hooks__issues ul {\n  margin: 6px 0 0;\n  padding: 0;\n  list-style: none;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-hooks__issue {\n  font-size: 12px;\n  line-height: 18px;\n  padding: 4px 8px;\n  border-left: 2px solid var(--dsw-alias-state-warning-primary, #b7791f);\n  background-color: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-hooks__issue.is-error {\n  border-left-color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__issueCode {\n  color: var(--dsw-alias-label-tertiary);\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n}\n\n.sk-hooks__row + .sk-hooks__row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-hooks__rowHead {\n  width: 100%;\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  padding: 16px 0;\n  border: 0;\n  background: none;\n  font: inherit;\n  color: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n.sk-hooks__rowHead:focus-visible {\n  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n.sk-hooks__rowText {\n  min-width: 0;\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n.sk-hooks__rowTitle {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  font-size: 14px;\n  line-height: 20px;\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__count {\n  flex: none;\n  font-size: 12px;\n  line-height: 16px;\n  padding: 0 6px;\n  border-radius: 999px;\n  color: var(--dsw-alias-label-secondary);\n  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.12));\n}\n\n.sk-hooks__rowHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__rowBody {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  padding: 0 0 16px;\n}\n\n.sk-hooks__chevron {\n  width: 0;\n  height: 0;\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  border-left: 4px solid currentColor;\n  border-top: 4px solid transparent;\n  border-bottom: 4px solid transparent;\n  transition: transform 120ms ease;\n}\n\n.sk-hooks__chevron.is-open {\n  transform: rotate(90deg);\n}\n\n.sk-hooks__hooks {\n  margin: 0;\n  padding: 0;\n  list-style: none;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.sk-hooks__hook {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  padding: 8px 10px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background-color: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-hooks__hookHead {\n  display: flex;\n  align-items: baseline;\n  gap: 8px;\n  min-width: 0;\n}\n\n.sk-hooks__badge {\n  flex: none;\n  font-size: 11px;\n  line-height: 16px;\n  padding: 0 6px;\n  border-radius: 999px;\n  color: var(--dsw-alias-label-secondary);\n  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.12));\n}\n\n.sk-hooks__badge--project {\n  color: var(--dsw-alias-state-business-primary, #3a6fd8);\n}\n\n.sk-hooks__badge--local {\n  color: var(--dsw-alias-state-warning-primary, #b7791f);\n}\n\n.sk-hooks__command {\n  min-width: 0;\n  flex: 1;\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 12px;\n  line-height: 18px;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-hooks__meta {\n  flex: none;\n  font-size: 11px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__hookFoot {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  flex-wrap: wrap;\n}\n\n.sk-hooks__matcher {\n  font-size: 11px;\n  line-height: 16px;\n  padding: 0 6px;\n  border-radius: 4px;\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n  color: var(--dsw-alias-label-secondary);\n  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.12));\n}\n\n.sk-hooks__status {\n  font-size: 11px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__status.is-unsupported {\n  color: var(--dsw-alias-state-warning-primary, #b7791f);\n}\n\n.sk-hooks__link {\n  margin-left: auto;\n  padding: 0;\n  border: 0;\n  background: none;\n  font: inherit;\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n.sk-hooks__link:hover {\n  color: var(--dsw-alias-label-primary);\n  text-decoration: underline;\n}\n\n.sk-hooks__result {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n/* 最近执行：与上面事件卡组同一套行结构（同一边框卡片、16px 行距、行间 0.5px 分隔线）。 */\n.sk-hooks__run {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-hooks__run + .sk-hooks__run {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-hooks__runText {\n  min-width: 0;\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n.sk-hooks__runCommand {\n  min-width: 0;\n  font-size: 14px;\n  line-height: 20px;\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n  color: var(--dsw-alias-label-primary);\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-hooks__runHint {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 6px;\n  min-width: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__runTime,\n.sk-hooks__runMs {\n  flex: none;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-hooks__runNote {\n  min-width: 0;\n  max-width: 100%;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-hooks__runNote.is-error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__runSide {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  font-size: 12px;\n}\n\n.sk-hooks__dot {\n  flex: none;\n  width: 2px;\n  height: 2px;\n  border-radius: 50%;\n  corner-shape: round;\n  background-color: currentColor;\n  opacity: 0.6;\n}\n\n.sk-hooks__decision.is-deny {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__decision.is-ask {\n  color: var(--dsw-alias-state-warning-primary, #b7791f);\n}\n.sk-hooks__btn {\n  padding: 0 10px;\n  height: 28px;\n  font: inherit;\n  font-size: 12px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background-color: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  cursor: pointer;\n}\n\n.sk-hooks__btn:disabled {\n  opacity: 0.6;\n  cursor: default;\n}\n";
+    var style_default2 = ".sk-hooks {\n  max-width: 760px;\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  color: var(--dsw-alias-label-primary);\n}\n\n/* 页头由 src/client/ui/components/settings-parts 提供（.sk-ui-pageHead*）。 */\n\n/* 每组与上方内容（页头或上一组）都取宠物面板的 24px 间距；容器本身已有 12px gap，这里补上差额。 */\n.sk-hooks__group {\n  margin-top: 12px;\n}\n\n\n.sk-hooks__error,\n.sk-hooks__notice {\n  margin: 0;\n  padding: 8px 10px;\n  font-size: 13px;\n  line-height: 18px;\n  border-radius: var(--dsw-radius-md);\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  background-color: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-hooks__error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__notice {\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-hooks__hint {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__sectionTitle {\n  margin: 0;\n  font-size: 13px;\n  font-weight: 600;\n  line-height: 20px;\n}\n\n.sk-hooks__issues ul {\n  margin: 6px 0 0;\n  padding: 0;\n  list-style: none;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-hooks__issue {\n  font-size: 12px;\n  line-height: 18px;\n  padding: 4px 8px;\n  border-left: 2px solid var(--dsw-alias-state-warning-primary, #b7791f);\n  background-color: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-hooks__issue.is-error {\n  border-left-color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__issueCode {\n  color: var(--dsw-alias-label-tertiary);\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n}\n\n.sk-hooks__row + .sk-hooks__row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-hooks__rowHead {\n  width: 100%;\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  padding: 16px 0;\n  border: 0;\n  background: none;\n  font: inherit;\n  color: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n.sk-hooks__rowHead:focus-visible {\n  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n.sk-hooks__rowText {\n  min-width: 0;\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n.sk-hooks__rowTitle {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  font-size: 14px;\n  line-height: 20px;\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__groupTitle {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n}\n\n.sk-hooks__count {\n  flex: none;\n  font-size: 12px;\n  line-height: 16px;\n  padding: 0 6px;\n  border-radius: 999px;\n  color: var(--dsw-alias-label-secondary);\n  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.12));\n}\n\n.sk-hooks__rowHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__rowBody {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  padding: 0 0 16px;\n}\n\n.sk-hooks__chevron {\n  width: 0;\n  height: 0;\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  border-left: 4px solid currentColor;\n  border-top: 4px solid transparent;\n  border-bottom: 4px solid transparent;\n  transition: transform 120ms ease;\n}\n\n.sk-hooks__chevron.is-open {\n  transform: rotate(90deg);\n}\n\n.sk-hooks__hooks {\n  margin: 0;\n  padding: 0;\n  list-style: none;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.sk-hooks__hook {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  padding: 12px 14px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background-color: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-hooks__hookHead {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  width: 100%;\n  min-width: 0;\n  padding: 0;\n  border: 0;\n  background: none;\n  font: inherit;\n  color: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n.sk-hooks__hookHead:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 2px;\n}\n\n.sk-hooks__hookText {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n.sk-hooks__hookTitle {\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__hookSource {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n/* 展开后的参数表：左边一列字段名，右边值；命令行允许换行。 */\n.sk-hooks__fields {\n  margin: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n  padding: 10px 12px;\n  border-radius: var(--dsw-radius-md);\n  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.06));\n}\n\n.sk-hooks__field {\n  display: flex;\n  align-items: flex-start;\n  gap: 16px;\n  min-width: 0;\n}\n\n.sk-hooks__field dt {\n  flex: none;\n  width: 76px;\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__field dd {\n  margin: 0;\n  min-width: 0;\n  flex: 1;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__code {\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 12px;\n}\n\n.sk-hooks__sourcePath {\n  color: var(--dsw-alias-label-secondary);\n  word-break: break-all;\n}\n\n.sk-hooks__badge {\n  flex: none;\n  font-size: 11px;\n  line-height: 16px;\n  padding: 0 6px;\n  border-radius: 999px;\n  color: var(--dsw-alias-label-secondary);\n  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.12));\n}\n\n.sk-hooks__badge--project {\n  color: var(--dsw-alias-state-business-primary, #3a6fd8);\n}\n\n.sk-hooks__badge--local {\n  color: var(--dsw-alias-state-warning-primary, #b7791f);\n}\n\n.sk-hooks__link {\n  margin-left: auto;\n  padding: 0;\n  border: 0;\n  background: none;\n  font: inherit;\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n.sk-hooks__link:hover {\n  color: var(--dsw-alias-label-primary);\n  text-decoration: underline;\n}\n\n/* 最近执行：与上面事件卡组同一套行结构（同一边框卡片、16px 行距、行间 0.5px 分隔线）。 */\n.sk-hooks__run {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-hooks__run + .sk-hooks__run {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-hooks__runText {\n  min-width: 0;\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n.sk-hooks__runCommand {\n  min-width: 0;\n  font-size: 14px;\n  line-height: 20px;\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n  color: var(--dsw-alias-label-primary);\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-hooks__runHint {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 6px;\n  min-width: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__runTime,\n.sk-hooks__runMs {\n  flex: none;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-hooks__runNote {\n  min-width: 0;\n  max-width: 100%;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-hooks__runNote.is-error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__runSide {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  font-size: 12px;\n}\n\n.sk-hooks__dot {\n  flex: none;\n  width: 2px;\n  height: 2px;\n  border-radius: 50%;\n  corner-shape: round;\n  background-color: currentColor;\n  opacity: 0.6;\n}\n\n.sk-hooks__decision.is-deny {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__decision.is-ask {\n  color: var(--dsw-alias-state-warning-primary, #b7791f);\n}\n.sk-hooks__btn {\n  padding: 0 10px;\n  height: 28px;\n  font: inherit;\n  font-size: 12px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background-color: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  cursor: pointer;\n}\n\n.sk-hooks__btn:disabled {\n  opacity: 0.6;\n  cursor: default;\n}\n";
 
     // src/host/paths.ts
     var PLUGIN_API_ROOT = "/api/plugins/toolkit";
@@ -489,6 +483,17 @@ window.__ModuleLoader__.load({
       const trimmed = matcher.trim();
       return trimmed === "" || trimmed === "*" ? allLabel : trimmed;
     }
+    function commandName(command) {
+      const text2 = command.trim();
+      if (text2 === "") return "";
+      const quoted = /^"([^"]+)"|^'([^']+)'/.exec(text2);
+      const head = quoted === null ? text2.split(/\s+/)[0] ?? "" : quoted[1] ?? quoted[2] ?? "";
+      return baseName(head) || text2;
+    }
+    function baseName(value) {
+      const parts = value.split(/[\\/]/).filter((part) => part !== "" && part !== ".");
+      return parts.length > 0 ? parts[parts.length - 1] ?? "" : "";
+    }
     function runProblem(run, labels) {
       const error = run.error.trim();
       if (error !== "") return { text: error, tone: "error" };
@@ -525,9 +530,6 @@ window.__ModuleLoader__.load({
         const [error, setError] = import_react2.default.useState("");
         const [busy, setBusy] = import_react2.default.useState(false);
         const [expanded, setExpanded] = import_react2.default.useState({});
-        const [testingId, setTestingId] = import_react2.default.useState("");
-        const [testResults, setTestResults] = import_react2.default.useState({});
-        const [copiedPath, setCopiedPath] = import_react2.default.useState("");
         const [showAllHistory, setShowAllHistory] = import_react2.default.useState(false);
         const load = import_react2.default.useCallback(async (announce) => {
           if (announce) setBusy(true);
@@ -570,34 +572,6 @@ window.__ModuleLoader__.load({
             setBusy(false);
           }
         };
-        const runTest = async (hook) => {
-          setTestingId(hook.id);
-          setTestResults((current) => ({ ...current, [hook.id]: t("testing") }));
-          try {
-            const response = await fetchJson(HOOKS_TEST_PATH, { json: { hookId: hook.id } });
-            const body = await response.json();
-            const result = body?.result ?? {};
-            const decision = typeof result?.decision === "string" ? result.decision : "allow";
-            const verdict = t(decisionKeys[decision] ?? "decisionAllow");
-            const line = t("testDone", { decision: verdict, ms: formatDuration(Number(result?.durationMs) || 0) });
-            const detail = typeof result?.error === "string" && result.error !== "" ? ` · ${result.error}` : typeof result?.reason === "string" && result.reason !== "" ? ` · ${result.reason}` : "";
-            setTestResults((current) => ({ ...current, [hook.id]: `${line}${detail}` }));
-            await load(false);
-          } catch (reason) {
-            setTestResults((current) => ({ ...current, [hook.id]: t("testFailed", { reason: String(reason?.message ?? reason) }) }));
-          } finally {
-            setTestingId("");
-          }
-        };
-        const copy = async (path) => {
-          try {
-            await navigator.clipboard.writeText(path);
-            setCopiedPath(path);
-            setTimeout(() => setCopiedPath(""), 1200);
-          } catch {
-            setCopiedPath("");
-          }
-        };
         const groups = groupHooks(snapshot, HOOK_EVENTS);
         const total = snapshot.hooks.length;
         const rows = HOOK_EVENTS.filter((event) => event.supported).map((event) => ({
@@ -622,23 +596,10 @@ window.__ModuleLoader__.load({
           setExpanded((current) => ({ ...current, [id]: !current[id] }));
         };
         const renderHook = (hook) => {
-          const result = testResults[hook.id];
-          return /* @__PURE__ */ __dshReact.createElement("li", { className: "sk-hooks__hook", key: hook.id }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__hookHead" }, /* @__PURE__ */ __dshReact.createElement("span", { className: `sk-hooks__badge sk-hooks__badge--${hook.source}` }, sourceLabel(hook.source)), /* @__PURE__ */ __dshReact.createElement("code", { className: "sk-hooks__command", title: hook.command }, hook.command), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__meta" }, hook.supported ? t("timeout", { s: Math.round(hook.timeoutMs / 1e3) }) : t("unsupported"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__hookFoot" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__matcher" }, matcherLabel(hook.matcher, t("matcherAll"))), /* @__PURE__ */ __dshReact.createElement("span", { className: `sk-hooks__status ${hook.supported ? "is-supported" : "is-unsupported"}` }, hook.supported ? t("supported") : t("unsupported")), hook.supported ? /* @__PURE__ */ __dshReact.createElement(
-            ActionButton,
-            {
-              busy: testingId === hook.id,
-              onClick: () => runTest(hook)
-            },
-            testingId === hook.id ? t("testing") : t("test")
-          ) : null, /* @__PURE__ */ __dshReact.createElement(
-            "button",
-            {
-              type: "button",
-              className: "sk-hooks__link",
-              onClick: () => copy(hook.sourcePath)
-            },
-            copiedPath === hook.sourcePath ? t("copied") : t("copyPath")
-          )), result ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__result" }, result) : null, !hook.supported ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__hint" }, t("unsupportedHint")) : null);
+          const open = expanded[hook.id] !== false;
+          const name = commandName(hook.command);
+          const file = baseName(hook.sourcePath);
+          return /* @__PURE__ */ __dshReact.createElement("li", { className: "sk-hooks__hook", key: hook.id }, /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "sk-hooks__hookHead", onClick: () => toggle(hook.id), "aria-expanded": open }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__hookText" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__hookTitle" }, name === "" ? t("unnamed") : name), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__hookSource" }, sourceLabel(hook.source), file === "" ? "" : ` · ${file}`)), /* @__PURE__ */ __dshReact.createElement("span", { className: `sk-hooks__chevron ${open ? "is-open" : ""}`, "aria-hidden": "true" })), open ? /* @__PURE__ */ __dshReact.createElement("dl", { className: "sk-hooks__fields" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__field" }, /* @__PURE__ */ __dshReact.createElement("dt", null, t("fieldType")), /* @__PURE__ */ __dshReact.createElement("dd", null, "command")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__field" }, /* @__PURE__ */ __dshReact.createElement("dt", null, t("fieldCommand")), /* @__PURE__ */ __dshReact.createElement("dd", null, /* @__PURE__ */ __dshReact.createElement("code", { className: "sk-hooks__code" }, hook.command))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__field" }, /* @__PURE__ */ __dshReact.createElement("dt", null, t("fieldTimeout")), /* @__PURE__ */ __dshReact.createElement("dd", null, Math.round(hook.timeoutMs / 1e3))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__field" }, /* @__PURE__ */ __dshReact.createElement("dt", null, t("fieldMatcher")), /* @__PURE__ */ __dshReact.createElement("dd", null, /* @__PURE__ */ __dshReact.createElement("code", { className: "sk-hooks__code" }, matcherLabel(hook.matcher, t("matcherAll"))))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__field" }, /* @__PURE__ */ __dshReact.createElement("dt", null, t("fieldSource")), /* @__PURE__ */ __dshReact.createElement("dd", { className: "sk-hooks__sourcePath" }, hook.sourcePath))) : null, !hook.supported ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__hint" }, t("unsupportedHint")) : null);
         };
         const renderRow = (event, hooks, key) => {
           const open = expanded[key] === true;
@@ -651,14 +612,16 @@ window.__ModuleLoader__.load({
           const eventLabel = HOOK_EVENTS.find((event) => event.id === run.event)?.label ?? run.event;
           return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__run", key: run.id }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__runText" }, /* @__PURE__ */ __dshReact.createElement("code", { className: "sk-hooks__runCommand", title: run.command }, run.command), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__runHint" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__runTime" }, run.at > 0 ? timeFormat.format(new Date(run.at)) : "—"), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__dot", "aria-hidden": "true" }), /* @__PURE__ */ __dshReact.createElement("span", null, eventLabel), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__dot", "aria-hidden": "true" }), /* @__PURE__ */ __dshReact.createElement("span", { className: `sk-hooks__badge sk-hooks__badge--${run.source}` }, sourceLabel(run.source)), problem.text === "" ? null : /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__dot", "aria-hidden": "true" }), /* @__PURE__ */ __dshReact.createElement("span", { className: `sk-hooks__runNote is-${problem.tone}`, title: problem.text }, problem.text)))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__runSide" }, /* @__PURE__ */ __dshReact.createElement("span", { className: `sk-hooks__decision is-${run.decision}` }, t(decisionKeys[run.decision] ?? "decisionAllow")), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__runMs" }, formatDuration(run.durationMs))));
         };
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks" }, /* @__PURE__ */ __dshReact.createElement("style", null, CSS), /* @__PURE__ */ __dshReact.createElement(
-          PageHeader,
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks" }, /* @__PURE__ */ __dshReact.createElement("style", null, CSS), /* @__PURE__ */ __dshReact.createElement(PageHeader, { title: t("title"), subtitle: t("subtitle") }), error !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__error" }, t("error", { reason: error })) : null, loaded && !snapshot.enabled ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__notice" }, t("disabled")) : null, snapshot.issues.length > 0 ? /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__issues" }, /* @__PURE__ */ __dshReact.createElement("h3", { className: "sk-hooks__sectionTitle" }, t("issuesTitle"), " · ", snapshot.issues.length), /* @__PURE__ */ __dshReact.createElement("ul", null, snapshot.issues.map((issue) => /* @__PURE__ */ __dshReact.createElement("li", { className: `sk-hooks__issue is-${issue.severity}`, key: issue.id }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__issueCode" }, issue.event ? `${issue.event} · ` : ""), issueText(issue.code, issue.message))))) : null, /* @__PURE__ */ __dshReact.createElement(
+          CardSection,
           {
-            title: t("title"),
-            subtitle: t("subtitle"),
-            actions: /* @__PURE__ */ __dshReact.createElement(ActionButton, { busy, onClick: refresh }, busy ? t("refreshing") : t("refresh"))
-          }
-        ), error !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__error" }, t("error", { reason: error })) : null, loaded && !snapshot.enabled ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__notice" }, t("disabled")) : null, snapshot.issues.length > 0 ? /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__issues" }, /* @__PURE__ */ __dshReact.createElement("h3", { className: "sk-hooks__sectionTitle" }, t("issuesTitle"), " · ", snapshot.issues.length), /* @__PURE__ */ __dshReact.createElement("ul", null, snapshot.issues.map((issue) => /* @__PURE__ */ __dshReact.createElement("li", { className: `sk-hooks__issue is-${issue.severity}`, key: issue.id }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__issueCode" }, issue.event ? `${issue.event} · ` : ""), issueText(issue.code, issue.message))))) : null, /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "sk-hooks__group", title: `${t("eventsTitle")} · ${total}`, "aria-label": t("eventsTitle") }, rows.map((row) => renderRow(row.event, row.hooks, row.event.id))), otherRows.length > 0 ? /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "sk-hooks__group", title: t("otherEventsTitle"), "aria-label": t("otherEventsTitle") }, otherRows.map((row) => renderRow(row.event, row.hooks, row.event.id))) : null, /* @__PURE__ */ __dshReact.createElement(
+            className: "sk-hooks__group",
+            title: /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__groupTitle" }, t("eventsTitle"), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__count" }, total)),
+            "aria-label": t("eventsTitle"),
+            hint: /* @__PURE__ */ __dshReact.createElement(ActionButton, { busy, onClick: refresh }, busy ? t("refreshing") : t("refresh"))
+          },
+          rows.map((row) => renderRow(row.event, row.hooks, row.event.id))
+        ), otherRows.length > 0 ? /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "sk-hooks__group", title: t("otherEventsTitle"), "aria-label": t("otherEventsTitle") }, otherRows.map((row) => renderRow(row.event, row.hooks, row.event.id))) : null, /* @__PURE__ */ __dshReact.createElement(
           CardSection,
           {
             className: "sk-hooks__group",

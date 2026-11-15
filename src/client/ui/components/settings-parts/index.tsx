@@ -33,7 +33,8 @@ export function PageHeader(props: PageHeaderProps) {
 }
 
 export interface CardSectionProps {
-  title?: string;
+  /** 标题可以是纯文字，也可以带计数徽标之类的行内节点。 */
+  title?: any;
   /** 标题右侧的小字（数量、提示）。 */
   hint?: any;
   /**
