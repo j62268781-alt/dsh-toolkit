@@ -221,15 +221,15 @@ test('the unified bundle registers the original settings pages, Remote faces, an
   assert.deepEqual(sections.map(({ registration }) => registration.id).sort(), ['archived-chats', 'boot', 'browser', 'desktop-pet', 'hooks', 'judgment', 'notification', 'skills-mcp', 'theme'])
 
   const expected = {
-    'archived-chats': { namespace: 'shell-kit.archived', order: 20, label: '已归档的聊天' },
-    boot: { namespace: 'boot', order: 15, label: '启动动画' },
+    'archived-chats': { namespace: 'shell-kit.archived', order: 40, label: '已归档的聊天' },
+    boot: { namespace: 'boot', order: 7, label: '启动动画' },
     browser: { namespace: 'browser', order: 22, label: '浏览器' },
     judgment: { namespace: 'judgement', order: 21, label: '决策' },
-    notification: { namespace: 'notification', order: 24, label: '通知' },
-    'desktop-pet': { namespace: 'pet', order: 25, label: '桌面宠物' },
+    notification: { namespace: 'notification', order: 9, label: '通知' },
+    'desktop-pet': { namespace: 'pet', order: 8, label: '桌面宠物' },
     'skills-mcp': { namespace: 'skillsMcp', order: 20, label: 'Skills & MCP' },
-    hooks: { namespace: 'shell-kit.hooks', order: 26, label: '钩子' },
-    theme: { namespace: 'theme', order: 5, label: '外观' },
+    hooks: { namespace: 'shell-kit.hooks', order: 23, label: '钩子' },
+    theme: { namespace: 'theme', order: 6, label: '外观' },
   }
   for (const { registration, Component } of sections) {
     const definition = expected[registration.id]

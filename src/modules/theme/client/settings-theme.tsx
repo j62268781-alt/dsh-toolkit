@@ -292,7 +292,7 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
 export const themeCenterMeta = Object.freeze({
   name: 'settings.section',
   id: 'theme',
-  order: 5,
+  order: 6,
   label: () => '外观',
 })
 

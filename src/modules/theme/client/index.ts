@@ -34,7 +34,8 @@ function installThemeCenter(ctx) {
       {
         name: "settings.section",
         id: "theme",
-        order: 5,
+        // 6：紧贴宿主「常规」（0）之后，让外观类面板排在最前面成一组。
+        order: 6,
         label: () => "外观",
         inject: () => {
           const { form, entryId } = findScopedForm(ctx, "theme");

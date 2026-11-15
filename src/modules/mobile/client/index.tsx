@@ -103,7 +103,7 @@ export default function createClient(require) {
       ctx.effect(() => registerSettingsIcon(ctx, "mobile", "phone"), "dsh-toolkit-mobile:settings-icon");
       ctx.effect(
         () => ctx.slots.register(
-          { name: "settings.section", id: "mobile", order: 41, label: () => "移动端" },
+          { name: "settings.section", id: "mobile", order: 30, label: () => "移动端" },
           MobileSettings
         ),
         "dsh-toolkit-mobile:settings-section"

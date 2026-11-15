@@ -147,7 +147,7 @@ export function apply(ctx) {
   ctx.effect(() => installSettingsParts(), 'dsh-toolkit-boot:settings-parts')
   ctx.effect(() => installStylesheet(panelCss, 'dsh-toolkit-boot-panel'), 'dsh-toolkit-boot:settings-styles')
   ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section', id: 'boot', order: 15,
+    name: 'settings.section', id: 'boot', order: 7,
     label: () => '启动动画', inject: () => ({ form }),
   }, BootPanel))
   ctx.effect(() => registerSettingsIcon(ctx, 'boot', 'rocket'), 'dsh-toolkit-boot:settings-icon')

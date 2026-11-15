@@ -221,7 +221,8 @@ export function install(ctx, host) {
   return installSlot(ctx, {
     name: "settings.section",
     id: "archived-chats",
-    order: 20,
+    // 40：归档是收尾动作，排在所有能力与连接面板之后。
+    order: 40,
     label: () => t("nav"),
     locale: ARCH_NS,
   }, createArchivedSection(ctx, host.removal));

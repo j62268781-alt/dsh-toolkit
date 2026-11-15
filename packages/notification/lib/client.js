@@ -2233,8 +2233,8 @@ window.__ModuleLoader__.load({
             return ctx.slots.inject("settings.section", () => ctx.slots.register({
               name: "settings.section",
               id: "notification",
-              // 接在 usage-tokens(23) 之后
-              order: 24,
+              // 9：外观类（外观 6 / 启动动画 7 / 桌面宠物 8）之后，排在宿主的「模型」「扩展管理」之前。
+              order: 9,
               label: () => t("nav"),
               locale: NOTIFICATION_NS
             }, Panel));

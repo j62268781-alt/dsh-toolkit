@@ -655,7 +655,7 @@ window.__ModuleLoader__.load({
       return installSlot(ctx, {
         name: "settings.section",
         id: "hooks",
-        order: 26,
+        order: 23,
         label: () => t("nav"),
         locale: HOOKS_NS
       }, createHooksSection(ctx));

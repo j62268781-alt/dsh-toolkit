@@ -503,7 +503,7 @@ window.__ModuleLoader__.load({
       ctx.slots.inject("settings.section", () => ctx.slots.register({
         name: "settings.section",
         id: "boot",
-        order: 15,
+        order: 7,
         label: () => "启动动画",
         inject: () => ({ form })
       }, BootPanel));

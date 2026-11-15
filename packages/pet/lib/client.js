@@ -1224,7 +1224,7 @@ window.__ModuleLoader__.load({
               globalThis.removeEventListener?.("visibilitychange", wake);
             };
           }, "dsh-toolkit-pet:seen-on-focus");
-          ctx.effect(() => ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "desktop-pet", order: 25, label: () => t("nav"), locale: PET_NS }, Panel)), "dsh-toolkit-pet:section");
+          ctx.effect(() => ctx.slots.inject("settings.section", () => ctx.slots.register({ name: "settings.section", id: "desktop-pet", order: 8, label: () => t("nav"), locale: PET_NS }, Panel)), "dsh-toolkit-pet:section");
           ctx.effect(() => registerSettingsIcon(ctx, "desktop-pet", "paw"), "dsh-toolkit-pet:settings-icon");
         }
       };
