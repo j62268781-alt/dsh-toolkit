@@ -392,6 +392,18 @@ test('设置里关掉的 tab 换成一句提示：说清关了哪个、去哪儿
     await panel.unmount()
   }
 })
+test('手机入口关掉时只说明去哪儿打开，不给死按钮', async () => {
+  const panel = await mountPanel({ initial: { state: 'idle' }, tab: 'pair', features: { phone: false, wechat: true } })
+  try {
+    const off = panel.popover().querySelector('.wc-off')
+    assert.equal(off !== null, true, '手机入口关掉后配对 tab 应换成占位提示')
+    assert.match(off.textContent, /offTitle/)
+    assert.match(off.textContent, /offHint/, '要指回设置面板，扫码配对由设置页的开关负责放开')
+    assert.equal(off.querySelector('.wc-off__action') === null, true, '别给点了没反应的按钮')
+  } finally {
+    await panel.unmount()
+  }
+})
 
 test('卡片标题栏：关闭按钮是宿主同款 svg 图标，不是文字 ×', async () => {
   const panel = await mountPanel({ initial: { state: 'idle' } })

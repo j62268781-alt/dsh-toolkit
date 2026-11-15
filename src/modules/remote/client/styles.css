@@ -355,13 +355,16 @@ html[data-sk-palette="codex"] .wc-icon__glyph svg {
   overflow-wrap: anywhere;
 }
 
-/* 入口在「设置 › 移动端」里关着时的占位：不摆按钮，只说明状态和去哪儿开。 */
+/* 入口在「设置 › 移动端」里关着时的占位：说明状态与去处。 */
 .wc-off {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 20px 16px 24px;
+  /* 卡片上方已经有标题、tab 条和 12px 的 tabpanel 间距，这里再垫 20px 会空出一大截
+     （用户反馈：「中间没开启的时候 body 距离上方太高了」）。 */
+  padding: 2px 4px 6px;
 }
+
 
 .wc-off__title {
   margin: 0;

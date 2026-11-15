@@ -261,6 +261,10 @@ export function createPanel(React, { t, connection, portal, features }) {
       })
     })()
 
+    const tabBody = offHere
+      ? h(OffNotice, { name: activeTab === 'pair' ? t('tabPair') : t('tabClaw') })
+      : activeTab === 'pair' ? h(PairingTab, { active: true }) : clawBody
+
     return h('div', {
       ref: nodeRef,
       className: closing ? 'wc-popover wc-popover--closing' : 'wc-popover',
@@ -288,13 +292,12 @@ export function createPanel(React, { t, connection, portal, features }) {
       id: 'wc-tabpanel',
       role: 'tabpanel',
       'aria-labelledby': `wc-tab-${tab}`,
-    }, offHere
-      ? h(OffNotice, { name: activeTab === 'pair' ? t('tabPair') : t('tabClaw') })
-      : activeTab === 'pair' ? h(PairingTab, { active: true }) : clawBody))
+    }, tabBody))
   }
 
   /**
    * 入口在「设置 › 移动端」里关掉时的占位。
+   *
    * 只说明状态与去处：面板里没有「跳过去并选中那一节」的公开能力，
    * 与其给一个点了没反应的按钮，不如把路径写清楚。
    */
@@ -356,8 +359,11 @@ export function createPanel(React, { t, connection, portal, features }) {
       closeTimer.current = undefined
       setClosing(false)
       sampleAnchor()
+      // 刚在「设置 › 移动端」里改完开关就可能点进来：这里先重读一次，别让卡片停在
+      // 4 秒前那次轮询的快照上（否则「刚打开」看起来还是关着）。
+      features?.invalidate?.()
       setOpen(true)
-    }, [sampleAnchor])
+    }, [sampleAnchor, features])
 
     // 打开期间按钮可能被滚走或窗口被缩放（侧栏可折叠、窗口可改大小）。
     // 锚点只在打开那一刻采样一次的话，卡片就留在原地与按钮脱开，所以要跟着重采。
