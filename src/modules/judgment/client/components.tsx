@@ -81,25 +81,11 @@ export function MoreMenu({ items, disabled }) {
 
 /** 卡片右上角的状态标签。 */
 export function Tag({ children, tone = 'neutral' }) {
-  return <span className="jdg-tag" data-tone={tone}>{children}</span>
+  return <span className="sk-ui-tag" data-tone={tone}>{children}</span>
 }
 
-/** 卡片左侧的展开箭头（收起时转 -90°）。 */
-export function Chevron({ open }) {
-  return (
-    <svg
-      className="jdg-chevron"
-      data-open={String(open)}
-      width={16}
-      height={16}
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
+/** 卡片左侧的展开箭头（收起时转 -90°）；图标本体与 skills & mcp、钩子面板共用一份。 */
+export { Chevron } from '../../../client/ui/components/chevron/index.jsx'
 
 /** 搜索结果行右侧的圆点状态（颜色承担状态，文字承担含义）。 */
 export function Status({ tone, text }) {

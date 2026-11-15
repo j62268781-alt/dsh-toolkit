@@ -3,13 +3,14 @@ import { fetchJson } from "../../../../../client/http.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { CardSection, PageHeader } from "../../../../../client/ui/components/settings-parts/index.jsx";
+import { Chevron } from "../../../../../client/ui/components/chevron/index.jsx";
 import { settingsStyles } from "../../../../../client/styles/settings.js";
 import panelCss from "./style.css";
 import { HOOK_EVENTS, HOOKS_REFRESH_PATH, HOOKS_SNAPSHOT_PATH } from "../../constants.js";
 import type { HookEventDefinition } from "../../constants.js";
 import { HOOKS_NS } from "../../locale.js";
 import type { HookSnapshotView, HookRow, HookRunRow } from "../../model.js";
-import { baseName, commandName, formatDuration, groupHooks, matcherLabel, readSnapshot, runProblem } from "../../model.js";
+import { formatDuration, groupHooks, matcherLabel, readSnapshot, runProblem } from "../../model.js";
 
 export const NAME = "settings";
 
@@ -124,51 +125,25 @@ function createHooksSection(ctx: any) {
       setExpanded((current) => ({ ...current, [id]: !current[id] }));
     };
 
-    const renderHook = (hook: HookRow) => {
-      // 展开态默认打开：一个事件下通常只有一两条，参数直接摊开比再点一次更有用。
-      const open = expanded[hook.id] !== false;
-      const name = commandName(hook.command);
-      const file = baseName(hook.sourcePath);
-      return (
-        <li className="sk-hooks__hook" key={hook.id}>
-          <button type="button" className="sk-hooks__hookHead" onClick={() => toggle(hook.id)} aria-expanded={open}>
-            <span className="sk-hooks__hookText">
-              <span className="sk-hooks__hookTitle">{name === "" ? t("unnamed") : name}</span>
-              <span className="sk-hooks__hookSource">
-                {sourceLabel(hook.source)}
-                {file === "" ? "" : ` · ${file}`}
-              </span>
-            </span>
-            <span className={`sk-hooks__chevron ${open ? "is-open" : ""}`} aria-hidden="true" />
-          </button>
-          {open ? (
-            <dl className="sk-hooks__fields">
-              <div className="sk-hooks__field">
-                <dt>{t("fieldType")}</dt>
-                <dd>command</dd>
-              </div>
-              <div className="sk-hooks__field">
-                <dt>{t("fieldCommand")}</dt>
-                <dd><code className="sk-hooks__code">{hook.command}</code></dd>
-              </div>
-              <div className="sk-hooks__field">
-                <dt>{t("fieldTimeout")}</dt>
-                <dd>{Math.round(hook.timeoutMs / 1000)}</dd>
-              </div>
-              <div className="sk-hooks__field">
-                <dt>{t("fieldMatcher")}</dt>
-                <dd><code className="sk-hooks__code">{matcherLabel(hook.matcher, t("matcherAll"))}</code></dd>
-              </div>
-              <div className="sk-hooks__field">
-                <dt>{t("fieldSource")}</dt>
-                <dd className="sk-hooks__sourcePath">{hook.sourcePath}</dd>
-              </div>
-            </dl>
-          ) : null}
-          {!hook.supported ? <p className="sk-hooks__hint">{t("unsupportedHint")}</p> : null}
-        </li>
-      );
-    };
+    const renderHook = (hook: HookRow) => (
+      // 子条目不再有自己的标题与展开开关：一条钩子就只有这五行参数，
+      // 再包一层「点开看」只是多一次点击，信息量并没有变多。
+      <li className="sk-hooks__hook" key={hook.id}>
+        <dl className="sk-hooks__fields">
+          <dt>{t("fieldType")}</dt>
+          <dd>command</dd>
+          <dt>{t("fieldCommand")}</dt>
+          <dd><code className="sk-hooks__code">{hook.command}</code></dd>
+          <dt>{t("fieldTimeout")}</dt>
+          <dd>{Math.round(hook.timeoutMs / 1000)}</dd>
+          <dt>{t("fieldMatcher")}</dt>
+          <dd><code className="sk-hooks__code">{matcherLabel(hook.matcher, t("matcherAll"))}</code></dd>
+          <dt>{t("fieldSource")}</dt>
+          <dd className="sk-hooks__sourcePath">{hook.sourcePath}</dd>
+        </dl>
+        {!hook.supported ? <p className="sk-hooks__hint">{t("unsupportedHint")}</p> : null}
+      </li>
+    );
 
     const renderRow = (event: HookEventDefinition, hooks: HookRow[], key: string) => {
       const open = expanded[key] === true;
@@ -180,11 +155,11 @@ function createHooksSection(ctx: any) {
             <span className="sk-hooks__rowText">
               <span className="sk-hooks__rowTitle">
                 {name}
-                <span className="sk-hooks__count">{hooks.length}</span>
+                <span className="sk-ui-tag" data-tone="neutral">{hooks.length}</span>
               </span>
               {event.hint !== "" ? <span className="sk-hooks__rowHint">{event.hint}</span> : null}
             </span>
-            <span className={`sk-hooks__chevron ${open ? "is-open" : ""}`} aria-hidden="true" />
+            <Chevron open={open} />
           </button>
           {open ? (
             <div className="sk-hooks__rowBody">
@@ -254,7 +229,7 @@ function createHooksSection(ctx: any) {
           title={(
             <span className="sk-hooks__groupTitle">
               {t("eventsTitle")}
-              <span className="sk-hooks__count">{total}</span>
+              <span className="sk-ui-tag" data-tone="neutral">{total}</span>
             </span>
           )}
           aria-label={t("eventsTitle")}

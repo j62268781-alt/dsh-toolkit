@@ -24,7 +24,7 @@ export function profileCardView({
                 全局行也带标签：列表现在跨工作区混排，一个没标签的卡片会让人以为
                 「它没有归属」，而事实是「它属于所有工作区」。两个页签用同一套词表
                 （全局 / 工作区名），所以 MCP 与 Skills 的卡片读起来一致。 */}
-            <span className="smp-tag" data-tone="neutral" key="scope">{scopeTagLabel(row.scope)}</span>
+            <span className="sk-ui-tag" data-tone="neutral" key="scope">{scopeTagLabel(row.scope)}</span>
           </span>
         </button>
         <span className="smp-cardEnd" key="end">

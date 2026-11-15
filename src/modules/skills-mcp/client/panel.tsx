@@ -890,7 +890,7 @@ export function createPanel(React, primitives) {
       const pending = skillPendingPath === skill.path ? '删除中…' : null
       const identity = [
         <span key="n">{skill.name}</span>,
-        <span className="smp-tag" data-tone="neutral" key="scope">{scopeTagLabel(scopeValue)}</span>,
+        <span className="sk-ui-tag" data-tone="neutral" key="scope">{scopeTagLabel(scopeValue)}</span>,
       ]
       return card(
         key,
@@ -1186,7 +1186,7 @@ export function createPanel(React, primitives) {
                     <div className="smp-cardMainRow" key="r">
                       <span className="smp-cardIdentity" key="i">{row.entryId}</span>
                       <span className="smp-cardEnd" key="e">
-                        <span className="smp-tag" data-tone="neutral">
+                        <span className="sk-ui-tag" data-tone="neutral">
                           {`${row.enabled ? "on" : "off"}${row.fiberPhase ? ` · ${row.fiberPhase}` : ""}`}
                         </span>
                       </span>

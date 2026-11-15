@@ -153,7 +153,7 @@ test('Skills：卡片标签统一为 全局 / 工作区名（不再显示 dsh/ag
   })
   try {
     const tags = panel
-      .findAll((node) => String(node.props?.className ?? '').split(/\s+/).includes('smp-tag'))
+      .findAll((node) => String(node.props?.className ?? '').split(/\s+/).includes('sk-ui-tag'))
       .map((node) => textOf(node).trim())
       .filter((text) => text !== '')
     assert.ok(tags.every((t) => t === '全局' || t === 'TCL' || t === 'OTHER'), `标签词表不对：${JSON.stringify([...new Set(tags)])}`)

@@ -292,4 +292,57 @@
   .sk-ui-option {
     transition: none;
   }
+
+  .sk-ui-chevron {
+    transition: none;
+  }
+}
+
+/* 展开/收起的箭头 ---------------------------------------------------------
+ * 与 skills & mcp 卡片上的那枚完全同款：16px、1.4 描边、收起时转 -90° 指向右。
+ * 各面板只负责 `open`，方向与配色留在这里，避免九处各写一套。 */
+.sk-ui-chevron {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  transition: transform 0.14s ease-in-out;
+}
+
+.sk-ui-chevron[data-open="false"] {
+  transform: rotate(-90deg);
+}
+
+/* 行内计数/来源小标签 -----------------------------------------------------
+ * 样式照 skills & mcp 的「全局 / 项目」标签：999px 药丸、11px、浅底、
+ * 文字用二级灰——它是佐证，不该和标题抢视觉重量。 */
+.sk-ui-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  line-height: 17px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sk-ui-tag[data-tone="neutral"] {
+  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));
+  color: var(--dsw-alias-label-secondary);
+}
+
+.sk-ui-tag[data-tone="ok"] {
+  background: var(--dsw-alias-state-success-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));
+  color: var(--dsw-alias-state-success-primary, #067647);
+}
+
+.sk-ui-tag[data-tone="warn"] {
+  background: var(--dsw-alias-state-warn-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));
+  color: var(--dsw-alias-state-warn-primary, #b54708);
+}
+
+/* danger 无 tertiary 底色可用，改用描边拉开对比（与 skills & mcp 原来的处理一致）。 */
+.sk-ui-tag[data-tone="danger"] {
+  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));
+  color: var(--dsw-alias-state-error-primary, #d92d20);
+  box-shadow: inset 0 0 0 1px var(--dsw-alias-state-error-primary, #d92d20);
 }

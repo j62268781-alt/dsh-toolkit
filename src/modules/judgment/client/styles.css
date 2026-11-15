@@ -21,7 +21,7 @@
 
 /* 卡片：左列是「箭头 + 标题」，右列是状态与操作；展开体在行之外占满整宽。 */
 .jdg-cardToggle{box-sizing:border-box;color:inherit;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;flex:1 1 auto;align-items:center;gap:8px;min-width:0;padding:0;display:inline-flex}
-.jdg-cardIdentity .jdg-tag{margin-left:6px}
+.jdg-cardIdentity .sk-ui-tag{margin-left:6px}
 .jdg-cardActions{align-items:center;gap:4px;flex:none;display:inline-flex}
 .jdg-probeLine{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}
 .jdg-probeLine[data-tone=ok]{color:var(--dsw-alias-state-success-primary,#12805c)}

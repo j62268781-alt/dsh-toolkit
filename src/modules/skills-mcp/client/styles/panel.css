@@ -40,12 +40,6 @@
 /* 值是**数据**，键才是说明。两者都用灰时整块读起来是一片低对比文字，
    分不清哪个是标签、哪个是内容 —— 值用主色（正文黑），键保留三级灰。 */
 .smp-detailsValue{color:var(--dsw-alias-label-primary);word-break:break-all;font-weight:400}
-/* 连接状态标签的三档语气。
-   danger 一档必须真的显眼：它出现的场景正是「这个 MCP 已经永久失效、要用户动手」，
-   而这个问题以前在界面上完全不可见（工具凭空消失，没有任何说明）。
-   主题里没有 error-tertiary 背景，所以用描边而不是填色来拉开对比。 */
-.smp-tag[data-tone=warn]{background:var(--dsw-alias-state-warn-tertiary,var(--dsw-alias-bg-module-platform));color:var(--dsw-alias-state-warn-primary,#b54708)}
-.smp-tag[data-tone=danger]{background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-state-error-primary,#d92d20);box-shadow:inset 0 0 0 1px var(--dsw-alias-state-error-primary,#d92d20)}
 /* 连接状态：小圆点 + 小号文字（照 Chrome 扩展列表那种形态）。
    取代了原来的药丸标签：药丸的视觉重量与卡片自己的标签一样重，
    于是「一切正常」看起来也像个警告，而真正的警告反而混进了装饰里。
@@ -256,7 +250,7 @@ div[role='dialog']:has(.smp-skillDialogBody),
 
 /* Skill source tag sits next to the name: give it the same breathing room the
    MCP rows' "配置文件" tag has in smp-cardEnd. */
-.smp-cardIdentity .smp-tag {
+.smp-cardIdentity .sk-ui-tag {
   margin-left: 6px;
 }
 

@@ -121,16 +121,6 @@
   min-width: 0;
 }
 
-.sk-hooks__count {
-  flex: none;
-  font-size: 12px;
-  line-height: 16px;
-  padding: 0 6px;
-  border-radius: 999px;
-  color: var(--dsw-alias-label-secondary);
-  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.12));
-}
-
 .sk-hooks__rowHint {
   font-size: 12px;
   line-height: 18px;
@@ -145,21 +135,6 @@
   padding: 0 0 16px;
 }
 
-.sk-hooks__chevron {
-  width: 0;
-  height: 0;
-  flex: none;
-  color: var(--dsw-alias-label-tertiary);
-  border-left: 4px solid currentColor;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  transition: transform 120ms ease;
-}
-
-.sk-hooks__chevron.is-open {
-  transform: rotate(90deg);
-}
-
 .sk-hooks__hooks {
   margin: 0;
   padding: 0;
@@ -169,88 +144,36 @@
   gap: 8px;
 }
 
+/* 一条钩子就是一个参数面板：没有自己的标题栏，五行参数直接摊开。
+   底色不能用 `--dsw-alias-bg-layer-2`：它在浅色主题里就是纯白，面板会跟卡片糊成一片，
+   而这里要的是「卡片里的一块浅灰」。半透明灰在深色主题下同样成立（变亮一点而已）。 */
 .sk-hooks__hook {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px 14px;
-  border: 0.5px solid var(--dsw-alias-border-l3);
-  border-radius: var(--dsw-radius-md);
-  background-color: var(--dsw-alias-bg-layer-1);
+  border-radius: var(--dsw-radius-md, 8px);
+  background-color: rgba(128, 128, 128, 0.1);
 }
 
-.sk-hooks__hookHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.sk-hooks__hookHead:focus-visible {
-  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
-  outline-offset: 2px;
-}
-
-.sk-hooks__hookText {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sk-hooks__hookTitle {
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--dsw-alias-label-primary);
-  overflow-wrap: anywhere;
-}
-
-.sk-hooks__hookSource {
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
-}
-
-/* 展开后的参数表：左边一列字段名，右边值；命令行允许换行。 */
+/* 参数表：左边一列字段名，右边值；命令行与路径允许换行。 */
 .sk-hooks__fields {
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: var(--dsw-radius-md);
-  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.06));
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 6px 10px;
 }
 
-.sk-hooks__field {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
+.sk-hooks__fields dt {
   min-width: 0;
-}
-
-.sk-hooks__field dt {
-  flex: none;
-  width: 76px;
-  margin: 0;
   font-size: 12px;
   line-height: 18px;
   color: var(--dsw-alias-label-tertiary);
 }
 
-.sk-hooks__field dd {
+.sk-hooks__fields dd {
   margin: 0;
   min-width: 0;
-  flex: 1;
   font-size: 12px;
   line-height: 18px;
   color: var(--dsw-alias-label-primary);

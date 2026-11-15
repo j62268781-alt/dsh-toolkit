@@ -1,28 +1,7 @@
 /**
- * The disclosure chevron used by the cards on both tabs.
+ * 卡片与设置面板共用的展开箭头。
  *
- * JSX version of the inline component; the name is unchanged so call sites keep working.
- * (Group headings used to pass it through `groupHead`; both tabs are one plain list now, so
- * the only call sites are the cards.)
+ * 图标本体在 `src/client/ui/components/chevron/`：skills & mcp、决策、钩子三个面板
+ * 原来是三份逐字重复的 `<svg>`，现在只剩一份。导出名保持 `Chevron`，调用点不用改。
  */
-export function Chevron({ open }) {
-  return (
-    <svg
-      className="smp-chevron"
-      data-open={String(open)}
-      width={16}
-      height={16}
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M4 6l4 4 4-4"
-        stroke="currentColor"
-        strokeWidth={1.4}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
+export { Chevron } from '../../../../client/ui/components/chevron/index.jsx'

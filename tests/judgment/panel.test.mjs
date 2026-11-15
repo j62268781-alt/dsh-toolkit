@@ -72,7 +72,7 @@ test('默认页签（连接）画出页签条、搜索行与连接卡片', async
   assert.match(html, /新增连接/)
   // 连接卡片：箭头 + 名字 + 协议标签 + 右侧状态 + 副标题
   // （断言 class 属性而不是类名——注入的 CSS 文本里也会出现这些类名）
-  assert.match(html, /class="jdg-chevron"/)
+  assert.match(html, /class="sk-ui-chevron"/)
   assert.match(html, /typesafe-main/)
   assert.match(html, /system-one/)
   assert.match(html, /配置完整 · 未自检/)

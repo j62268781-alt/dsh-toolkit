@@ -9,7 +9,7 @@ globalThis.__dshReact = React
 test('Chevron：className 与 data-open 跟随 open', () => {
   const open = Chevron({ open: true })
   assert.equal(open.type, 'svg')
-  assert.equal(open.props.className, 'smp-chevron')
+  assert.equal(open.props.className, 'sk-ui-chevron')
   assert.equal(open.props['data-open'], 'true')
   assert.equal(Chevron({ open: false }).props['data-open'], 'false')
 })
