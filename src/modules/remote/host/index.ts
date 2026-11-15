@@ -497,8 +497,9 @@ function registerLocalStateRoute(ctx: any) {
 /**
  * 「移动端」设置面板的开关：读/写 `$DSH_HOME/toolkit/remote-preferences.json`。
  *
- * 微信开关在这里即时启停桥接；手机入口不归本模块管——那台设备要不要接受远程控制
- * 是 ds-harness-remote 的 `host.authorization.set`，面板直接调它的控制路由。
+ * 两个开关都是本插件自己的功能位（见 preferences.ts 的注释）：微信这一位由宿主直接启停桥接；
+ * 手机入口这一位只负责「菜单里给不给这个入口」，关掉时客户端会再走一次解绑
+ * （撤销授权 + 忘掉本地快照），宿主不参与那一步。
  */
 function registerPreferencesRoute(ctx: any, deps: {
   target: PreferenceTarget
@@ -517,33 +518,65 @@ function registerPreferencesRoute(ctx: any, deps: {
       }
       // 启动那一拍是异步的：等它落定，GET 才能说清 running 到底有没有。
       if (deps.ready !== undefined) await deps.ready
-      if (req.method === 'GET') {
-        const prefs = await readPreferences(deps.target)
-        return sendJson(res, 200, { ok: true, wechat: prefs.wechat, running: deps.running() })
-      }
-      let payload: any
+      // 这条路由没走 jsonRoute，httpFailure 得自己折成状态码（与上面那批路由同款）。
       try {
-        payload = JSON.parse(await readBody(req, MAX_BODY))
-      } catch {
-        throw httpFailure(400, '请求体不是合法 JSON')
-      }
-      if (typeof payload?.wechat !== 'boolean') {
-        throw httpFailure(400, '缺少 wechat 布尔值')
-      }
-      const next: RemotePreferences = { wechat: payload.wechat }
-      await writePreferences(deps.target, next)
-      try {
-        if (next.wechat) await deps.start()
-        else await deps.stop()
-      } catch (error: any) {
+        if (req.method === 'GET') {
+          const prefs = await readPreferences(deps.target)
+          return sendJson(res, 200, {
+            ok: true,
+            phone: prefs.phone,
+            wechat: prefs.wechat,
+            running: deps.running(),
+          })
+        }
+        let payload: any
+        try {
+          payload = JSON.parse(await readBody(req, MAX_BODY))
+        } catch {
+          throw httpFailure(400, '请求体不是合法 JSON')
+        }
+        // 两个开关各自独立更新：只改传进来的那一位，另一位保持原值。
+        // 一块传两个也行——面板以后想「一键全关」不用再加路由。
+        if (payload?.phone !== undefined && typeof payload.phone !== 'boolean') {
+          throw httpFailure(400, 'phone 必须是布尔值')
+        }
+        if (payload?.wechat !== undefined && typeof payload.wechat !== 'boolean') {
+          throw httpFailure(400, 'wechat 必须是布尔值')
+        }
+        if (payload?.phone === undefined && payload?.wechat === undefined) {
+          throw httpFailure(400, '至少要有 phone 或 wechat 布尔值')
+        }
+        const current = await readPreferences(deps.target)
+        const next: RemotePreferences = {
+          phone: typeof payload?.phone === 'boolean' ? payload.phone : current.phone,
+          wechat: typeof payload?.wechat === 'boolean' ? payload.wechat : current.wechat,
+        }
+        await writePreferences(deps.target, next)
+        // 只有微信那一位变了才动进程；手机入口是纯功能位，解绑由客户端发起。
+        if (typeof payload?.wechat === 'boolean') {
+          try {
+            if (next.wechat) await deps.start()
+            else await deps.stop()
+          } catch (error: any) {
+            return sendJson(res, 200, {
+              ok: true,
+              phone: next.phone,
+              wechat: next.wechat,
+              running: deps.running(),
+              error: String(error?.message ?? error),
+            })
+          }
+        }
         return sendJson(res, 200, {
           ok: true,
+          phone: next.phone,
           wechat: next.wechat,
           running: deps.running(),
-          error: String(error?.message ?? error),
         })
+      } catch (error: any) {
+        const status = asHttpFailure(error, 400).status
+        return sendJson(res, status, { ok: false, error: String(error?.message ?? error) })
       }
-      return sendJson(res, 200, { ok: true, wechat: next.wechat, running: deps.running() })
     },
   })
 }

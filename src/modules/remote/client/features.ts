@@ -1,9 +1,12 @@
 /**
  * 「移动端」面板里的两个开关，对侧栏入口的影响。
  *
- * 手机入口的状态在 ds-harness-remote（host.authorized）；微信开关在我们自己的
- * 偏好文件里（remote/host/preferences.ts）。面板写、这里读，入口按它决定
- * 出不出图标、露出哪个 tab —— 用户要求「功能开了才在菜单里显示」。
+ * 两个开关都是我们自己的功能位（remote/host/preferences.ts）：面板写、这里读，
+ * 入口按它决定出不出图标、露出哪个 tab —— 用户要求「功能开了才在菜单里显示」。
+ *
+ * 手机入口读的不是 ds-harness-remote 的 `host.authorized`：那位表示「这台机器被哪台手机
+ * 授权了」，是上游的连接状态，不是开关。混用会让开关点了没反应 —— 只接受扫码配对的机器上
+ * 打开授权必然被拒（DEVICE_SCOPE_REQUIRED），面板于是只能弹回原样。
  *
  * 未读到之前当作「都开着」：先亮再收比先藏再弹更不容易让人以为功能坏了。
  */
@@ -11,7 +14,6 @@
 import { fetchJson } from '../../../client/http.js'
 import { API_PATH } from '../host/constants.js'
 
-const CONTROL_PREFIX = '/ds-harness-remote'
 const POLL_MS = 4000
 
 export interface RemoteFeatures {
@@ -19,36 +21,12 @@ export interface RemoteFeatures {
   wechat: boolean
 }
 
-function newRpcId() {
-  const crypto = globalThis.crypto
-  if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID()
-  return `rpc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
-}
-
-async function phoneEnabled(): Promise<boolean | undefined> {
-  try {
-    const response = await fetch(`${CONTROL_PREFIX}/status`, {
-      method: 'POST',
-      credentials: 'same-origin',
-      cache: 'no-store',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ type: 'client-request', rpcId: newRpcId(), method: 'status', payload: {} }),
-    })
-    if (!response.ok) return undefined
-    const body = await response.json().catch(() => null)
-    const result = body?.result
-    if (result?.ok !== true) return undefined
-    return result.value?.host?.authorized === true
-  } catch {
-    return undefined
-  }
-}
-
-async function wechatEnabled(): Promise<boolean | undefined> {
+async function readSwitches(): Promise<RemoteFeatures | undefined> {
   try {
     const response = await fetchJson(`${API_PATH}/preferences`)
     const payload: any = await response.json()
-    return payload?.wechat === true
+    // 宿主版本比面板旧时没有 phone 字段：当作开着，别把入口藏起来。
+    return { phone: payload?.phone !== false, wechat: payload?.wechat === true }
   } catch {
     return undefined
   }
@@ -69,10 +47,10 @@ export function createFeatures() {
   }
 
   const refresh = async () => {
-    const [phone, wechat] = await Promise.all([phoneEnabled(), wechatEnabled()])
+    const switches = await readSwitches()
     const next: RemoteFeatures = {
-      phone: phone ?? value.phone,
-      wechat: wechat ?? value.wechat,
+      phone: switches?.phone ?? value.phone,
+      wechat: switches?.wechat ?? value.wechat,
     }
     if (next.phone === value.phone && next.wechat === value.wechat) return
     value = next

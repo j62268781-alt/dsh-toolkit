@@ -1430,6 +1430,7 @@ window.__ModuleLoader__.load({
 
     // src/modules/mobile/client/settings-panel.tsx
     var CONTROL_PREFIX = "/ds-harness-remote";
+    var LAST_PAIRED_KEY = "dsh-toolkit-remote/last-paired.v1";
     var DOWNLOAD_URL = "https://github.com/ccch1mneyyy/dsh-Go/releases";
     function newRpcId() {
       const crypto = globalThis.crypto;
@@ -1452,18 +1453,60 @@ window.__ModuleLoader__.load({
       const message = typeof result?.error?.message === "string" ? result.error.message : "远程通道拒绝了这次操作";
       throw new Error(message);
     }
+    async function writeSwitch(patch) {
+      const response = await fetchJson(`${API_PREFIX2}/preferences`, { method: "POST", json: patch });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const reason = typeof payload?.reason === "string" && payload.reason !== "" ? payload.reason : "宿主没有回应";
+        throw new Error(`开关没写成（HTTP ${response.status}）：${reason}`);
+      }
+      if (typeof payload?.error === "string" && payload.error !== "") {
+        const failure = new Error(payload.error);
+        failure.persisted = true;
+        throw failure;
+      }
+      return payload;
+    }
+    function forgetLastPaired() {
+      try {
+        globalThis.localStorage?.removeItem(LAST_PAIRED_KEY);
+      } catch {
+      }
+    }
+    async function purgeLocalState(serverUrl) {
+      if (serverUrl === "") return;
+      try {
+        await fetch(`${API_PREFIX2}/local-state/purge?serverUrl=${encodeURIComponent(serverUrl)}`, {
+          method: "POST",
+          headers: { accept: "application/json" },
+          credentials: "same-origin"
+        });
+      } catch {
+      }
+    }
+    async function unbindPhone() {
+      let serverUrl = "";
+      try {
+        const view = await control("settings.logout");
+        serverUrl = typeof view?.config?.serverUrl === "string" ? view.config.serverUrl : "";
+      } catch {
+        try {
+          const view = await control("settings.get");
+          serverUrl = typeof view?.config?.serverUrl === "string" ? view.config.serverUrl : "";
+        } catch {
+        }
+      }
+      forgetLastPaired();
+      await purgeLocalState(serverUrl);
+    }
     async function readFeatures() {
-      let phone = false;
+      let phone = true;
       let wechat = false;
       let wechatRunning = false;
       try {
-        const status = await control("status");
-        phone = status?.host?.authorized === true;
-      } catch {
-      }
-      try {
         const response = await fetchJson(`${API_PREFIX2}/preferences`);
         const payload = await response.json();
+        phone = payload?.phone !== false;
         wechat = payload?.wechat === true;
         wechatRunning = payload?.running === true;
       } catch {
@@ -1494,7 +1537,11 @@ window.__ModuleLoader__.load({
         }, h("span", { className: "mbm-switchKnob" }));
       }
       return function MobileSettings() {
-        const [features, setFeatures] = React2.useState({ phone: false, wechat: false, wechatRunning: false });
+        const [features, setFeatures] = React2.useState({
+          phone: true,
+          wechat: false,
+          wechatRunning: false
+        });
         const [ready, setReady] = React2.useState(false);
         const [pending, setPending] = React2.useState({ phone: false, wechat: false });
         const [error, setError] = React2.useState(null);
@@ -1519,21 +1566,17 @@ window.__ModuleLoader__.load({
           mark(key, true);
           setError(null);
           patch(key, next);
+          let persisted = false;
           try {
-            if (key === "phone") {
-              await control("host.authorization.set", { enabled: next });
-            } else {
-              const response = await fetchJson(`${API_PREFIX2}/preferences`, { method: "POST", json: { wechat: next } });
-              const payload = await response.json();
-              if (typeof payload?.error === "string" && payload.error !== "") {
-                patch(key, current);
-                setError(payload.error);
-              } else {
-                setFeatures((prev) => ({ ...prev, wechatRunning: payload?.running === true }));
-              }
+            const payload = await writeSwitch(key === "phone" ? { phone: next } : { wechat: next });
+            persisted = true;
+            if (key === "wechat") {
+              setFeatures((prev) => ({ ...prev, wechatRunning: payload?.running === true }));
+            } else if (!next) {
+              await unbindPhone();
             }
           } catch (failure) {
-            patch(key, current);
+            if (!persisted) patch(key, current);
             setError(String(failure?.message ?? failure));
           } finally {
             mark(key, false);
@@ -1577,7 +1620,7 @@ window.__ModuleLoader__.load({
             Row,
             {
               title: "允许手机控制此设备",
-              description: "打开后可以用手机查看进度、处理审批并追加指令；关闭会撤销本机授权，已配对的手机也连不上。"
+              description: "打开后可以用手机查看进度、处理审批并追加指令；关闭会撤销本机授权并解绑当前手机，下次要用重新扫码即可。"
             },
             h(
               Toggle,

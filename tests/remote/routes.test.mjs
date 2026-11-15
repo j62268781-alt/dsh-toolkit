@@ -404,6 +404,38 @@ test('开关路由能运行期启停 ClawBot：关着回 409，写 true 之后 s
   await find('preferences').handler({ method: 'GET', url: '/api/plugins/toolkit/remote/preferences' }, read)
   assert.equal(read.statusCode, 200)
   assert.equal(JSON.parse(read.body).wechat, false)
+  // 手机入口默认开着：它是本插件的功能位，老偏好文件里没有这个字段。
+  assert.equal(JSON.parse(read.body).phone, true)
+
+  // 关手机入口只写功能位，不碰微信那一路，也不该把桥接停掉。
+  const phoneOff = reply()
+  await find('preferences').handler(
+    bodyRequest('POST', '/api/plugins/toolkit/remote/preferences', '{"phone":false}'),
+    phoneOff,
+  )
+  assert.equal(JSON.parse(phoneOff.body).phone, false)
+  assert.equal(JSON.parse(phoneOff.body).wechat, false)
+
+  const phoneOn = reply()
+  await find('preferences').handler(
+    bodyRequest('POST', '/api/plugins/toolkit/remote/preferences', '{"phone":true}'),
+    phoneOn,
+  )
+  assert.equal(JSON.parse(phoneOn.body).phone, true)
+
+  // 非布尔 / 空请求体都要 400：功能位只认明确的 true/false。
+  const badPhone = reply()
+  await find('preferences').handler(
+    bodyRequest('POST', '/api/plugins/toolkit/remote/preferences', '{"phone":"yes"}'),
+    badPhone,
+  )
+  assert.equal(badPhone.statusCode, 400)
+  const empty = reply()
+  await find('preferences').handler(
+    bodyRequest('POST', '/api/plugins/toolkit/remote/preferences', '{}'),
+    empty,
+  )
+  assert.equal(empty.statusCode, 400)
 
   const enable = reply()
   await find('preferences').handler(
