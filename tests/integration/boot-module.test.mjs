@@ -37,7 +37,7 @@ test('host reads every volatile config leaf on each index injection', async () =
   inject(first)
   const firstHtml = first.find((item) => item.kind === 'html').html
   assert.match(firstHtml, /data-sk-animation="draw"/)
-  assert.match(firstHtml, /data-sk-duration="2400"/)
+  assert.match(firstHtml, /data-sk-duration="2500"/)
   assert.match(firstHtml, /data-sk-theme="auto"/)
   assert.match(firstHtml, /data-sk-wordmark="true"/)
   assert.match(firstHtml, /data-sk-skip="true"/)
@@ -48,11 +48,12 @@ test('host reads every volatile config leaf on each index injection', async () =
   inject(second)
   const secondHtml = second.find((item) => item.kind === 'html').html
   assert.match(secondHtml, /data-sk-animation="water"/)
-  assert.match(secondHtml, /data-sk-duration="2900"/)
+  assert.match(secondHtml, /data-sk-duration="3400"/)
   assert.match(secondHtml, /data-sk-theme="dark"/)
   assert.match(secondHtml, /data-sk-wordmark="false"/)
   assert.match(secondHtml, /data-sk-skip="false"/)
-  assert.match(second.find((item) => item.kind === 'style').text, /sk-ocean-ripple/)
+  assert.match(secondHtml, /sk-boot-coderain__/)
+  assert.match(second.find((item) => item.kind === 'style').text, /sk-coderain-fall/)
   assert.equal(reads.durationMs, 0)
   assert.ok(Object.entries(reads).filter(([field]) => field !== 'durationMs').every(([, count]) => count === 2))
 })
@@ -62,19 +63,21 @@ test('persisted keys map to the three requested scenes without config markup inj
   const water = createBootScene(sourceAssets, { animation: 'water' })
   const abyss = createBootScene(sourceAssets, { animation: 'abyss' })
   assert.match(draw.html, /sk-boot__trace/)
-  assert.doesNotMatch(draw.html, /sk-boot-ocean|portal|depth|impact/)
-  assert.match(water.html, /sk-boot-ocean__arc-x/)
-  assert.match(water.html, /sk-boot-ocean__arc-y/)
-  assert.match(water.html, /sk-boot-ocean__arc-rot/)
-  assert.match(water.html, /sk-boot-ocean__shock/)
-  assert.doesNotMatch(water.html, /sk-boot-ocean__whale-track|portal/)
-  assert.match(abyss.html, /sk-boot-ocean__whale-track/)
-  assert.match(abyss.html, /sk-boot-ocean__whale-lift/)
-  assert.match(abyss.html, /sk-boot-ocean__whale-tilt/)
-  assert.doesNotMatch(abyss.html, /sk-boot-ocean__arc-x|portal|depth/)
+  assert.match(draw.html, /sk-boot__pen/)
+  assert.doesNotMatch(draw.html, /sk-boot-ocean|sk-boot-coderain|portal|depth|impact/)
+  assert.match(water.html, /sk-boot-coderain__col/)
+  assert.match(water.html, /sk-boot-coderain__rain/)
+  assert.match(water.html, /sk-boot-coderain__lockup/)
+  assert.match(water.html, /sk-boot-coderain__scan/)
+  assert.doesNotMatch(water.html, /sk-boot-ocean|portal/)
+  assert.match(abyss.html, /sk-boot-starmark__constellation/)
+  assert.match(abyss.html, /sk-boot-starmark__star/)
+  assert.match(abyss.html, /sk-boot-starmark__mark/)
+  assert.match(abyss.html, /sk-boot-starmark__wordmark/)
+  assert.doesNotMatch(abyss.html, /sk-boot-ocean|sk-boot-coderain|portal|depth|starlane/)
   const hostile = createBootScene(sourceAssets, { animation: '" onload="x', durationMs: 999999, theme: '<script>', showWordmark: false, allowSkip: false })
   assert.match(hostile.html, /data-sk-animation="draw"/)
-  assert.match(hostile.html, /data-sk-duration="2400"/)
+  assert.match(hostile.html, /data-sk-duration="2500"/)
   assert.match(hostile.html, /data-sk-theme="auto"/)
   assert.match(hostile.html, /data-sk-wordmark="false"/)
   assert.doesNotMatch(hostile.html, /onload=/)
@@ -85,7 +88,7 @@ test('preview is inline and script-free with iframe-local theme selection', () =
   for (const theme of ['auto', 'light', 'dark']) {
     const html = createPreviewDocument(sourceAssets, { animation: 'abyss', theme })
     assert.doesNotMatch(html, /<script\b/i)
-    assert.match(html, /\.sk-boot-ocean__whale/)
+    assert.match(html, /\.sk-boot-starmark__mark/)
     assert.match(html, /<svg\b/)
     if (theme === 'auto') assert.match(html, /@media \(prefers-color-scheme:\s*dark\)/)
     if (theme === 'dark') assert.match(html, /<body data-ds-dark-theme>/)
@@ -93,36 +96,70 @@ test('preview is inline and script-free with iframe-local theme selection', () =
   }
 })
 
-test('ocean trajectories and wave profiles retain the design demos instead of approximation artwork', async () => {
-  const rendered = new JSDOM(createPreviewDocument(sourceAssets, { animation: 'water' }))
-  const keyframes = (document) => new Map([...document.styleSheets].flatMap((sheet) => [...sheet.cssRules])
-    .filter((rule) => rule.name && rule.cssRules)
-    .map((rule) => [rule.name, [...rule.cssRules].map((frame) => frame.cssText).join('')]))
-  const actual = keyframes(rendered.window.document)
-  for (const [file, animation, names] of [
-    ['demo-morph.html', 'water', ['arc-x', 'arc-y', 'arc-rot', 'lock-shake', 'wordmark-in', 'shock', 'flash', 'drop', 'foam', 'ripple']],
-    ['demo.html', 'abyss', ['whale-x', 'whale-y', 'whale-tilt', 'brand-in']],
-  ]) {
-    const source = new JSDOM(await readFile(new URL(`../../docs/boot/${file}`, import.meta.url), 'utf8'))
-    const expected = keyframes(source.window.document)
-    for (const name of names) assert.equal(actual.get(`sk-ocean-${name}`), expected.get(name), `${file}: ${name}`)
-    const scene = new JSDOM(createBootScene(sourceAssets, { animation }).html)
-    for (const layer of ['back', 'mid', 'front']) {
-      const original = source.window.document.querySelector(`.sea__wave--${layer}`)
-      const wave = scene.window.document.querySelector(`.sk-boot-ocean__sea-wave--${layer}`)
-      assert.equal(wave.getAttribute('viewBox'), original.getAttribute('viewBox'))
-      assert.equal(wave.querySelector('path').getAttribute('d'), original.querySelector('path').getAttribute('d'))
-    }
-    assert.equal(scene.window.document.querySelector('.sk-boot-ocean__mark path,.sk-boot-ocean__whale path').getAttribute('d'),
-      source.window.document.querySelector('.mark path,.whale path').getAttribute('d'))
-    scene.window.close()
-    source.window.close()
-  }
-  rendered.window.close()
+test('starmark samples every star target from the brand mark path with no runtime geometry', () => {
+  const scene = new JSDOM(createBootScene(sourceAssets, { animation: 'abyss' }).html)
+  const { document } = scene.window
+  assert.ok(document.querySelector('.sk-boot--starmark'))
+  // 真 3D：perspective 舞台 → 世界（相机）→ 标识盒（星图 + 鲸标共用）
+  assert.equal(document.querySelectorAll('.sk-boot-starmark__stage3d > .sk-boot-starmark__world').length, 1)
+  assert.equal(document.querySelectorAll('.sk-boot-starmark__rig > .sk-boot-starmark__constellation').length, 1)
+  const stars = document.querySelectorAll('.sk-boot-starmark__star')
+  assert.equal(stars.length, 200)
+  assert.equal(document.querySelectorAll('.sk-boot-starmark__mote').length, 72)
+  // 落定即点亮：辉光与填充是同一个路径两次绘制
+  const paths = document.querySelectorAll('.sk-boot-starmark__mark > path')
+  assert.equal(paths.length, 2)
+  assert.equal(paths[0].getAttribute('d'), paths[1].getAttribute('d'))
+  assert.ok(paths[0].getAttribute('d').length > 400)
+  assert.ok(document.querySelector('.sk-boot-starmark__wordmark .sk-boot-starmark__wordmark-name'))
+  assert.equal(document.querySelectorAll('script,canvas,img,video').length, 0)
+  scene.window.close()
 })
 
 test('preview and runtime share finite particles at original speed, ignoring legacy duration settings', () => {
-  for (const [animation, count, rippleCount, timeline] of [['water', 20, 3, 2900], ['abyss', 52, 9, 4500]]) {
+  const scenes = {
+    // 「代码降落」：44 列纵深字雨全部预生成，深度/时序都由种子化内联变量驱动，零脚本。
+    water: (root) => {
+      const cols = root.querySelectorAll('.sk-boot-coderain__col')
+      assert.equal(cols.length, 44)
+      assert.ok(root.querySelectorAll('.sk-boot-coderain__glyph').length >= 44 * 9)
+      assert.ok(root.querySelectorAll('.sk-boot-coderain__glyph--hot').length === 44)
+      for (const col of cols) {
+        const blur = Number.parseFloat(col.style.getPropertyValue('--blur'))
+        const dim = Number.parseFloat(col.style.getPropertyValue('--dim'))
+        assert.ok(blur >= 0 && blur <= 1.2, `depth blur out of range: ${blur}`)
+        assert.ok(dim >= 0.4 && dim <= 1, `depth dim out of range: ${dim}`)
+        const fall = col.querySelector('.sk-boot-coderain__fall')
+        const delay = Number.parseFloat(fall.style.getPropertyValue('--delay'))
+        const dur = Number.parseFloat(fall.style.getPropertyValue('--dur'))
+        assert.ok(delay <= 0, 'rain columns start mid-fall')
+        assert.ok(dur >= 1800 && dur <= 3800, `column speed out of range: ${dur}`)
+      }
+    },
+    // 「星海成标」：200 颗星的目标坐标全部来自鲸标路径采样，起点与延迟种子化，
+    // 各自时长补到同一个落定帧 —— 这一条是"星点拼成轮廓"的硬保证。
+    abyss: (root, timeline) => {
+      const stars = root.querySelectorAll('.sk-boot-starmark__star')
+      assert.equal(stars.length, 200)
+      for (const star of stars) {
+        const delay = Number.parseFloat(star.style.getPropertyValue('--d'))
+        const flight = Number.parseFloat(star.style.getPropertyValue('--u'))
+        assert.ok(delay >= 0 && delay <= 1460, `star launch delay out of range: ${delay}`)
+        assert.equal(delay + flight, 2400, 'every star lands on the same frame')
+        // 鲸标的曲线有个别点比 viewBox 高出一丝（17.042 / 17.04），留半个百分点的余量。
+        const x = Number.parseFloat(star.style.getPropertyValue('--x'))
+        const y = Number.parseFloat(star.style.getPropertyValue('--y'))
+        assert.ok(x >= -0.5 && x <= 100.5 && y >= -0.5 && y <= 100.5, `star target outside the mark box: ${x},${y}`)
+        for (const prop of ['--sx', '--sy', '--sz']) {
+          assert.match(star.style.getPropertyValue(prop), /^-?\d+px$/, prop)
+        }
+      }
+      assert.ok(2700 <= timeline, 'the ignition fits inside the timeline')
+    },
+  }
+  const timelines = { water: 3400, abyss: 4200 }
+  for (const animation of ['water', 'abyss']) {
+    const timeline = timelines[animation]
     for (const durationMs of [undefined, 1, 1700, 2400, 8000, 999999, 'invalid']) {
       const config = { animation, durationMs, theme: 'dark', showWordmark: false, allowSkip: false }
       const runtime = createBootScene(sourceAssets, config)
@@ -135,15 +172,7 @@ test('preview and runtime share finite particles at original speed, ignoring leg
       assert.equal(root.getAttribute('data-sk-wordmark'), 'false')
       assert.equal(root.getAttribute('data-sk-duration'), String(timeline))
       assert.equal(root.style.getPropertyValue('--sk-boot-time-scale'), '')
-      assert.equal(root.querySelectorAll('.sk-boot-ocean__drop').length, count)
-      assert.equal(root.querySelectorAll('.sk-boot-ocean__ripple').length, rippleCount)
-      for (const node of root.querySelectorAll('.sk-boot-ocean__drop,.sk-boot-ocean__foam,.sk-boot-ocean__ripple,.sk-boot-ocean__shock')) {
-        const delay = Number.parseFloat(node.style.getPropertyValue('--delay'))
-        const duration = node.classList.contains('sk-boot-ocean__drop') ? Number.parseFloat(node.style.getPropertyValue('--dur'))
-          : node.classList.contains('sk-boot-ocean__foam') ? 880 : node.classList.contains('sk-boot-ocean__ripple') ? 1500 : 1100
-        assert.ok(delay + duration <= timeline + .005, `${animation}: particle tail exceeds animation duration`)
-      }
-      assert.ok((animation === 'water' ? 1500 : 2800) <= timeline)
+      scenes[animation](root, timeline)
       assert.equal(root.querySelectorAll('script,canvas,img,video').length, 0)
       doc.window.close()
     }
@@ -225,7 +254,7 @@ test('settings panel previews above choices and writes every control through the
   assert.equal(document.querySelectorAll('.sk-ui-option[aria-pressed="true"]').length, 1)
   assert.equal(document.querySelectorAll('input[type="range"],.boot-duration').length, 0)
   assert.doesNotMatch(app.text(), /最短展示|展示时间|展示时长/)
-  assert.match(frame.srcdoc, /data-sk-duration="2400"/)
+  assert.match(frame.srcdoc, /data-sk-duration="2500"/)
 
   const choose = async (label) => {
     const button = [...document.querySelectorAll('button')].find((node) => node.textContent.includes(label))
@@ -247,17 +276,17 @@ test('settings panel previews above choices and writes every control through the
   })
   assert.deepEqual(writes, [['showWordmark', false], ['theme', 'dark']])
   assert.equal(value().theme, 'dark')
-  await choose('跃浪成标')
+  await choose('代码降落')
   assert.deepEqual(writes, [['showWordmark', false], ['theme', 'dark'], ['animation', 'water']])
   assert.equal(value().animation, 'water')
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="water"/)
-  assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-duration="2900"/)
-  assert.match(app.text(), /已使用跃浪成标/)
+  assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-duration="3400"/)
+  assert.match(app.text(), /已使用代码降落/)
   const previousFrame = document.querySelector('.boot-preview')
   await choose('重新播放')
   assert.notEqual(document.querySelector('.boot-preview'), previousFrame)
   // Re-picking the active animation only replays the preview, never rewrites.
-  await choose('跃浪成标')
+  await choose('代码降落')
   assert.equal(writes.length, 3)
 })
 
@@ -324,7 +353,7 @@ test('rejected animation writes restore the persisted selection and report the f
   assert.match(document.querySelector('[role="alert"]').textContent, /宿主拒绝/)
   assert.match(document.querySelector('.sk-ui-option[aria-pressed="true"]').textContent, /经典描摹/)
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="draw"/)
-  assert.doesNotMatch(app.text(), /已使用鲸跃归海/)
+  assert.doesNotMatch(app.text(), /已使用星海成标/)
 })
 
 test('animation writes disable competing edits until accepted and persist only animation', async (t) => {
@@ -343,7 +372,7 @@ test('animation writes disable competing edits until accepted and persist only a
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="abyss"/)
   await act(async () => release())
   assert.deepEqual(writes, [['animation', 'abyss']])
-  assert.match(document.querySelector('.sk-ui-option[aria-pressed="true"]').textContent, /鲸跃归海/)
+  assert.match(document.querySelector('.sk-ui-option[aria-pressed="true"]').textContent, /星海成标/)
 })
 
 test('ocean scenes own their light/dark palette and the draw lockup stays motionless', () => {
@@ -354,11 +383,16 @@ test('ocean scenes own their light/dark palette and the draw lockup stays motion
       const style = dom.window.getComputedStyle(root)
       if (animation === 'draw') {
         assert.equal(style.getPropertyValue('--dsh-boot-bg'), theme === 'light' ? '#f4fbfa' : '#101a1d')
-        assert.equal(dom.window.document.querySelectorAll('[class*="ocean"]').length, 0)
+        assert.equal(dom.window.document.querySelectorAll('[class*="ocean"],[class*="coderain"],[class*="starmark"]').length, 0)
         assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('.sk-boot__lockup')).animation, '')
+      } else if (animation === 'water') {
+        assert.equal(style.getPropertyValue('--sk-code-bg-1'), theme === 'light' ? '#eef5f0' : '#020604')
+        assert.equal(style.getPropertyValue('--sk-code-glyph'), theme === 'light' ? '#237a4a' : '#2fe97c')
+        assert.equal(dom.window.document.querySelectorAll('[class*="ocean"],[class*="starmark"]').length, 0)
       } else {
-        assert.equal(style.getPropertyValue('--sk-ocean-sea-deep'), theme === 'light' ? '#d2e9f3' : '#02080f')
-        assert.equal(style.getPropertyValue('--sk-ocean-whale'), theme === 'light' ? '#143953' : '#eef7ff')
+        assert.equal(style.getPropertyValue('--sk-sky-1'), theme === 'light' ? '#dfe9f6' : '#040a1c')
+        assert.equal(style.getPropertyValue('--sk-star-ink'), theme === 'light' ? '#14294a' : '#eaf4ff')
+        assert.equal(dom.window.document.querySelectorAll('[class*="ocean"],[class*="coderain"]').length, 0)
       }
       dom.window.close()
     }
@@ -377,7 +411,9 @@ test('draw preview and boot keep geometry fixed throughout every animated child'
       const { document } = dom.window
       const rules = [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules])
       const keyframes = new Map(rules.filter((rule) => rule.name && rule.cssRules).map((rule) => [rule.name, rule]))
-      const allowed = new Set(['opacity', 'stroke-dashoffset'])
+      // The fill breath scales inside the fill-box (paint only); everything else
+      // must animate nothing but opacity and the stroke dash.
+      const allowed = new Set(['opacity', 'stroke-dashoffset', 'transform'])
       const names = new Set()
       for (const selector of ['.sk-boot__grid', '.sk-boot__trace', '.sk-boot__fill', '.sk-boot__wordmark']) {
         const style = rules.find((rule) => rule.selectorText === selector).style
@@ -414,11 +450,13 @@ test('reduced motion hides flight, particles and flashes while keeping the final
   assert.equal(stop.style.getPropertyPriority('animation'), 'important')
   const visible = reduced.find((rule) => rule.selectorText?.includes('.sk-boot .sk-boot__fill'))
   assert.equal(visible.style.getPropertyValue('opacity'), '1')
-  assert.ok(visible.selectorText.includes('.sk-boot-ocean__wordmark'))
-  const hidden = reduced.find((rule) => rule.selectorText?.includes('.sk-boot-ocean__fx'))
+  assert.ok(visible.selectorText.includes('.sk-boot-starmark__fill'))
+  assert.ok(visible.selectorText.includes('.sk-boot-starmark__wordmark-name'))
+  const hidden = reduced.find((rule) => rule.selectorText?.includes('.sk-boot-coderain__rain'))
   assert.equal(hidden.style.getPropertyValue('display'), 'none')
-  assert.ok(hidden.selectorText.includes('.sk-boot-ocean__flash'))
-  assert.ok(hidden.selectorText.includes('.sk-boot-ocean__whale-track'))
+  // 星图与星尘全靠动画"演"出来，静止时直接不显示；标识本体必须留着。
+  assert.ok(hidden.selectorText.includes('.sk-boot-starmark__constellation'))
+  assert.ok(hidden.selectorText.includes('.sk-boot-starmark__mote'))
   assert.equal(dom.window.document.querySelectorAll('script,canvas,img,video').length, 0)
   dom.window.close()
 })
@@ -486,7 +524,7 @@ function runBoot(t, config) {
 }
 
 test('runtime waits for each animation duration and real host, then clears observers, listeners and timers', (t) => {
-  for (const [animation, duration] of [['draw', 2400], ['water', 2900], ['abyss', 4500]]) {
+  for (const [animation, duration] of [['draw', 2500], ['water', 3400], ['abyss', 4200]]) {
     const app = runBoot(t, { animation, durationMs: 1700 })
     app.advance(200)
     app.mount()

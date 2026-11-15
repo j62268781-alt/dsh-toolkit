@@ -6,18 +6,18 @@
 
    颜色取自主题注入的 --dsh-boot-bg 与 body[data-ds-dark-theme]，这两样
    在 ui-theme 的 boot 注入里已经设好，早于本样式表读取。
+
+   三款动画：draw「经典描摹」/ water「代码降落」/ abyss「星海成标」。
    ═══════════════════════════════════════════════════════════════════════ */
 
 body {
   --sk-ink: #0f1115;
   --sk-ink-2: #61666b;
-  --sk-grid: rgba(15, 17, 21, .05);
 }
 
 body[data-ds-dark-theme] {
   --sk-ink: #f9fafb;
   --sk-ink-2: #cfd3d6;
-  --sk-grid: rgba(249, 250, 251, .045);
 }
 
 /* 自带的 loading 卡片让位：它仍是"应用是否挂载完成"的信号，只是不显示 */
@@ -45,15 +45,16 @@ html[data-sk-boot-bailed] [data-dsh-boot] {
 
 .sk-boot[data-sk-leaving] { opacity: 0; }
 
+/* ═══ draw「经典描摹」：笔尖微光勾勒鲸标，填充成形，字标浮现 ═══════════ */
+
 .sk-boot__grid {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(var(--sk-grid) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background:
+    radial-gradient(52% 46% at 50% 46%, rgba(96, 132, 196, .12), transparent 74%),
+    radial-gradient(120% 90% at 50% 120%, rgba(120, 160, 210, .07), transparent 70%);
   opacity: 0;
   animation: sk-grid-in 900ms ease-out 40ms both;
-  -webkit-mask-image: radial-gradient(58% 58% at 50% 50%, #000 20%, transparent 76%);
-          mask-image: radial-gradient(58% 58% at 50% 50%, #000 20%, transparent 76%);
 }
 
 .sk-boot__lockup {
@@ -82,15 +83,46 @@ html[data-sk-boot-bailed] [data-dsh-boot] {
   stroke-linejoin: round;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  animation: sk-trace 680ms cubic-bezier(.38, .12, .3, 1) 110ms both,
-             sk-trace-out 240ms ease-in 780ms both;
+  filter: drop-shadow(0 0 3px rgba(90, 140, 220, .45));
+  animation: sk-trace 720ms cubic-bezier(.38, .12, .3, 1) 120ms both,
+             sk-trace-out 240ms ease-in 840ms both;
 }
 
-/* 第二笔：画完再填成实心 */
+/* 笔尖：一点微光沿描摹路径走完全程（SMIL，无脚本，预览可跑） */
+.sk-boot__pen-layer {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  translate: -50% 0;
+  width: 92px;
+  height: 67.689119px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.sk-boot__pen {
+  fill: #fff;
+  stroke: rgba(120, 170, 255, .9);
+  stroke-width: .3;
+  filter: drop-shadow(0 0 3px rgba(120, 170, 255, .95)) drop-shadow(0 0 8px rgba(80, 140, 255, .55));
+  opacity: 0;
+  animation: sk-pen-glow 940ms ease-out 120ms both;
+}
+
+@keyframes sk-pen-glow {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  78% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 第二笔：画完再填成实心，一次呼吸式过渡 */
 .sk-boot__fill {
   fill: currentColor;
   opacity: 0;
-  animation: sk-fill-in 400ms ease-out 760ms both;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sk-fill-in 420ms ease-out 800ms both;
 }
 
 .sk-boot__wordmark {
@@ -100,7 +132,7 @@ html[data-sk-boot-bailed] [data-dsh-boot] {
   color: var(--sk-ink);
   white-space: nowrap;
   opacity: 0;
-  animation: sk-wm-in 520ms cubic-bezier(.22, .61, .36, 1) 950ms both;
+  animation: sk-wm-in 560ms cubic-bezier(.22, .61, .36, 1) 1000ms both;
 }
 
 .sk-boot__wordmark b {
@@ -108,369 +140,166 @@ html[data-sk-boot-bailed] [data-dsh-boot] {
   color: var(--sk-ink-2);
 }
 
-/* Draw mode changes paint only: no grid resampling or text-driven layout shifts. */
 @keyframes sk-grid-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sk-trace { to { stroke-dashoffset: 0; } }
 @keyframes sk-trace-out { to { opacity: 0; } }
-@keyframes sk-fill-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sk-fill-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
 @keyframes sk-wm-in { from { opacity: 0; } to { opacity: 1; } }
 
-/* The artwork below is ported from docs/boot/demo-morph.html and demo.html.
-   Namespaced classes/keyframes isolate it from the Harness and the stable draw mode. */
-.sk-boot--ocean {
-  --sk-ocean-sea-deep: #02080f;
-  --sk-ocean-sea-mid: #061a2b;
-  --sk-ocean-sea-top: #0d3a58;
-  --sk-ocean-whale: #eef7ff;
-  --sk-ocean-foam: #cbe6ff;
-  --sk-ocean-hud-dim: rgba(197, 219, 240, .62);
-  --sk-ocean-ease-out: cubic-bezier(.22, .68, .3, 1);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif;
-  color: #eef7ff;
-}
-.sk-boot--ocean {
+/* ═══ water「代码降落」：字符雨带景深落下，中央解码收敛为品牌标识 ═════ */
+.sk-boot--coderain {
+  --sk-code-bg-1: #020604;
+  --sk-code-bg-2: #07140c;
+  --sk-code-glyph: #2fe97c;
+  --sk-code-head: #b6ffd9;
+  --sk-code-ink: #eafff2;
+  --sk-code-dim: rgba(150, 220, 180, .55);
   position: fixed;
   inset: 0;
   overflow: hidden;
   isolation: isolate;
-  background:
-    radial-gradient(120% 85% at 50% 118%, #12496c 0%, var(--sk-ocean-sea-top) 26%,
-      var(--sk-ocean-sea-mid) 52%, var(--sk-ocean-sea-deep) 78%, #010509 100%);
+  background: radial-gradient(120% 100% at 50% 118%, var(--sk-code-bg-2) 0%, var(--sk-code-bg-1) 55%, #010302 100%);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+  color: var(--sk-code-ink);
 }
 
-.sk-boot--ocean::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 40% 0;
-  background: radial-gradient(80% 70% at 50% 100%,
-    rgba(111, 188, 255, .13), transparent 70%);
-  pointer-events: none;
-}
-
-.sk-boot-ocean__halo {
-  position: absolute;
-  left: 50%;
-  bottom: 6%;
-  width: min(78vw, 980px);
-  aspect-ratio: 1.9;
-  translate: -50% 0;
-  border-radius: 50%;
-  background: radial-gradient(closest-side,
-    rgba(126, 200, 255, .30), rgba(88, 160, 235, .10) 55%, transparent 72%);
-  filter: blur(18px);
-  animation: sk-ocean-halo calc(3.4s * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) both;
-}
-
-@keyframes sk-ocean-halo {
-  0%   { opacity: 0; transform: scale(.82); }
-  45%  { opacity: 1; transform: scale(1); }
-  100% { opacity: .78; transform: scale(1.05); }
-}
-
-/* ── 海面（盖在鲸鱼上面，出水的那一下才「破水而出」） ────────────────── */
-.sk-boot-ocean__sea {
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 38vh;
-  z-index: 4;
-  pointer-events: none;
-}
-
-.sk-boot-ocean__sea-fill {
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 100%;
-  background: linear-gradient(to bottom,
-    rgba(30, 96, 146, 0) 0%, rgba(27, 90, 136, .55) 5%,
-    rgba(19, 68, 108, .88) 13%, rgba(12, 46, 74, .99) 26%,
-    #05131f 52%, #02080e 82%, #010508 100%);
-}
-
-.sk-boot-ocean__sea-wave {
-  position: absolute;
-  left: -25%;
-  width: 150%;
-  height: 100%;
-  display: block;
-}
-.sk-boot-ocean__sea-wave--back  { top: -1%; opacity: .38; animation: sk-ocean-drift calc(11s * var(--sk-boot-time-scale, 1)) ease-in-out infinite alternate; }
-.sk-boot-ocean__sea-wave--mid   { top: 1%;  opacity: .55; animation: sk-ocean-drift calc(8.5s * var(--sk-boot-time-scale, 1)) ease-in-out infinite alternate-reverse; }
-.sk-boot-ocean__sea-wave--front { top: 3%;  opacity: .95; animation: sk-ocean-drift calc(6.4s * var(--sk-boot-time-scale, 1)) ease-in-out infinite alternate; }
-
-.sk-boot-ocean__sea-wave path {
-  fill: #061a2b;
-  stroke: rgba(176, 222, 255, .30);
-  stroke-width: 1.1;
-  vector-effect: non-scaling-stroke;
-}
-.sk-boot-ocean__sea-wave--back  path { fill: #0c3550; stroke: rgba(170, 216, 255, .18); }
-.sk-boot-ocean__sea-wave--mid   path { fill: #08283f; stroke: rgba(176, 222, 255, .26); }
-.sk-boot-ocean__sea-wave--front path { stroke: rgba(198, 232, 255, .45); }
-
-@keyframes sk-ocean-drift {
-  from { transform: translateX(-3.5%) translateY(0); }
-  to   { transform: translateX(3.5%) translateY(-1.4%); }
-}
-
-.sk-boot-ocean__sea-mist {
-  position: absolute;
-  inset: -26px 0 auto 0;
-  height: 90px;
-  background: linear-gradient(to top, rgba(120, 186, 240, .16), transparent 78%);
-  filter: blur(7px);
-}
-
-.sk-boot-ocean__sea-shine {
-  position: absolute;
-  left: 50%;
-  top: -2px;
-  width: min(46vw, 560px);
-  height: 3px;
-  translate: -50% 0;
-  border-radius: 50%;
-  background: linear-gradient(90deg, transparent, rgba(190, 228, 255, .85), transparent);
-  filter: blur(2px);
-  animation: sk-ocean-shine calc(3.4s * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) both;
-}
-@keyframes sk-ocean-shine { 0%, 12% { opacity: 0; } 55% { opacity: .9; } 100% { opacity: .5; } }
-
-/* ── 主角：鲸鱼 → logo ──────────────────────────────────────────────── */
-.sk-boot-ocean__stage {
+/* 透视容器：字列按 translateZ 分出近大远小的景深 */
+.sk-boot-coderain__rain {
   position: absolute;
   inset: 0;
-  z-index: 2;             /* 低于 .sk-boot-ocean__sea：起飞那一下会被海面挡住 */
+  z-index: 1;
+  perspective: 720px;
+  transform-style: preserve-3d;
+  animation: sk-coderain-dim 700ms ease-out 2200ms both;
+}
+
+.sk-boot-coderain__col {
+  position: absolute;
+  left: var(--x);
+  top: 0;
+  transform: translateZ(var(--z, 0px));
+  filter: blur(var(--blur, 0px));
+  opacity: var(--dim, 1);
+}
+
+.sk-boot-coderain__fall {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font: 500 13px/1.35 ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+  color: var(--sk-code-glyph);
+  text-shadow: 0 0 6px rgba(47, 233, 124, .55);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 16%, #000 84%, transparent);
+          mask-image: linear-gradient(180deg, transparent, #000 16%, #000 84%, transparent);
+  animation: sk-coderain-fall var(--dur, 2.6s) linear var(--delay, 0s) infinite;
+  will-change: transform;
+}
+
+@keyframes sk-coderain-fall {
+  from { transform: translate3d(0, -110%, 0); }
+  to   { transform: translate3d(0, 112vh, 0); }
+}
+
+@keyframes sk-coderain-dim {
+  from { opacity: 1; }
+  to   { opacity: .34; }
+}
+
+.sk-boot-coderain__glyph { opacity: .82; }
+.sk-boot-coderain__glyph--hot {
+  color: var(--sk-code-head);
+  opacity: 1;
+  text-shadow: 0 0 9px rgba(182, 255, 217, .9);
+}
+
+/* 解码扫描线：一掠而下，锁定中央标识 */
+.sk-boot-coderain__scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  z-index: 3;
+  background: linear-gradient(90deg, transparent, rgba(182, 255, 217, .8), transparent);
+  box-shadow: 0 0 18px rgba(120, 255, 190, .8);
+  opacity: 0;
+  pointer-events: none;
+  animation: sk-coderain-scan 420ms ease-in-out 1450ms both;
+}
+
+@keyframes sk-coderain-scan {
+  0%   { opacity: 0; transform: translateY(-4vh); }
+  18%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(104vh); }
+}
+
+.sk-boot-coderain__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
   display: grid;
   place-items: center;
   pointer-events: none;
 }
 
-/*
- * lockup 就是动画结束时的最终状态：品牌标 + 字标，水平居中锁死。
- * 鲸鱼三层 wrapper 各自把「位移 / 姿态与缩放」从起始值归零，
- * 归零之后它天然就落在 logo 的位置上 —— 不需要算像素。
- */
-.sk-boot-ocean__lockup {
+.sk-boot-coderain__lockup {
   display: flex;
   align-items: center;
-  gap: 14px;
-  transform-origin: 50% 50%;
-  animation: sk-ocean-lock-shake calc(520ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.36, .07, .19, .97) calc(1490ms * var(--sk-boot-time-scale, 1)) both;
+  gap: clamp(6px, 1.2vw, 14px);
+  opacity: 0;
+  animation: sk-coderain-decode 520ms steps(3, end) 1650ms both;
 }
 
-.sk-boot-ocean__arc-x {
-  animation: sk-ocean-arc-x calc(1280ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.32, .02, .5, 1) calc(220ms * var(--sk-boot-time-scale, 1)) both;
-  will-change: transform;
+@keyframes sk-coderain-decode {
+  0%   { opacity: 0; filter: blur(8px); }
+  30%  { opacity: .7; filter: blur(2px); }
+  55%  { opacity: .25; filter: blur(5px); }
+  100% { opacity: 1; filter: blur(0); }
 }
 
-.sk-boot-ocean__arc-y {
-  animation: sk-ocean-arc-y calc(1280ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.34, .02, .46, 1) calc(220ms * var(--sk-boot-time-scale, 1)) both;
-  will-change: transform;
-}
-
-.sk-boot-ocean__arc-rot {
-  animation: sk-ocean-arc-rot calc(1280ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.3, .02, .5, 1) calc(220ms * var(--sk-boot-time-scale, 1)) both;
-  will-change: transform;
-}
-
-.sk-boot-ocean__mark {
+.sk-boot-coderain__mark {
   display: block;
-  width: 84px;
+  width: clamp(38px, 7.2vw, 84px);
   height: auto;
-  color: var(--sk-ocean-whale);
-  /* 鲸鱼本来朝左；翻转写在元素自身，父级 rotate 才不会被镜像 */
-  transform: scaleX(-1);
-  filter:
-    drop-shadow(0 0 10px rgba(150, 210, 255, .55))
-    drop-shadow(0 0 34px rgba(96, 168, 255, .34));
+  color: var(--sk-code-ink);
+  filter: drop-shadow(0 0 14px rgba(47, 233, 124, .5));
 }
 
-/* 横向：从左下角飞向中心 */
-@keyframes sk-ocean-arc-x {
-  0%   { transform: translateX(-40vw); }
-  100% { transform: translateX(0); }
-}
-
-/* 纵向：出水 → 过冲一点点 → 落到中心 */
-@keyframes sk-ocean-arc-y {
-  0%   { transform: translateY(44vh); }
-  46%  { transform: translateY(-5vh); }
-  68%  { transform: translateY(-8vh); }
-  86%  { transform: translateY(1.2vh); }
-  100% { transform: translateY(0); }
-}
-
-/* 姿态 + 缩放：昂头起飞 → 放平 → 收成 logo 尺寸（末段轻微过冲） */
-@keyframes sk-ocean-arc-rot {
-  0%   { transform: rotate(-40deg) scale(2.9); }
-  24%  { transform: rotate(-22deg) scale(2.72); }
-  48%  { transform: rotate(-4deg) scale(2.3); }
-  74%  { transform: rotate(7deg) scale(1.42); }
-  90%  { transform: rotate(-2.5deg) scale(.93); }
-  100% { transform: rotate(0deg) scale(1); }
-}
-
-/* 「抖一下」：落定后的三下渐弱冲击 */
-@keyframes sk-ocean-lock-shake {
-  0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
-  12%  { transform: translate(-4px, 3px) rotate(-1.6deg) scale(1.05); }
-  28%  { transform: translate(4px, -3px) rotate(1.4deg) scale(1.03); }
-  44%  { transform: translate(-3px, 1.6px) rotate(-.9deg) scale(1.016); }
-  60%  { transform: translate(2px, -1.2px) rotate(.6deg) scale(1.008); }
-  78%  { transform: translate(-1px, .6px) rotate(-.28deg) scale(1.003); }
-  100% { transform: translate(0, 0) rotate(0deg) scale(1); }
-}
-
-/* ── 字标 ───────────────────────────────────────────────────────────── */
-.sk-boot-ocean__wordmark {
+.sk-boot-coderain__wordmark {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: clamp(6px, 1vw, 12px);
   white-space: nowrap;
   opacity: 0;
-  animation: sk-ocean-wordmark-in calc(620ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) calc(1500ms * var(--sk-boot-time-scale, 1)) both;
+  animation: sk-coderain-decode 520ms steps(3, end) 1750ms both;
 }
 
-.sk-boot-ocean__wordmark-name {
-  font-size: 19px;
+.sk-boot-coderain__wordmark-name {
+  font-size: clamp(10px, 1.6vw, 19px);
   font-weight: 650;
   letter-spacing: .34em;
   text-transform: uppercase;
-  color: #fff;
-  animation: sk-ocean-tracking calc(620ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) calc(1500ms * var(--sk-boot-time-scale, 1)) both;
+  color: var(--sk-code-ink);
+  animation: sk-coderain-tracking 620ms cubic-bezier(.22, .68, .3, 1) 1950ms both;
 }
 
-.sk-boot-ocean__wordmark-suffix {
+.sk-boot-coderain__wordmark-suffix {
   padding: 2px 7px 3px;
-  border: 1px solid rgba(255, 255, 255, .5);
+  border: 1px solid rgba(182, 255, 217, .5);
   border-radius: 3px;
-  font-size: 10px;
+  font-size: clamp(7px, .85vw, 10px);
   font-weight: 600;
   letter-spacing: .16em;
-  color: rgba(255, 255, 255, .82);
+  color: var(--sk-code-dim);
+  align-self: center;
 }
 
-@keyframes sk-ocean-wordmark-in {
-  0%   { opacity: 0; filter: blur(10px); transform: translateX(-10px); }
-  100% { opacity: 1; filter: blur(0); transform: translateX(0); }
-}
-
-@keyframes sk-ocean-tracking {
+@keyframes sk-coderain-tracking {
   0%   { letter-spacing: .34em; opacity: .4; }
   100% { letter-spacing: .14em; opacity: 1; }
 }
 
-/* ── 落定瞬间的闪光与冲击波 ──────────────────────────────────────────── */
-.sk-boot-ocean__mark-slot {
-  position: relative;
-  width: 84px;
-  height: 84px;
-  display: grid;
-  place-items: center;
-  flex: none;
-}
-
-.sk-boot-ocean__shock-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 6;
-  pointer-events: none;
-}
-
-.sk-boot-ocean__shock {
-  position: absolute;
-  width: 84px;
-  height: 84px;
-  margin: -42px 0 0 -42px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(198, 232, 255, .85);
-  opacity: 0;
-  z-index: 5;
-  pointer-events: none;
-  animation: sk-ocean-shock calc(1100ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.2, .7, .35, 1) both;
-}
-
-@keyframes sk-ocean-shock {
-  0%   { transform: scale(.35); opacity: 0; }
-  14%  { opacity: .95; }
-  100% { transform: scale(4.6); opacity: 0; }
-}
-
-.sk-boot-ocean__flash {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  background: radial-gradient(34% 24% at 50% 50%, rgba(226, 243, 255, .62), rgba(200, 232, 255, 0) 70%);
-  opacity: 0;
-  pointer-events: none;
-  animation: sk-ocean-flash calc(560ms * var(--sk-boot-time-scale, 1)) ease-out calc(1490ms * var(--sk-boot-time-scale, 1)) both;
-}
-@keyframes sk-ocean-flash {
-  0%   { opacity: 0; }
-  12%  { opacity: .8; }
-  38%  { opacity: .35; }
-  100% { opacity: 0; }
-}
-
-/* ── 水花 ───────────────────────────────────────────────────────────── */
-.sk-boot-ocean__fx {
-  position: absolute;
-  inset: 0;
-  z-index: 6;
-  pointer-events: none;
-}
-
-.sk-boot-ocean__drop {
-  position: absolute;
-  width: var(--s, 6px);
-  height: var(--s, 6px);
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff, var(--sk-ocean-foam) 60%, rgba(150, 200, 240, .2));
-  opacity: 0;
-  animation: sk-ocean-drop var(--dur, calc(900ms * var(--sk-boot-time-scale, 1))) cubic-bezier(.16, .7, .4, 1) var(--delay, calc(0ms * var(--sk-boot-time-scale, 1))) both;
-}
-
-@keyframes sk-ocean-drop {
-  0%   { transform: translate(0, 0) scale(.5); opacity: 0; }
-  12%  { opacity: 1; }
-  52%  { transform: translate(var(--dx, 0px), calc(-1 * var(--up, 90px))) scale(1); opacity: 1; }
-  100% { transform: translate(var(--dx2, 0px), var(--down, 24px)) scale(.35); opacity: 0; }
-}
-
-.sk-boot-ocean__foam {
-  position: absolute;
-  width: 120px;
-  height: 40px;
-  margin: -20px 0 0 -60px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, #ffffff, rgba(196, 232, 255, .55) 45%, transparent 72%);
-  filter: blur(5px);
-  opacity: 0;
-  animation: sk-ocean-foam calc(880ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.2, .7, .4, 1) var(--delay, calc(0ms * var(--sk-boot-time-scale, 1))) both;
-}
-@keyframes sk-ocean-foam {
-  0%   { transform: scale(.25); opacity: .95; }
-  55%  { transform: scale(1.15); opacity: .55; }
-  100% { transform: scale(2.2); opacity: 0; }
-}
-
-.sk-boot-ocean__ripple {
-  position: absolute;
-  width: 40px;
-  height: 12px;
-  margin-left: -20px;
-  border: 1.5px solid rgba(186, 226, 255, .6);
-  border-radius: 50%;
-  opacity: 0;
-  animation: sk-ocean-ripple calc(1500ms * var(--sk-boot-time-scale, 1)) cubic-bezier(.2, .7, .35, 1) var(--delay, calc(0ms * var(--sk-boot-time-scale, 1))) both;
-}
-@keyframes sk-ocean-ripple {
-  0%   { transform: scale(.25); opacity: 0; }
-  18%  { opacity: .85; }
-  100% { transform: scale(9); opacity: 0; }
-}
-
-
-.sk-boot-ocean__hud {
+.sk-boot-coderain__hud {
   position: absolute;
   left: 50%;
   bottom: 12vh;
@@ -483,192 +312,489 @@ html[data-sk-boot-bailed] [data-dsh-boot] {
   text-align: center;
 }
 
-.sk-boot-ocean__meter {
+.sk-boot-coderain__meter {
   width: min(340px, 56vw);
   display: flex;
   align-items: center;
   gap: 12px;
   opacity: 0;
-  animation: sk-ocean-rise calc(700ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) calc(1750ms * var(--sk-boot-time-scale, 1)) both;
+  animation: sk-coderain-rise 700ms ease-out 2600ms both;
 }
 
-.sk-boot-ocean__meter-track {
+.sk-boot-coderain__meter-track {
   position: relative;
   flex: 1;
   height: 2px;
   border-radius: 2px;
-  background: rgba(190, 222, 250, .16);
+  background: rgba(150, 220, 180, .18);
   overflow: hidden;
 }
 
-.sk-boot-ocean__meter-bar {
+/* 进度条一次走完（0 → 100%），不再停在中途等就绪 */
+.sk-boot-coderain__meter-bar {
   position: absolute;
   inset: 0 auto 0 0;
   width: 0%;
   border-radius: inherit;
-  background: linear-gradient(90deg, rgba(140, 205, 255, .55), #fff);
-  box-shadow: 0 0 12px rgba(140, 205, 255, .8);
-  transition: width calc(560ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out);
+  background: linear-gradient(90deg, rgba(47, 233, 124, .55), var(--sk-code-head));
+  box-shadow: 0 0 12px rgba(47, 233, 124, .7);
+  animation: sk-coderain-progress 2800ms ease-out 400ms both;
 }
 
-@keyframes sk-ocean-rise {
+@keyframes sk-coderain-progress { from { width: 0; } to { width: 100%; } }
+
+@keyframes sk-coderain-rise {
   0%   { opacity: 0; transform: translateY(6px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 
+.sk-boot-coderain__status {
+  font-size: 12px;
+  letter-spacing: .12em;
+  color: var(--sk-code-dim);
+  opacity: 0;
+  animation: sk-coderain-rise 700ms ease-out 2700ms both;
+}
 
-.sk-boot-ocean__whale-track {
+/* 浅色配色：终端翻成纸面，字雨转深绿 */
+.sk-boot--coderain[data-sk-theme="light"],
+body[data-ds-light-theme] .sk-boot--coderain[data-sk-theme="auto"] {
+  --sk-code-bg-1: #eef5f0;
+  --sk-code-bg-2: #dcefe2;
+  --sk-code-glyph: #237a4a;
+  --sk-code-head: #0c3d24;
+  --sk-code-ink: #12301e;
+  --sk-code-dim: #3c6b52;
+  background: radial-gradient(120% 100% at 50% 118%, var(--sk-code-bg-2) 0%, var(--sk-code-bg-1) 55%, #e2eee6 100%);
+}
+
+@media (prefers-color-scheme: light) {
+  .sk-boot--coderain[data-sk-theme="auto"] {
+    --sk-code-bg-1: #eef5f0;
+    --sk-code-bg-2: #dcefe2;
+    --sk-code-glyph: #237a4a;
+    --sk-code-head: #0c3d24;
+    --sk-code-ink: #12301e;
+    --sk-code-dim: #3c6b52;
+    background: radial-gradient(120% 100% at 50% 118%, var(--sk-code-bg-2) 0%, var(--sk-code-bg-1) 55%, #e2eee6 100%);
+  }
+}
+
+/* ═══ abyss「星海成标」：星尘自三维深处飞来，拼成鲸标星图，落定即点亮 ═══ */
+
+/* 时间轴（与 scene.ts 的 SETTLE_MS / boot.js 的 4200ms 对齐）：
+   0–140     纯黑，只有远景星尘在漂
+   140–2400  200 颗星自四面八方飞向鲸标轮廓（各自延迟不一，同一帧落定）
+   2080      HUD 抬升，进度条就位
+   2380      星图整体闪亮：200 颗星同时锁上
+   2400      相机归零，星点正好压在路径上
+   2410      辉光起涨（–3400 收成气晕），星图收缩淡出（–2830）
+   2450      标识硬点亮（–3010 定形）
+   2660–3480 字标收拢到位
+   2600–3640 进度条一次走完
+   3640–4200 定型画面，交给 boot.js 淡出 */
+.sk-boot--starmark {
+  --sk-sky-1: #040a1c;
+  --sk-sky-2: #03050e;
+  --sk-sky-3: #000208;
+  --sk-star-ink: #eaf4ff;
+  --sk-star-core: #f2f8ff;
+  --sk-star-cold: #9fd4ff;
+  --sk-star-dim: rgba(168, 204, 238, .62);
+  --sk-mark-ink: #f4f9ff;
+  --sk-mark-glow: rgba(126, 186, 255, .55);
+  --sk-mark-glow-deep: rgba(58, 122, 255, .26);
+  /* 四角压暗：深空用黑，浅色天幕用一个冷蓝，别在浅底上糊出灰框 */
+  --sk-vignette: rgba(0, 0, 0, .58);
+  --sk-mark-w: clamp(200px, 38vmin, 400px);
+  --sk-mark-h: calc(var(--sk-mark-w) * .7358);
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+  color: var(--sk-star-ink);
+  background: radial-gradient(118% 96% at 50% 45%, #070d1a 0%, #03050c 46%, #000 80%);
+}
+
+/* ── 深空：两团极淡的星云 + 两层远景星尘，各自慢速漂移（视差来源） ────── */
+.sk-boot-starmark__sky {
   position: absolute;
-  left: 6vw;
-  bottom: 24vh;
-  z-index: 2;               /* 低于 .sk-boot-ocean__sea，海面才会盖住它 */
-  animation: sk-ocean-whale-x calc(2.5s * var(--sk-boot-time-scale, 1)) cubic-bezier(.32, .02, .62, 1) calc(.3s * var(--sk-boot-time-scale, 1)) both;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
-.sk-boot-ocean__whale-lift {
-  animation: sk-ocean-whale-y calc(2.5s * var(--sk-boot-time-scale, 1)) cubic-bezier(.38, .02, .45, 1) calc(.3s * var(--sk-boot-time-scale, 1)) both;
+/* 压低四角，让中央的星图是唯一亮点 */
+.sk-boot-starmark__sky::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(122% 104% at 50% 45%, transparent 40%, var(--sk-vignette) 100%);
 }
 
-.sk-boot-ocean__whale-tilt {
-  animation: sk-ocean-whale-tilt calc(2.5s * var(--sk-boot-time-scale, 1)) cubic-bezier(.3, .02, .5, 1) calc(.3s * var(--sk-boot-time-scale, 1)) both;
+.sk-boot-starmark__nebula {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: min(150vmax, 1600px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 50% 50%,
+    var(--sk-mark-glow-deep) 0%,
+    rgba(40, 90, 190, .12) 26%,
+    rgba(20, 40, 90, .05) 48%,
+    transparent 68%);
+  filter: blur(8px);
+  animation: sk-starmark-nebula 19s ease-in-out infinite alternate;
 }
 
-.sk-boot-ocean__whale {
-  display: block;
-  width: clamp(150px, 18vw, 262px);
-  height: auto;
-  color: var(--sk-ocean-whale);
-  /* 鲸鱼本来朝左，翻过来朝右飞。
-     必须翻转在元素自身上（transform），不能写在父级的 scale 属性上，
-     否则父级的 rotate 会被一并镜像，姿态方向会反。 */
-  transform: scaleX(-1);
-  filter:
-    drop-shadow(0 0 12px rgba(150, 210, 255, .55))
-    drop-shadow(0 0 42px rgba(96, 168, 255, .32));
+.sk-boot-starmark__nebula--far {
+  left: 62%;
+  top: 58%;
+  width: min(120vmax, 1200px);
+  background: radial-gradient(circle at 50% 50%, rgba(88, 148, 255, .12), transparent 62%);
+  animation-duration: 27s;
+  animation-direction: alternate-reverse;
 }
 
-/* 横向：匀速穿越画面 */
-@keyframes sk-ocean-whale-x {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(62vw); }
+@keyframes sk-starmark-nebula {
+  from { transform: translate(-50%, -50%) scale(.92) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) scale(1.09) rotate(7deg); }
 }
 
-/* 纵向：出水 → 顶点悬停 → 落回 */
-@keyframes sk-ocean-whale-y {
-  0%   { transform: translateY(34vh); }
-  34%  { transform: translateY(-4vh); }
-  50%  { transform: translateY(-12vh); }
-  66%  { transform: translateY(-3vh); }
-  100% { transform: translateY(32vh); }
+.sk-boot-starmark__motes {
+  position: absolute;
+  inset: 0;
+  animation: sk-starmark-parallax 13s ease-in-out infinite alternate;
 }
 
-/* 姿态：出水时昂头，顶点放平，入水时低头 */
-@keyframes sk-ocean-whale-tilt {
-  0%   { transform: rotate(-34deg); }
-  32%  { transform: rotate(-12deg); }
-  52%  { transform: rotate(6deg); }
-  72%  { transform: rotate(28deg); }
-  100% { transform: rotate(44deg); }
+.sk-boot-starmark__motes--near {
+  animation-duration: 21s;
+  animation-direction: alternate-reverse;
 }
 
-
-.sk-boot-ocean__brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  animation: sk-ocean-brand-in calc(1100ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) calc(1200ms * var(--sk-boot-time-scale, 1)) both;
+@keyframes sk-starmark-parallax {
+  from { transform: translate3d(-1.5%, 1%, 0); }
+  to   { transform: translate3d(1.7%, -1.2%, 0); }
 }
 
-.sk-boot-ocean__brand-mark {
-  width: 34px;
-  height: auto;
-  color: #fff;
-  filter: drop-shadow(0 0 14px rgba(140, 205, 255, .6));
+.sk-boot-starmark__mote {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: calc(2px * var(--s));
+  height: calc(2px * var(--s));
+  margin: calc(-1px * var(--s)) 0 0 calc(-1px * var(--s));
+  border-radius: 50%;
+  corner-shape: round;
+  background: var(--sk-star-core);
+  animation: sk-starmark-twinkle var(--dur) ease-in-out var(--delay) infinite alternate;
 }
 
-.sk-boot-ocean__brand-text {
+@keyframes sk-starmark-twinkle {
+  from { opacity: calc(var(--o) * .22); transform: translate3d(0, calc(var(--drift) * .5), 0); }
+  to   { opacity: var(--o); transform: translate3d(0, calc(var(--drift) * -.5), 0); }
+}
+
+/* ── 相机：整场缓缓绕转，恰在星点落定那一帧归零 ─────────────────────── */
+.sk-boot-starmark__stage3d {
+  position: absolute;
+  inset: 0;
+  perspective: 1200px;
+  perspective-origin: 50% 45%;
+  pointer-events: none;
+}
+
+.sk-boot-starmark__world {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation: sk-starmark-camera 4200ms cubic-bezier(.3, .68, .22, 1) both;
+}
+
+/* 57.143% = 2400/4200：这一刻相机必须是零位，星点才正好落在路径上 */
+@keyframes sk-starmark-camera {
+  0%      { transform: rotateY(17deg) rotateX(4.5deg) scale(.95); }
+  57.143% { transform: rotateY(0deg) rotateX(0deg) scale(1); }
+  100%    { transform: rotateY(-2.4deg) rotateX(-.9deg) scale(1.02); }
+}
+
+/* ── 星图与标识共用同一个盒子：落定即重合，无需任何脚本对位 ─────────── */
+.sk-boot-starmark__rig {
+  position: absolute;
+  left: 50%;
+  top: 43%;
+  width: var(--sk-mark-w);
+  height: var(--sk-mark-h);
+  transform: translate(-50%, -50%);
+  transform-style: preserve-3d;
+}
+
+.sk-boot-starmark__constellation {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation:
+    sk-starmark-dissolve 420ms cubic-bezier(.45, 0, .75, 1) 2410ms both,
+    sk-starmark-flare 320ms ease-out 2380ms both;
+}
+
+@keyframes sk-starmark-dissolve {
+  0%   { opacity: 1; transform: scale(1); }
+  35%  { opacity: .9; }
+  100% { opacity: 0; transform: scale(.88); }
+}
+
+/* 落定那一瞬整片星图亮一下：200 颗星同时"锁上" */
+@keyframes sk-starmark-flare {
+  0%   { filter: brightness(2.1); }
+  100% { filter: brightness(1); }
+}
+
+.sk-boot-starmark__star {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: calc(2px * var(--s));
+  height: calc(2px * var(--s));
+  margin: calc(-1px * var(--s)) 0 0 calc(-1px * var(--s));
+  border-radius: 50%;
+  corner-shape: round;
+  background: var(--sk-star-core);
+  box-shadow:
+    0 0 calc(5px * var(--s)) var(--sk-mark-glow),
+    0 0 calc(12px * var(--s)) var(--sk-mark-glow-deep);
+  animation: sk-starmark-fly var(--u) cubic-bezier(.16, .74, .22, 1) var(--d) both;
+  will-change: transform, opacity;
+}
+
+.sk-boot-starmark__star--cold { background: var(--sk-star-cold); }
+
+/* 起点由内联的 --sx/--sy/--sz 给出（球壳上的一点），终点是元素的 0 点 */
+@keyframes sk-starmark-fly {
+  0%   { opacity: 0; transform: translate3d(var(--sx), var(--sy), var(--sz)) scale(.3); }
+  10%  { opacity: var(--o); }
+  86%  { transform: translate3d(calc(var(--sx) * .06), calc(var(--sy) * .06), calc(var(--sz) * .05)) scale(.94); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+.sk-boot-starmark__mark {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* 落定瞬间的辉光：先涨过 1，再回落成一圈气晕 */
+.sk-boot-starmark__glow {
+  fill: var(--sk-mark-glow);
+  opacity: 0;
+  filter: blur(calc(var(--sk-mark-w) * .07));
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: sk-starmark-bloom 1900ms ease-out 2410ms both;
+}
+
+/* 只留一圈气晕：峰值别太实，否则鲸标像蒙了层雾 */
+@keyframes sk-starmark-bloom {
+  0%   { opacity: 0; transform: scale(.84); }
+  9%   { opacity: .62; transform: scale(1.03); }
+  30%  { opacity: .38; }
+  100% { opacity: .2; transform: scale(1); }
+}
+
+/* 真正的标识：星点还没散尽就硬点亮，容不得慢淡入 */
+.sk-boot-starmark__fill {
+  fill: var(--sk-mark-ink);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: sk-starmark-ignite 560ms cubic-bezier(.16, .8, .24, 1) 2450ms both;
+}
+
+@keyframes sk-starmark-ignite {
+  0%   { opacity: 0; transform: scale(1.1); }
+  30%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ── 字标：从散开的一行收拢到位（字距、模糊、位移一起收） ───────────── */
+.sk-boot-starmark__wordmark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + clamp(18px, 3.2vmin, 34px));
   display: flex;
   align-items: baseline;
-  gap: 12px;
-  font-size: 15px;
-  letter-spacing: .44em;          /* 首帧字距很大，收拢到 .17em */
-  text-transform: uppercase;
-  color: #fff;
-  animation: sk-ocean-brand-tracking calc(1400ms * var(--sk-boot-time-scale, 1)) var(--sk-ocean-ease-out) calc(1200ms * var(--sk-boot-time-scale, 1)) both;
+  justify-content: center;
+  gap: .55em;
+  white-space: nowrap;
 }
 
-.sk-boot-ocean__brand-name { font-weight: 650; }
-.sk-boot-ocean__brand-suffix {
-  padding: 2px 7px 3px;
-  border: 1px solid rgba(255, 255, 255, .5);
-  border-radius: 3px;
-  font-size: 10px;
+.sk-boot-starmark__wordmark-name {
+  font-size: clamp(15px, 2.3vmin, 25px);
   font-weight: 600;
-  letter-spacing: .16em;
-  color: rgba(255, 255, 255, .82);
+  letter-spacing: .34em;
+  color: var(--sk-mark-ink);
+  opacity: 0;
+  animation: sk-starmark-wordmark 820ms cubic-bezier(.22, .72, .24, 1) 2660ms both;
 }
 
-@keyframes sk-ocean-brand-in {
-  0%   { opacity: 0; filter: blur(10px); transform: translateY(8px); }
-  100% { opacity: 1; filter: blur(0); transform: translateY(0); }
+/* 末字母后也带一段字距，右移半个字距才是视觉居中 */
+@keyframes sk-starmark-wordmark {
+  0%   { opacity: 0; letter-spacing: .52em; filter: blur(3.5px); transform: translateX(.26em); }
+  52%  { opacity: 1; }
+  100% { opacity: 1; letter-spacing: .34em; filter: blur(0); transform: translateX(.17em); }
 }
 
-@keyframes sk-ocean-brand-tracking {
-  0%   { letter-spacing: .44em; opacity: 0; filter: blur(8px); }
-  100% { letter-spacing: .17em; opacity: 1; filter: blur(0); }
+.sk-boot-starmark__wordmark-suffix {
+  font-size: clamp(8px, 1vmin, 11px);
+  font-weight: 500;
+  letter-spacing: .42em;
+  color: var(--sk-star-dim);
+  opacity: 0;
+  animation: sk-starmark-suffix 700ms ease-out 2960ms both;
 }
 
+@keyframes sk-starmark-suffix {
+  0%   { opacity: 0; transform: translateX(-.3em); }
+  100% { opacity: 1; transform: translateX(.21em); }
+}
+
+/* ── HUD：星图锚定读数 + 一次走完的进度条 ─────────────────────────────── */
+.sk-boot-starmark__hud {
+  position: absolute;
+  left: 50%;
+  bottom: 8.5vh;
+  width: min(400px, 68vw);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  opacity: 0;
+  animation: sk-starmark-rise 620ms ease-out 2080ms both;
+}
+
+@keyframes sk-starmark-rise {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.sk-boot-starmark__hud-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10.5px;
+  letter-spacing: .12em;
+  color: var(--sk-star-dim);
+}
+
+.sk-boot-starmark__hud-count { font-variant-numeric: tabular-nums; }
+
+.sk-boot-starmark__meter-track {
+  position: relative;
+  height: 1.5px;
+  border-radius: 2px;
+  corner-shape: round;
+  background: rgba(150, 200, 240, .16);
+  overflow: hidden;
+}
+
+.sk-boot-starmark__meter-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: inherit;
+  corner-shape: round;
+  background: linear-gradient(90deg, var(--sk-mark-glow-deep), var(--sk-mark-ink));
+  box-shadow: 0 0 10px var(--sk-mark-glow);
+  animation: sk-starmark-progress 1040ms cubic-bezier(.35, .05, .2, 1) 2600ms both;
+}
+
+@keyframes sk-starmark-progress {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+/* 「显示文字标识」关掉时，三款场景都不该再出现字标 */
+.sk-boot[data-sk-wordmark="false"] .sk-boot__wordmark,
+.sk-boot[data-sk-wordmark="false"] .sk-boot-coderain__wordmark,
+.sk-boot[data-sk-wordmark="false"] .sk-boot-starmark__wordmark { display: none; }
+
+/* 浅色配色：深空翻成黎明前的冷蓝天幕 */
+.sk-boot--starmark[data-sk-theme="light"],
+body[data-ds-light-theme] .sk-boot--starmark[data-sk-theme="auto"] {
+  --sk-sky-1: #dfe9f6;
+  --sk-sky-2: #eaf2fb;
+  --sk-sky-3: #f4f9ff;
+  --sk-star-ink: #14294a;
+  --sk-star-core: #1f3f6d;
+  --sk-star-cold: #2f6ea8;
+  --sk-star-dim: #33507a;
+  --sk-mark-ink: #10233f;
+  --sk-mark-glow: rgba(74, 132, 210, .4);
+  --sk-mark-glow-deep: rgba(60, 110, 190, .16);
+  --sk-vignette: rgba(28, 58, 104, .16);
+  background: radial-gradient(118% 96% at 50% 45%, #f6faff 0%, #e6eefa 48%, #d3e1f3 100%);
+}
+
+@media (prefers-color-scheme: light) {
+  .sk-boot--starmark[data-sk-theme="auto"] {
+    --sk-sky-1: #dfe9f6;
+    --sk-sky-2: #eaf2fb;
+    --sk-sky-3: #f4f9ff;
+    --sk-star-ink: #14294a;
+    --sk-star-core: #1f3f6d;
+    --sk-star-cold: #2f6ea8;
+    --sk-star-dim: #33507a;
+    --sk-mark-ink: #10233f;
+    --sk-mark-glow: rgba(74, 132, 210, .4);
+    --sk-mark-glow-deep: rgba(60, 110, 190, .16);
+    --sk-vignette: rgba(28, 58, 104, .16);
+    background: radial-gradient(118% 96% at 50% 45%, #f6faff 0%, #e6eefa 48%, #d3e1f3 100%);
+  }
+}
 
 /* Desktop and the smaller iframe use the same responsive composition. */
-.sk-boot-ocean__lockup { gap: clamp(6px, 1.2vw, 14px); }
-.sk-boot-ocean__mark-slot { width: clamp(34px, 7.2vw, 84px); height: clamp(34px, 7.2vw, 84px); }
-.sk-boot-ocean__mark { width: 100%; }
-.sk-boot-ocean__wordmark-name { font-size: clamp(10px, 1.6vw, 19px); }
-.sk-boot-ocean__wordmark-suffix { font-size: clamp(7px, .85vw, 10px); }
-.sk-boot-ocean__wordmark { gap: clamp(6px, 1vw, 12px); }
-.sk-boot-ocean__shock { left: 50%; top: 50%; animation-delay: calc(var(--delay) * var(--sk-boot-time-scale, 1)); }
-.sk-boot-ocean__splash { position: absolute; width: 0; height: 0; }
-.sk-boot-ocean__drop, .sk-boot-ocean__foam, .sk-boot-ocean__ripple { left: 0; top: 0; }
-.sk-boot-ocean__drop { animation-duration: calc(var(--dur, 900ms) * var(--sk-boot-time-scale, 1)); animation-delay: calc(var(--delay, 0ms) * var(--sk-boot-time-scale, 1)); }
-.sk-boot-ocean__foam, .sk-boot-ocean__ripple { animation-delay: calc(var(--delay, 0ms) * var(--sk-boot-time-scale, 1)); }
-.sk-boot-ocean__status { font-size: 12px; letter-spacing: .12em; color: var(--sk-ocean-hud-dim); animation: sk-ocean-rise calc(700ms * var(--sk-boot-time-scale, 1)) ease-out calc(1820ms * var(--sk-boot-time-scale, 1)) both; }
-.sk-boot-ocean__meter-bar { animation: sk-ocean-progress calc(1900ms * var(--sk-boot-time-scale, 1)) ease-out calc(1400ms * var(--sk-boot-time-scale, 1)) both; }
-@keyframes sk-ocean-progress { from { width: 0; } to { width: 88%; } }
-.sk-boot[data-sk-ready] .sk-boot-ocean__meter-bar { animation: none; width: 100%; }
-.sk-boot[data-sk-animation="abyss"] .sk-boot-ocean__hud { bottom: 7vh; gap: clamp(8px, 2vh, 18px); }
-.sk-boot[data-sk-animation="abyss"] .sk-boot-ocean__wordmark { opacity: 1; }
-.sk-boot-ocean__brand-text { font-size: clamp(10px, 1.4vw, 15px); }
-.sk-boot-ocean__brand-suffix { font-size: clamp(7px, .85vw, 10px); align-self: center; }
-.sk-boot[data-sk-animation="abyss"] .sk-boot-ocean__flash { animation: none; }
-.sk-boot[data-sk-animation="abyss"][data-sk-ready] .sk-boot-ocean__flash { animation: sk-ocean-flash 280ms ease-out both; }
-.sk-boot[data-sk-wordmark="false"] :is(.sk-boot__wordmark, .sk-boot-ocean__wordmark) { display: none; }
-.sk-boot[data-sk-theme="light"] { --dsh-boot-bg: #f4fbfa; --sk-ink: #10292a; --sk-ink-2: #3d7471; --sk-grid: rgba(16,41,42,.08); }
-.sk-boot[data-sk-theme="dark"] { --dsh-boot-bg: #101a1d; --sk-ink: #e5faf4; --sk-ink-2: #a8c9c1; --sk-grid: rgba(229,250,244,.08); }
-.sk-boot--ocean[data-sk-theme="light"], body[data-ds-light-theme] .sk-boot--ocean[data-sk-theme="auto"] {
-  --sk-ocean-sea-deep: #d2e9f3; --sk-ocean-sea-mid: #a4d0e6; --sk-ocean-sea-top: #65b3da;
-  --sk-ocean-whale: #143953; --sk-ocean-hud-dim: #d5edff;
-}
+.sk-boot-coderain__mark { width: clamp(34px, 7.2vw, 84px); }
+.sk-boot-coderain__wordmark-name { font-size: clamp(10px, 1.6vw, 19px); }
+.sk-boot-coderain__wordmark-suffix { font-size: clamp(7px, .85vw, 10px); align-self: center; }
+.sk-boot-coderain__status { font-size: 12px; }
+
+.sk-boot[data-sk-theme="light"] { --dsh-boot-bg: #f4fbfa; --sk-ink: #10292a; --sk-ink-2: #3d7471; }
+.sk-boot[data-sk-theme="dark"] { --dsh-boot-bg: #101a1d; --sk-ink: #e5faf4; --sk-ink-2: #a8c9c1; }
 @media (prefers-color-scheme: dark) {
-  .sk-boot[data-sk-theme="auto"] { --dsh-boot-bg: #101a1d; --sk-ink: #e5faf4; --sk-ink-2: #a8c9c1; --sk-grid: rgba(229,250,244,.08); }
+  .sk-boot[data-sk-theme="auto"] { --dsh-boot-bg: #101a1d; --sk-ink: #e5faf4; --sk-ink-2: #a8c9c1; }
 }
-@media (prefers-color-scheme: light) {
-  .sk-boot--ocean[data-sk-theme="auto"] { --sk-ocean-sea-deep: #d2e9f3; --sk-ocean-sea-mid: #a4d0e6; --sk-ocean-sea-top: #65b3da; --sk-ocean-whale: #143953; --sk-ocean-hud-dim: #d5edff; }
-}
-body[data-ds-dark-theme] .sk-boot--ocean[data-sk-theme="auto"] { --sk-ocean-sea-deep: #02080f; --sk-ocean-sea-mid: #061a2b; --sk-ocean-sea-top: #0d3a58; --sk-ocean-whale: #eef7ff; --sk-ocean-hud-dim: rgba(197,219,240,.62); }
 @media (max-width: 700px) {
-  .sk-boot-ocean__whale { width: clamp(74px, 18vw, 150px); }
-  .sk-boot-ocean__splash { transform: scale(.55); }
-  .sk-boot-ocean__shock { width: 44px; height: 44px; margin: -22px 0 0 -22px; }
-  .sk-boot-ocean__status { font-size: 10px; }
-  .sk-boot-ocean__brand { gap: 8px; }
-  .sk-boot-ocean__brand-mark { width: 24px; }
+  .sk-boot-coderain__col { opacity: calc(var(--dim, 1) * .9); }
+  .sk-boot-coderain__status { font-size: 10px; }
+  .sk-boot--starmark { --sk-mark-w: clamp(190px, 66vw, 320px); }
+  .sk-boot-starmark__hud { width: min(340px, 80vw); bottom: 7vh; }
+  .sk-boot-starmark__hud-row { font-size: 9px; letter-spacing: .12em; }
 }
+
 /* No movement or flashing under the OS preference; leave the final identity readable. */
 @media (prefers-reduced-motion: reduce) {
   .sk-boot *, .sk-boot::before, .sk-boot::after { animation: none !important; transition: none !important; }
   .sk-boot .sk-boot__fill, .sk-boot .sk-boot__wordmark, .sk-boot .sk-boot__grid,
-  .sk-boot-ocean__wordmark, .sk-boot-ocean__wordmark-name, .sk-boot-ocean__meter, .sk-boot-ocean__status { opacity: 1; filter: none; }
-  .sk-boot .sk-boot__trace, .sk-boot-ocean__fx, .sk-boot-ocean__flash, .sk-boot-ocean__shock-layer, .sk-boot-ocean__whale-track { display: none; }
-  .sk-boot-ocean__lockup, .sk-boot-ocean__arc-x, .sk-boot-ocean__arc-y, .sk-boot-ocean__arc-rot { transform: none; }
-  .sk-boot-ocean__meter-bar { width: 88%; }
+  .sk-boot-coderain__lockup, .sk-boot-coderain__wordmark, .sk-boot-coderain__wordmark-name,
+  .sk-boot-coderain__meter, .sk-boot-coderain__status,
+  .sk-boot-starmark__fill, .sk-boot-starmark__wordmark, .sk-boot-starmark__wordmark-name,
+  .sk-boot-starmark__hud, .sk-boot-starmark__meter {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+  .sk-boot-coderain__wordmark-name, .sk-boot-starmark__wordmark-name { letter-spacing: .14em; }
+  .sk-boot .sk-boot__trace, .sk-boot .sk-boot__pen-layer,
+  .sk-boot-coderain__rain, .sk-boot-coderain__scan,
+  .sk-boot-starmark__constellation, .sk-boot-starmark__mote,
+  .sk-boot-starmark__glow, .sk-boot-starmark__nebula { display: none; }
+  .sk-boot-coderain__meter-bar, .sk-boot-starmark__meter-bar { width: 100%; }
+  .sk-boot-starmark__world { transform: none; }
+  .sk-boot-starmark__hud { transform: translateX(-50%); }
 }

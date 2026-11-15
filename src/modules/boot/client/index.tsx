@@ -20,9 +20,9 @@ const DEFAULTS = Object.freeze({ animation: 'draw', theme: 'auto', showWordmark:
 const FIELDS = Object.keys(DEFAULTS)
 const LABELS = Object.freeze({ animation: '启动动画', theme: '画面配色', showWordmark: '显示文字标识', allowSkip: '允许跳过' })
 const MODES = [
-  { id: 'draw', name: '经典描摹', caption: '一笔勾勒，安静启程', detail: '保留原版描摹，鲸标稳定呈现' },
-  { id: 'water', name: '跃浪成标', caption: '跃出水面，收拢成标', detail: '鲸鱼沿弧线跃出，收拢成 Logo，字标随后浮现' },
-  { id: 'abyss', name: '鲸跃归海', caption: '掠过海面，再次入海', detail: '鲸鱼沿抛物线跃出，再入水激起水花与涟漪' },
+  { id: 'draw', name: '经典描摹', caption: '笔尖微光，勾勒启程', detail: '描边勾勒鲸标，填充成形，字标随后浮现' },
+  { id: 'water', name: '代码降落', caption: '代码如雨，解码成标', detail: '纵深字雨自天而降，中央解码收敛为品牌标识' },
+  { id: 'abyss', name: '星海成标', caption: '星尘聚拢，点亮成标', detail: '深空里数百颗星尘自四面八方飞来，拼成鲸标星图，落定一刻点亮为真正的标识' },
 ]
 
 function snapshotOf(form) {

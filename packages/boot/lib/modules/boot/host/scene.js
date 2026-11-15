@@ -1,44 +1,115 @@
+import { sampleMarkOutline } from './constellation.js';
 const ANIMATIONS = ['draw', 'water', 'abyss'];
-const DURATION_MS = { draw: 2400, water: 2900, abyss: 4500 };
-function splashMarkup(x, y, count, strength, delay, seed) {
-    // Generate the demo's finite droplets before injection, so the sandbox preview
-    // and the real boot share identical particles without timers or script access.
-    let state = seed;
-    const random = () => ((state = (state * 1664525 + 1013904223) >>> 0) / 4294967296);
-    const px = (value) => `${value.toFixed(2)}px`;
-    const particles = [];
-    for (let i = 0; i < count; i++) {
-        const spread = (random() - .5) * 2 * (48 * strength);
-        particles.push(`<span class="sk-boot-ocean__drop" style="--s:${px(3 + random() * 6)};--dx:${px(spread * .55)};--dx2:${px(spread)};--up:${px(40 + random() * 130 * strength)};--down:${px(10 + random() * 30)};--dur:${(620 + random() * 520).toFixed(2)}ms;--delay:${(delay + random() * 90).toFixed(2)}ms"></span>`);
-    }
-    particles.push(`<span class="sk-boot-ocean__foam" style="--delay:${delay}ms"></span>`);
-    for (let i = 0; i < 3; i++)
-        particles.push(`<span class="sk-boot-ocean__ripple" style="--delay:${delay + i * 160}ms"></span>`);
-    return `<div class="sk-boot-ocean__splash" style="left:${x};top:${y}">${particles.join('')}</div>`;
+const DURATION_MS = { draw: 2500, water: 3400, abyss: 4200 };
+/** The brand mark viewBox the starmark markup maps its star grid onto. */
+const MARK_WIDTH = 23.16;
+const MARK_HEIGHT = 17.04;
+/** Stars that trace the whale, and the ambient motes behind them. */
+const STAR_COUNT = 200;
+const MOTE_COUNT = 72;
+/** Everything the CSS stages is timed against this moment (see boot.css). */
+const SETTLE_MS = 2400;
+function createRandom(seed) {
+    let state = seed >>> 0;
+    return () => ((state = (state * 1664525 + 1013904223) >>> 0) / 4294967296);
 }
-function oceanMarkup(assets, animation) {
-    const shape = assets.html.match(/<path class="sk-boot__fill" d="([^"]+)"/)?.[1] ?? '';
-    const mark = (className) => `<svg class="${className}" viewBox="0 0 23.16 17.04" fill="none" aria-hidden="true"><path fill="currentColor" d="${shape}"/></svg>`;
-    const wordmark = '<span class="sk-boot-ocean__wordmark-name">DEEPSEEK</span><span class="sk-boot-ocean__wordmark-suffix">HARNESS</span>';
-    const morph = animation === 'water';
-    const hero = morph
-        ? `<div class="sk-boot-ocean__stage"><div class="sk-boot-ocean__lockup"><div class="sk-boot-ocean__mark-slot"><div class="sk-boot-ocean__arc-x"><div class="sk-boot-ocean__arc-y"><div class="sk-boot-ocean__arc-rot">${mark('sk-boot-ocean__mark')}</div></div></div><div class="sk-boot-ocean__shock-layer">${[0, 120, 260].map((ms) => `<span class="sk-boot-ocean__shock" style="--delay:${1500 + ms}ms"></span>`).join('')}</div></div><div class="sk-boot-ocean__wordmark">${wordmark}</div></div></div>`
-        : `<div class="sk-boot-ocean__whale-track"><div class="sk-boot-ocean__whale-lift"><div class="sk-boot-ocean__whale-tilt">${mark('sk-boot-ocean__whale')}</div></div></div>`;
-    // Exact wave profiles from the two design demos, including the taller back wave
-    // in the leap-and-dive scene. The sea remains above the whale for water occlusion.
-    const back = morph ? 'M0,26 C160,6 320,6 480,26 C640,46 800,46 960,26 C1120,6 1280,6 1440,26 L1440,200 L0,200 Z' : 'M0,96 C160,52 320,52 480,96 C640,140 800,140 960,96 C1120,52 1280,52 1440,96 L1440,160 L0,160 Z';
-    const sea = `<div class="sk-boot-ocean__sea"><div class="sk-boot-ocean__sea-fill"></div>${[
-        ['back', back],
-        ['mid', 'M0,40 C180,22 340,22 520,40 C700,58 880,58 1060,40 C1220,24 1340,24 1440,38 L1440,200 L0,200 Z'],
-        ['front', 'M0,52 C200,34 360,34 540,52 C720,70 900,70 1080,52 C1260,34 1360,36 1440,48 L1440,200 L0,200 Z'],
-    ].map(([layer, path]) => `<svg class="sk-boot-ocean__sea-wave sk-boot-ocean__sea-wave--${layer}" viewBox="0 0 1440 ${morph ? 200 : 160}" preserveAspectRatio="none" aria-hidden="true"><path d="${path}"/></svg>`).join('')}<div class="sk-boot-ocean__sea-mist"></div><div class="sk-boot-ocean__sea-shine"></div></div>`;
-    const splashes = morph ? splashMarkup('10%', '72%', 20, 1.15, 220, 41) : [
-        splashMarkup('9%', '68%', 18, 1.15, 250, 71),
-        splashMarkup('67%', '70%', 22, 1.3, 2450, 113),
-        splashMarkup('calc(67% - 40px)', 'calc(70% + 4px)', 12, .8, 2650, 197),
-    ].join('');
-    const brand = morph ? '' : `<div class="sk-boot-ocean__brand">${mark('sk-boot-ocean__brand-mark')}<div class="sk-boot-ocean__wordmark sk-boot-ocean__brand-text"><span class="sk-boot-ocean__brand-name">DEEPSEEK</span><span class="sk-boot-ocean__brand-suffix">HARNESS</span></div></div>`;
-    return `<div class="sk-boot sk-boot--ocean" data-sk-boot aria-hidden="true"><div class="sk-boot-ocean__halo"></div>${hero}${sea}<div class="sk-boot-ocean__fx">${splashes}</div><div class="sk-boot-ocean__flash"></div><div class="sk-boot-ocean__hud">${brand}<div class="sk-boot-ocean__meter"><div class="sk-boot-ocean__meter-track"><div class="sk-boot-ocean__meter-bar"></div></div></div><div class="sk-boot-ocean__status">正在准备应用</div></div></div>`;
+/** The brand mark path the lockups share with the draw scene. */
+function markPath(assets) {
+    return assets.html.match(/<path class="sk-boot__fill" d="([^"]+)"/)?.[1] ?? '';
+}
+/* ── water：「代码降落」——字符雨带景深落下，中央解码收敛为品牌标识 ────── */
+const CODE_GLYPHS = '0123456789ABCDEFｱｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ{}[]<>=+-*/;:.$#%&';
+const CODE_COLUMNS = 44;
+function codeRainMarkup(assets) {
+    const shape = markPath(assets);
+    const random = createRandom(0x7a2f19);
+    const columns = [];
+    for (let i = 0; i < CODE_COLUMNS; i += 1) {
+        const x = (((i + 0.5) / CODE_COLUMNS) * 100 + (random() - 0.5) * 1.6).toFixed(2);
+        // Depth drives perspective scale, blur and brightness: near columns run big
+        // and sharp, far columns recede into haze.
+        const depth = random();
+        const z = (-340 + depth * 500).toFixed(0);
+        const blur = (depth > 0.62 ? 0 : (0.62 - depth) * 1.9).toFixed(2);
+        const dim = (0.42 + depth * 0.58).toFixed(2);
+        const dur = (1800 + random() * 2000).toFixed(0);
+        const delay = (-(random() * 3200)).toFixed(0);
+        const count = 9 + Math.floor(random() * 9);
+        const glyphs = [];
+        for (let g = 0; g < count; g += 1) {
+            const ch = CODE_GLYPHS[Math.floor(random() * CODE_GLYPHS.length)];
+            const hot = g === 0 ? ' sk-boot-coderain__glyph--hot' : '';
+            glyphs.push(`<span class="sk-boot-coderain__glyph${hot}">${ch}</span>`);
+        }
+        columns.push(`<div class="sk-boot-coderain__col" style="--x:${x}%;--z:${z}px;--blur:${blur}px;--dim:${dim}">`
+            + `<div class="sk-boot-coderain__fall" style="--dur:${dur}ms;--delay:${delay}ms">${glyphs.join('')}</div></div>`);
+    }
+    return `<div class="sk-boot sk-boot--coderain" data-sk-boot aria-hidden="true">`
+        + `<div class="sk-boot-coderain__rain">${columns.join('')}</div>`
+        + `<div class="sk-boot-coderain__scan"></div>`
+        + `<div class="sk-boot-coderain__stage"><div class="sk-boot-coderain__lockup">`
+        + `<svg class="sk-boot-coderain__mark" viewBox="0 0 23.16 17.04" fill="none" aria-hidden="true"><path fill="currentColor" d="${shape}"/></svg>`
+        + `<div class="sk-boot-coderain__wordmark"><span class="sk-boot-coderain__wordmark-name">DEEPSEEK</span><span class="sk-boot-coderain__wordmark-suffix">HARNESS</span></div>`
+        + `</div></div>`
+        + `<div class="sk-boot-coderain__hud"><div class="sk-boot-coderain__meter"><div class="sk-boot-coderain__meter-track"><div class="sk-boot-coderain__meter-bar"></div></div></div><div class="sk-boot-coderain__status">正在准备应用</div></div>`
+        + `</div>`;
+}
+/* ── abyss：「星海成标」——星尘自三维深处汇成鲸标星图，落定即点亮为标识 ── */
+/**
+ * 200 颗星的目标坐标来自鲸标路径的弧长采样（构建期算完，运行时零脚本），
+ * 起点则是环绕标识的一层球壳：四面八方、深浅不一，才有"从深空飞来"的立体感。
+ */
+function starmarkMarkup(assets) {
+    const shape = markPath(assets);
+    const random = createRandom(0x5eed1a);
+    const stars = [];
+    for (const point of sampleMarkOutline(shape, STAR_COUNT, random)) {
+        const x = ((point.x / MARK_WIDTH) * 100).toFixed(2);
+        const y = ((point.y / MARK_HEIGHT) * 100).toFixed(2);
+        const angle = random() * Math.PI * 2;
+        const radius = 420 + random() * 920;
+        const sx = (Math.cos(angle) * radius).toFixed(0);
+        const sy = (Math.sin(angle) * radius * 0.78).toFixed(0);
+        const sz = (-380 + random() * 680).toFixed(0);
+        // 延迟只决定"谁先出发"：飞行时长补成 SETTLE_MS，所有星点在同一帧落定。
+        const delay = Math.round(140 + random() * 1320);
+        const cold = random() < 0.16 ? ' sk-boot-starmark__star--cold' : '';
+        stars.push(`<i class="sk-boot-starmark__star${cold}" style="--x:${x}%;--y:${y}%;--sx:${sx}px;--sy:${sy}px;--sz:${sz}px;`
+            + `--s:${(0.7 + random() * 1.2).toFixed(2)};--o:${(0.55 + random() * 0.45).toFixed(2)};`
+            + `--d:${delay}ms;--u:${SETTLE_MS - delay}ms"></i>`);
+    }
+    const motes = [];
+    for (let i = 0; i < MOTE_COUNT; i += 1) {
+        // 远景星尘：只负责"深空不是黑的"，靠极慢漂移提供持续视差。
+        const x = (random() * 100).toFixed(2);
+        const y = (random() * 100).toFixed(2);
+        const dur = (3600 + random() * 5200).toFixed(0);
+        motes.push(`<i class="sk-boot-starmark__mote" style="--x:${x}%;--y:${y}%;--s:${(0.4 + random() * 1.5).toFixed(2)};`
+            + `--o:${(0.14 + random() * 0.5).toFixed(2)};--drift:${(6 + random() * 30).toFixed(0)}px;`
+            + `--dur:${dur}ms;--delay:${-(random() * 4800).toFixed(0)}ms"></i>`);
+    }
+    const half = Math.floor(MOTE_COUNT / 2);
+    return `<div class="sk-boot sk-boot--starmark" data-sk-boot aria-hidden="true">`
+        + `<div class="sk-boot-starmark__sky">`
+        + `<div class="sk-boot-starmark__nebula"></div>`
+        + `<div class="sk-boot-starmark__nebula sk-boot-starmark__nebula--far"></div>`
+        + `<div class="sk-boot-starmark__motes sk-boot-starmark__motes--far">${motes.slice(0, half).join('')}</div>`
+        + `<div class="sk-boot-starmark__motes sk-boot-starmark__motes--near">${motes.slice(half).join('')}</div>`
+        + `</div>`
+        + `<div class="sk-boot-starmark__stage3d"><div class="sk-boot-starmark__world">`
+        + `<div class="sk-boot-starmark__rig">`
+        + `<div class="sk-boot-starmark__constellation">${stars.join('')}</div>`
+        + `<svg class="sk-boot-starmark__mark" viewBox="0 0 23.16 17.04" fill="none" aria-hidden="true">`
+        + `<path class="sk-boot-starmark__glow" d="${shape}"/>`
+        + `<path class="sk-boot-starmark__fill" d="${shape}"/>`
+        + `</svg>`
+        + `<div class="sk-boot-starmark__wordmark"><span class="sk-boot-starmark__wordmark-name">DEEPSEEK</span><span class="sk-boot-starmark__wordmark-suffix">HARNESS</span></div>`
+        + `</div></div></div>`
+        + `<div class="sk-boot-starmark__hud">`
+        + `<div class="sk-boot-starmark__hud-row"><span class="sk-boot-starmark__hud-label">星图锚定</span><span class="sk-boot-starmark__hud-count">200 / 200</span></div>`
+        + `<div class="sk-boot-starmark__meter"><div class="sk-boot-starmark__meter-track"><div class="sk-boot-starmark__meter-bar"></div></div></div>`
+        + `</div>`
+        + `</div>`;
 }
 export function createBootScene(assets, config, { preview = false } = {}) {
     const animation = ANIMATIONS.includes(config?.animation) ? config.animation : 'draw';
@@ -56,7 +127,11 @@ export function createBootScene(assets, config, { preview = false } = {}) {
         `data-sk-wordmark="${settings.showWordmark}"`,
         `data-sk-skip="${settings.allowSkip}"`,
     ].join(' ');
-    const template = settings.animation === 'draw' ? assets.html : oceanMarkup(assets, settings.animation);
+    const template = settings.animation === 'draw'
+        ? assets.html
+        : settings.animation === 'water'
+            ? codeRainMarkup(assets)
+            : starmarkMarkup(assets);
     const html = template.replace('data-sk-boot aria-hidden="true"', `data-sk-boot ${rootAttributes} aria-hidden="true"`);
     if (preview)
         return { html, css: assets.css };
