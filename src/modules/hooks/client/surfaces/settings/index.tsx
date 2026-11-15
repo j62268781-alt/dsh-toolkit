@@ -286,18 +286,20 @@ function createHooksSection(ctx: any) {
           </div>
         ) : null}
 
-        <CardSection title={`${t("eventsTitle")} · ${total}`} aria-label={t("eventsTitle")}>
+        <CardSection className="sk-hooks__group" title={`${t("eventsTitle")} · ${total}`} aria-label={t("eventsTitle")}>
           {rows.map((row) => renderRow(row.event, row.hooks, row.event.id))}
         </CardSection>
         {otherRows.length > 0 ? (
-          <CardSection title={t("otherEventsTitle")} aria-label={t("otherEventsTitle")}>
+          <CardSection className="sk-hooks__group" title={t("otherEventsTitle")} aria-label={t("otherEventsTitle")}>
             {otherRows.map((row) => renderRow(row.event, row.hooks, row.event.id))}
           </CardSection>
         ) : null}
 
         <CardSection
+          className="sk-hooks__group"
           title={t("historyTitle")}
           aria-label={t("historyTitle")}
+          bare={snapshot.history.length === 0}
           hint={snapshot.history.length > 8 && !showAllHistory ? (
             <button type="button" className="sk-hooks__link" onClick={() => setShowAllHistory(true)}>
               {t("showMore")}

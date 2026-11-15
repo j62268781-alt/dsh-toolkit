@@ -8,6 +8,11 @@
 
 /* 页头由 src/client/ui/components/settings-parts 提供（.sk-ui-pageHead*）。 */
 
+/* 组与组之间取宠物面板的 24px 间距；容器已有 12px gap，这里补上差额。 */
+.sk-hooks__group + .sk-hooks__group {
+  margin-top: 12px;
+}
+
 
 .sk-hooks__error,
 .sk-hooks__notice {
