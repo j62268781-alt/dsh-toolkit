@@ -5,11 +5,13 @@ import { installSettingsActions } from './settings-actions.js';
 const PANEL = '[data-shortcut-modal="settings"]';
 const NAV_LIST = '[class*="_navList"]';
 const NAV_CELL = '[class*="_navCell"]';
+/** 分组参照 Qoder 的设置导航：个人 / 集成 / 连接 / 归档管理。
+ *  ids 的顺序就是组内顺序；没列到的 section 落进「其他设置」，新模块忘了登记也不会消失。 */
 const GROUPS = [
-  { title: "基础设置", ids: ["account", "general", "theme", "boot", "notification"] },
-  { title: "模型与 Agent", ids: ["models", "agent-presets", "judgment"] },
-  { title: "工具与扩展", ids: ["skills-mcp", "browser", "plugins"] },
-  { title: "会话与数据", ids: ["archived-chats"] },
+  { title: "个人", ids: ["account", "general", "theme", "boot", "desktop-pet", "notification", "models"] },
+  { title: "集成", ids: ["plugins", "agent-presets", "skills-mcp", "judgment", "hooks", "browser"] },
+  { title: "连接", ids: ["mobile"] },
+  { title: "归档管理", ids: ["archived-chats"] },
   { title: "其他设置", ids: [] },
 ];
 

@@ -186,7 +186,7 @@ test('grouped menu keeps React rows in place and orders by stable settings ident
   assert.deepEqual([...list.children], originals, 'native React-owned rows stay in their original list')
   const labels = [...grouped.querySelectorAll('.sk-setnav__item span')].map((node) => node.textContent)
   assert.deepEqual(labels, ['账号与余额', '通用', '外观', '启动动画', '自定义提示', 'Skills & MCP'], 'the default account page leads basic settings, followed by general, appearance, boot and notification')
-  assert.equal(grouped.querySelector('[data-settings-id="notification"]').closest('section').getAttribute('aria-label'), '基础设置')
+  assert.equal(grouped.querySelector('[data-settings-id="notification"]').closest('section').getAttribute('aria-label'), '个人')
   assert.equal(grouped.querySelector('[data-settings-id="account"]').getAttribute('aria-current'), 'true')
 
   grouped.querySelector('[data-settings-id="notification"]').click()
@@ -220,7 +220,7 @@ test('unknown slot IDs use the fallback group and search hides empty sections', 
   input.value = '通知'
   input.dispatchEvent(new window.Event('input', { bubbles: true }))
   assert.equal(fallback.hidden, true, 'sections with no visible match are hidden')
-  assert.equal([...menu.querySelectorAll('section')].find((section) => section.getAttribute('aria-label') === '基础设置').hidden, false)
+  assert.equal([...menu.querySelectorAll('section')].find((section) => section.getAttribute('aria-label') === '个人').hidden, false)
 })
 
 test('slot and locale subscriptions update active search results and unsubscribe on dispose', async (t) => {
@@ -291,4 +291,41 @@ test('search returns focus from a newly hidden grouped item to the search field'
   input.dispatchEvent(new window.Event('input', { bubbles: true }))
   assert.equal(document.activeElement, input, 'keyboard focus remains in the active search field')
   assert.equal(item.hidden, true)
+})
+
+test('sections group like the Qoder menu: 个人 / 集成 / 连接 / 归档管理', async (t) => {
+  const { document, ctx, entries, flush, onCleanup } = page(t, PANEL_HTML)
+  const list = document.querySelector('._AnXs9G_navList')
+  // 用一份覆盖全部模块的注册表替换默认三行，断言的是真实 id 的分组结果。
+  entries.length = 0
+  list.replaceChildren()
+  const rows = [
+    ['account', '账号与余额'], ['general', '通用'], ['theme', '外观'], ['boot', '启动动画'],
+    ['desktop-pet', '桌面宠物'], ['notification', '通知'], ['models', '模型'],
+    ['plugins', '扩展管理'], ['agent-presets', '智能体'], ['skills-mcp', 'Skills & MCP'],
+    ['judgment', '决策'], ['hooks', '钩子'], ['browser', '浏览器'],
+    ['mobile', '移动端'], ['archived-chats', '已归档的会话'],
+  ]
+  rows.forEach(([id, label], index) => {
+    entries.push({ options: { id, order: index, label } })
+    const cell = document.createElement('button')
+    cell.className = '_AnXs9G_navCell'
+    cell.textContent = label
+    list.append(cell)
+  })
+  onCleanup(installSettingsNav(ctx))
+  await flush()
+
+  const menu = document.querySelector('.sk-setnav__groups')
+  assert.deepEqual(
+    [...menu.querySelectorAll('.sk-setnav__heading')].map((node) => node.textContent),
+    ['个人', '集成', '连接', '归档管理'],
+    'groups follow the Qoder menu order and empty groups are skipped',
+  )
+  const idsIn = (title) => [...menu.querySelector(`section[aria-label="${title}"]`).querySelectorAll('[data-settings-id]')]
+    .map((node) => node.getAttribute('data-settings-id'))
+  assert.deepEqual(idsIn('个人'), ['account', 'general', 'theme', 'boot', 'desktop-pet', 'notification', 'models'])
+  assert.deepEqual(idsIn('集成'), ['plugins', 'agent-presets', 'skills-mcp', 'judgment', 'hooks', 'browser'])
+  assert.deepEqual(idsIn('连接'), ['mobile'])
+  assert.deepEqual(idsIn('归档管理'), ['archived-chats'])
 })
