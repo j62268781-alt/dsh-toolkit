@@ -33,6 +33,9 @@ import { maskId, normalizeBaseUrl } from './wechat/ilink.js'
 import { readTrustedPeers } from './mobile/peers.js'
 import { purgePairingState } from './mobile/local-state.js'
 import { API_PATH } from './constants.js'
+import { defaultPreferences, readPreferences, readPreferencesSync, writePreferences, type PreferenceTarget, type RemotePreferences } from './preferences.js'
+import { dshHome } from '../../../host/dsh-home.js'
+import { join } from 'node:path'
 
 export const name = 'dsh-toolkit-remote'
 /**
@@ -327,22 +330,35 @@ async function readOptionalJson(req: any) {
  * 所有接口都在鉴权之后，且强制 `cache-control: no-store`：它们要么带副作用，
  * 要么返回一次性数据（二维码、凭据状态）。
  */
-export function registerClawbotRoutes(ctx: any, service: any) {
+/**
+ * 注册 ClawBot 路由。
+ *
+ * `target` 既可以是服务实例，也可以是「取当前服务」的函数——面板上的
+ * 微信开关会在运行期启停服务，路由必须每次请求都取最新的那一个；
+ * 服务已停时统一 409，而不是让面板看到一堆 500。
+ */
+export function registerClawbotRoutes(ctx: any, target: any, ready?: Promise<unknown>) {
+  const serviceOf = typeof target === 'function' ? target : () => target
+  const service = () => {
+    const current = serviceOf()
+    if (current === null || current === undefined) throw httpFailure(409, 'clawbot-disabled')
+    return current
+  }
   // 显式标注：混着「无参 handler」与「(req) handler」的元素会被推断成 (string | fn)[]，
   // 拿到 run 之后就无法调用。这里声明的形状与实际调用 (run(req, res)) 一致。
   const routes: Array<[string, string, (req: any, res: any) => unknown]> = [
-    ['status', 'GET', async () => service.snapshot()],
+    ['status', 'GET', async () => service().snapshot()],
     [
       'login/start', 'POST',
       async (req: any) => {
         const payload = await readOptionalJson(req)
-        return service.startLogin(payload?.force === true)
+        return service().startLogin(payload?.force === true)
       },
     ],
-    ['login/poll', 'GET', async () => service.snapshot()],
-    ['login/cancel', 'POST', async () => service.cancelLogin()],
-    ['logout', 'POST', async () => service.logout()],
-    ['probe', 'POST', async () => service.probe()],
+    ['login/poll', 'GET', async () => service().snapshot()],
+    ['login/cancel', 'POST', async () => service().cancelLogin()],
+    ['logout', 'POST', async () => service().logout()],
+    ['probe', 'POST', async () => service().probe()],
     [
       'login/code', 'POST',
       async (req: any) => {
@@ -352,7 +368,7 @@ export function registerClawbotRoutes(ctx: any, service: any) {
         } catch {
           throw httpFailure(400, '请求体不是合法 JSON')
         }
-        return service.submitCode(String(payload?.code ?? ''))
+        return service().submitCode(String(payload?.code ?? ''))
       },
     ],
     [
@@ -364,14 +380,14 @@ export function registerClawbotRoutes(ctx: any, service: any) {
         } catch {
           throw httpFailure(400, '请求体不是合法 JSON')
         }
-        return service.setMonitor(payload?.enabled === true)
+        return service().setMonitor(payload?.enabled === true)
       },
     ],
     [
       'bridge/test', 'POST',
       async (req: any) => {
         const payload = await readOptionalJson(req)
-        return service.sendTestMessage(payload?.text)
+        return service().sendTestMessage(payload?.text)
       },
     ],
     [
@@ -383,7 +399,7 @@ export function registerClawbotRoutes(ctx: any, service: any) {
         } catch {
           throw httpFailure(400, '请求体不是合法 JSON')
         }
-        return service.setBridgeAccess({
+        return service().setBridgeAccess({
           enabled: typeof payload?.enabled === 'boolean' ? payload.enabled : undefined,
           policy: payload?.policy,
           allowFrom: payload?.allowFrom,
@@ -401,6 +417,8 @@ export function registerClawbotRoutes(ctx: any, service: any) {
         res.setHeader('cache-control', 'no-store')
         // 这些接口都带副作用或一次性数据，绝不缓存。
         if (req.method !== method) return sendJson(res, 404, { ok: false, reason: 'not-found' })
+        // 服务是异步起的：等初值那一步落定再判「有没有起来」，否则第一眼必是 409。
+        if (ready !== undefined) await ready
         try {
           return sendJson(res, 200, await run(req, res))
         } catch (error: any) {
@@ -476,25 +494,129 @@ function registerLocalStateRoute(ctx: any) {
   })
 }
 
+/**
+ * 「移动端」设置面板的开关：读/写 `$DSH_HOME/toolkit/remote-preferences.json`。
+ *
+ * 微信开关在这里即时启停桥接；手机入口不归本模块管——那台设备要不要接受远程控制
+ * 是 ds-harness-remote 的 `host.authorization.set`，面板直接调它的控制路由。
+ */
+function registerPreferencesRoute(ctx: any, deps: {
+  target: PreferenceTarget
+  start: () => Promise<void>
+  stop: () => Promise<void>
+  running: () => boolean
+  ready?: Promise<unknown>
+}) {
+  registerAuthenticatedRoute(ctx, {
+    kind: 'exact',
+    path: `${API_PATH}/preferences`,
+    async handler(req, res) {
+      res.setHeader('cache-control', 'no-store')
+      if (req.method !== 'GET' && req.method !== 'POST') {
+        return sendJson(res, 404, { ok: false, reason: 'not-found' })
+      }
+      // 启动那一拍是异步的：等它落定，GET 才能说清 running 到底有没有。
+      if (deps.ready !== undefined) await deps.ready
+      if (req.method === 'GET') {
+        const prefs = await readPreferences(deps.target)
+        return sendJson(res, 200, { ok: true, wechat: prefs.wechat, running: deps.running() })
+      }
+      let payload: any
+      try {
+        payload = JSON.parse(await readBody(req, MAX_BODY))
+      } catch {
+        throw httpFailure(400, '请求体不是合法 JSON')
+      }
+      if (typeof payload?.wechat !== 'boolean') {
+        throw httpFailure(400, '缺少 wechat 布尔值')
+      }
+      const next: RemotePreferences = { wechat: payload.wechat }
+      await writePreferences(deps.target, next)
+      try {
+        if (next.wechat) await deps.start()
+        else await deps.stop()
+      } catch (error: any) {
+        return sendJson(res, 200, {
+          ok: true,
+          wechat: next.wechat,
+          running: deps.running(),
+          error: String(error?.message ?? error),
+        })
+      }
+      return sendJson(res, 200, { ok: true, wechat: next.wechat, running: deps.running() })
+    },
+  })
+}
+
 export function apply(ctx: any, config: any) {
   if (typeof ctx.webServer?.register !== 'function') return
   if (typeof ctx.connection?.requestRejection !== 'function') return
   registerPeersRoute(ctx)
   registerLocalStateRoute(ctx)
   const settings = readConfig(config)
-  if (!settings.enabled) return
+  const target: PreferenceTarget = {
+    path: join(dshHome(), 'toolkit', 'remote-preferences.json'),
+    fallback: defaultPreferences(settings.enabled),
+  }
 
-  ctx.effect(async () => {
-    const service = await createClawbotService(ctx, config)
-    try {
-      registerClawbotRoutes(ctx, service)
-    } catch (error: any) {
-      await service.dispose()
-      throw error
+  /** 当前运行的 ClawBot 服务：关掉开关时是 null，路由统一回 409。 */
+  let service: any = null
+  let starting: Promise<any> | null = null
+  // 启动是异步的：插件可能在服务还没建好时就被卸载（测试里每个用例都会 dispose）。
+  // 没有这个标记，迟到的服务会把定时器/长轮询留给已经卸载的进程，测试进程于是不退出。
+  let disposed = false
+
+  async function startWechat() {
+    if (disposed) return
+    if (service !== null) return
+    if (starting === null) {
+      starting = createClawbotService(ctx, config)
+      try {
+        service = await starting
+      } finally {
+        starting = null
+      }
+      if (disposed) {
+        const late = service
+        service = null
+        if (late !== null && typeof late.dispose === 'function') await late.dispose()
+      }
+      return
     }
-    return async () => {
-      await service.dispose()
-    }
+    service = await starting
+  }
+
+  async function stopWechat() {
+    const current = service
+    service = null
+    if (current !== null && typeof current.dispose === 'function') await current.dispose()
+  }
+
+  // 初值必须同步拿到：cordis 不等异步 effect，路由会先注册好，
+  // 面板第一眼就会看到「已关闭」再闪成「已启用」。
+  const initial = readPreferencesSync(target)
+  const logger = () => (typeof ctx.logger === 'function' ? ctx.logger('remote') : undefined)
+  const ready: Promise<unknown> = initial.wechat
+    ? startWechat().catch((error: any) => {
+      logger().warn?.(`[remote] ClawBot 启动失败：${String(error?.message ?? error)}`)
+    })
+    : Promise.resolve()
+
+  registerPreferencesRoute(ctx, {
+    target,
+    start: startWechat,
+    stop: stopWechat,
+    running: () => service !== null,
+    ready,
+  })
+
+  // 路由常驻：开关在运行期变化，handler 每次取当前服务，停用时回 409。
+  registerClawbotRoutes(ctx, () => service, ready)
+
+  ctx.effect(() => async () => {
+    disposed = true
+    await ready
+    await stopWechat()
   }, 'remote service')
 }
 

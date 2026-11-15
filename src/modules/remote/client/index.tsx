@@ -7,6 +7,7 @@ import { createConnection } from './wechat/model.js'
 import { createTranslator, WC_COPY, WC_NS } from './locale.js'
 import { createPanel } from './panel.jsx'
 import { installEntry } from './mount.jsx'
+import { createFeatures } from './features.js'
 import css from './styles.css'
 
 /**
@@ -55,15 +56,30 @@ export default function createRemote(require) {
         },
       })
 
-      const Entry = createPanel(ReactRuntime, { t, connection, portal })
+      // 两个开关的状态源：「移动端」设置面板写，入口与 tab 读。
+      const features = createFeatures()
+      const Entry = createPanel(ReactRuntime, { t, connection, portal, features })
+
+      // 「移动端」面板里的两个开关决定这个入口出不出现：都关着就整块不渲染，
+      // 侧栏也就没有那个图标了（包一层是为了把 useSyncExternalStore 留在组件里）。
+      function GatedEntry() {
+        const enabled = ReactRuntime.useSyncExternalStore(
+          features.subscribe,
+          features.getSnapshot,
+          features.getSnapshot,
+        )
+        if (!enabled.phone && !enabled.wechat) return null
+        return ReactRuntime.createElement(Entry)
+      }
 
       ctx.effect(() => ctx.locale?.register?.(WC_NS, WC_COPY) ?? (() => {}), 'dsh-toolkit-remote:dictionary')
       ctx.effect(() => installStylesheet(css, 'dsh-toolkit-remote'), 'dsh-toolkit-remote:stylesheet')
+      ctx.effect(() => features.start(), 'dsh-toolkit-remote:features')
       ctx.effect(() => {
         connection.dispose()
       }, 'dsh-toolkit-remote:connection')
       ctx.effect(
-        () => installEntry(ctx, { React: ReactRuntime, createRoot, Entry }),
+        () => installEntry(ctx, { React: ReactRuntime, createRoot, Entry: GatedEntry }),
         'dsh-toolkit-remote:entry-icon',
       )
     },

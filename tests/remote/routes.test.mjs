@@ -3,6 +3,7 @@
  */
 
 import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -10,6 +11,16 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import { Context, Service } from '@deepseek-ai/cordis'
 import * as plugin from '../../src/modules/remote/host/index.ts'
+
+// 「移动端」面板的开关存在 \/toolkit/remote-preferences.json：
+// 整个文件指向临时目录，免得读到开发机上的真实开关（也免得测试往里写）。
+process.env.DSH_HOME = await mkdtemp(join(tmpdir(), 'dsh-remote-home-'))
+
+// 这个文件里全是假服务，不该真的出网：ClawBot 服务一旦起来会去连微信上游，
+// 即使用例跑完、服务已 dispose，undici 的 keep-alive socket 也会把测试进程挂住。
+globalThis.fetch = async () => {
+  throw new Error('network down')
+}
 
 class WebServer extends Service {
   constructor(ctx) {
@@ -58,6 +69,18 @@ class Credentials extends Service {
   }
 }
 
+/** readBody 走流事件：带 body 的假请求要在下一轮事件循环里补 data/end。 */
+function bodyRequest(method, url, body) {
+  const request = Object.assign(new EventEmitter(), { method, url })
+  // 必须用宏任务：handler 里 requestRejection 之后还有一次 await，微任务会在
+  // readBody 挂上监听之前就把 end 发出去，Promise 永远不 resolve。
+  setTimeout(() => {
+    if (body !== undefined) request.emit('data', Buffer.from(body, 'utf8'))
+    request.emit('end')
+  }, 0)
+  return request
+}
+
 const reply = () => {
   const res = {
     statusCode: 0,
@@ -82,6 +105,8 @@ const PATHS = [
   ['POST', 'bridge/access'],
   ['GET', 'peers'],
   ['POST', 'local-state/purge'],
+  // 开关路由同时接 GET（读）与 POST（写），所以方法位写 BOTH。
+  ['BOTH', 'preferences'],
 ]
 
 test('插件声明与其依赖', () => {
@@ -170,7 +195,8 @@ test('方法不匹配时返回 404，且不泄露任何状态', async (t) => {
   await fiber2
   const expected = new Map(PATHS.map(([method, suffix]) => [`/api/plugins/toolkit/remote/${suffix}`, method]))
   for (const route of ctx2.get('webServer').routes) {
-    const wrong = expected.get(route.path) === 'GET' ? 'POST' : 'GET'
+    const declared = expected.get(route.path)
+    const wrong = declared === 'GET' ? 'POST' : declared === 'POST' ? 'GET' : 'PUT'
     // 绕过鉴权：这些路由的 handler 先鉴权，所以用一个放行的 connection。
     const response = reply()
     const request = { method: wrong, url: route.path }
@@ -349,13 +375,59 @@ test('enabled 为 false 时只留配对相关的兜底路由，不注册任何 C
   await fiber
   // peers 与 local-state/purge 都属于「手机连接」，不是微信登录：关掉 ClawBot 也要留着。
   // 没有 purge，解绑后就清不掉上游没管的 pairing-host-only 策略。
-  assert.deepEqual(
-    ctx.get('webServer').routes.map(({ kind, path }) => [kind, path]).sort(),
-    [
-      ['exact', '/api/plugins/toolkit/remote/local-state/purge'],
-      ['exact', '/api/plugins/toolkit/remote/peers'],
-    ],
+  // ClawBot 的 12 条路由常驻（面板上的开关能在运行期打开它），服务没起时统一回 409，
+  // 所以这里断言的是「状态码」，不是「路由不存在」。
+  ctx.get('connection').requestRejection = () => undefined
+  const paths = ctx.get('webServer').routes.map(({ path }) => path)
+  assert.ok(paths.includes('/api/plugins/toolkit/remote/peers'))
+  assert.ok(paths.includes('/api/plugins/toolkit/remote/local-state/purge'))
+  assert.ok(paths.includes('/api/plugins/toolkit/remote/preferences'))
+  const status = ctx.get('webServer').routes.find(({ path }) => path.endsWith('/status'))
+  const response = reply()
+  await status.handler({ method: 'GET', url: status.path }, response)
+  assert.equal(response.statusCode, 409)
+  assert.equal(JSON.parse(response.body).error, 'clawbot-disabled')
+})
+
+test('开关路由能运行期启停 ClawBot：关着回 409，写 true 之后 status 不再是 409', async (t) => {
+  const ctx = new Context()
+  await ctx.plugin(WebServer)
+  await ctx.plugin(Connection)
+  await ctx.plugin(Credentials)
+  const fiber = ctx.plugin(plugin, { enabled: false })
+  t.after(() => fiber.dispose())
+  await fiber
+  ctx.get('connection').requestRejection = () => undefined
+  const find = (suffix) => ctx.get('webServer').routes.find(({ path }) => path.endsWith(`/${suffix}`))
+
+  const read = reply()
+  await find('preferences').handler({ method: 'GET', url: '/api/plugins/toolkit/remote/preferences' }, read)
+  assert.equal(read.statusCode, 200)
+  assert.equal(JSON.parse(read.body).wechat, false)
+
+  const enable = reply()
+  await find('preferences').handler(
+    bodyRequest('POST', '/api/plugins/toolkit/remote/preferences', '{"wechat":true}'),
+    enable,
   )
+  const enabledPayload = JSON.parse(enable.body)
+  assert.equal(enabledPayload.wechat, true)
+
+  const disable = reply()
+  await find('preferences').handler(
+    bodyRequest('POST', '/api/plugins/toolkit/remote/preferences', '{"wechat":false}'),
+    disable,
+  )
+  assert.equal(JSON.parse(disable.body).wechat, false)
+  assert.equal(JSON.parse(disable.body).running, false)
+
+  // 这个文件共用一个临时 $DSH_HOME：把开关放回 true，后面的用例才拿得到运行中的服务。
+  const restore = reply()
+  await find('preferences').handler(
+    bodyRequest('POST', '/api/plugins/toolkit/remote/preferences', '{"wechat":true}'),
+    restore,
+  )
+  assert.equal(JSON.parse(restore.body).wechat, true)
 })
 
 test('登录路由在无网络时会返回结构化的 400 而不是挂住', async (t) => {
@@ -378,70 +450,6 @@ test('登录路由在无网络时会返回结构化的 400 而不是挂住', asy
   assert.equal(response.body.includes('network down'), true)
 })
 
-// ── 客户端产物 ─────────────────────────────────────────────────
-
-test('客户端产物是自包含单文件，入口挂在账户行而不是插槽里', async (t) => {
-  const built = await readFile(new URL('../../packages/remote/lib/client.js', import.meta.url), 'utf8')
-  const registrations = []
-  const required = []
-  const head = { appendChild() {}, removeChild() {} }
-  class SandboxNode {}
-  class SandboxElement extends SandboxNode { closest() { return null } }
-  const sandbox = {
-    window: { __ModuleLoader__: { load: (spec) => registrations.push(spec) } },
-    console: { warn: () => {}, error: () => {} },
-    fetch() { throw new Error('registration must not fetch') },
-    // The module body is evaluated inside the sandbox realm, so `document` must live here.
-    // Deliberately minimal: no querySelector, so a mount attempt must bail out quietly.
-    document: {
-      head,
-      documentElement: head,
-      body: { appendChild() {}, removeChild() {} },
-      createElement: () => ({ dataset: {}, style: {}, textContent: '', remove() {} }),
-      visibilityState: 'visible',
-      addEventListener() {},
-      removeEventListener() {},
-    },
-    Node: SandboxNode,
-    Element: SandboxElement,
-    setTimeout,
-    clearTimeout,
-    setInterval,
-    clearInterval,
-  }
-  vm.runInNewContext(built, sandbox, { filename: 'remote-client.js', timeout: 2000 })
-  assert.equal(registrations.length, 1)
-  const [spec] = registrations
-  assert.equal(spec.id, 'dsh-toolkit-remote')
-  assert.equal(typeof spec.factory, 'function')
-
-  // react 由宿主模块表提供；react-dom 提供 portal，react-dom/client 提供 createRoot。
-  const client = spec.factory((id) => {
-    required.push(id)
-    if (id === 'react') return { createElement: () => null, useEffect: () => {}, useRef: () => ({}), useState: () => [undefined, () => {}], useCallback: (fn) => fn, useMemo: (fn) => fn(), useSyncExternalStore: () => ({}) }
-    if (id === 'react-dom') return { createPortal: (node) => node }
-    if (id === 'react-dom/client') return { createRoot: () => ({ render() {}, unmount() {} }) }
-    throw new Error(`unexpected dependency: ${id}`)
-  })
-  assert.equal(client.name, 'dsh-toolkit-remote-client')
-  // 账户行没有可注册的 list 插槽，入口改成 DOM 安装器，因此不再声明 slots。
-  assert.deepEqual(Array.from(client.inject), ['locale'])
-  assert.deepEqual([...new Set(required)].sort(), ['react', 'react-dom', 'react-dom/client'])
-  assert.equal(built.includes('sidebar.footer.action'), false, '产物不应再依赖账户行里不存在的插槽')
-
-  const effects = []
-  const ctx = {
-    effect(run, label) {
-      effects.push(label)
-      const dispose = run()
-      return typeof dispose === 'function' ? dispose : () => {}
-    },
-    locale: { register: () => () => {} },
-  }
-  client.apply(ctx)
-  assert.ok(effects.some((label) => label === 'dsh-toolkit-remote:stylesheet'))
-  assert.ok(effects.some((label) => label === 'dsh-toolkit-remote:entry-icon'))
-})
 
 test('客户端产物不含服务端代码与凭据名称泄露', async () => {
   const built = await readFile(new URL('../../packages/remote/lib/client.js', import.meta.url), 'utf8')

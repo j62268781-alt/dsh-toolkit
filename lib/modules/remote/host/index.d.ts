@@ -342,7 +342,14 @@ export declare function createClawbotService(ctx: any, config: any): Promise<{
  * 所有接口都在鉴权之后，且强制 `cache-control: no-store`：它们要么带副作用，
  * 要么返回一次性数据（二维码、凭据状态）。
  */
-export declare function registerClawbotRoutes(ctx: any, service: any): void;
+/**
+ * 注册 ClawBot 路由。
+ *
+ * `target` 既可以是服务实例，也可以是「取当前服务」的函数——面板上的
+ * 微信开关会在运行期启停服务，路由必须每次请求都取最新的那一个；
+ * 服务已停时统一 409，而不是让面板看到一堆 500。
+ */
+export declare function registerClawbotRoutes(ctx: any, target: any, ready?: Promise<unknown>): void;
 export declare function apply(ctx: any, config: any): void;
 export { Config };
 declare const _default: {

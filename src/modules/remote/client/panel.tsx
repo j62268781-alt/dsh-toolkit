@@ -27,12 +27,17 @@ const PANEL_CLOSE_MS = 150
  * `wechat/`（扫码登录 ClawBot）与 `mobile/`（手机配对）里，各自连自己的 store。
  * 组件都定义在工厂闭包里、只创建一次，避免每次渲染重建组件类型导致 hooks 状态丢失。
  */
-export function createPanel(React, { t, connection, portal }) {
+export function createPanel(React, { t, connection, portal, features }) {
   const { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } = React
   const h = React.createElement
   const QrCode = createQrCode(React)
   // 手机配对的会话状态与微信连接彼此独立：一个 store 给 tab 与子视图共享。
   const pairing = createPairing()
+
+  // 没有 features（测试直接注入面板）时给一组稳定引用，让 hook 仍无条件调用。
+  const noopSubscribe = () => () => {}
+  const allEnabled = { phone: true, wechat: true }
+  const readAllEnabled = () => allEnabled
 
   /** 剩余秒数；没有 expiresAt 时返回 undefined。hook 本身无条件调用。 */
   function useCountdown(expiresAt) {
@@ -71,8 +76,17 @@ export function createPanel(React, { t, connection, portal }) {
    * 用两段式：容器只做底色与内边距，按钮自己画选中块，这样切换时不会整条重排。
    */
   function TabBar({ tab, onTab }) {
-    const items = [['pair', t('tabPair')], ['claw', t('tabClaw')]]
-    const index = Math.max(0, items.findIndex(([key]) => key === tab))
+    // 开关在「移动端」设置面板里：关掉的入口不再露出 tab，只剩开着的那个。
+    const enabled = useSyncExternalStore(
+      features === undefined ? noopSubscribe : features.subscribe,
+      features === undefined ? readAllEnabled : features.getSnapshot,
+      features === undefined ? readAllEnabled : features.getSnapshot,
+    )
+    const all = [['pair', t('tabPair')], ['claw', t('tabClaw')]]
+    const items = all.filter(([key]) => (key === 'pair' ? enabled.phone : enabled.wechat))
+    // 两个都关时理论上入口已经隐藏；真走到这里就都露出来，不要给一张空卡片。
+    const visible = items.length === 0 ? all : items
+    const index = Math.max(0, visible.findIndex(([key]) => key === tab))
     const item = (key, label) => h('button', {
       type: 'button',
       role: 'tab',
@@ -89,7 +103,7 @@ export function createPanel(React, { t, connection, portal }) {
         'aria-hidden': 'true',
         style: { transform: `translateX(${index * 100}%)` },
       }),
-      ...items.map(([key, label]) => item(key, label)))
+      ...visible.map(([key, label]) => item(key, label)))
   }
 
   /**
@@ -112,6 +126,15 @@ export function createPanel(React, { t, connection, portal }) {
     const [viewport, setViewport] = useState(readViewport)
     // 两个入口：手机配对（默认，新能力）与原有微信 ClawBot。
     const [tab, setTab] = useState('pair')
+    // 关掉的那个入口不留 tab：当前 tab 不可用时落到仍然开着的那个。
+    const enabled = useSyncExternalStore(
+      features === undefined ? noopSubscribe : features.subscribe,
+      features === undefined ? readAllEnabled : features.getSnapshot,
+      features === undefined ? readAllEnabled : features.getSnapshot,
+    )
+    const activeTab = tab === 'pair' && !enabled.phone && enabled.wechat
+      ? 'claw'
+      : tab === 'claw' && !enabled.wechat && enabled.phone ? 'pair' : tab
 
     // 打开时读一次状态；读完之前只转圈，避免先闪「连接微信」再翻成已连接。
     const [ready, setReady] = useState(false)
@@ -254,9 +277,9 @@ export function createPanel(React, { t, connection, portal }) {
         title: t('close'),
         onClick: onClose,
       }, h(CloseIcon))),
-    h(TabBar, { tab, onTab: setTab }),
+    h(TabBar, { tab: activeTab, onTab: setTab }),
     // 两个 tab 的错误互不影响：微信的错误只在微信 tab 里显示，配对错误由 PairingTab 自己渲染。
-    tab !== 'claw' || error === undefined
+    activeTab !== 'claw' || error === undefined
       ? null
       : h('div', { className: 'wc-error' }, t('failed', { reason: error })),
     h('div', {
@@ -264,7 +287,7 @@ export function createPanel(React, { t, connection, portal }) {
       id: 'wc-tabpanel',
       role: 'tabpanel',
       'aria-labelledby': `wc-tab-${tab}`,
-    }, tab === 'pair' ? h(PairingTab, { active: true }) : clawBody))
+    }, activeTab === 'pair' ? h(PairingTab, { active: true }) : clawBody))
   }
 
   /**
