@@ -1740,6 +1740,12 @@ window.__ModuleLoader__.load({
       })));
     }
 
+    // src/client/ui/components/tag/index.tsx
+    function Tag({ tone = "neutral", className, children, ...rest }) {
+      const merged = className === void 0 ? "sk-ui-tag" : `sk-ui-tag ${className}`;
+      return /* @__PURE__ */ __dshReact.createElement("span", { className: merged, "data-tone": tone, ...rest }, children);
+    }
+
     // src/modules/skills-mcp/client/views/profileCard.tsx
     function profileCardView({
       row,
@@ -1773,7 +1779,7 @@ window.__ModuleLoader__.load({
           onClick: () => setExpanded(rowOpen ? "" : rowKey)
         },
         /* @__PURE__ */ __dshReact.createElement(Chevron, { key: "c", open: rowOpen }),
-        /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardIdentity", key: "name" }, row.serverName || row.entryId, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-ui-tag", "data-tone": "neutral", key: "scope" }, scopeTagLabel(row.scope)))
+        /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardIdentity", key: "name" }, row.serverName || row.entryId, /* @__PURE__ */ __dshReact.createElement(Tag, { key: "scope" }, scopeTagLabel(row.scope)))
       ), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardEnd", key: "end" }, row.enabled === false ? null : statusDot(row.serverName, tier, rowStatusScope))), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDescription", key: "desc" }, row.target ? `${row.transport || "streamable-http"} · ${row.target}` : `${String(row.entryId).replace(/^include:/, "")}${row.phase ? ` · ${row.phase}` : ""}`)), pending ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "pending" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-pending", key: "p" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-spinner", key: "s" }), pendingText)) : rowOpsReady ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "actions" }, enabledSwitch(row), moreMenu(row, menuItems)) : null), rowOpen ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDetails", key: "details" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-details", key: "grid" }, detailNodes(rowDetailPairs(row))), toolListNode(toolsForServer(serverTools, row.serverName, serverToolsError), `tools-${row.entryId}`, {
         ...filterFor(row.serverName),
         leafOf: leafOf(row.serverName),
@@ -2747,7 +2753,7 @@ window.__ModuleLoader__.load({
           const pending = skillPendingPath === skill.path ? "删除中…" : null;
           const identity = [
             /* @__PURE__ */ __dshReact.createElement("span", { key: "n" }, skill.name),
-            /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-ui-tag", "data-tone": "neutral", key: "scope" }, scopeTagLabel(scopeValue))
+            /* @__PURE__ */ __dshReact.createElement(Tag, { key: "scope" }, scopeTagLabel(scopeValue))
           ];
           return card(
             key,
@@ -2987,7 +2993,7 @@ window.__ModuleLoader__.load({
           `全局写 ${skillDirs.userDsh || "~/.dsh/skills"} 或 ${skillDirs.userAgents || "~/.agents/skills"}，项目级写 <工作区>/.dsh/skills 或 <工作区>/.agents/skills`
         ].join(" · ");
         const skillsSections = [skillsList];
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-page" }, /* @__PURE__ */ __dshReact.createElement("style", { key: "css" }, CSS), head, tabs, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-groupSub smp-summaryAbove", key: "summary" }, tab === "mcp" ? mcpSummary : skillsSummary), filterRowView, statusOf(form) === "loading" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-empty", key: "loading" }, "正在读取设置…") : null, error && !editing ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-error", key: "err" }, error) : null, skillError !== "" && skillDialog === null ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-error", key: "skillerr" }, skillError) : null, confirmDeleteDialog, skillPreviewDialogView, skillDialogElement, tab === "mcp" ? mcpSections : skillsSections, debugOn ? /* @__PURE__ */ __dshReact.createElement("section", { className: "smp-group", key: "debug" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-groupTitleRow", key: "h" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-groupTitle" }, `Loader 诊断：共 ${inventoryRows.length} 行，其中 mcp 相关 ${debugMcp.length} 行`)), /* @__PURE__ */ __dshReact.createElement("ul", { className: "smp-cards", key: "list" }, debugMcp.map((row) => /* @__PURE__ */ __dshReact.createElement("li", { className: "smp-card", key: row.entryId }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardContent", key: "c", style: { cursor: "default" } }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardMainRow", key: "r" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardIdentity", key: "i" }, row.entryId), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardEnd", key: "e" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-ui-tag", "data-tone": "neutral" }, `${row.enabled ? "on" : "off"}${row.fiberPhase ? ` · ${row.fiberPhase}` : ""}`))), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDescription", key: "d" }, row.moduleName)))))) : null);
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-page" }, /* @__PURE__ */ __dshReact.createElement("style", { key: "css" }, CSS), head, tabs, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-groupSub smp-summaryAbove", key: "summary" }, tab === "mcp" ? mcpSummary : skillsSummary), filterRowView, statusOf(form) === "loading" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-empty", key: "loading" }, "正在读取设置…") : null, error && !editing ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-error", key: "err" }, error) : null, skillError !== "" && skillDialog === null ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-error", key: "skillerr" }, skillError) : null, confirmDeleteDialog, skillPreviewDialogView, skillDialogElement, tab === "mcp" ? mcpSections : skillsSections, debugOn ? /* @__PURE__ */ __dshReact.createElement("section", { className: "smp-group", key: "debug" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-groupTitleRow", key: "h" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-groupTitle" }, `Loader 诊断：共 ${inventoryRows.length} 行，其中 mcp 相关 ${debugMcp.length} 行`)), /* @__PURE__ */ __dshReact.createElement("ul", { className: "smp-cards", key: "list" }, debugMcp.map((row) => /* @__PURE__ */ __dshReact.createElement("li", { className: "smp-card", key: row.entryId }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardContent", key: "c", style: { cursor: "default" } }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardMainRow", key: "r" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardIdentity", key: "i" }, row.entryId), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardEnd", key: "e" }, /* @__PURE__ */ __dshReact.createElement(Tag, null, `${row.enabled ? "on" : "off"}${row.fiberPhase ? ` · ${row.fiberPhase}` : ""}`))), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDescription", key: "d" }, row.moduleName)))))) : null);
       }
       return Panel;
     }

@@ -348,6 +348,12 @@ window.__ModuleLoader__.load({
       );
     }
 
+    // src/client/ui/components/tag/index.tsx
+    function Tag({ tone = "neutral", className, children, ...rest }) {
+      const merged = className === void 0 ? "sk-ui-tag" : `sk-ui-tag ${className}`;
+      return /* @__PURE__ */ __dshReact.createElement("span", { className: merged, "data-tone": tone, ...rest }, children);
+    }
+
     // src/client/styles/settings.css
     var settings_default = `/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */
     .ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}
@@ -614,7 +620,7 @@ window.__ModuleLoader__.load({
           const open = expanded[key] === true;
           const named = t(`event_${event.id}`);
           const name = named === `event_${event.id}` ? event.label : named;
-          return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__row", key }, /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "sk-hooks__rowHead", onClick: () => toggle(key), "aria-expanded": open }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__rowText" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__rowTitle" }, name, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-ui-tag", "data-tone": "neutral" }, hooks.length)), event.hint !== "" ? /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__rowHint" }, event.hint) : null), /* @__PURE__ */ __dshReact.createElement(Chevron, { open })), open ? /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__rowBody" }, hooks.length === 0 ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__hint" }, t("eventEmpty")) : /* @__PURE__ */ __dshReact.createElement("ul", { className: "sk-hooks__hooks" }, hooks.map(renderHook)), !event.supported ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__hint" }, t("unsupportedHint")) : null) : null);
+          return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__row", key }, /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "sk-hooks__rowHead", onClick: () => toggle(key), "aria-expanded": open }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__rowText" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__rowTitle" }, name, /* @__PURE__ */ __dshReact.createElement(Tag, null, hooks.length)), event.hint !== "" ? /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__rowHint" }, event.hint) : null), /* @__PURE__ */ __dshReact.createElement(Chevron, { open })), open ? /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__rowBody" }, hooks.length === 0 ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__hint" }, t("eventEmpty")) : /* @__PURE__ */ __dshReact.createElement("ul", { className: "sk-hooks__hooks" }, hooks.map(renderHook)), !event.supported ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__hint" }, t("unsupportedHint")) : null) : null);
         };
         const renderHistoryRow = (run) => {
           const problem = runProblem(run, { timedOut: t("timedOut"), exit: (code) => t("exit", { code }) });
@@ -625,7 +631,7 @@ window.__ModuleLoader__.load({
           CardSection,
           {
             className: "sk-hooks__group",
-            title: /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__groupTitle" }, t("eventsTitle"), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-ui-tag", "data-tone": "neutral" }, total)),
+            title: /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__groupTitle" }, t("eventsTitle"), /* @__PURE__ */ __dshReact.createElement(Tag, null, total)),
             "aria-label": t("eventsTitle"),
             hint: /* @__PURE__ */ __dshReact.createElement(ActionButton, { busy, onClick: refresh }, busy ? t("refreshing") : t("refresh"))
           },

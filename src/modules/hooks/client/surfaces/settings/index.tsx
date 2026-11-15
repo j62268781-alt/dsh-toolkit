@@ -4,6 +4,7 @@ import { primitives } from "../../../../../client/ui/primitives.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { CardSection, PageHeader } from "../../../../../client/ui/components/settings-parts/index.jsx";
 import { Chevron } from "../../../../../client/ui/components/chevron/index.jsx";
+import { Tag } from "../../../../../client/ui/components/tag/index.jsx";
 import { settingsStyles } from "../../../../../client/styles/settings.js";
 import panelCss from "./style.css";
 import { HOOK_EVENTS, HOOKS_REFRESH_PATH, HOOKS_SNAPSHOT_PATH } from "../../constants.js";
@@ -155,7 +156,7 @@ function createHooksSection(ctx: any) {
             <span className="sk-hooks__rowText">
               <span className="sk-hooks__rowTitle">
                 {name}
-                <span className="sk-ui-tag" data-tone="neutral">{hooks.length}</span>
+                <Tag>{hooks.length}</Tag>
               </span>
               {event.hint !== "" ? <span className="sk-hooks__rowHint">{event.hint}</span> : null}
             </span>
@@ -229,7 +230,7 @@ function createHooksSection(ctx: any) {
           title={(
             <span className="sk-hooks__groupTitle">
               {t("eventsTitle")}
-              <span className="sk-ui-tag" data-tone="neutral">{total}</span>
+              <Tag>{total}</Tag>
             </span>
           )}
           aria-label={t("eventsTitle")}

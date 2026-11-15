@@ -79,10 +79,8 @@ export function MoreMenu({ items, disabled }) {
   )
 }
 
-/** 卡片右上角的状态标签。 */
-export function Tag({ children, tone = 'neutral' }) {
-  return <span className="sk-ui-tag" data-tone={tone}>{children}</span>
-}
+/** 卡片右上角的状态标签；样式与 skills & mcp、钩子面板共用一份。 */
+export { Tag } from '../../../client/ui/components/tag/index.jsx'
 
 /** 卡片左侧的展开箭头（收起时转 -90°）；图标本体与 skills & mcp、钩子面板共用一份。 */
 export { Chevron } from '../../../client/ui/components/chevron/index.jsx'

@@ -29,6 +29,7 @@ import { importCardView } from './views/importCard.jsx'
 import { listCardView } from './views/listCard.jsx'
 import { profileCardView } from './views/profileCard.jsx'
 import { settingsStyles } from '../../../client/styles/settings.js'
+import { Tag } from '../../../client/ui/components/tag/index.jsx'
 import { createLatestTask } from '../../../client/latest-task.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
 
@@ -890,7 +891,7 @@ export function createPanel(React, primitives) {
       const pending = skillPendingPath === skill.path ? '删除中…' : null
       const identity = [
         <span key="n">{skill.name}</span>,
-        <span className="sk-ui-tag" data-tone="neutral" key="scope">{scopeTagLabel(scopeValue)}</span>,
+        <Tag key="scope">{scopeTagLabel(scopeValue)}</Tag>,
       ]
       return card(
         key,
@@ -1186,9 +1187,9 @@ export function createPanel(React, primitives) {
                     <div className="smp-cardMainRow" key="r">
                       <span className="smp-cardIdentity" key="i">{row.entryId}</span>
                       <span className="smp-cardEnd" key="e">
-                        <span className="sk-ui-tag" data-tone="neutral">
+                        <Tag>
                           {`${row.enabled ? "on" : "off"}${row.fiberPhase ? ` · ${row.fiberPhase}` : ""}`}
-                        </span>
+                        </Tag>
                       </span>
                     </div>
                     <div className="smp-cardDescription" key="d">{row.moduleName}</div>

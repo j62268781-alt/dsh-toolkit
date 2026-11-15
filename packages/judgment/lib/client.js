@@ -491,6 +491,12 @@ window.__ModuleLoader__.load({
       };
     }
 
+    // src/client/ui/components/tag/index.tsx
+    function Tag({ tone = "neutral", className, children, ...rest }) {
+      const merged = className === void 0 ? "sk-ui-tag" : `sk-ui-tag ${className}`;
+      return /* @__PURE__ */ __dshReact.createElement("span", { className: merged, "data-tone": tone, ...rest }, children);
+    }
+
     // src/client/ui/components/chevron/index.tsx
     function Chevron({ open, className = "sk-ui-chevron", size = 16 }) {
       return /* @__PURE__ */ __dshReact.createElement(
@@ -570,9 +576,6 @@ window.__ModuleLoader__.load({
         },
         label
       )))) : null);
-    }
-    function Tag({ children, tone = "neutral" }) {
-      return /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-ui-tag", "data-tone": tone }, children);
     }
     function Status({ tone, text }) {
       return /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-status" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-dot", "data-dot": tone, "aria-hidden": "true" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-statusText" }, text));
