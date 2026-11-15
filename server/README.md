@@ -4,7 +4,7 @@
 
 A single-account, single-process DSH Remote Server: device registration and credential refresh, the Control channel, WebRTC (LAN / P2P / TURN) coordination, end-to-end encrypted Relay, and the **device-pairing v1** QR pairing flow added in this directory.
 
-> **Provenance**: this directory is vendored from [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote) (MIT, v0.6.4) with device-pairing v1 added (`src/pairing.ts`). Upstream ships as a pnpm workspace; here it is a standalone npm package: the protocol sources live in `src/protocol/`, the only runtime dependencies are `ws` and `zod`, and the React admin UI (`web/`) and its build step were removed. See [LICENSE](LICENSE).
+> **Provenance**: this directory is vendored from [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote) (MIT, v0.6.5) with device-pairing v1 added (`src/pairing.ts`). The protocol layer is synced to upstream v0.6.5: `src/protocol/{binary-upload,lan-upload}.ts` (`workspace.upload.binary.v1`, `workspace.upload.lan.v1`), the async compaction contract (`harness.remote.compaction.submit|status|cancel`, `remote.compaction.async.v1`) and the `remote.session.events.v1` capability. The only local deviations are the two relaxed schemas for `deviceId` / `platform` (see "Differences from upstream"). Upstream ships as a pnpm workspace; here it is a standalone npm package: the protocol sources live in `src/protocol/`, the only runtime dependencies are `ws` and `zod`, and the React admin UI (`web/`) and its build step were removed. See [LICENSE](LICENSE).
 
 ## What it is for
 
@@ -48,13 +48,15 @@ Open <http://127.0.0.1:8080/healthz> for `{"status":"ok"}`; the human-readable p
 | `DSH_SERVER_PORT` | `8080` | Listen port. |
 | `DSH_SERVER_DATA_FILE` | `./data/state.json` | State file (devices, token digests, account verifier), written 0600 in a 0700 directory. |
 | `DSH_SERVER_TRUSTED_PROXY_IPS` | empty | Comma-separated trusted reverse-proxy IP literals. When set, every request must carry exactly one `X-Forwarded-For` header holding a single IP literal, else 400. When empty the header is ignored and limits use the socket address. Bare IPv4/IPv6 only: ports, CIDR ranges and hostnames fail startup. |
-| `DSH_SERVER_HELLO_TIMEOUT_MS` | `5000` | WebSocket hello deadline (1000-60000). |
-| `DSH_SERVER_HEARTBEAT_INTERVAL_MS` | `25000` | Heartbeat interval (5000-120000). |
-| `DSH_SERVER_HEARTBEAT_DISCONNECT_MS` | `75000` | Heartbeat disconnect threshold (50000-600000, at least 2× the interval). |
+| `DSH_SERVER_HELLO_TIMEOUT_MS` | `5000` | WebSocket hello deadline (1000-60000). Raise it for cellular cold starts. |
+| `DSH_SERVER_HEARTBEAT_INTERVAL_MS` | `25000` | Heartbeat interval (5000-120000). Doubles as NAT/LB keepalive. |
+| `DSH_SERVER_HEARTBEAT_DISCONNECT_MS` | `75000` | Heartbeat disconnect threshold (600000 max, at least 2× the interval). |
+| `DSH_SERVER_MAX_FRAMES_PER_SEC` | `512` | Control frames per second per connection (64-65536). Exceeding it throws `RATE_LIMITED`, which **closes the socket** with 4001 — a busy agent can look like a dead network. |
+| `DSH_SERVER_SLOW_CONSUMER_BYTES` | `16777216` | Socket backlog that marks a peer as gone (`SLOW_CONSUMER`; 1 MiB-64 MiB). Frames are up to 1 MiB, so a brief cellular stall must not close the socket; worst-case memory is this limit per connection. |
 | `DSH_SERVER_FORCE_TERMINATE_GRACE_MS` | `1000` | Grace period before a half-closed socket is force-terminated (100-10000). |
 | `DSH_SERVER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` / `silent`. |
-| `DSH_SERVER_STUN_URLS` | empty | Comma-separated STUN URLs. Empty keeps Relay-only behaviour. |
-| `DSH_SERVER_TURN_URLS` | empty | Comma-separated TURN URLs. |
+| `DSH_SERVER_STUN_URLS` | empty | Comma-separated STUN URLs. Empty means only same-LAN sessions connect directly and everything else goes through Relay; `.env.example` ships a tested mainland-China public list. |
+| `DSH_SERVER_TURN_URLS` | empty | Comma-separated TURN URLs (advertise a `turn:…?transport=tcp` and `turns:…:5349` entry too). |
 | `DSH_SERVER_TURN_SECRET` | empty | coturn `static-auth-secret`; the Server issues short-lived credentials and never exposes the secret. |
 | `DSH_SERVER_TURN_USERNAME` / `DSH_SERVER_TURN_PASSWORD` | empty | Static TURN credentials — mutually exclusive with `TURN_SECRET`. |
 | `DSH_SERVER_TURN_TTL_SECONDS` | `300` | TURN credential lifetime (60-3600). |

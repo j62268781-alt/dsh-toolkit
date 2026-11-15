@@ -4,7 +4,7 @@
 
 单账号、单进程的 DSH Remote Server：设备注册与凭据刷新、Control 控制通道、WebRTC（LAN / P2P / TURN）协商、端到端加密 Relay，以及本目录新增的 **device-pairing v1** 扫码配对。
 
-> **来源声明**：本目录 vendored 自 [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote)（MIT，v0.6.4），并新增 `device-pairing v1`（`src/pairing.ts`）。上游为 pnpm workspace 布局，这里改造为独立 npm 包：协议源码 vendored 到 `src/protocol/`，只依赖 `ws` 与 `zod`；上游的 React 管理界面（`web/`）与其构建步骤已移除。许可证见 [LICENSE](LICENSE)。
+> **来源声明**：本目录 vendored 自 [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote)（MIT，v0.6.5），并新增 `device-pairing v1`（`src/pairing.ts`）。协议层已同步到上游 v0.6.5：`src/protocol/{binary-upload,lan-upload}.ts`（`workspace.upload.binary.v1`、`workspace.upload.lan.v1`）、异步压缩契约（`harness.remote.compaction.submit|status|cancel`、`remote.compaction.async.v1`）与 `remote.session.events.v1` capability；本目录独有改动只有 `deviceId` / `platform` 两处 schema 放宽（见下文「与上游的差异」）。上游为 pnpm workspace 布局，这里改造为独立 npm 包：协议源码 vendored 到 `src/protocol/`，只依赖 `ws` 与 `zod`；上游的 React 管理界面（`web/`）与其构建步骤已移除。许可证见 [LICENSE](LICENSE)。
 
 ## 用途
 
@@ -48,13 +48,15 @@ npm start
 | `DSH_SERVER_PORT` | `8080` | 监听端口。 |
 | `DSH_SERVER_DATA_FILE` | `./data/state.json` | 状态文件路径（设备、token 摘要、账号校验值），权限 0600，目录 0700。 |
 | `DSH_SERVER_TRUSTED_PROXY_IPS` | 空 | 逗号分隔的可信反向代理 IP 字面量。非空时请求必须带**恰好一个** `X-Forwarded-For`（单个 IP 字面量），否则 400；留空则一律忽略该头、按 socket 地址限流。只接受裸 IPv4/IPv6，端口、CIDR、域名会让启动失败。 |
-| `DSH_SERVER_HELLO_TIMEOUT_MS` | `5000` | WebSocket hello 握手超时（1000-60000）。 |
-| `DSH_SERVER_HEARTBEAT_INTERVAL_MS` | `25000` | 心跳间隔（5000-120000）。 |
-| `DSH_SERVER_HEARTBEAT_DISCONNECT_MS` | `75000` | 心跳断连阈值（50000-600000，且 >= 2× 心跳间隔）。 |
+| `DSH_SERVER_HELLO_TIMEOUT_MS` | `5000` | WebSocket hello 握手超时（1000-60000）。手机弱网冷启动要调大。 |
+| `DSH_SERVER_HEARTBEAT_INTERVAL_MS` | `25000` | 心跳间隔（5000-120000），同时兼任 NAT/负载均衡保活。 |
+| `DSH_SERVER_HEARTBEAT_DISCONNECT_MS` | `75000` | 心跳断连阈值（上限 600000，且 >= 2× 心跳间隔）。 |
+| `DSH_SERVER_MAX_FRAMES_PER_SEC` | `512` | 每连接每秒控制帧上限（64-65536）。超了抛 `RATE_LIMITED` 并**关闭连接**（4001），大量输出时很容易被误判成断网。 |
+| `DSH_SERVER_SLOW_CONSUMER_BYTES` | `16777216` | 判定 `SLOW_CONSUMER` 的发送积压字节数（1 MiB-64 MiB）。单帧最大 1 MiB，手机下行短暂卡顿不该直接断线；最坏内存约等于该值 × 连接数。 |
 | `DSH_SERVER_FORCE_TERMINATE_GRACE_MS` | `1000` | 半关闭连接的强制终止宽限（100-10000）。 |
 | `DSH_SERVER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` / `silent`。 |
-| `DSH_SERVER_STUN_URLS` | 空 | 逗号分隔的 STUN URL。留空则只走 Relay。 |
-| `DSH_SERVER_TURN_URLS` | 空 | 逗号分隔的 TURN URL。 |
+| `DSH_SERVER_STUN_URLS` | 空 | 逗号分隔的 STUN URL。留空则只有同局域网能直连、其余走 Relay；`.env.example` 里已备好一份国内实测可用的公共 STUN 列表。 |
+| `DSH_SERVER_TURN_URLS` | 空 | 逗号分隔的 TURN URL（建议同时给 `turn:…?transport=tcp` 与 `turns:…:5349`）。 |
 | `DSH_SERVER_TURN_SECRET` | 空 | coturn `static-auth-secret`（REST API），Server 据此签发短期凭据，永不外泄 secret。 |
 | `DSH_SERVER_TURN_USERNAME` / `DSH_SERVER_TURN_PASSWORD` | 空 | 静态 TURN 账号；与 `TURN_SECRET` 二选一，不能同时设置。 |
 | `DSH_SERVER_TURN_TTL_SECONDS` | `300` | TURN 凭据有效期（60-3600）。 |
