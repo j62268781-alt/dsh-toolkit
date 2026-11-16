@@ -192,25 +192,6 @@ npm test          # vitest run，真实起 HTTP server（端口 0），全程离
 
 未完成项：上游 `web/` 管理界面已移除（`GET /` 返回 404 `METHOD_NOT_FOUND`，只有 `/pair` 是无脚本的指引页，因此没有 SPA）；上游依赖 client-stack（Noise / WebRTC / Plugin HTTP 客户端）的测试场景未移植，等价行为用原始 HTTP/WebSocket 断言覆盖。
 
-## 中继帧编码（`transport.relay.bin.v1`）
-
-默认中继把密文放进 JSON 文本帧：`{"type":"relay","payload":{"ciphertext":"<base64url>"}}`。对 48 KiB 的密文分片来说，base64 加 JSON 信封约 1.34× 膨胀——在 5 Mbps 上行/下行的链路上等于白丢四分之一带宽。
-
-客户端在 `hello.capabilities` 里声明 `transport.relay.bin.v1` 后，Server 会在 `hello.ack.capabilities` 回显同一能力，此后**发往该连接的 relay 数据改用二进制帧**：
-
-```
-byte 0        版本（当前 1）
-byte 1..16    connectionId（UUID 原始 16 字节，无连字符）
-byte 17..24   counter（大端 u64，与文本帧共享同一单调计数）
-byte 25..     ciphertext 原始字节（Noise 密文分片，Server 不解密）
-```
-
-- 同一连接的两个方向独立判定：一端支持、另一端只支持文本时，Server 自动在两种表示之间转码，因此**不需要两端同时升级**；
-- 未声明该能力的连接若发来二进制帧，按 `INVALID_MESSAGE` 处理（协议违规，不是兼容路径）；
-- 二进制帧与文本帧共用同一个每秒帧数/字节窗口，限速行为不变；
-- 收益按**跳**生效：Server 只在「发往已声明该能力的对端」那一跳改二进制。桌面→手机时下发那一跳省掉 base64（云机 egress 上最明显，浏览器/图片/文件下载都走这里）；手机→桌面时只有手机上行那一跳省，Server 发往官方桌面 Host 的那一跳仍是文本帧（官方 Host 不发该能力）。
-- 想把桌面那一跳也省掉，需要给 `ds-harness-remote`（Host 侧 npm 依赖）同样打补丁：它编码/解码 relay 帧的两处分别在 `dist/index.js` 的 `toBase64Url(data)` 与 `fromBase64Url(payload.ciphertext)` 附近。
-
 ## 目录结构
 
 ```

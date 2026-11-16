@@ -4,15 +4,11 @@ import { WebSocket, WebSocketServer } from 'ws'
 import {
   createControlFrame,
   decodeControlFrame,
-  decodeRelayBinaryFrame,
-  encodeRelayBinaryFrame,
   MAX_CONTROL_FRAME_BYTES,
   MAX_RELAY_FRAME_BYTES,
-  RELAY_BINARY_CAPABILITY,
   SERVER_SHUTDOWN_CLOSE_CODE,
   SERVER_SHUTDOWN_CLOSE_REASON,
   type ControlFrame,
-  type RelayBinaryFrame,
   type HelloPayload,
   type ConnectRequestPayload,
   type SecureHandshakePayload,
@@ -82,7 +78,7 @@ export function backpressureExceeded(bufferedAmount: number, limitBytes: number)
   return bufferedAmount > limitBytes
 }
 
-type Peer = { ws: WebSocket; id: string; role: 'host' | 'client'; capabilities: string[]; version: string; lastPong: number; nonce?: string; evictedTombstoneUntil?: number; relayBinary: boolean }
+type Peer = { ws: WebSocket; id: string; role: 'host' | 'client'; capabilities: string[]; version: string; lastPong: number; nonce?: string; evictedTombstoneUntil?: number }
 type Link = { id: string; host: string; client: string; stage: 'pending' | 'accepted' | 'handshake' | 'ready'; created: number; counters: Map<string, number>; preferredTransports: TransportName[]; iceCandidates: number }
 type DroppedLink = { host: string; client: string; expiresAt: number; droppedFrames: number }
 
@@ -310,39 +306,6 @@ export class Gateway {
     if (backpressureExceeded(peer.ws.bufferedAmount, this.slowConsumerBytes)) { this.disconnect(peer.id, 'SLOW_CONSUMER'); return }
     peer.ws.send(JSON.stringify(frame))
   }
-  /**
-   * Send a pre-encoded binary frame. Relay bytes are opaque, so a peer that
-   * negotiated `transport.relay.bin.v1` receives the ciphertext exactly as the
-   * other endpoint produced it — no JSON envelope, no base64.
-   */
-  private sendBinary(peer: Peer, frame: Uint8Array): void {
-    if (peer.ws.readyState !== WebSocket.OPEN) return
-    if (backpressureExceeded(peer.ws.bufferedAmount, this.slowConsumerBytes)) { this.disconnect(peer.id, 'SLOW_CONSUMER'); return }
-    peer.ws.send(frame)
-  }
-  /**
-   * Route one binary Relay frame. Stale frames (no live link) are dropped
-   * silently: a peer racing a reconnect must not see CONNECTION_NOT_FOUND
-   * storms for frames that were already in flight.
-   */
-  private handleRelayBinary(peer: Peer, relay: RelayBinaryFrame, raw: Buffer): void {
-    const link = this.links.get(relay.connectionId)
-    if (!link) return
-    if (peer.id !== link.host && peer.id !== link.client) throw new ApiError('INVALID_MESSAGE')
-    if (link.stage !== 'ready') throw new ApiError('INVALID_MESSAGE')
-    if (relay.counter <= (link.counters.get(peer.id) ?? -1)) throw new ApiError('INVALID_MESSAGE')
-    link.counters.set(peer.id, relay.counter)
-    const otherId = peer.id === link.host ? link.client : link.host
-    const other = this.peers.get(otherId)
-    if (!other) throw new ApiError('CONNECTION_FAILED')
-    if (other.relayBinary) { this.sendBinary(other, raw); return }
-    this.send(other, createControlFrame('relay', {
-      connectionId: link.id,
-      targetDeviceId: otherId,
-      counter: relay.counter,
-      ciphertext: Buffer.from(relay.ciphertext).toString('base64url'),
-    }))
-  }
   private drop(link: Link, code: string): void {
     this.links.delete(link.id)
     this.recordDroppedLink(link)
@@ -474,41 +437,9 @@ export class Gateway {
       // parsing, authentication or store access can happen.
       if (state !== 'awaiting_hello' && state !== 'authenticated') return
       if (ws.readyState !== WebSocket.OPEN) return
-      // `ws` hands over Buffer | ArrayBuffer | Buffer[]; normalize once so both
-      // the text and the binary path see one Buffer.
-      const data = Buffer.isBuffer(raw) ? raw : Array.isArray(raw) ? Buffer.concat(raw) : Buffer.from(raw)
       let frame: ControlFrame | undefined
       try {
-        if (binary) {
-          // Binary frames exist only for the negotiated Relay representation;
-          // anything else is a protocol violation. They share the text frame
-          // rate window so a binary peer cannot move more bytes per second.
-          if (state !== 'authenticated' || !peer || !peer.relayBinary) throw new ApiError('INVALID_MESSAGE')
-          const frameBytes = data.length
-          if (Date.now() - windowStart >= 1000) {
-            windowStart = Date.now()
-            frames = 0
-            bytes = 0
-            droppedFrames = 0
-            droppedBytes = 0
-          }
-          if (++frames > this.maxFramesPerSec || (bytes += frameBytes) > 16 * MAX_RELAY_FRAME_BYTES) {
-            throw new ApiError('RATE_LIMITED')
-          }
-          // Route it exactly like the text form: a connection-scoped failure
-          // drops that Link only, instead of tearing down the Peer's socket.
-          const relay = decodeRelayBinaryFrame(data)
-          try {
-            this.handleRelayBinary(peer, relay, data)
-          } catch (error) {
-            if (!(error instanceof ApiError) || error.code === 'RATE_LIMITED') throw error
-            const link = this.links.get(relay.connectionId)
-            if (link && (link.host === peer.id || link.client === peer.id)) { this.drop(link, error.code); return }
-            this.send(peer, createControlFrame('error', { code: error.code, message: error.code, connectionId: relay.connectionId, retryable: false }))
-            return
-          }
-          return
-        }
+        if (binary) throw new ApiError('INVALID_MESSAGE')
         const text = raw.toString()
         const frameBytes = Buffer.byteLength(text)
         if (Date.now() - windowStart >= 1000) {
@@ -545,14 +476,7 @@ export class Gateway {
           // Keep the negotiated set (what hello.ack advertises), so a link can
           // never coordinate a transport this Server did not offer — e.g. TURN
           // while no TURN deployment is configured.
-          // Relay payloads are opaque ciphertext, so a peer that offers the
-          // binary representation may receive/emit raw bytes instead of base64
-          // inside JSON. The negotiated set keeps the offer so hello.ack mirrors
-          // exactly what this link may use.
-          const relayBinary = p.capabilities.includes(RELAY_BINARY_CAPABILITY)
-          const capabilities = this.negotiatedCapabilities(p.capabilities)
-          if (relayBinary) capabilities.push(RELAY_BINARY_CAPABILITY)
-          peer = { ws, id: device.deviceId, role: device.role, capabilities, version: p.clientVersion ?? device.clientVersion, lastPong: Date.now(), relayBinary }
+          peer = { ws, id: device.deviceId, role: device.role, capabilities: this.negotiatedCapabilities(p.capabilities), version: p.clientVersion ?? device.clientVersion, lastPong: Date.now() }
           this.peers.set(peer.id, peer)
           this.store.touch(peer.id, p.clientVersion, p.harnessVersion)
           this.logger.info('ws_hello_authenticated', {
@@ -568,7 +492,7 @@ export class Gateway {
             heartbeatIntervalMs: this.heartbeatIntervalMs,
             maxControlFrameBytes: MAX_CONTROL_FRAME_BYTES,
             maxRelayFrameBytes: MAX_RELAY_FRAME_BYTES,
-            capabilities: peer.capabilities,
+            capabilities: this.negotiatedCapabilities(p.capabilities),
             webrtcEnabled: this.transports.some(name => name !== 'relay'),
             webrtcFallbackTimeoutMs: WEBRTC_FALLBACK_TIMEOUT_MS,
           }))
@@ -704,16 +628,6 @@ export class Gateway {
       const payload = frame.payload as RelayPayload
       if (link.stage !== 'ready' || payload.counter <= (link.counters.get(peer.id) ?? -1)) throw new ApiError('INVALID_MESSAGE')
       link.counters.set(peer.id, payload.counter)
-      // The other endpoint may speak the binary representation: re-encode once
-      // here instead of shipping the base64 envelope over the bottleneck link.
-      if (other.relayBinary) {
-        this.sendBinary(other, encodeRelayBinaryFrame({
-          connectionId: link.id,
-          counter: payload.counter,
-          ciphertext: Buffer.from(payload.ciphertext, 'base64url'),
-        }))
-        return
-      }
     } else throw new ApiError('INVALID_MESSAGE')
     this.send(other, frame)
   }

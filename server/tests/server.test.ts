@@ -9,10 +9,7 @@ import { request as httpRequest } from 'node:http'
 import { WebSocket } from 'ws'
 import {
   MAX_CONTROL_FRAME_BYTES,
-  RELAY_BINARY_CAPABILITY,
-  RELAY_BINARY_HEADER_BYTES,
   createControlFrame,
-  encodeRelayBinaryFrame,
 } from '../src/protocol/index.js'
 import {
   createRemoteServer,
@@ -109,28 +106,12 @@ async function device(role: 'host' | 'client' = 'client') {
 
 class Wire {
   messages: any[] = []
-  binary: Buffer[] = []
   waiters: (() => void)[] = []
   constructor(readonly ws: WebSocket) {
-    ws.on('message', (raw, isBinary) => {
-      if (isBinary) this.binary.push(Buffer.isBuffer(raw) ? raw : Buffer.from(raw as ArrayBuffer))
-      else this.messages.push(JSON.parse(raw.toString()))
+    ws.on('message', (raw) => {
+      this.messages.push(JSON.parse(raw.toString()))
       for (const notify of this.waiters.splice(0)) notify()
     })
-  }
-  sendBinary(frame: Uint8Array) {
-    this.ws.send(frame, { binary: true })
-  }
-  async nextBinary(): Promise<Buffer> {
-    const until = Date.now() + 3000
-    while (Date.now() < until) {
-      if (this.binary.length > 0) return this.binary.shift() as Buffer
-      await new Promise<void>(resolve => {
-        const timer = setTimeout(resolve, 20)
-        this.waiters.push(() => { clearTimeout(timer); resolve() })
-      })
-    }
-    throw new Error('Missing binary frame')
   }
   send(type: Parameters<typeof createControlFrame>[0], payload: unknown) {
     this.ws.send(JSON.stringify(createControlFrame(type, payload)))
@@ -353,58 +334,6 @@ describe('control authorization and relay routing', () => {
       await ctx.host.next('pong')
       expect(ctx.host.messages.filter((m) => m.type === 'relay')).toHaveLength(0)
     }
-  })
-
-  it('relays ciphertext as binary frames when both peers offer the capability', async () => {
-    const ctx = await connection({ hostCapabilities: [...fullCapabilities, RELAY_BINARY_CAPABILITY], clientCapabilities: [...fullCapabilities, RELAY_BINARY_CAPABILITY] })
-    await ready(ctx)
-    const ciphertext = randomBytes(48 * 1024)
-    ctx.client.sendBinary(encodeRelayBinaryFrame({ connectionId: ctx.connectionId, counter: 0, ciphertext }))
-    const forwarded = await ctx.host.nextBinary()
-    expect(forwarded).toEqual(Buffer.from(encodeRelayBinaryFrame({ connectionId: ctx.connectionId, counter: 0, ciphertext })))
-    expect(forwarded.byteLength).toBe(RELAY_BINARY_HEADER_BYTES + ciphertext.byteLength)
-    expect(ctx.host.messages.filter((m) => m.type === 'relay')).toHaveLength(0)
-  })
-
-  it('re-encodes binary frames for a peer that only speaks text relay', async () => {
-    const ctx = await connection({ hostCapabilities: fullCapabilities, clientCapabilities: [...fullCapabilities, RELAY_BINARY_CAPABILITY] })
-    await ready(ctx)
-    const ciphertext = randomBytes(1024)
-    ctx.client.sendBinary(encodeRelayBinaryFrame({ connectionId: ctx.connectionId, counter: 0, ciphertext }))
-    const frame = await ctx.host.next('relay')
-    expect(frame).toMatchObject({ connectionId: ctx.connectionId, targetDeviceId: ctx.h.deviceId, counter: 0 })
-    expect(Buffer.from(frame.ciphertext, 'base64url')).toEqual(ciphertext)
-  })
-
-  it('re-encodes text relay frames for a binary-only peer', async () => {
-    const ctx = await connection({ hostCapabilities: fullCapabilities, clientCapabilities: [...fullCapabilities, RELAY_BINARY_CAPABILITY] })
-    await ready(ctx)
-    const ciphertext = randomBytes(2048)
-    ctx.host.send('relay', { connectionId: ctx.connectionId, targetDeviceId: ctx.c.deviceId, counter: 0, ciphertext: ciphertext.toString('base64url') })
-    const forwarded = await ctx.client.nextBinary()
-    expect(forwarded.subarray(RELAY_BINARY_HEADER_BYTES)).toEqual(ciphertext)
-  })
-
-  it('drops the link (not the socket) when a binary counter regresses', async () => {
-    const ctx = await connection({ hostCapabilities: [...fullCapabilities, RELAY_BINARY_CAPABILITY], clientCapabilities: [...fullCapabilities, RELAY_BINARY_CAPABILITY] })
-    await ready(ctx)
-    const frame = (counter: number) => encodeRelayBinaryFrame({ connectionId: ctx.connectionId, counter, ciphertext: randomBytes(64) })
-    ctx.client.sendBinary(frame(5))
-    await ctx.host.nextBinary()
-    ctx.client.sendBinary(frame(4))
-    expect((await ctx.client.next('error')).code).toBe('INVALID_MESSAGE')
-    expect(ctx.client.ws.readyState).toBe(WebSocket.OPEN)
-    // The dropped Link no longer routes; later frames are silently discarded.
-    ctx.client.sendBinary(frame(6))
-    ctx.host.send('ping', { nonce: 'after-drop' })
-    expect(await ctx.host.next('pong')).toEqual({ nonce: 'after-drop' })
-  })
-
-  it('rejects binary relay frames from peers that did not negotiate the capability', async () => {
-    const ctx = await connection()
-    await ready(ctx)
-    ctx.client.sendBinary(encodeRelayBinaryFrame({ connectionId: ctx.connectionId, counter: 0, ciphertext: randomBytes(16) }))
-    expect((await ctx.client.next('error')).code).toBe('INVALID_MESSAGE')
   })
 
   it('rejects account tokens and mismatched device roles in hello', async () => {
