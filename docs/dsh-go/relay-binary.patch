@@ -1,0 +1,488 @@
+diff --git a/packages/dsh_remote/lib/dsh_remote.dart b/packages/dsh_remote/lib/dsh_remote.dart
+index f211794..e8d5612 100644
+--- a/packages/dsh_remote/lib/dsh_remote.dart
++++ b/packages/dsh_remote/lib/dsh_remote.dart
+@@ -47,7 +47,17 @@ export 'src/crypto/noise_ik.dart'
+         identityFingerprint,
+         noiseIkProtocol;
+ export 'src/pairing/device_pairing.dart';
+-export 'src/protocol/control.dart' show ControlFrame, ControlFrameLimits, ProtocolError, protocolVersion;
++export 'src/protocol/control.dart'
++    show
++        ControlFrame,
++        ControlFrameLimits,
++        ProtocolError,
++        protocolVersion,
++        relayBinaryCapability,
++        relayBinaryHeaderBytes,
++        relayBinaryVersion,
++        encodeRelayBinaryFrame,
++        decodeRelayBinaryFrame;
+ export 'src/protocol/messages.dart' show RemoteMessage, SecureMessageCodec, maxSecureMessageBytes;
+ export 'src/server/server_api.dart';
+ export 'src/state.dart';
+diff --git a/packages/dsh_remote/lib/src/protocol/control.dart b/packages/dsh_remote/lib/src/protocol/control.dart
+index 67eb630..60a7495 100644
+--- a/packages/dsh_remote/lib/src/protocol/control.dart
++++ b/packages/dsh_remote/lib/src/protocol/control.dart
+@@ -6,6 +6,7 @@
+ library;
+ 
+ import 'dart:convert';
++import 'dart:typed_data';
+ 
+ import '../util/bytes.dart';
+ 
+@@ -176,6 +177,80 @@ ControlFrame _parseRelayDataFrame(Object? input) {
+   return ControlFrame(type, payload, id: id, timestamp: timestamp);
+ }
+ 
++/// Capability that carries Relay ciphertext as raw binary WebSocket frames
++/// instead of base64 inside JSON (`transport.relay.bin.v1`).
++///
++/// The Relay payload is opaque ciphertext, so only the two endpoints that
++/// touch the bytes get to pick a representation: a 48 KiB secure fragment is
++/// ~65.8 KiB as a text frame (base64 plus envelope) but 48 KiB plus a 25-byte
++/// header as a binary frame. A Server that does not echo this capability keeps
++/// sending `relay` text frames exactly as before.
++const String relayBinaryCapability = 'transport.relay.bin.v1';
++
++const int relayBinaryVersion = 1;
++
++/// version(1) + connectionId(16) + counter(8, big endian).
++const int relayBinaryHeaderBytes = 1 + 16 + 8;
++
++final RegExp _relayBinaryUuid = RegExp(
++  r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
++  caseSensitive: false,
++);
++
++/// Encodes one Relay frame for a Server that echoed [relayBinaryCapability].
++Uint8List encodeRelayBinaryFrame({
++  required String connectionId,
++  required int counter,
++  required Uint8List ciphertext,
++}) {
++  if (!_relayBinaryUuid.hasMatch(connectionId)) {
++    throw const ProtocolError('Relay connectionId is not a UUID.');
++  }
++  if (counter < 0 || counter > maxSafeInteger) {
++    throw const ProtocolError('Relay counter is out of range.');
++  }
++  final out = Uint8List(relayBinaryHeaderBytes + ciphertext.length);
++  out[0] = relayBinaryVersion;
++  final hex = connectionId.replaceAll('-', '');
++  for (var index = 0; index < 16; index += 1) {
++    out[1 + index] = int.parse(hex.substring(index * 2, index * 2 + 2), radix: 16);
++  }
++  var remaining = counter;
++  for (var index = 7; index >= 0; index -= 1) {
++    out[17 + index] = remaining % 256;
++    remaining ~/= 256;
++  }
++  out.setRange(relayBinaryHeaderBytes, out.length, ciphertext);
++  return out;
++}
++
++/// Decodes one Relay binary frame; any malformed header is a [ProtocolError].
++({String connectionId, int counter, Uint8List ciphertext}) decodeRelayBinaryFrame(Uint8List data) {
++  if (data.length <= relayBinaryHeaderBytes) {
++    throw const ProtocolError('Relay binary frame is too short.');
++  }
++  if (data[0] != relayBinaryVersion) {
++    throw const ProtocolError('Unsupported Relay binary frame version.');
++  }
++  final hex = StringBuffer();
++  for (var index = 1; index < 17; index += 1) {
++    hex.write(data[index].toRadixString(16).padLeft(2, '0'));
++  }
++  final raw = hex.toString();
++  final connectionId = '${raw.substring(0, 8)}-${raw.substring(8, 12)}-${raw.substring(12, 16)}'
++      '-${raw.substring(16, 20)}-${raw.substring(20)}';
++  var counter = 0;
++  for (var index = 17; index < 25; index += 1) {
++    counter = counter * 256 + data[index];
++  }
++  if (counter > maxSafeInteger) throw const ProtocolError('Relay counter is out of range.');
++  return (
++    connectionId: connectionId,
++    counter: counter,
++    ciphertext: Uint8List.sublistView(data, relayBinaryHeaderBytes),
++  );
++}
++
+ void _assertSize(int bytes, String type, ControlFrameLimits limits) {
+   final relay = type == 'relay';
+   final configured = relay ? limits.maxRelayFrameBytes : limits.maxControlFrameBytes;
+diff --git a/packages/dsh_remote/lib/src/transport/relay_transport.dart b/packages/dsh_remote/lib/src/transport/relay_transport.dart
+index 35dd834..3d04f67 100644
+--- a/packages/dsh_remote/lib/src/transport/relay_transport.dart
++++ b/packages/dsh_remote/lib/src/transport/relay_transport.dart
+@@ -151,13 +151,18 @@ class RelayTransport implements SecureHandshakeTransport {
+     }
+   }
+ 
+-  static const List<String> _relayOffered = ['transport.relay', 'transport.relay.attach'];
++  static const List<String> _relayOffered = [
++    'transport.relay',
++    'transport.relay.attach',
++    relayBinaryCapability,
++  ];
+   static const List<String> _directOffered = [
+     'transport.lan',
+     'transport.p2p',
+     'transport.turn',
+     'transport.relay',
+     'transport.relay.attach',
++    relayBinaryCapability,
+   ];
+ 
+   final WebSocket _socket;
+@@ -176,6 +181,9 @@ class RelayTransport implements SecureHandshakeTransport {
+   /// Relay node data socket, once assigned.
+   WebSocket? _data;
+   int? _relayEpoch;
++  /// Negotiated `transport.relay.bin.v1`: relay ciphertext travels as raw
++  /// binary WebSocket frames instead of base64 inside JSON.
++  bool _relayBinary = false;
+   Completer<void>? _ready;
+   int _heartbeatMs = 25000;
+   DateTime _lastReceived = DateTime.now();
+@@ -265,9 +273,16 @@ class RelayTransport implements SecureHandshakeTransport {
+   void _onMessage(Object? raw) {
+     if (_closed) return;
+     _lastReceived = DateTime.now();
++    if (raw is! String) {
++      if (raw is! List<int>) {
++        _fail(const RemoteTransportClosed('INVALID_MESSAGE', 'Unexpected Control frame payload.', retryable: false));
++        return;
++      }
++      _receiveRelayBinary(raw is Uint8List ? raw : Uint8List.fromList(raw));
++      return;
++    }
+     final ControlFrame frame;
+     try {
+-      if (raw is! String) throw const ProtocolError('Relay control frames must be text JSON.');
+       frame = decodeControlFrame(raw, _limits);
+     } on ProtocolError catch (error) {
+       // A frame this client cannot parse (unknown type, bad field, newer
+@@ -312,6 +327,7 @@ class RelayTransport implements SecureHandshakeTransport {
+             'CAPABILITY_NOT_SUPPORTED',
+           );
+         }
++        _relayBinary = negotiated.contains(relayBinaryCapability);
+         _limits = ControlFrameLimits(
+           maxControlFrameBytes: asInt(p['maxControlFrameBytes']),
+           maxRelayFrameBytes: asInt(p['maxRelayFrameBytes']),
+@@ -385,6 +401,34 @@ class RelayTransport implements SecureHandshakeTransport {
+     }
+   }
+ 
++  /// A Relay ciphertext frame in the negotiated binary representation.
++  void _receiveRelayBinary(Uint8List data) {
++    if (!_relayBinary || _data != null) {
++      _fail(const RemoteTransportClosed(
++        'INVALID_MESSAGE',
++        'Received a binary Relay frame without negotiating transport.relay.bin.v1.',
++        retryable: false,
++      ));
++      return;
++    }
++    final ({String connectionId, int counter, Uint8List ciphertext}) relay;
++    try {
++      relay = decodeRelayBinaryFrame(data);
++    } on ProtocolError catch (error) {
++      _fail(RemoteTransportClosed(error.code, error.message, retryable: false));
++      return;
++    }
++    if (relay.connectionId != _connectionId) {
++      _fail(const RemoteTransportClosed(
++        'INVALID_MESSAGE',
++        'Received a relay frame for an unknown connection.',
++        retryable: false,
++      ));
++      return;
++    }
++    _deliver(() => _onData!(relay.ciphertext, relay.counter));
++  }
++
+   void _receiveRelay(JsonMap p) {
+     if (p['connectionId'] != _connectionId || p['targetDeviceId'] != _deviceId) {
+       throw const ProtocolError('Received a relay frame for an unknown connection.');
+@@ -555,17 +599,36 @@ class RelayTransport implements SecureHandshakeTransport {
+ 
+   @override
+   Future<void> send(Uint8List ciphertext, {required int counter}) async {
+-    final payload = {
+-      'connectionId': _requireConnection(),
++    final id = _requireConnection();
++    if (_data != null) {
++      _sendData('relay', {
++        'connectionId': id,
++        'targetDeviceId': _hostDeviceId,
++        'counter': counter,
++        'ciphertext': toBase64Url(ciphertext),
++      });
++      return;
++    }
++    if (_relayBinary) {
++      if (_closed) {
++        throw const RemoteTransportException('CONNECTION_FAILED', 'The relay control socket is closed.');
++      }
++      final tracer = _tracer;
++      if (tracer != null) {
++        tracer('out', {
++          'type': 'relay',
++          'payload': {'connectionId': id, 'targetDeviceId': _hostDeviceId, 'counter': counter, 'ciphertext': '<${ciphertext.length} bytes>' },
++        });
++      }
++      _socket.add(encodeRelayBinaryFrame(connectionId: id, counter: counter, ciphertext: ciphertext));
++      return;
++    }
++    _sendControl('relay', {
++      'connectionId': id,
+       'targetDeviceId': _hostDeviceId,
+       'counter': counter,
+       'ciphertext': toBase64Url(ciphertext),
+-    };
+-    if (_data != null) {
+-      _sendData('relay', payload);
+-    } else {
+-      _sendControl('relay', payload);
+-    }
++    });
+   }
+ 
+   String _requireConnection() {
+diff --git a/packages/dsh_remote/test/relay_attach_test.dart b/packages/dsh_remote/test/relay_attach_test.dart
+index f07a730..4eb63ee 100644
+--- a/packages/dsh_remote/test/relay_attach_test.dart
++++ b/packages/dsh_remote/test/relay_attach_test.dart
+@@ -56,7 +56,11 @@ void main() {
+     expect(await client.listSessions(), isEmpty);
+     final me = await clientId();
+     final link = server.links.values.single;
+-    expect(server.peers[me]!.capabilities, ['transport.relay', 'transport.relay.attach']);
++    expect(server.peers[me]!.capabilities, [
++      'transport.relay',
++      'transport.relay.attach',
++      relayBinaryCapability,
++    ]);
+     expect(server.relayAttaches, [
+       {
+         'connectionId': link.id,
+diff --git a/packages/dsh_remote/test/relay_binary_test.dart b/packages/dsh_remote/test/relay_binary_test.dart
+new file mode 100644
+index 0000000..4c00560
+--- /dev/null
++++ b/packages/dsh_remote/test/relay_binary_test.dart
+@@ -0,0 +1,184 @@
++// `transport.relay.bin.v1`: once the Server echoes the capability, relay
++// ciphertext travels as raw binary WebSocket frames (25-byte header, 1.0005×)
++// instead of base64 inside JSON (1.34×) — the saving lands on the phone ⇄
++// cloud leg, which is usually the tight one.
++import 'dart:async';
++import 'dart:convert';
++import 'dart:io';
++import 'dart:typed_data';
++
++import 'package:dsh_remote/dsh_remote.dart';
++import 'package:test/test.dart';
++
++const _connectionId = '018f2b9a-6f2b-7c4d-9a11-8b0f5c2d3e4f';
++
++String _frame(String type, Map<String, Object?> payload) => jsonEncode({
++  'v': 1,
++  'id': 'f-$type-${payload.hashCode}',
++  'type': type,
++  'timestamp': DateTime.now().millisecondsSinceEpoch,
++  'payload': payload,
++});
++
++Map<String, Object?> _ack(List<String> capabilities) => {
++  'protocol': 1,
++  'serverVersion': 'test',
++  'connectionSessionId': 'cs1',
++  'heartbeatIntervalMs': 25000,
++  'maxControlFrameBytes': 65536,
++  'maxRelayFrameBytes': 1024 * 1024,
++  'capabilities': capabilities,
++};
++
++void main() {
++  final servers = <HttpServer>[];
++  tearDown(() async {
++    for (final server in servers) {
++      await server.close(force: true);
++    }
++    servers.clear();
++  });
++
++  test('negotiated binary Relay frames replace the base64 text form', () async {
++    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
++    servers.add(server);
++    final textFrames = <Map<String, Object?>>[];
++    final binaryFrames = <Uint8List>[];
++    final connected = Completer<WebSocket>();
++
++    server.listen((request) async {
++      final ws = await WebSocketTransformer.upgrade(request);
++      connected.complete(ws);
++      ws.listen((raw) {
++        if (raw is! String) {
++          binaryFrames.add(raw is Uint8List ? raw : Uint8List.fromList(raw as List<int>));
++          return;
++        }
++        final frame = jsonDecode(raw) as Map<String, Object?>;
++        textFrames.add(frame);
++        switch (frame['type']) {
++          case 'hello':
++            ws.add(_frame('hello.ack', _ack(['transport.relay', relayBinaryCapability])));
++          case 'connect.request':
++            ws.add(_frame('connect.accepted', {'connectionId': _connectionId}));
++          case 'secure.handshake':
++            ws.add(
++              _frame('secure.handshake', {
++                'connectionId': _connectionId,
++                'targetDeviceId': 'phone',
++                'step': 2,
++                'data': 'AA',
++              }),
++            );
++          case 'ping':
++            ws.add(_frame('pong', {'nonce': frame['payload']}));
++        }
++      });
++    });
++
++    final transport = await RelayTransport.connect(
++      url: Uri.parse('ws://127.0.0.1:${server.port}/ws/v1/connect'),
++      deviceId: 'phone',
++      accessToken: 'token',
++      hostDeviceId: 'host',
++      timeout: const Duration(seconds: 5),
++    );
++    addTearDown(transport.close);
++
++    final handshake = Completer<void>();
++    final received = Completer<(Uint8List, int?)>();
++    transport.listen(
++      onData: (data, counter) {
++        if (!received.isCompleted) received.complete((data, counter));
++      },
++      onHandshake: (step, data) {
++        if (step == 2 && !handshake.isCompleted) handshake.complete();
++      },
++      onClosed: (reason) {
++        if (!received.isCompleted) received.completeError(StateError(reason.code));
++      },
++    );
++
++    await transport.sendHandshake(1, Uint8List.fromList([1, 2, 3]));
++    await handshake.future.timeout(const Duration(seconds: 5));
++
++    // Server → phone: the Server answers with a binary frame.
++    final inbound = Uint8List.fromList(List<int>.generate(4096, (index) => index % 251));
++    unawaited(
++      connected.future.then(
++        (ws) => ws.add(
++          encodeRelayBinaryFrame(connectionId: _connectionId, counter: 3, ciphertext: inbound),
++        ),
++      ),
++    );
++    final (data, counter) = await received.future.timeout(const Duration(seconds: 5));
++    expect(counter, 3);
++    expect(data, inbound);
++
++    // Phone → Server: ciphertext leaves as binary, not as base64 JSON.
++    final outbound = Uint8List.fromList([9, 8, 7, 6, 5]);
++    await transport.send(outbound, counter: 4);
++    await Future<void>.delayed(const Duration(milliseconds: 50));
++    expect(binaryFrames, hasLength(1));
++    final decoded = decodeRelayBinaryFrame(binaryFrames.single);
++    expect(decoded.connectionId, _connectionId);
++    expect(decoded.counter, 4);
++    expect(decoded.ciphertext, outbound);
++    expect(
++      binaryFrames.single.length,
++      relayBinaryHeaderBytes + outbound.length,
++      reason: 'a binary Relay frame carries the ciphertext verbatim',
++    );
++    expect(
++      textFrames.where((frame) => frame['type'] == 'relay'),
++      isEmpty,
++      reason: 'no base64 relay frame may follow the negotiated binary form',
++    );
++  });
++
++  test('a binary frame without negotiation is a protocol error', () async {
++    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
++    servers.add(server);
++    server.listen((request) async {
++      final ws = await WebSocketTransformer.upgrade(request);
++      ws.listen((raw) {
++        if (raw is! String) return;
++        final frame = jsonDecode(raw) as Map<String, Object?>;
++        switch (frame['type']) {
++          case 'hello':
++            ws.add(_frame('hello.ack', _ack(['transport.relay'])));
++          case 'connect.request':
++            ws.add(_frame('connect.accepted', {'connectionId': _connectionId}));
++            ws.add(
++              encodeRelayBinaryFrame(
++                connectionId: _connectionId,
++                counter: 0,
++                ciphertext: Uint8List.fromList([1]),
++              ),
++            );
++        }
++      });
++    });
++
++    final transport = await RelayTransport.connect(
++      url: Uri.parse('ws://127.0.0.1:${server.port}/ws/v1/connect'),
++      deviceId: 'phone',
++      accessToken: 'token',
++      hostDeviceId: 'host',
++      timeout: const Duration(seconds: 5),
++    );
++    addTearDown(transport.close);
++
++    final closed = Completer<RemoteTransportClosed>();
++    transport.listen(
++      onData: (_, _) {},
++      onHandshake: (_, _) {},
++      onClosed: (reason) {
++        if (!closed.isCompleted) closed.complete(reason);
++      },
++    );
++    final reason = await closed.future.timeout(const Duration(seconds: 5));
++    expect(reason.code, 'INVALID_MESSAGE');
++    expect(reason.retryable, isFalse);
++  });
++}
+diff --git a/packages/dsh_remote/test/webrtc_transport_test.dart b/packages/dsh_remote/test/webrtc_transport_test.dart
+index 39eee6f..a72dbf2 100644
+--- a/packages/dsh_remote/test/webrtc_transport_test.dart
++++ b/packages/dsh_remote/test/webrtc_transport_test.dart
+@@ -163,6 +163,7 @@ void main() {
+         'transport.turn',
+         'transport.relay',
+         'transport.relay.attach',
++        relayBinaryCapability,
+       ]);
+       final request = clientFrames().firstWhere((f) => f['type'] == 'connect.request');
+       expect((request['payload']! as Map)['preferredTransports'], ['lan', 'p2p', 'turn', 'relay']);
+@@ -648,7 +649,11 @@ void main() {
+       account.peerConnector = null;
+       final client = await connect();
+       expect(await client.listSessions(), isEmpty);
+-      expect(server.peers[await clientId()]!.capabilities, ['transport.relay', 'transport.relay.attach']);
++      expect(server.peers[await clientId()]!.capabilities, [
++        'transport.relay',
++        'transport.relay.attach',
++        relayBinaryCapability,
++      ]);
+       final request = clientFrames().firstWhere((f) => f['type'] == 'connect.request');
+       expect((request['payload']! as Map)['preferredTransports'], ['relay']);
+       expect(types(), ['connect.request', 'secure.handshake', ...types().skip(2)]);
