@@ -1,0 +1,51 @@
+diff --git a/dist/config.js b/dist/config.js
+index befa920c6a1b75e56381cf1223aa8038855a1967..14b45cb6a5345a40e1357b3c2ea4a478c249ed58 100644
+--- a/dist/config.js
++++ b/dist/config.js
+@@ -198,9 +198,10 @@ export function normalizeServerUrl(value) {
+     if (url.search !== '' || url.hash !== '') {
+         throw new TypeError('serverUrl must not contain query parameters or fragments');
+     }
+-    if (url.pathname !== '' && url.pathname !== '/') {
+-        throw new TypeError('serverUrl must be an origin without a path');
+-    }
+-    return url.origin;
++    // Patch (dsh-toolkit): 支持 nginx 等反向代理的子路径前缀（例如 /dshgo/）。
++    // 请求按 `${baseUrl}${path}` 拼接、WebSocket 用 baseUrl.pathname + '/ws/v1/connect'，
++    // 因此保留路径（只去掉末尾斜杠）即可工作，不再强制 origin。
++    const pathname = url.pathname.replace(/\/+$/, '');
++    return `${url.origin}${pathname}`;
+ }
+ //# sourceMappingURL=config.js.map
+\ No newline at end of file
+diff --git a/dist/index.js b/dist/index.js
+index 50a6ddd335b1a72342465dd41ff0a13d84e304fd..b5cf6f81cd7eb3ea0f074dd8aaee58ca98a4f4c8 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -84087,10 +84087,11 @@ function normalizeServerUrl(value) {
+   if (url2.search !== "" || url2.hash !== "") {
+     throw new TypeError("serverUrl must not contain query parameters or fragments");
+   }
+-  if (url2.pathname !== "" && url2.pathname !== "/") {
+-    throw new TypeError("serverUrl must be an origin without a path");
+-  }
+-  return url2.origin;
++  // Patch (dsh-toolkit): nginx 等反向代理常把服务挂在子路径下（例如 /dshgo/）。
++  // 请求都按 `${baseUrl}${path}` 拼接、WebSocket 用 baseUrl.pathname + "/ws/v1/connect"，
++  // 所以保留路径前缀（只去掉末尾斜杠）即可工作，不再强制 origin。
++  const pathname = url2.pathname.replace(/\/+$/, "");
++  return `${url2.origin}${pathname}`;
+ }
+ 
+ // packages/plugin/src/version.ts
+@@ -87601,7 +87602,9 @@ async function assertOwnedRemoteStorage(root2) {
+       const pairing = savedPairingSchema.parse(JSON.parse(await readFile3(join5(directory, "host-pairing.json"), "utf8")));
+       if (pairing.deviceId !== record11.deviceId || pairing.session.host.deviceId !== record11.deviceId || pairing.session.host.identityKey !== record11.publicKey || pairing.session.host.role !== "host") throw rejected("IDENTITY_INVALID");
+       const origin = new URL(pairing.serverUrl);
+-      if (!["http:", "https:"].includes(origin.protocol) || origin.origin !== pairing.serverUrl) throw rejected("IDENTITY_INVALID");
++      // Patch (dsh-toolkit): 允许 serverUrl 带子路径前缀（nginx 反向代理），
++      // 不再要求 serverUrl 恰好等于 origin；存储目录本来就按 origin 归并。
++      if (!["http:", "https:"].includes(origin.protocol)) throw rejected("IDENTITY_INVALID");
+       if (scope2 !== void 0 && createHash5("sha256").update(origin.origin).digest("hex").slice(0, 24) !== scope2) {
+         throw rejected("STORAGE_CONFLICT");
+       }

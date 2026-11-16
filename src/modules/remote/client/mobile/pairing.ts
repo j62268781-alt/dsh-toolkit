@@ -215,6 +215,69 @@ export function isAccountConflict(error) {
     || /cannot replace the current account/i.test(String(error?.message ?? ''))
 }
 
+/**
+ * 上游 `normalizeServerUrl` 只放行 https://，以及「私有网段/本机」的 http://。
+ * 这里照抄同一套判定，好在保存前就用中文说清楚为什么不行（否则用户看到的是上游英文 TypeError）。
+ */
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
+
+function isPrivateIpv6(hostname) {
+  const host = (hostname.startsWith('[') && hostname.endsWith(']') ? hostname.slice(1, -1) : hostname).toLowerCase()
+  if (!host.includes(':') || !/^[0-9a-f:]+$/.test(host)) return false
+  if (host === '::1') return true
+  // fc00::/7（唯一本地）与 fe80::/10（链路本地）
+  return /^f[cd][0-9a-f]{2}:/.test(host) || /^fe[89ab][0-9a-f]:/.test(host)
+}
+
+/** 只有回环、局域网、链路本地与 CGNAT/VPN 网段允许 http://。 */
+export function isPrivateNetworkHostname(hostname) {
+  if (LOCAL_HOSTNAMES.has(hostname)) return true
+  if (isPrivateIpv6(hostname)) return true
+  const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname)
+  if (match === null) return false
+  const octets = match.slice(1).map(Number)
+  if (octets.some((value) => value > 255)) return false
+  const [a, b] = octets
+  return a === 10
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || (a === 169 && b === 254)
+    || (a === 100 && b >= 64 && b <= 127)
+}
+
+/**
+ * 规整用户填的服务器地址。
+ *
+ * 两种真机反馈（2026-11-16）：
+ * 1. 「配对请求失败（internal）：serverUrl must be an origin without a path」——上游 settings 校验只收 origin；
+ * 2. 「为什么要限定域名，http://10.144.70.35/IYN9bNRe/dshgo，有的是转发的 nginx 的啊」——子路径前缀是真实用法。
+ *
+ * 上游请求按 `${baseUrl}${path}` 拼接、WebSocket 用 `baseUrl.pathname + '/ws/v1/connect'`，
+ * 本身是支持子路径的，只是 `normalizeServerUrl` 拦住了（本仓库用 pnpm patch 放开）。
+ * 这里保存前只做真正必要的规整：补协议、校验 http 只能走私有网段、丢弃查询/片段与末尾斜杠，
+ * **保留路径前缀**（`http://10.144.70.35/IYN9bNRe/dshgo` 原样保存）。
+ *
+ * 返回 `{ value }` 或 `{ error }`（`empty` / `invalid` / `scheme` / `credentials` / `http-private-only`）。
+ */
+export function normalizeServerUrlInput(raw) {
+  const text = String(raw ?? '').trim()
+  if (text === '') return { error: 'empty' }
+  // 只填了 `192.168.1.5:8080` 这种也接受：默认 https，内网再改成 http。
+  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `https://${text}`
+  let url
+  try {
+    url = new URL(candidate)
+  } catch {
+    return { error: 'invalid' }
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return { error: 'scheme' }
+  if (url.username !== '' || url.password !== '') return { error: 'credentials' }
+  if (url.protocol === 'http:' && !isPrivateNetworkHostname(url.hostname)) return { error: 'http-private-only' }
+  // 查询参数与片段没有意义（端点都拼在路径后）；路径前缀必须保留——nginx 反向代理常把服务挂在子路径下。
+  const pathname = url.pathname.replace(/\/+$/, '')
+  return { value: `${url.origin}${pathname}` }
+}
+
 function newRpcId() {
   const crypto = globalThis.crypto
   if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID()
@@ -602,8 +665,17 @@ export function createPairing() {
      * 它的响应里已经带着最新 settingsView（`applies: 'live'`），所以这里不再补一次 settings.get。
      */
     async setServer(serverUrl) {
+      // 先规整：内网部署常见「整条带路径的 URL」直接粘进来，上游只收 origin（见 normalizeServerUrlInput）。
+      const normalized = normalizeServerUrlInput(serverUrl)
+      if (normalized.error !== undefined) {
+        set({
+          error: { code: 'SERVER_URL_INVALID', message: normalized.error, retryable: false, conflict: false },
+          busy: false,
+        })
+        return false
+      }
       const saved = await run(async () => {
-        applySettings(await control('settings.server.set', { serverUrl }))
+        applySettings(await control('settings.server.set', { serverUrl: normalized.value }))
         // 换服务器后旧会话属于旧服务器，直接清空让用户重新生成。
         set({ view: undefined })
         // 走完运行时切换才回 true：面板据此决定是退出编辑态，还是留在原地让用户改地址重试。

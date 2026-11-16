@@ -344,6 +344,10 @@ window.__ModuleLoader__.load({
         pairRateLimited: "生成二维码太频繁了：这台电脑每分钟最多 5 次。请等一分钟左右再试。",
         pairCooldownWait: "还需等待 {s} 秒",
         pairSwitchBusy: "上一次服务器切换还没结束，请稍后再试。",
+        pairServerUrlHttp: "内网可以用 http://，但主机必须是本机或私有网段（127.0.0.1、192.168.x.x、10.x.x.x、172.16–31.x.x）；公网域名请用 https://。",
+        pairServerUrlScheme: "地址要以 http:// 或 https:// 开头。",
+        pairServerUrlInvalid: "地址格式不对，检查一下主机名和端口。",
+        pairServerUrlEmpty: "请先填写服务器地址。",
         pairServerBusy: "服务器上同时进行的配对会话过多，请稍后再试。",
         pairConflictHint: "这台设备在该服务器上还绑着旧账号。解绑后即可重新配对。",
         pairAuthRevoked: "这台电脑在配对服务器上的授权已被移除（可能是在手机上解除了绑定）。重新配对即可恢复。",
@@ -396,6 +400,10 @@ window.__ModuleLoader__.load({
         pairRateLimited: "Generated QR codes too often: this computer allows 5 per minute. Wait about a minute and try again.",
         pairCooldownWait: "Retry in {s}s",
         pairSwitchBusy: "A server switch is still in progress. Try again in a moment.",
+        pairServerUrlHttp: "Internal networks may use http://, but the host must be loopback or a private address (127.0.0.1, 192.168.x.x, 10.x.x.x, 172.16-31.x.x). Use https:// for public domains.",
+        pairServerUrlScheme: "The address must start with http:// or https://.",
+        pairServerUrlInvalid: "That address looks malformed; check the host and port.",
+        pairServerUrlEmpty: "Enter a server address first.",
         pairServerBusy: "Too many pairing sessions are active on the server. Try again later.",
         pairConflictHint: "This device is still bound to another account on that server. Unbind it, then pair again.",
         pairAuthRevoked: "This computer was removed from the pairing server (probably unbound on the phone). Pair again to restore it.",
@@ -1099,6 +1107,39 @@ window.__ModuleLoader__.load({
       const remoteCode = error?.details?.remoteCode;
       return remoteCode === "PAIRING_ACCOUNT_CONFLICT" || /cannot replace the current account/i.test(String(error?.message ?? ""));
     }
+    var LOCAL_HOSTNAMES = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+    function isPrivateIpv6(hostname) {
+      const host = (hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname).toLowerCase();
+      if (!host.includes(":") || !/^[0-9a-f:]+$/.test(host)) return false;
+      if (host === "::1") return true;
+      return /^f[cd][0-9a-f]{2}:/.test(host) || /^fe[89ab][0-9a-f]:/.test(host);
+    }
+    function isPrivateNetworkHostname(hostname) {
+      if (LOCAL_HOSTNAMES.has(hostname)) return true;
+      if (isPrivateIpv6(hostname)) return true;
+      const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
+      if (match === null) return false;
+      const octets = match.slice(1).map(Number);
+      if (octets.some((value) => value > 255)) return false;
+      const [a, b] = octets;
+      return a === 10 || a === 172 && b >= 16 && b <= 31 || a === 192 && b === 168 || a === 169 && b === 254 || a === 100 && b >= 64 && b <= 127;
+    }
+    function normalizeServerUrlInput(raw) {
+      const text = String(raw ?? "").trim();
+      if (text === "") return { error: "empty" };
+      const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `https://${text}`;
+      let url;
+      try {
+        url = new URL(candidate);
+      } catch {
+        return { error: "invalid" };
+      }
+      if (url.protocol !== "https:" && url.protocol !== "http:") return { error: "scheme" };
+      if (url.username !== "" || url.password !== "") return { error: "credentials" };
+      if (url.protocol === "http:" && !isPrivateNetworkHostname(url.hostname)) return { error: "http-private-only" };
+      const pathname = url.pathname.replace(/\/+$/, "");
+      return { value: `${url.origin}${pathname}` };
+    }
     function newRpcId() {
       const crypto = globalThis.crypto;
       if (typeof crypto?.randomUUID === "function") return crypto.randomUUID();
@@ -1397,8 +1438,16 @@ window.__ModuleLoader__.load({
          * 它的响应里已经带着最新 settingsView（`applies: 'live'`），所以这里不再补一次 settings.get。
          */
         async setServer(serverUrl) {
+          const normalized = normalizeServerUrlInput(serverUrl);
+          if (normalized.error !== void 0) {
+            set({
+              error: { code: "SERVER_URL_INVALID", message: normalized.error, retryable: false, conflict: false },
+              busy: false
+            });
+            return false;
+          }
           const saved = await run(async () => {
-            applySettings(await control("settings.server.set", { serverUrl }));
+            applySettings(await control("settings.server.set", { serverUrl: normalized.value }));
             set({ view: void 0 });
             return true;
           });
@@ -1425,6 +1474,18 @@ window.__ModuleLoader__.load({
     };
     function createPairingTab({ React: React2, t, useCountdown, QrCode, pairing }) {
       const { useEffect, useRef, useState, useSyncExternalStore } = React2;
+      const SERVER_URL_ERROR_KEYS = {
+        empty: "pairServerUrlEmpty",
+        invalid: "pairServerUrlInvalid",
+        scheme: "pairServerUrlScheme",
+        credentials: "pairServerUrlScheme",
+        "http-private-only": "pairServerUrlHttp"
+      };
+      function serverUrlRejection(message) {
+        const text = String(message ?? "");
+        if (/must use HTTPS/i.test(text)) return "pairServerUrlHttp";
+        return void 0;
+      }
       const h = React2.createElement;
       function ModeTag({ mode }) {
         if (typeof mode !== "string") return null;
@@ -1517,6 +1578,8 @@ window.__ModuleLoader__.load({
         if (error.code === "RATE_LIMITED") return t("pairRateLimited");
         if (error.code === "PAIRING_BUSY") return t("pairServerBusy");
         if (error.code === "SERVER_SWITCH_BUSY") return t("pairSwitchBusy");
+        if (error.code === "SERVER_URL_INVALID") return t(SERVER_URL_ERROR_KEYS[error.message] ?? "pairServerUrlInvalid");
+        if (serverUrlRejection(error.message) !== void 0) return t(serverUrlRejection(error.message));
         return t("pairError", { code: error.code, reason: error.message });
       }
       function PairingTab({ active }) {

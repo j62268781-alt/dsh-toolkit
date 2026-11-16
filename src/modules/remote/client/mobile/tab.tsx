@@ -33,6 +33,25 @@ const MODE_KEYS = {
  */
 export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
   const { useEffect, useRef, useState, useSyncExternalStore } = React
+
+  /** 服务器地址被拒的原因码（来自 normalizeServerUrlInput）→ 文案键。 */
+  const SERVER_URL_ERROR_KEYS = {
+    empty: 'pairServerUrlEmpty',
+    invalid: 'pairServerUrlInvalid',
+    scheme: 'pairServerUrlScheme',
+    credentials: 'pairServerUrlScheme',
+    'http-private-only': 'pairServerUrlHttp',
+  }
+
+  /**
+   * 宿主仍可能抛上游英文 TypeError（例如配置被手改成公网 http）：按 message 兜底成中文。
+   * 带路径的地址我们已经用 pnpm patch 放开，不会再出现 "origin without a path"。
+   */
+  function serverUrlRejection(message) {
+    const text = String(message ?? '')
+    if (/must use HTTPS/i.test(text)) return 'pairServerUrlHttp'
+    return undefined
+  }
   const h = React.createElement
 
   function ModeTag({ mode }) {
@@ -140,6 +159,10 @@ export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
     if (error.code === 'PAIRING_BUSY') return t('pairServerBusy')
     // 上一次服务器切换还没走完又点保存，上游直接拒绝（见 control-runtime.js 的 setServer）。
     if (error.code === 'SERVER_SWITCH_BUSY') return t('pairSwitchBusy')
+    // 地址不合法：`normalizeServerUrlInput` 在保存前拦下（message 是固定的 error 码），
+    // 或旧配置里已经存着带路径的地址、上游抛英文 TypeError——两种情况都翻成人话。
+    if (error.code === 'SERVER_URL_INVALID') return t(SERVER_URL_ERROR_KEYS[error.message] ?? 'pairServerUrlInvalid')
+    if (serverUrlRejection(error.message) !== undefined) return t(serverUrlRejection(error.message))
     return t('pairError', { code: error.code, reason: error.message })
   }
 

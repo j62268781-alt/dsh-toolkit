@@ -1021,6 +1021,43 @@ test('配对：限流 429 画成可操作提示，不再显示 (internal) 英文
   }
 })
 
+test('配对：nginx 子路径地址在面板里能保存，且原样交给宿主', async () => {
+  // 真机反馈（2026-11-16）：「http://10.144.70.35/IYN9bNRe/dshgo，有的是转发的 nginx 的啊」「你这样没办法保存了」。
+  // 独立性：normalizeServerUrlInput 保留路径 → settings.server.set 收到带子路径的地址 → 面板退出编辑态。
+  const subpath = 'http://10.144.70.35/IYN9bNRe/dshgo'
+  const panel = await mount({
+    'settings.get': { config: { serverUrl: SERVER } },
+    'host.pairing.status': null,
+    'settings.server.set': { config: { serverUrl: subpath } },
+  })
+  try {
+    const popover = panel.popover()
+    const edit = [...popover.querySelectorAll('button')].find((node) => node.textContent === 'pairServerEdit')
+    assert.ok(edit !== undefined, '未绑定态要能看到「修改」')
+    await panel.click(edit)
+    await panel.flush()
+
+    const input = popover.querySelector('.wc-field__input')
+    assert.ok(input !== null, '编辑态要有地址输入框')
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(panel.dom.window.HTMLInputElement.prototype, 'value').set
+      setter.call(input, 'http://10.144.70.35/IYN9bNRe/dshgo/')
+      input.dispatchEvent(new panel.dom.window.Event('input', { bubbles: true }))
+    })
+    const save = [...popover.querySelectorAll('button')].find((node) => node.textContent === 'pairServerSave')
+    assert.ok(save !== undefined, '编辑态要有「保存」')
+    await panel.click(save)
+    await panel.flush()
+
+    const call = panel.control.calls.find((entry) => entry.endpoint === 'settings.server.set')
+    assert.ok(call !== undefined, '应当调用 settings.server.set')
+    assert.equal(call.body.payload.serverUrl, subpath, '路径前缀必须保留')
+    assert.equal(popover.querySelector('.wc-field__input'), null, '保存成功后退出编辑态')
+  } finally {
+    await panel.unmount()
+  }
+})
+
 test('配对：二维码有效期内连点「刷新」不再发起新的配对会话', async () => {
   // 服务器对建会话限流 5 次/分钟/IP，连点会把配额烧光并换成 429 报错。
   // 有效期内「刷新」应当复用当前会话（幂等），只有临期/结束后才真的重建。
