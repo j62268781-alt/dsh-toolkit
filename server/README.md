@@ -4,7 +4,7 @@
 
 A single-account, single-process DSH Remote Server: device registration and credential refresh, the Control channel, WebRTC (LAN / P2P) coordination, end-to-end encrypted Relay, and the **device-pairing v1** QR pairing flow added in this directory.
 
-> **Provenance**: this directory is vendored from [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote) (MIT, v0.6.5) with device-pairing v1 added (`src/pairing.ts`). The protocol layer is synced to upstream v0.6.5: `src/protocol/{binary-upload,lan-upload}.ts` (`workspace.upload.binary.v1`, `workspace.upload.lan.v1`), the async compaction contract (`harness.remote.compaction.submit|status|cancel`, `remote.compaction.async.v1`) and the `remote.session.events.v1` capability. The only local deviations are the two relaxed schemas for `deviceId` / `platform` (see "Differences from upstream"). Upstream ships as a pnpm workspace; here it is a standalone npm package: the protocol sources live in `src/protocol/`, the only runtime dependencies are `ws` and `zod`, and the React admin UI (`web/`) and its build step were removed. See [LICENSE](LICENSE).
+> **Provenance**: this directory is vendored from [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote) (MIT, v0.6.5) with device-pairing v1 added (`src/pairing.ts`). The protocol layer is synced to upstream v0.6.5: `src/protocol/{binary-upload,lan-upload}.ts` (`workspace.upload.binary.v1`, `workspace.upload.lan.v1`), the async compaction contract (`harness.remote.compaction.submit|status|cancel`, `remote.compaction.async.v1`) and the `remote.session.events.v1` capability. The only local deviations are the two relaxed schemas for `deviceId` / `platform` (see "Differences from upstream"). Upstream ships as a pnpm workspace; here it is a standalone npm package: the protocol sources live in `src/protocol/`, the only runtime dependencies are `ws` and `zod`. The upstream React admin UI is vendored into `web/` and bundled into `dist/public` by `npm run build` (see "Web admin UI"). See [LICENSE](LICENSE).
 
 ## What it is for
 
@@ -25,7 +25,7 @@ cd server
 npm install && npm run build && npm start
 ```
 
-`npm run dev` runs the same entry point through `tsx watch` without compiling.
+`npm run build` does two things: `tsc` compiles the server into `dist/`, and `vite build` bundles the admin UI into `dist/public/`. `npm run dev` runs the same entry point through `tsx watch` without compiling (run a build once so the UI exists).
 
 Minimal configuration (everything else is optional):
 
@@ -35,7 +35,24 @@ export DSH_SERVER_PASSWORD='replace-with-a-long-random-password'   # at least 12
 npm start
 ```
 
-Open <http://127.0.0.1:8080/healthz> for `{"status":"ok"}`; the human-readable pairing guide lives at <http://127.0.0.1:8080/pair>. The bundled admin UI is gone, so `GET /` answers 404 `METHOD_NOT_FOUND` — the static/SPA fallback still works, so dropping a build into `dist/public/` restores it.
+After a build, `GET /` serves the admin UI (`/app/login` to sign in, `/app/remote` for the device list), and the human-readable pairing guide lives at `/pair`. <http://127.0.0.1:8080/healthz> answers `{"status":"ok"}` for liveness checks. Web assets are read into memory at startup, client routes fall back to `index.html`, and `/assets/*` is served with a one-year `immutable` cache.
+
+## Web admin UI
+
+The admin UI is the upstream `web/` app (React + antd 5 + Vite), vendored unchanged apart from the pairing copy; styling reuses the official site front end (provenance in [`web/UPSTREAM.md`](web/UPSTREAM.md)). The Server hosts the build directly, so no separate static site is needed:
+
+| Route | Content |
+| --- | --- |
+| `/` | Landing page: product intro, "开始使用" entry, light/dark toggle. |
+| `/app/login` | Account + password login (`DSH_SERVER_ACCOUNT` / `DSH_SERVER_PASSWORD`), 8-hour HttpOnly cookie session. |
+| `/app/remote` | Device list: **every** device registered on this Server (name, online state, role, platform, plugin version, Harness version) with inline rename, refresh and sign-out. |
+
+Notes:
+
+- The login credential is the one global account; there are no separate users, and the page can list and rename every device, so only expose it on a trusted network or behind access control. Devices still unbind themselves with `DELETE /api/v1/devices/self`; like upstream there is no "kick" button.
+- Rename calls `POST /api/v1/devices/{id}/name`; the desktop panel and the phone pick the new name up on their next refresh.
+- `DSH_SERVER_WEB_ROOT` points at a different build directory if you want to ship your own; when it is missing every page answers 404 `METHOD_NOT_FOUND` while the API keeps working.
+- QR pairing and the device list are independent: phone and desktop each get a device token from pairing, and the admin UI is only for looking at and renaming devices.
 
 ## Environment variables
 
@@ -47,6 +64,7 @@ Open <http://127.0.0.1:8080/healthz> for `{"status":"ok"}`; the human-readable p
 | `DSH_SERVER_HOST` | `127.0.0.1` | Listen address. Loopback by default; set `0.0.0.0` inside a container or when exposing the port. |
 | `DSH_SERVER_PORT` | `8080` | Listen port. |
 | `DSH_SERVER_DATA_FILE` | `./data/state.json` | State file (devices, token digests, account verifier), written 0600 in a 0700 directory. |
+| `DSH_SERVER_WEB_ROOT` | `dist/public` | Static directory for the admin UI; only needed when serving a different build. A missing directory answers 404 `METHOD_NOT_FOUND` and leaves the API untouched. |
 | `DSH_SERVER_TRUSTED_PROXY_IPS` | empty | Comma-separated trusted reverse-proxy IP literals. When set, every request must carry exactly one `X-Forwarded-For` header holding a single IP literal, else 400. When empty the header is ignored and limits use the socket address. Bare IPv4/IPv6 only: ports, CIDR ranges and hostnames fail startup. |
 | `DSH_SERVER_HELLO_TIMEOUT_MS` | `5000` | WebSocket hello deadline (1000-60000). Raise it for cellular cold starts. |
 | `DSH_SERVER_HEARTBEAT_INTERVAL_MS` | `25000` | Heartbeat interval (5000-120000). Doubles as NAT/LB keepalive. |
@@ -168,7 +186,7 @@ npm run build
 npm test          # vitest run — real HTTP servers on port 0, fully offline
 ```
 
-Coverage: account/device authorization and credential rotation recovery, Control frame validation and Relay routing, WebRTC signaling, reverse-proxy rate limiting, hello timeout and gateway state machine, log redaction, configuration normalization, and the full device-pairing v1 flow (create → claim → wrong code → correct confirm → both credential sets usable, idempotent replay, expiry, proof failures, oversized bodies, invalid identityKeys, resolve 404).
+Coverage: account/device authorization and credential rotation recovery, Control frame validation and Relay routing, WebRTC signaling, reverse-proxy rate limiting, hello timeout and gateway state machine, log redaction, configuration normalization, admin UI hosting (SPA fallback, MIME types, immutable caching, 404 without a build), and the full device-pairing v1 flow (create → claim → wrong code → correct confirm → both credential sets usable, idempotent replay, expiry, proof failures, oversized bodies, invalid identityKeys, resolve 404).
 
 `tests/pairing-compat.test.ts` additionally uses the upstream `fixtures/pairing/v1/proof.json` (generated with Python `cryptography`, verified independently with NSec) as external ground truth: it proves the proof algorithm byte for byte, replays the published host/mobile/confirm proofs against the real endpoints, and parses every response with zod schemas copied verbatim from the official `pairing-contract.ts` (all `.strict()`, so no extra fields).
 
@@ -183,7 +201,7 @@ Known deviations and risks:
 - **Device registration precedes token issuance**: `confirm` re-runs the store's device checks (256-device cap, immutable identity, revoked devices cannot return). An invalid descriptor therefore ends the session as `state=failed` with `failureReason=PAIRING_DEVICE_CONFLICT` instead of issuing partial credentials.
 - **`dsh-Go`**: this checkout of upstream contains no Dart client (`packages/dsh_remote` is not implemented yet), so the phone side was validated against the protocol document and the desktop client's parsing logic only — no on-device integration test.
 
-Not done: the upstream `web/` admin UI is removed (`GET /` answers 404 `METHOD_NOT_FOUND`; only `/pair` serves the script-free guide page, so there is no SPA), and upstream test scenarios that need the client stack (Noise, WebRTC, the Plugin HTTP client) are not ported — equivalent behaviour is asserted at the raw HTTP/WebSocket level instead.
+Not done: upstream test scenarios that need the client stack (Noise, WebRTC, the Plugin HTTP client) are not ported — equivalent behaviour is asserted at the raw HTTP/WebSocket level instead. The admin UI is covered by build/hosting checks and a manual click-through, not by front-end unit tests.
 
 ## Layout
 
@@ -199,7 +217,8 @@ server/
 │   ├── ice.ts         # STUN configuration (TURN code kept, not advertised by default)
 │   ├── logger.ts      # single-line JSON logs with redaction
 │   └── protocol/      # vendored from upstream packages/protocol
-├── tests/             # vitest: server / pairing / pairing-compat / refresh-recovery
+├── web/               # vendored upstream React admin UI (vite builds it into dist/public)
+├── tests/             # vitest: server / web / pairing / pairing-compat / refresh-recovery
 ├── Dockerfile, compose.yaml, .env.example
 ├── deploy/            # systemd unit, env file, Caddy/Nginx, DEPLOY.zh.md
 ├── LICENSE            # upstream MIT

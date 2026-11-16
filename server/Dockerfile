@@ -8,6 +8,8 @@ RUN npm ci --ignore-scripts
 
 COPY tsconfig.json ./
 COPY src ./src
+# Sources for the management UI; `npm run build` also runs `vite build` into dist/public.
+COPY web ./web
 RUN npm run build && npm prune --omit=dev
 
 FROM node:22-bookworm-slim AS runtime

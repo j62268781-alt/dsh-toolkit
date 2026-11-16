@@ -52,6 +52,8 @@ export interface Config {
   pairingRateLimits?: { create?: number; resolve?: number; request?: number; discovery?: number }
   /** Test hook: pin the pairing session identity (see PairingServiceOptions.keys). */
   pairingSessionKeys?: () => PairingSessionKeys
+  /** Static web root (the built management UI); defaults to `dist/public` next to the compiled server. */
+  webRoot?: string
 }
 
 /**
@@ -107,17 +109,34 @@ export {
 export type { GatewayTimingOptions, NormalizedGatewayOptions } from './config.js'
 
 const loginSchema = z.object({ email: z.string().min(1).max(254), password: z.string().min(1).max(1024) }).strict()
-const publicDir = fileURLToPath(new URL('../dist/public/', import.meta.url))
-function readAssets(): Map<string, Buffer> {
-  if (!existsSync(publicDir)) return new Map()
+const defaultWebRoot = fileURLToPath(new URL('../dist/public/', import.meta.url))
+
+/** Web assets are small and immutable per build, so they are read once at startup. */
+function readAssets(root: string): Map<string, Buffer> {
+  if (!existsSync(root)) return new Map()
   const assets = new Map<string, Buffer>()
-  for (const entry of readdirSync(publicDir, { recursive: true, withFileTypes: true })) {
+  for (const entry of readdirSync(root, { recursive: true, withFileTypes: true })) {
     if (!entry.isFile()) continue
     const file = join(entry.parentPath, entry.name)
-    const path = file.slice(publicDir.length).replaceAll('\\', '/')
+    const path = file.slice(root.length).replace(/^[\\/]+/, '').replaceAll('\\', '/')
     assets.set(path, readFileSync(file))
   }
   return assets
+}
+
+const CONTENT_TYPES: Record<string, string> = {
+  html: 'text/html; charset=utf-8',
+  js: 'text/javascript; charset=utf-8',
+  mjs: 'text/javascript; charset=utf-8',
+  css: 'text/css; charset=utf-8',
+  json: 'application/json; charset=utf-8',
+  map: 'application/json; charset=utf-8',
+  txt: 'text/plain; charset=utf-8',
+  png: 'image/png',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  ico: 'image/x-icon',
+  woff2: 'font/woff2',
 }
 async function body(req: IncomingMessage): Promise<unknown> {
   if (!req.headers['content-type']?.toLowerCase().startsWith('application/json')) throw new ApiError('INVALID_MESSAGE', 415)
@@ -193,7 +212,7 @@ export function createRemoteServer(config: Config) {
   const trustedProxyIps = normalizeTrustedProxyIps(config.trustedProxyIps)
   const ice = config.ice ?? parseIceConfig({})
   const store = new Store(config.dataFile, config.account.trim(), config.password)
-  const assets = readAssets()
+  const assets = readAssets(config.webRoot ?? defaultWebRoot)
   const sessions = new Map<string, number>()
   const limits = new Map<string, { count: number; until: number }>()
   function rate(key: string, max: number) {
@@ -276,8 +295,10 @@ export function createRemoteServer(config: Config) {
       const name = staticAsset ? path.slice(1) : 'index.html'
       const asset = assets.get(name)
       if (!asset) throw new ApiError('METHOD_NOT_FOUND', 404)
-      const contentType = name.endsWith('.js') ? 'text/javascript; charset=utf-8' : name.endsWith('.css') ? 'text/css; charset=utf-8' : name.endsWith('.png') ? 'image/png' : name.endsWith('.webp') ? 'image/webp' : 'text/html; charset=utf-8'
-      if (!staticAsset) res.setHeader('Cache-Control', 'no-cache')
+      const contentType = CONTENT_TYPES[name.slice(name.lastIndexOf('.') + 1).toLowerCase()] ?? 'application/octet-stream'
+      // Vite fingerprints everything under /assets, so it is safe to cache forever;
+      // index.html must stay revalidated or a rebuild would keep serving the old bundle.
+      res.setHeader('Cache-Control', staticAsset && path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache')
       res.setHeader('Content-Type', contentType)
       res.end(asset); return
     }

@@ -4,6 +4,8 @@
 !tsconfig.json
 !src/
 !src/**
+!web/
+!web/**
 !LICENSE
 **/node_modules
 **/dist

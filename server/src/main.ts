@@ -37,6 +37,7 @@ const app = createRemoteServer({
   slowConsumerBytes,
   logLevel,
   transports: parseTransports(process.env.DSH_SERVER_TRANSPORTS),
+  webRoot: process.env.DSH_SERVER_WEB_ROOT ? resolve(process.env.DSH_SERVER_WEB_ROOT) : undefined,
   ice: parseIceConfig(process.env),
 })
 app.server.listen(port, process.env.DSH_SERVER_HOST ?? '127.0.0.1', () => console.info(`Remote Server listening on port ${port}`))

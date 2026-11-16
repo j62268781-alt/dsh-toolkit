@@ -4,7 +4,7 @@
 
 单账号、单进程的 DSH Remote Server：设备注册与凭据刷新、Control 控制通道、WebRTC（LAN / P2P）协商、端到端加密 Relay，以及本目录新增的 **device-pairing v1** 扫码配对。
 
-> **来源声明**：本目录 vendored 自 [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote)（MIT，v0.6.5），并新增 `device-pairing v1`（`src/pairing.ts`）。协议层已同步到上游 v0.6.5：`src/protocol/{binary-upload,lan-upload}.ts`（`workspace.upload.binary.v1`、`workspace.upload.lan.v1`）、异步压缩契约（`harness.remote.compaction.submit|status|cancel`、`remote.compaction.async.v1`）与 `remote.session.events.v1` capability；本目录独有改动只有 `deviceId` / `platform` 两处 schema 放宽（见下文「与上游的差异」）。上游为 pnpm workspace 布局，这里改造为独立 npm 包：协议源码 vendored 到 `src/protocol/`，只依赖 `ws` 与 `zod`；上游的 React 管理界面（`web/`）与其构建步骤已移除。许可证见 [LICENSE](LICENSE)。
+> **来源声明**：本目录 vendored 自 [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote)（MIT，v0.6.5），并新增 `device-pairing v1`（`src/pairing.ts`）。协议层已同步到上游 v0.6.5：`src/protocol/{binary-upload,lan-upload}.ts`（`workspace.upload.binary.v1`、`workspace.upload.lan.v1`）、异步压缩契约（`harness.remote.compaction.submit|status|cancel`、`remote.compaction.async.v1`）与 `remote.session.events.v1` capability；本目录独有改动只有 `deviceId` / `platform` 两处 schema 放宽（见下文「与上游的差异」）。上游为 pnpm workspace 布局，这里改造为独立 npm 包：协议源码 vendored 到 `src/protocol/`，运行时只依赖 `ws` 与 `zod`；上游的 React 管理界面也一并 vendored 到 `web/`，由 `npm run build` 打包进 `dist/public`（见下文「Web 管理页」）。许可证见 [LICENSE](LICENSE)。
 
 ## 用途
 
@@ -25,7 +25,7 @@ cd server
 npm install && npm run build && npm start
 ```
 
-`npm start` 之前的 `npm run build` 会把 TypeScript 编译到 `dist/`；开发时可用 `npm run dev`（`tsx watch`，免编译）。
+`npm run build` 做两件事：`tsc` 把服务端编译到 `dist/`，`vite build` 把管理页打包到 `dist/public/`；开发时可用 `npm run dev`（`tsx watch`，免编译，但管理页需要先跑过一次 `npm run build` 或 `vite build`）。
 
 最小配置（其余变量可留空）：
 
@@ -35,7 +35,24 @@ export DSH_SERVER_PASSWORD='replace-with-a-long-random-password'   # 至少 12 �
 npm start
 ```
 
-管理界面已移除，`GET /` 会返回 404 `METHOD_NOT_FOUND`（静态资源与 SPA 回退逻辑保留：把产物放进 `dist/public/` 就会自动生效）；验证启动用 `curl http://127.0.0.1:8080/healthz`（返回 `{"status":"ok"}`），人类可读的配对说明在 <http://127.0.0.1:8080/pair>。
+构建完成后 `GET /` 就是管理页（`/app/login` 登录、`/app/remote` 设备列表），人类可读的配对说明在 `/pair`；只想验证存活性用 `curl http://127.0.0.1:8080/healthz`（返回 `{"status":"ok"}`）。静态资源在启动时一次性读进内存，SPA 路由（如 `/app/remote` 刷新）由 `index.html` 回退，`/assets/*` 带一年 `immutable` 缓存。
+
+## Web 管理页
+
+管理页是上游 `web/`（React + antd 5 + Vite）的原样 vendored 版本，样式复用官方站点前端（来源见 [`web/UPSTREAM.md`](web/UPSTREAM.md)）。构建后由本服务直接托管，不需要额外的静态站点：
+
+| 路由 | 内容 |
+| --- | --- |
+| `/` | 落地页：产品介绍、「开始使用」入口、深浅色主题切换（入口文案已改为扫码配对流程）。 |
+| `/app/login` | 账号密码登录（`DSH_SERVER_ACCOUNT` / `DSH_SERVER_PASSWORD`），HttpOnly Cookie 会话 8 小时。 |
+| `/app/remote` | 设备列表：该服务器上**全部**已注册设备（名称、在线状态、角色、系统、插件版本、Harness 版本），支持行内改名、刷新、退出登录。 |
+
+要点：
+
+- 登录凭据就是那套**全局**账号密码，没有多账号；页面上能列出并改名所有设备，所以只应在内网或加访问控制后暴露。设备主动解绑走 `DELETE /api/v1/devices/self`（页面上没有「踢下线」入口，与上游一致）。
+- 改名调 `POST /api/v1/devices/{id}/name`，改名后对应设备的桌面面板/手机端会在下次刷新时显示新名字。
+- 想换一份构建产物（例如自己改了配色）用 `DSH_SERVER_WEB_ROOT` 指向别的目录即可；目录缺失时所有页面返回 404 `METHOD_NOT_FOUND`，API 不受影响。
+- 扫码配对与「设备列表」互不依赖：手机与桌面各自通过配对拿 device token，管理页只用来查看与改名。
 
 ## 环境变量
 
@@ -47,6 +64,7 @@ npm start
 | `DSH_SERVER_HOST` | `127.0.0.1` | 监听地址。默认只听本机；放进容器/需要对外时设为 `0.0.0.0`。 |
 | `DSH_SERVER_PORT` | `8080` | 监听端口。 |
 | `DSH_SERVER_DATA_FILE` | `./data/state.json` | 状态文件路径（设备、token 摘要、账号校验值），权限 0600，目录 0700。 |
+| `DSH_SERVER_WEB_ROOT` | `dist/public` | 管理页静态目录；只有想换一份构建产物时才需要设置。目录不存在时页面返回 404 `METHOD_NOT_FOUND`，API 不受影响。 |
 | `DSH_SERVER_TRUSTED_PROXY_IPS` | 空 | 逗号分隔的可信反向代理 IP 字面量。非空时请求必须带**恰好一个** `X-Forwarded-For`（单个 IP 字面量），否则 400；留空则一律忽略该头、按 socket 地址限流。只接受裸 IPv4/IPv6，端口、CIDR、域名会让启动失败。 |
 | `DSH_SERVER_HELLO_TIMEOUT_MS` | `5000` | WebSocket hello 握手超时（1000-60000）。手机弱网冷启动要调大。 |
 | `DSH_SERVER_HEARTBEAT_INTERVAL_MS` | `25000` | 心跳间隔（5000-120000），同时兼任 NAT/负载均衡保活。 |
@@ -170,7 +188,7 @@ npm run build
 npm test          # vitest run，真实起 HTTP server（端口 0），全程离线
 ```
 
-覆盖：账号/设备授权与凭据轮换恢复、Control 帧校验与 Relay 路由、WebRTC 信令、反向代理限流、hello 超时与状态机、日志脱敏、配置归一化，以及 device-pairing v1 全流程（创建 → 领取 → 错误验证码 → 正确确认 → 双端 credentials 可用、幂等重放、过期、proof 失败、超大请求体、非法 identityKey、resolve 404）。
+覆盖：账号/设备授权与凭据轮换恢复、Control 帧校验与 Relay 路由、WebRTC 信令、反向代理限流、hello 超时与状态机、日志脱敏、配置归一化、管理页静态托管（SPA 回退、MIME、不可变缓存、无构建产物时的 404），以及 device-pairing v1 全流程（创建 → 领取 → 错误验证码 → 正确确认 → 双端 credentials 可用、幂等重放、过期、proof 失败、超大请求体、非法 identityKey、resolve 404）。
 
 此外 `tests/pairing-compat.test.ts` 用上游 `fixtures/pairing/v1/proof.json`（Python `cryptography` 生成、NSec 独立验证）作为外部基准，校验 proof 算法逐字节一致，并把官方 fixture 的 host/mobile/confirm proof 直接打到本服务的真实端点上；同一文件里的 zod schema 逐字复制自官方 `pairing-contract.ts`（全部 `.strict()`），因此也验证了响应字段集不多不少。
 
@@ -190,7 +208,7 @@ npm test          # vitest run，真实起 HTTP server（端口 0），全程离
 - **设备注册前置校验**：`confirm` 时设备会再走一遍 store 的设备校验（256 台上限、identity 不可变更、已撤销不可复用）。若官方客户端送来非法描述，会话会以 `state=failed` + `failureReason=PAIRING_DEVICE_CONFLICT` 结束，而不是签发半个凭据。
 - **扫码端 `dsh-Go`**：本机上游 checkout 里没有 Dart 客户端（`packages/dsh_remote` 尚未实现），手机侧只按协议文档与桌面端解析逻辑验证，未做真机联调。
 
-未完成项：上游 `web/` 管理界面已移除（`GET /` 返回 404 `METHOD_NOT_FOUND`，只有 `/pair` 是无脚本的指引页，因此没有 SPA）；上游依赖 client-stack（Noise / WebRTC / Plugin HTTP 客户端）的测试场景未移植，等价行为用原始 HTTP/WebSocket 断言覆盖。
+未完成项：上游依赖 client-stack（Noise / WebRTC / Plugin HTTP 客户端）的测试场景未移植，等价行为用原始 HTTP/WebSocket 断言覆盖；管理页只验证了构建与托管（页面在真实浏览器里点通），没有前端单测。
 
 ## 目录结构
 
@@ -206,7 +224,8 @@ server/
 │   ├── ice.ts         # STUN 配置（TURN 代码保留，默认不宣告）
 │   ├── logger.ts      # 单行 JSON 日志 + 脱敏
 │   └── protocol/      # vendored 自上游 packages/protocol
-├── tests/             # vitest：server / pairing / pairing-compat / refresh-recovery
+├── web/               # vendored 上游 React 管理页（vite 构建到 dist/public）
+├── tests/             # vitest：server / web / pairing / pairing-compat / refresh-recovery
 ├── Dockerfile, compose.yaml, .env.example
 ├── deploy/            # systemd 单元、env 文件、Caddy/Nginx、DEPLOY.zh.md
 ├── LICENSE            # 上游 MIT
