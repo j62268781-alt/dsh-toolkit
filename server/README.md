@@ -206,7 +206,8 @@ byte 25..     ciphertext bytes (opaque Noise fragment; the Server never decrypts
 - Each direction is negotiated per connection: if one side only speaks the text form, the Server transcodes in between, so the two endpoints never have to upgrade together;
 - A connection that did not advertise the capability and sends binary frames gets `INVALID_MESSAGE` (a protocol violation, not a fallback);
 - Binary and text frames share the same per-second frame/byte window, so rate limiting is unchanged;
-- Both directions benefit, but only towards peers that advertise it; the official desktop Host does not, so the practical saving sits on the phone ⇄ cloud leg, which is usually the tight one.
+- The saving applies per hop: the Server switches to binary only on the hop towards a peer that advertised the capability. Desktop → phone thus saves on the downlink (the cloud egress, which also carries browser/image/file downloads); phone → desktop saves only on the phone's uplink, because the hop towards the official desktop Host stays text (that Host does not advertise the capability).
+- To save the desktop hop too, patch `ds-harness-remote` (the Host npm dependency) the same way: it encodes and decodes relay frames around `toBase64Url(data)` / `fromBase64Url(payload.ciphertext)` in `dist/index.js`.
 
 ## Layout
 
