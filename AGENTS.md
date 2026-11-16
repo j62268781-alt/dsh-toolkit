@@ -62,12 +62,12 @@ esbuild 会把 `./x.js` 解析到 `x.ts`、`./x.jsx` 到 `x.tsx`；node:test 侧
 | client | `tsconfig.client.json` | `pnpm typecheck:client` | `.ts/.tsx` 走 `strict:false` + DOM lib，只要 0 诊断 |
 | emit | `tsconfig.build.json` | `pnpm typecheck:modules` | `scripts/build-host.mjs` 的 emit 程序 |
 
-**为什么 strict 不能按目录白名单豁免**：`src/index.ts` import 了十个模块的 host 插件，`src/host/config.ts`
-又 import 了八个模块的 `Config`。tsc 的 `include` 只决定入口，被 import 的文件一律进程序 —— 「只 include
+**为什么 strict 不能按目录白名单豁免**：`src/index.ts` import 了十二个模块的 host 插件，`src/host/config.ts`
+又 import 了十个模块的 `Config`。tsc 的 `include` 只决定入口，被 import 的文件一律进程序 —— 「只 include
 已毕业的模块」等于没有限制。所以 strict 覆盖 `src/index.ts` + `src/host/**/*.ts` + `src/modules/*/host/**/*.ts`。
 
 - **client 侧走 `tsconfig.client.json`**：`lib` 加了 DOM，`types` 加了 `react`，`jsx: "react-jsx"`（只为类型检查；
-  真正 emit 仍是 esbuild 的 `__dshReact.createElement` 工厂）。它**故意不开 strict**：十个模块的 UI 从来没被
+  真正 emit 仍是 esbuild 的 `__dshReact.createElement` 工厂）。它**故意不开 strict**：十二个模块的 UI 从来没被
   类型检查过，先立「能跑通的门」，再谈收紧；不开 strict 不代表可以乱写 `any`。
 - client 侧的运行期全局（`__CLIENT_CSS__`）与资源模块（`*.css` 的 text loader）声明在
   `src/client/env.d.ts`、`src/client/assets.d.ts`；新增同类全局必须补在那里，别在每个文件里 `declare`。
@@ -79,7 +79,7 @@ esbuild 会把 `./x.js` 解析到 `x.ts`、`./x.jsx` 到 `x.tsx`；node:test 侧
 
 | 命令 | 作用 |
 | --- | --- |
-| `pnpm build` | 构建 Host、Client 与十个独立模块包 |
+| `pnpm build` | 构建 Host、Client 与十二个独立模块包 |
 | `pnpm build:check` | 只校验产物是否最新（不写文件） |
 | `pnpm typecheck` / `pnpm typecheck:modules` | strict / loose 两档 tsc |
 | `pnpm typecheck:client` | client 侧 tsc（`tsconfig.client.json`，见 §2.3） |
@@ -96,12 +96,12 @@ esbuild 会把 `./x.js` 解析到 `x.ts`、`./x.jsx` 到 `x.tsx`；node:test 侧
 
 ```
 src/modules/<module>/{host,client}/  ← 唯一源码位置（boot theme archived browser judgment
-                                       mobile skills-mcp notification pet remote）
+                                       mobile skills-mcp notification pet hooks remote git）
 src/host/                            ← 跨模块 host 公共层
 src/client/                          ← 跨模块 client 公共层（含 ui/components）
 packages/<module>/                   ← 每个模块的独立包（index.js + package.json + lib/）
 lib/                                 ← 聚合包的构建产物
-cordis.patch.yml                     ← 根补丁：insert 列表，插入十个模块 id
+cordis.patch.yml                     ← 根补丁：insert 列表，插入十二个模块 id
 scripts/ tests/ docs/ .cache(gitignored)
 ```
 
@@ -216,7 +216,7 @@ for (const surface of SURFACES) ctx.effect(() => surface.install(ctx, host), `ds
 | `paths.ts` | `PLUGIN_API_ROOT = '/api/plugins/toolkit'` + `pluginApiPath(module)`；**路由前缀的唯一来源**（无 Node 依赖，client 也会求值） |
 | `dsh-home.ts` | `dshHome(env = process.env, home = homedir())`；**`$DSH_HOME` 的唯一解析点**（`DSH_HOME` 非空即用、两端裁空白，否则 `~/.dsh`；每次调用重读环境）。带 `node:os`/`node:path`，只能 host 用 |
 | `http.ts` | `readBody`（按**字节**限流）、`readCharBody`（按**解码字符**限流，超限静默 destroy）、`sendJson` |
-| `config.ts` | 根 Config 聚合（十个模块的 `Config` 拼成宿主配置表单） |
+| `config.ts` | 根 Config 聚合（十二个模块的 `Config` 拼成宿主配置表单） |
 | `serial.ts` / `singleflight.ts` / `operation.ts` | 队列、去重、超时与取消 |
 | `process.ts` / `executable.ts` | `runProcess`（deadline、输出上限）；`findExecutableOnPath`（只认原生映像）/ `findCommandOnPath`（Windows 连 `.cmd`/`.bat` 一起认）/ `resolveSpawnTarget`（把 shim 翻成 `cmd.exe /d /s /c`） |
 | `plugins.ts` / `migration.ts` / `time.ts` | 插件配置助手、补丁迁移、时钟 |
