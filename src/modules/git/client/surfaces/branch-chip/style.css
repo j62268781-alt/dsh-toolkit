@@ -1,0 +1,146 @@
+/*
+ * 分支按钮挂在 composer 的 `conversation.input.left` 里，所以尺寸要跟宿主的工具行控件
+ * 对齐：高度 24–26px、字号 12–13px、圆角 8px，垂直方向不留额外外边距 —— composer 的
+ * 行高由宿主决定，这里多一个像素都会把整行撑高。
+ *
+ * 弹层被 portal 到 document.body（composer 贴底容器会裁切），因此这份样式必须全局注入，
+ * 不能跟着设置面板的 <style> 走。选择器全部带 `.sk-git-branch` 前缀，避免误伤宿主。
+ */
+
+.sk-git-branch__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  height: 24px;
+  padding: 0 6px;
+  border: 0.5px solid transparent;
+  border-radius: 8px;
+  corner-shape: round;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sk-git-branch__trigger:hover {
+  background: rgba(128, 128, 128, 0.12);
+  color: var(--dsw-alias-label-primary);
+}
+
+.sk-git-branch__trigger[aria-expanded="true"] {
+  background: rgba(128, 128, 128, 0.16);
+  color: var(--dsw-alias-label-primary);
+}
+
+.sk-git-branch__trigger:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.sk-git-branch__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* detached HEAD 没有名字可言：给它斜体，省得跟真分支名混起来。 */
+.sk-git-branch__name[data-detached="true"] {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.sk-git-branch__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 280px;
+  padding: 4px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.sk-git-branch__search {
+  padding: 2px 2px 4px;
+}
+
+.sk-git-branch__groupLabel {
+  margin: 2px 0 0;
+  padding: 0 8px;
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.sk-git-branch__list {
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.sk-git-branch__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.sk-git-branch__optionName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-git-branch__empty {
+  margin: 0;
+  padding: 10px 8px;
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
+  font-size: 12px;
+}
+
+.sk-git-branch__footer {
+  display: flex;
+  flex-direction: column;
+  padding-top: 4px;
+  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
+}
+
+.sk-git-branch__error {
+  margin: 0;
+  padding: 6px 8px 2px;
+  color: var(--dsw-alias-state-danger-primary, #d0453f);
+  font-size: 12px;
+  line-height: 18px;
+  word-break: break-word;
+}
+
+.sk-git-branch__hint {
+  margin: 6px 0 0;
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.sk-git-branch__creator {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* primitives 缺席时的降级输入框：只求能用，别指望它跟宿主输入框逐像素一致。 */
+.sk-git-branch__fallbackInput {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.24));
+  border-radius: 8px;
+  corner-shape: round;
+  background: rgba(128, 128, 128, 0.08);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}

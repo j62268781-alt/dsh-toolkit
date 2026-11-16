@@ -35,6 +35,7 @@ const MODULES = [
   { name: "theme", entry: "src/modules/theme/client/index.ts", section: "theme", icon: "palette" },
   { name: "archived", entry: "src/modules/archived/client/index.ts", section: "archived-chats", icon: "archive" },
   { name: "skills-mcp", entry: "src/modules/skills-mcp/client/client.ts", section: "skills-mcp", icon: "plug", factory: true },
+  { name: "git", entry: "src/modules/git/client/index.ts", section: "git", icon: "git" },
 ];
 
 /** A slots registry that records only the icon registrations we care about. */

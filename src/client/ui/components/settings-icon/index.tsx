@@ -85,6 +85,16 @@ const SHAPES: Record<string, any> = {
       <path d="M11.5 7.5 9.7 6.9" />
     </>
   ),
+  // Git 分支：一条主干带一个分叉端点，与 Qoder 设置页的 git 分支图标同义。
+  git: (
+    <>
+      <circle cx="4.6" cy="3.4" r="1.3" />
+      <circle cx="4.6" cy="12.6" r="1.3" />
+      <circle cx="11.4" cy="6.4" r="1.3" />
+      <path d="M4.6 4.7v6.6" />
+      <path d="M4.6 8.6c0-2 1.5-3.5 3.5-3.5h2" />
+    </>
+  ),
   phone: (
     <>
       <rect x="4.4" y="2.1" width="7.2" height="11.8" rx="1.6" />

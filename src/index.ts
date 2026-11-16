@@ -1,6 +1,7 @@
 import * as boot from './modules/boot/host/index.js'
 import * as archived from './modules/archived/host/index.js'
 import AgentBrowserService from './modules/browser/host/index.js'
+import * as git from './modules/git/host/index.js'
 import * as hooks from './modules/hooks/host/index.js'
 import JudgmentService from './modules/judgment/host/index.js'
 import * as mobile from './modules/mobile/host/index.js'
@@ -33,6 +34,8 @@ export function apply(ctx: any, config: any): void {
   ctx.plugin(pet, config.pet)
   ctx.plugin(configuredPlugin(hooks), config.hooks)
   ctx.plugin(configuredPlugin(remote), config.remote)
+  // 追加在最后：既有子插件的下标保持不变（集成测试按 children[i] 断言）。
+  ctx.plugin(configuredPlugin(git), config.git)
 }
 
 export default { name, inject, Config, apply }

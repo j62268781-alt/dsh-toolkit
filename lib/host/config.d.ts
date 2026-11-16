@@ -342,6 +342,15 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         bridgeRequestTimeoutMs: s<number, number, "volatile-defined">;
         bridgeApprovalTimeoutMs: s<number, number, "volatile-defined">;
     }>>, "defined">;
+    git: s<Schemastery.ObjectS<NoInfer<{
+        branchPrefix: s<string, string, "defined">;
+        alwaysForcePush: s<boolean, boolean, "defined">;
+        commitInstructions: s<string, string, "defined">;
+    }>>, Schemastery.ObjectT<NoInfer<{
+        branchPrefix: s<string, string, "defined">;
+        alwaysForcePush: s<boolean, boolean, "defined">;
+        commitInstructions: s<string, string, "defined">;
+    }>>, "defined">;
 }>>, Schemastery.ObjectT<NoInfer<{
     shell: s<any, any, "defined">;
     boot: s<Schemastery.ObjectS<NoInfer<{
@@ -684,6 +693,15 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         bridgeIncludeImages: s<boolean, boolean, "volatile-defined">;
         bridgeRequestTimeoutMs: s<number, number, "volatile-defined">;
         bridgeApprovalTimeoutMs: s<number, number, "volatile-defined">;
+    }>>, "defined">;
+    git: s<Schemastery.ObjectS<NoInfer<{
+        branchPrefix: s<string, string, "defined">;
+        alwaysForcePush: s<boolean, boolean, "defined">;
+        commitInstructions: s<string, string, "defined">;
+    }>>, Schemastery.ObjectT<NoInfer<{
+        branchPrefix: s<string, string, "defined">;
+        alwaysForcePush: s<boolean, boolean, "defined">;
+        commitInstructions: s<string, string, "defined">;
     }>>, "defined">;
 }>>, "plain">;
 //# sourceMappingURL=config.d.ts.map

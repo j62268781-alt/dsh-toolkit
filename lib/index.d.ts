@@ -349,6 +349,15 @@ declare const _default: {
             bridgeRequestTimeoutMs: import("@deepseek-ai/schemastery").default<number, number, "volatile-defined">;
             bridgeApprovalTimeoutMs: import("@deepseek-ai/schemastery").default<number, number, "volatile-defined">;
         }>>, "defined">;
+        git: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+        }>>, "defined">;
     }>>, Schemastery.ObjectT<NoInfer<{
         shell: import("@deepseek-ai/schemastery").default<any, any, "defined">;
         boot: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
@@ -691,6 +700,15 @@ declare const _default: {
             bridgeIncludeImages: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
             bridgeRequestTimeoutMs: import("@deepseek-ai/schemastery").default<number, number, "volatile-defined">;
             bridgeApprovalTimeoutMs: import("@deepseek-ai/schemastery").default<number, number, "volatile-defined">;
+        }>>, "defined">;
+        git: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
         }>>, "defined">;
     }>>, "plain">;
     apply: typeof apply;
