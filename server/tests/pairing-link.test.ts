@@ -7,10 +7,10 @@ import { Store } from '../src/store.js'
 import { deviceKeys } from './pairing-helpers.js'
 
 /**
- * A successful pairing links a Host and a phone. Unbinding either side must end
- * the whole pairing: the official Host only notices revocation through its own
- * credentials, so the Server has to revoke the peer and close its connection
- * with `DEVICE_REVOKED` (see `gateway.onInvalidate`).
+ * A successful pairing links a Host and a phone, and one Host may hold several
+ * phones. The server routes decide which side an unbind reaches (`server.ts`
+ * revokes a Host together with all its phones, a phone only together with the
+ * last remaining client); the store only records the edges and reports peers.
  */
 
 const account = 'owner@example.com', password = 'test-only-password'
@@ -80,13 +80,27 @@ it('lets the same identity claim a revoked slot again so re-pairing works', () =
   expect(() => store.registerPairing([impostor, phone], [host.deviceId, phone.deviceId])).toThrow('PEER_IDENTITY_MISMATCH')
 })
 
-it('keeps at most one pairing link per device', () => {
-  const first = descriptors(), second = descriptors()
-  store.registerPairing([first.host, first.phone], [first.host.deviceId, first.phone.deviceId])
-  store.registerPairing([second.host, second.phone], [second.host.deviceId, second.phone.deviceId])
-  const state = JSON.parse(readFileSync(file, 'utf8'))
-  expect(state.pairs).toHaveLength(2)
-  // Re-pairing the same host replaces the phone link instead of piling up.
-  store.registerPairing([second.host, first.phone], [second.host.deviceId, first.phone.deviceId])
-  expect(JSON.parse(readFileSync(file, 'utf8')).pairs).toEqual([[second.host.deviceId, first.phone.deviceId]])
+it('binds one host to several phones and keeps the earlier links', () => {
+  const host = descriptors().host, one = descriptors().phone, two = descriptors().phone
+  store.registerPairing([host, one], [host.deviceId, one.deviceId])
+  store.registerPairing([host, two], [host.deviceId, two.deviceId])
+  expect(new Set(store.peersOf(host.deviceId))).toEqual(new Set([one.deviceId, two.deviceId]))
+  expect(new Set(store.clientsOf(host.deviceId))).toEqual(new Set([one.deviceId, two.deviceId]))
+  expect(JSON.parse(readFileSync(file, 'utf8')).pairs).toHaveLength(2)
+  // Re-pairing the same two devices refreshes nothing and must not duplicate.
+  store.registerPairing([host, one], [host.deviceId, one.deviceId])
+  expect(JSON.parse(readFileSync(file, 'utf8')).pairs).toHaveLength(2)
+})
+
+it('answers pair lookups from either end and never across unrelated devices', () => {
+  const host = descriptors().host, phone = descriptors().phone, other = descriptors().phone
+  store.registerPairing([host, phone], [host.deviceId, phone.deviceId])
+  expect(store.hasPair(host.deviceId, phone.deviceId)).toBe(true)
+  expect(store.hasPair(phone.deviceId, host.deviceId)).toBe(true)
+  expect(store.hasPair(host.deviceId, other.deviceId)).toBe(false)
+  expect(store.hasPair(host.deviceId, host.deviceId)).toBe(false)
+  expect(store.isActive(host.deviceId)).toBe(true)
+  store.revoke(phone.deviceId)
+  expect(store.isActive(phone.deviceId)).toBe(false)
+  expect(store.isActive(other.deviceId)).toBe(false)
 })

@@ -315,16 +315,29 @@ export function createRemoteServer(config: Config) {
       json(res, 200, store.refresh(data.deviceId, data.refreshToken)); return
     }
     if (method === 'DELETE' && path === '/api/v1/devices/self') {
-      // Unbinding is symmetric: the phone revoking itself is the user saying
-      // "this pairing is over", so the paired desktop must learn about it too.
-      // Revoking the peer closes its control connection with reason
-      // DEVICE_REVOKED, which is how the official Host learns to drop its
-      // credentials and show "authorization removed" instead of staying silent.
-      const self = deviceAuth(req).descriptor.deviceId
-      const peers = store.peersOf(self)
-      store.revoke(self)
-      for (const peer of peers) store.revoke(peer, 'DEVICE_REVOKED')
-      json(res, 200, { status: 'revoked', peers }); return
+      // Unbinding reaches the other side through DEVICE_REVOKED, which closes
+      // the peer's control connection and tells the official Host to drop its
+      // credentials. With one Host bound to several phones that rule has to be
+      // asymmetric:
+      //   * a Host unbinding ends every phone pairing (the desktop is leaving);
+      //   * a Client unbinding ends only itself — revoking the shared Host would
+      //     kick the other phones off too. The exception keeps the old,
+      //     single-phone behaviour: if this Client was the last active one, the
+      //     Host's credentials are dead anyway, so it is revoked as well.
+      const self = deviceAuth(req).descriptor
+      const peers = store.peersOf(self.deviceId)
+      store.revoke(self.deviceId)
+      const revoked: string[] = []
+      for (const peer of peers) {
+        if (!store.isActive(peer)) continue
+        const isLastClient = self.role === 'client'
+          && store.clientsOf(peer).every(clientId => clientId === self.deviceId || !store.isActive(clientId))
+        if (self.role === 'host' || isLastClient) {
+          store.revoke(peer, 'DEVICE_REVOKED')
+          revoked.push(peer)
+        }
+      }
+      json(res, 200, { status: 'revoked', peers: revoked }); return
     }
     if (method === 'GET' && path === '/api/v1/me') { json(res, 200, descriptor(deviceAuth(req))); return }
     if (method === 'GET' && path === '/api/v1/turn/credentials') {
@@ -337,7 +350,9 @@ export function createRemoteServer(config: Config) {
     if (method === 'GET' && path === '/api/v1/devices') {
       const source = deviceAuth(req)
       if (source.descriptor.role !== 'client') throw new ApiError('MEMBERSHIP_REQUIRED', 403)
-      const items = store.list().filter(d => d.descriptor.role === 'host').map(d => {
+      // Only Hosts this Client paired with: a Server may host several people,
+      // and listing every Host would leak who else shares the deployment.
+      const items = store.list().filter(d => d.descriptor.role === 'host' && store.hasPair(source.descriptor.deviceId, d.descriptor.deviceId)).map(d => {
         const { identityKey: _key, ...item } = descriptor(d)
         return item
       })
@@ -354,6 +369,10 @@ export function createRemoteServer(config: Config) {
     if (method === 'GET' && match) {
       const source = deviceAuth(req), target = store.get(match[1]!)
       if (source.descriptor.role === target.descriptor.role) throw new ApiError('MEMBERSHIP_REQUIRED', 403)
+      // The Host resolves an incoming Client through this endpoint, so the pair
+      // edge is the authorization: an unrelated device on the same Server must
+      // not be reachable, let alone trusted.
+      if (!store.hasPair(source.descriptor.deviceId, target.descriptor.deviceId)) throw new ApiError('MEMBERSHIP_REQUIRED', 403)
       const d = descriptor(target)
       json(res, 200, match[2] ? { deviceId: d.deviceId, online: d.online, lastSeenAt: d.lastSeenAt } : d); return
     }

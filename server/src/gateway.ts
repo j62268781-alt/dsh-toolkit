@@ -564,6 +564,10 @@ export class Gateway {
       const host = this.peers.get(request.hostDeviceId)
       if (!host || host.role !== 'host') { this.send(peer, createControlFrame('error', { code: 'HOST_OFFLINE', message: 'Host is offline.', retryable: true })); return }
       this.store.get(host.id)
+      // Authorization is the pairing edge, not mere coexistence on this Server:
+      // one Server may host several people, and a Client must only reach the
+      // Host it actually paired with.
+      if (!this.store.hasPair(peer.id, host.id)) throw new ApiError('MEMBERSHIP_REQUIRED')
       if (!request.preferredTransports.includes('relay') || !peer.capabilities.includes('transport.relay') || !host.capabilities.includes('transport.relay')) throw new ApiError('CAPABILITY_NOT_SUPPORTED')
       // The link coordinates only transports both peers actually advertised;
       // the Host receives the same intersection so it never sees a transport

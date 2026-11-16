@@ -144,6 +144,9 @@ async function socket(d: Awaited<ReturnType<typeof device>>, overrides: Record<s
 
 async function connection(options: { hostCapabilities?: string[]; clientCapabilities?: string[]; preferredTransports?: string[] } = {}) {
   const h = await device('host'), c = await device()
+  // Registering a device is not authorization: only a device pairing creates the
+  // Host↔Client edge (store.hasPair) the Server checks on every route.
+  app.store.pairDevices(h.deviceId, c.deviceId)
   const host = await socket(h, options.hostCapabilities === undefined ? {} : { capabilities: options.hostCapabilities })
   const client = await socket(c, options.clientCapabilities === undefined ? {} : { capabilities: options.clientCapabilities })
   const ack = await host.next('hello.ack')
@@ -243,6 +246,9 @@ describe('account and device authorization', () => {
     const h = await device('host'), c = await device()
     const changed = { deviceId: h.deviceId, name: h.name, role: h.role, platform: h.platform, clientVersion: h.clientVersion, identityKey: c.identityKey }
     expect((await request('/devices/register', 'POST', { v: 1, device: changed }, accountToken)).data.error.code).toBe('PEER_IDENTITY_MISMATCH')
+    // Unpaired devices cannot look each other up, even on the same Server.
+    expect((await request(`/devices/${h.deviceId}`, 'GET', undefined, c.accessToken)).status).toBe(403)
+    app.store.pairDevices(h.deviceId, c.deviceId)
     expect((await request(`/devices/${h.deviceId}`, 'GET', undefined, c.accessToken)).data.identityKey).toBe(h.identityKey)
     expect((await request(`/devices/${c.deviceId}`, 'GET', undefined, c.accessToken)).status).toBe(403)
     const descriptor = { ...changed, deviceId: randomUUID() }
@@ -350,7 +356,8 @@ describe('control authorization and relay routing', () => {
   })
 
   it('keeps concurrent clients isolated and tears down revoked connections', async () => {
-    const ctx = await connection(), second = await device(), wire = await socket(second); await wire.next('hello.ack')
+    const ctx = await connection(), second = await device(); app.store.pairDevices(ctx.h.deviceId, second.deviceId)
+    const wire = await socket(second); await wire.next('hello.ack')
     wire.send('connect.request', { hostDeviceId: ctx.h.deviceId, preferredTransports: ['relay'] })
     const incoming = await ctx.host.next('connect.incoming')
     ctx.host.send('connect.accepted', { connectionId: incoming.connectionId }); await wire.next('connect.accepted')
@@ -361,6 +368,57 @@ describe('control authorization and relay routing', () => {
     expect(await ctx.host.next('error')).toMatchObject({ connectionId: incoming.connectionId })
     // The revoked device keeps a dead token so it can be told why it is gone.
     expect((await request('/devices', 'GET', undefined, second.accessToken)).status).toBe(403)
+  })
+})
+
+describe('multi-user pairing isolation', () => {
+  it('rejects a connect request from a phone that never paired with that host', async () => {
+    const ctx = await connection(), stranger = await device(), wire = await socket(stranger)
+    await wire.next('hello.ack')
+    wire.send('connect.request', { hostDeviceId: ctx.h.deviceId, preferredTransports: ['relay'] })
+    expect((await wire.next('error')).code).toBe('MEMBERSHIP_REQUIRED')
+    // The Host is never bothered, and the paired Client keeps its link.
+    ctx.host.send('ping', { nonce: 'isolation' }); await ctx.host.next('pong')
+    ctx.client.send('ping', { nonce: 'paired' }); await ctx.client.next('pong')
+  })
+
+  it('shows a phone only the hosts it paired with, and only those devices', async () => {
+    const mine = await device('host'), other = await device('host'), phone = await device()
+    app.store.pairDevices(mine.deviceId, phone.deviceId)
+    const listed = (await request('/devices', 'GET', undefined, phone.accessToken)).data.items
+    expect(listed.map((d: { deviceId: string }) => d.deviceId)).toEqual([mine.deviceId])
+    expect((await request(`/devices/${mine.deviceId}`, 'GET', undefined, phone.accessToken)).status).toBe(200)
+    expect((await request(`/devices/${other.deviceId}`, 'GET', undefined, phone.accessToken)).status).toBe(403)
+  })
+
+  it('serves two paired phones of the same host at once', async () => {
+    const ctx = await connection(), second = await device()
+    app.store.pairDevices(ctx.h.deviceId, second.deviceId)
+    const wire = await socket(second); await wire.next('hello.ack')
+    wire.send('connect.request', { hostDeviceId: ctx.h.deviceId, preferredTransports: ['relay'] })
+    const incoming = await ctx.host.next('connect.incoming')
+    ctx.host.send('connect.accepted', { connectionId: incoming.connectionId })
+    await wire.next('connect.accepted')
+    ctx.client.send('ping', { nonce: 'first' }); await ctx.client.next('pong')
+    wire.send('ping', { nonce: 'second' }); await wire.next('pong')
+  })
+
+  it('unbinding one phone keeps the host and its other phones working', async () => {
+    const ctx = await connection(), second = await device()
+    app.store.pairDevices(ctx.h.deviceId, second.deviceId)
+    const wire = await socket(second); await wire.next('hello.ack')
+    const closed = once(wire.ws, 'close')
+    expect((await request('/devices/self', 'DELETE', undefined, second.accessToken)).data).toEqual({ status: 'revoked', peers: [] })
+    await closed
+    // The shared Host stays usable for the remaining phone.
+    expect((await request(`/devices/${ctx.c.deviceId}`, 'GET', undefined, ctx.h.accessToken)).status).toBe(200)
+    ctx.client.send('ping', { nonce: 'still-paired' }); await ctx.client.next('pong')
+  })
+
+  it('unbinding the last phone also revokes the host', async () => {
+    const ctx = await connection()
+    expect((await request('/devices/self', 'DELETE', undefined, ctx.c.accessToken)).data).toEqual({ status: 'revoked', peers: [ctx.h.deviceId] })
+    expect((await request(`/devices/${ctx.h.deviceId}`, 'GET', undefined, ctx.h.accessToken)).status).toBe(403)
   })
 })
 
@@ -553,7 +611,8 @@ describe('webrtc signaling and TURN credentials', () => {
       },
     })
     accountToken = (await request('/auth/login', 'POST', { email: account, password })).data.token
-    const h = await device('host'), c = await device(), host = await socket(h), client = await socket(c)
+    const h = await device('host'), c = await device(); app.store.pairDevices(h.deviceId, c.deviceId)
+    const host = await socket(h), client = await socket(c)
     await host.next('hello.ack'); await client.next('hello.ack')
     client.send('connect.request', { hostDeviceId: h.deviceId, preferredTransports: ['relay'] })
     const incoming = await host.next('connect.incoming')

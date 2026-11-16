@@ -20,11 +20,15 @@ const tokenSchema = z.object({
 })
 const savedDeviceSchema = z.object({ descriptor: accountDeviceDescriptorSchema, revoked: z.boolean(), lastSeenAt: z.number() })
 /**
- * `pairs` records the host/client link created by a successful device pairing.
- * Unbinding one side has to reach the other side, and the pairing session is
- * long gone by then, so the relation needs to live on disk.
+ * `pairs` records the host/client links created by successful device pairings.
+ * One Host may be bound to several Clients (each phone pairs on its own), so
+ * this is a set of undirected edges rather than one edge per device. Unbinding
+ * one side may have to reach the other side, and the pairing session is long
+ * gone by then, so the relation needs to live on disk.
  */
 const pairSchema = z.tuple([z.string(), z.string()])
+/** Plenty for a self-hosted Server (a Host with dozens of phones); guards the file. */
+const MAX_PAIRS = 4096
 const stateSchema = z.object({
   version: z.literal(1),
   account: z.string(),
@@ -98,6 +102,11 @@ export class Store {
     writeFileSync(tmp, JSON.stringify(this.state), { mode: 0o600 })
     renameSync(tmp, this.file)
   }
+  /** True when the device slot exists and was not revoked. */
+  isActive(id: string): boolean {
+    const device = Object.hasOwn(this.state.devices, id) ? this.state.devices[id] : undefined
+    return device !== undefined && !device.revoked
+  }
   get(id: string): SavedDevice {
     const d = Object.hasOwn(this.state.devices, id) ? this.state.devices[id] : undefined
     if (!d) throw new ApiError('DEVICE_NOT_FOUND', 404)
@@ -139,10 +148,12 @@ export class Store {
         tokens.push(issueTokensInto(draft, descriptor.deviceId))
       }
       if (pair) {
-        // Every device belongs to at most one active pair: the newest pairing
-        // supersedes an older link for either end.
+        // One Host may hold many Clients; re-pairing the same two devices must
+        // not duplicate the edge. Other edges stay untouched, otherwise pairing
+        // a second phone would silently drop the first one.
         const [hostId, clientId] = pair
-        draft.pairs = draft.pairs.filter(([h, c]) => h !== hostId && c !== clientId && h !== clientId && c !== hostId)
+        if (draft.pairs.length >= MAX_PAIRS && !draft.pairs.some(([h, c]) => h === hostId && c === clientId)) throw new ApiError('RATE_LIMITED', 429)
+        draft.pairs = draft.pairs.filter(([h, c]) => !(h === hostId && c === clientId))
         draft.pairs.push([hostId, clientId])
       }
       this.state = draft
@@ -155,16 +166,45 @@ export class Store {
     return tokens
   }
 
-  /** Devices paired with `id` (the opposite side of a device pairing). */
+  /** Devices paired with `id` (the opposite side of every device pairing). */
   peersOf(id: string): string[] {
-    const peers: string[] = []
+    const peers = new Set<string>()
     for (const [hostId, clientId] of this.state.pairs) {
       const peer = hostId === id ? clientId : clientId === id ? hostId : undefined
       // Tokens and links can outlive a device slot (account change, manual
-      // cleanup); only revoke peers that still have a record.
-      if (peer !== undefined && peer !== id && Object.hasOwn(this.state.devices, peer)) peers.push(peer)
+      // cleanup); only report peers that still have a record.
+      if (peer !== undefined && peer !== id && Object.hasOwn(this.state.devices, peer)) peers.add(peer)
     }
-    return peers
+    return [...peers]
+  }
+
+  /** Clients bound to `hostId` that still have a device record (revoked or not). */
+  clientsOf(hostId: string): string[] {
+    const clients = new Set<string>()
+    for (const [host, clientId] of this.state.pairs) {
+      if (host === hostId && clientId !== hostId && Object.hasOwn(this.state.devices, clientId)) clients.add(clientId)
+    }
+    return [...clients]
+  }
+
+  /** True when the two devices were bound by a device pairing (either side). */
+  hasPair(left: string, right: string): boolean {
+    if (left === right) return false
+    return this.state.pairs.some(([host, client]) => (host === left && client === right) || (host === right && client === left))
+  }
+
+  /**
+   * Bind two devices without minting credentials. `registerPairing` uses this
+   * through its draft state; tests and operator tooling use the committed form.
+   */
+  pairDevices(left: string, right: string): void {
+    const a = this.get(left).descriptor, b = this.get(right).descriptor
+    if (a.role === b.role) throw new ApiError('INVALID_MESSAGE', 409)
+    const [hostId, clientId] = a.role === 'host' ? [left, right] : [right, left]
+    if (this.state.pairs.some(([h, c]) => h === hostId && c === clientId)) return
+    if (this.state.pairs.length >= MAX_PAIRS) throw new ApiError('RATE_LIMITED', 429)
+    this.state.pairs.push([hostId, clientId])
+    this.save()
   }
   private issue(deviceId: string, refreshTokenExpiresAt = Date.now() + 30 * 86400_000, previous?: { token: string; record: SavedToken }): DeviceTokenPair {
     const before = this.state.tokens
