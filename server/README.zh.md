@@ -197,6 +197,24 @@ npm test          # vitest run，真实起 HTTP server（端口 0），全程离
 
 未完成项：上游 `web/` 管理界面已移除（`GET /` 返回 404 `METHOD_NOT_FOUND`，只有 `/pair` 是无脚本的指引页，因此没有 SPA）；上游依赖 client-stack（Noise / WebRTC / Plugin HTTP 客户端）的测试场景未移植，等价行为用原始 HTTP/WebSocket 断言覆盖。
 
+## 中继帧编码（`transport.relay.bin.v1`）
+
+默认中继把密文放进 JSON 文本帧：`{"type":"relay","payload":{"ciphertext":"<base64url>"}}`。对 48 KiB 的密文分片来说，base64 加 JSON 信封约 1.34× 膨胀——在 5 Mbps 上行/下行的链路上等于白丢四分之一带宽。
+
+客户端在 `hello.capabilities` 里声明 `transport.relay.bin.v1` 后，Server 会在 `hello.ack.capabilities` 回显同一能力，此后**发往该连接的 relay 数据改用二进制帧**：
+
+```
+byte 0        版本（当前 1）
+byte 1..16    connectionId（UUID 原始 16 字节，无连字符）
+byte 17..24   counter（大端 u64，与文本帧共享同一单调计数）
+byte 25..     ciphertext 原始字节（Noise 密文分片，Server 不解密）
+```
+
+- 同一连接的两个方向独立判定：一端支持、另一端只支持文本时，Server 自动在两种表示之间转码，因此**不需要两端同时升级**；
+- 未声明该能力的连接若发来二进制帧，按 `INVALID_MESSAGE` 处理（协议违规，不是兼容路径）；
+- 二进制帧与文本帧共用同一个每秒帧数/字节窗口，限速行为不变；
+- 上行方向（手机→桌面）与下行方向（桌面→手机）都能省掉这一层，但只有同样声明能力的对端才享受；官方桌面端目前不发该能力，因此实际收益集中在手机 ⇄ 云这一段（通常是带宽最紧的一段）。
+
 ## 目录结构
 
 ```

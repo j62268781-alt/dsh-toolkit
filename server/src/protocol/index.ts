@@ -445,6 +445,60 @@ export interface RelayPayload {
   ciphertext: string
 }
 
+/**
+ * Capability a peer offers to carry Relay ciphertext in **binary** WebSocket
+ * frames instead of base64 inside JSON.
+ *
+ * The Relay payload is opaque ciphertext, so only the two endpoints that touch
+ * the raw bytes are allowed to choose a representation. Base64 costs 4/3 bytes
+ * on a link that is usually the deployment's bottleneck (a 48 KiB secure
+ * fragment becomes a 65.8 KiB text frame), while a binary frame carries the
+ * same bytes with a 25-byte header. Peers that do not offer this capability
+ * keep receiving `relay` text frames exactly as before.
+ */
+export const RELAY_BINARY_CAPABILITY = 'transport.relay.bin.v1'
+export const RELAY_BINARY_VERSION = 1
+/** version(1) + connectionId(16) + counter(8, big endian). */
+export const RELAY_BINARY_HEADER_BYTES = 1 + 16 + 8
+
+export interface RelayBinaryFrame {
+  readonly connectionId: string
+  readonly counter: number
+  readonly ciphertext: Uint8Array
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Encode one Relay frame for a peer that negotiated `transport.relay.bin.v1`. */
+export function encodeRelayBinaryFrame(frame: RelayBinaryFrame): Uint8Array {
+  if (!UUID_PATTERN.test(frame.connectionId)) throw new Error('Invalid Relay connectionId.')
+  if (!Number.isSafeInteger(frame.counter) || frame.counter < 0) throw new Error('Invalid Relay counter.')
+  const out = new Uint8Array(RELAY_BINARY_HEADER_BYTES + frame.ciphertext.byteLength)
+  out[0] = RELAY_BINARY_VERSION
+  const hex = frame.connectionId.replaceAll('-', '')
+  for (let index = 0; index < 16; index += 1) out[1 + index] = Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16)
+  let remaining = frame.counter
+  for (let index = 7; index >= 0; index -= 1) {
+    out[17 + index] = remaining % 256
+    remaining = Math.floor(remaining / 256)
+  }
+  out.set(frame.ciphertext, RELAY_BINARY_HEADER_BYTES)
+  return out
+}
+
+/** Decode one Relay binary frame; throws on any malformed header. */
+export function decodeRelayBinaryFrame(data: Uint8Array): RelayBinaryFrame {
+  if (data.byteLength <= RELAY_BINARY_HEADER_BYTES) throw new Error('Relay binary frame is too short.')
+  if (data[0] !== RELAY_BINARY_VERSION) throw new Error('Unsupported Relay binary version.')
+  let hex = ''
+  for (let index = 1; index < 17; index += 1) hex += data[index].toString(16).padStart(2, '0')
+  const connectionId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+  let counter = 0
+  for (let index = 17; index < 25; index += 1) counter = counter * 256 + data[index]
+  if (!Number.isSafeInteger(counter)) throw new Error('Relay counter is out of range.')
+  return { connectionId, counter, ciphertext: data.subarray(RELAY_BINARY_HEADER_BYTES) }
+}
+
 export const selectedTransports = ['lan', 'p2p', 'turn', 'relay'] as const
 export type SelectedTransport = typeof selectedTransports[number]
 

@@ -190,6 +190,24 @@ Known deviations and risks:
 
 Not done: the upstream `web/` admin UI is removed (`GET /` answers 404 `METHOD_NOT_FOUND`; only `/pair` serves the script-free guide page, so there is no SPA), and upstream test scenarios that need the client stack (Noise, WebRTC, the Plugin HTTP client) are not ported — equivalent behaviour is asserted at the raw HTTP/WebSocket level instead.
 
+## Relay frame encoding (`transport.relay.bin.v1`)
+
+By default relayed ciphertext travels inside a JSON text frame (`{"type":"relay","payload":{"ciphertext":"<base64url>"}}`). For the 48 KiB ciphertext fragments that is roughly 1.34× the payload on the wire — a quarter of a 5 Mbps link wasted on encoding.
+
+When a client advertises `transport.relay.bin.v1` in `hello.capabilities`, the Server echoes it in `hello.ack.capabilities` and switches relay data for that connection to a binary frame:
+
+```
+byte 0        version (currently 1)
+byte 1..16    connectionId (raw UUID bytes)
+byte 17..24   counter (big-endian u64, same monotonic sequence as text frames)
+byte 25..     ciphertext bytes (opaque Noise fragment; the Server never decrypts)
+```
+
+- Each direction is negotiated per connection: if one side only speaks the text form, the Server transcodes in between, so the two endpoints never have to upgrade together;
+- A connection that did not advertise the capability and sends binary frames gets `INVALID_MESSAGE` (a protocol violation, not a fallback);
+- Binary and text frames share the same per-second frame/byte window, so rate limiting is unchanged;
+- Both directions benefit, but only towards peers that advertise it; the official desktop Host does not, so the practical saving sits on the phone ⇄ cloud leg, which is usually the tight one.
+
 ## Layout
 
 ```
