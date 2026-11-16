@@ -84,7 +84,7 @@ esbuild 会把 `./x.js` 解析到 `x.ts`、`./x.jsx` 到 `x.tsx`；node:test 侧
 | `pnpm typecheck` / `pnpm typecheck:modules` | strict / loose 两档 tsc |
 | `pnpm typecheck:client` | client 侧 tsc（`tsconfig.client.json`，见 §2.3） |
 | `pnpm check` | 模块 / 包契约检查（client bundle 断言 + 未定义名字检查） |
-| `pnpm test` | `tests/<group>/*.test.mjs`（node:test） |
+| `pnpm test` | `tests/<group>/*.test.mjs`（node:test，默认 4 路并发、单进程堆上限 1GB；`DSH_TEST_CONCURRENCY` / `DSH_TEST_HEAP_MB` 可调） |
 | `pnpm verify` | build → typecheck → typecheck:client → check → test → build:check |
 
 **最低验证线**：`pnpm build` + `pnpm check` + 相关测试；改了 `.ts`/`.tsx` 还要跑 `pnpm typecheck` 与
