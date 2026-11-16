@@ -21,7 +21,15 @@ import {
 } from './protocol/index.js'
 import { ApiError, Store } from './store.js'
 import { Logger, type LogLevel } from './logger.js'
-import { normalizeGatewayOptions, normalizeMaxFramesPerSec, normalizeSlowConsumerBytes, type GatewayTimingOptions } from './config.js'
+import {
+  TRANSPORT_NAMES,
+  normalizeGatewayOptions,
+  normalizeMaxFramesPerSec,
+  normalizeSlowConsumerBytes,
+  normalizeTransports,
+  type GatewayTimingOptions,
+  type TransportName,
+} from './config.js'
 
 export interface GatewayOptions extends GatewayTimingOptions {
   maxFramesPerSec?: number
@@ -36,6 +44,13 @@ export interface GatewayOptions extends GatewayTimingOptions {
   logger?: Logger
   /** Advertise `transport.turn` (and accept TURN credential requests). */
   turnEnabled?: boolean
+  /**
+   * Transport capabilities to advertise (subset of lan/p2p/turn/relay, see
+   * `TRANSPORT_NAMES`). `relay` is always kept. Dropping `p2p`/`turn` makes a
+   * peer skip its WebRTC attempts entirely instead of burning two fallback
+   * deadlines before landing on the relay it would use anyway.
+   */
+  transports?: readonly string[]
 }
 
 /**
@@ -81,8 +96,6 @@ export const MAX_ICE_CANDIDATES_PER_CONNECTION = 256
 /** Mirrors docs/protocol.md: Clients use max(server, local) and default to 12 s. */
 const WEBRTC_FALLBACK_TIMEOUT_MS = 12_000
 const SUPPORTED_TRANSPORTS = ['transport.lan', 'transport.p2p', 'transport.turn', 'transport.relay'] as const
-const TRANSPORT_NAMES = ['lan', 'p2p', 'turn', 'relay'] as const
-type TransportName = (typeof TRANSPORT_NAMES)[number]
 
 function modernHost(version: string): boolean {
   const match = /^v?(\d+)\.(\d+)\.(\d+)(?:\+.*)?$/.exec(version)
@@ -145,6 +158,7 @@ export class Gateway {
   private heartbeat: ReturnType<typeof setInterval>
   private closed = false
   readonly turnEnabled: boolean
+  readonly transports: readonly TransportName[]
   readonly helloTimeoutMs: number
   readonly heartbeatIntervalMs: number
   readonly heartbeatDisconnectMs: number
@@ -166,6 +180,7 @@ export class Gateway {
     this.slowConsumerBytes = normalizeSlowConsumerBytes(options.slowConsumerBytes)
     this.logger = options.logger ?? new Logger('gateway', options.logLevel ?? 'info')
     this.turnEnabled = options.turnEnabled === true
+    this.transports = normalizeTransports(options.transports)
 
     store.onInvalidate = (id, reason) => this.disconnect(id, reason)
     server.on('upgrade', (req, socket, head) => {
@@ -366,7 +381,11 @@ export class Gateway {
     return this.peers.has(link.host) && this.peers.has(link.client)
   }
   private supportedCapabilities(): string[] {
-    return SUPPORTED_TRANSPORTS.filter(capability => capability !== 'transport.turn' || this.turnEnabled)
+    const enabled = new Set<string>(this.transports)
+    return SUPPORTED_TRANSPORTS.filter(
+      capability =>
+        enabled.has(capability.slice('transport.'.length)) && (capability !== 'transport.turn' || this.turnEnabled),
+    )
   }
   private negotiatedCapabilities(offered: readonly string[]): string[] {
     return this.supportedCapabilities().filter(capability => offered.includes(capability))
@@ -550,7 +569,7 @@ export class Gateway {
             maxControlFrameBytes: MAX_CONTROL_FRAME_BYTES,
             maxRelayFrameBytes: MAX_RELAY_FRAME_BYTES,
             capabilities: peer.capabilities,
-            webrtcEnabled: true,
+            webrtcEnabled: this.transports.some(name => name !== 'relay'),
             webrtcFallbackTimeoutMs: WEBRTC_FALLBACK_TIMEOUT_MS,
           }))
           return

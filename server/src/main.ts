@@ -7,6 +7,7 @@ import {
   parseForceTerminateGrace,
   parseMaxFramesPerSec,
   parseSlowConsumerBytes,
+  parseTransports,
 } from './server.js'
 import { parseLogLevel } from './logger.js'
 import { parseIceConfig } from './ice.js'
@@ -35,6 +36,7 @@ const app = createRemoteServer({
   maxFramesPerSec,
   slowConsumerBytes,
   logLevel,
+  transports: parseTransports(process.env.DSH_SERVER_TRANSPORTS),
   ice: parseIceConfig(process.env),
 })
 app.server.listen(port, process.env.DSH_SERVER_HOST ?? '127.0.0.1', () => console.info(`Remote Server listening on port ${port}`))

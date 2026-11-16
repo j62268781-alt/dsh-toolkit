@@ -22,6 +22,7 @@ import {
   normalizeIp,
   normalizeTrustedProxyIps,
   parseHelloTimeout,
+  parseTransports,
   parseHeartbeatInterval,
   parseHeartbeatDisconnect,
   parseMaxFramesPerSec,
@@ -626,6 +627,36 @@ describe('webrtc signaling and TURN credentials', () => {
     client.send('connect.request', { hostDeviceId: h.deviceId, preferredTransports: ['relay'] })
     const incoming = await host.next('connect.incoming')
     expect((await request(`/turn/credentials?connection_id=${incoming.connectionId}`, 'GET', undefined, c.accessToken)).status).toBe(404)
+  })
+
+  it('can advertise a subset of transports so peers skip direct attempts', async () => {
+    // A phone whose P2P/TURN attempts cannot succeed spends two full WebRTC
+    // deadlines (12s each) before it lands on the relay. Not advertising the
+    // transports removes those attempts instead of letting them time out.
+    await app.close()
+    await start(password, [], { transports: ['lan', 'relay'] })
+    accountToken = (await request('/auth/login', 'POST', { email: account, password })).data.token
+    const withoutDirect = await socket(await device(), { capabilities: fullCapabilities })
+    expect(await withoutDirect.next('hello.ack')).toMatchObject({
+      capabilities: ['transport.lan', 'transport.relay'],
+      webrtcEnabled: true,
+    })
+    await app.close()
+    await start(password, [], { transports: ['relay'] })
+    accountToken = (await request('/auth/login', 'POST', { email: account, password })).data.token
+    const relayOnly = await socket(await device(), { capabilities: fullCapabilities })
+    expect(await relayOnly.next('hello.ack')).toMatchObject({
+      capabilities: ['transport.relay'],
+      webrtcEnabled: false,
+    })
+  })
+
+  it('parses DSH_SERVER_TRANSPORTS leniently but never drops relay', () => {
+    expect(parseTransports(undefined)).toEqual(['lan', 'p2p', 'turn', 'relay'])
+    expect(parseTransports('lan,relay')).toEqual(['lan', 'relay'])
+    expect(parseTransports(' LAN , p2p ')).toEqual(['lan', 'p2p', 'relay'])
+    expect(parseTransports('lan,bogus,lan')).toEqual(['lan', 'relay'])
+    expect(parseTransports('')).toEqual(['lan', 'p2p', 'turn', 'relay'])
   })
 })
 

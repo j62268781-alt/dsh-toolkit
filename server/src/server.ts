@@ -25,6 +25,8 @@ import {
   normalizeHelloTimeoutMs,
   normalizeMaxFramesPerSec,
   normalizeSlowConsumerBytes,
+  normalizeTransports,
+  type TransportName,
 } from './config.js'
 
 export interface Config {
@@ -41,6 +43,8 @@ export interface Config {
   /** Socket backlog in bytes that marks a peer as gone (SLOW_CONSUMER). */
   slowConsumerBytes?: number
   logLevel?: LogLevel
+  /** Transport capabilities to advertise (`DSH_SERVER_TRANSPORTS`); relay is always kept. */
+  transports?: readonly string[]
   ice?: IceConfig
   /** Pairing session lifetime in ms; production keeps the protocol's 180s. */
   pairingSessionTtlMs?: number
@@ -56,6 +60,11 @@ export interface Config {
  * the env-var parsing API used by `main.ts` and the tests, and never echo the
  * offending input in their warnings.
  */
+/** `DSH_SERVER_TRANSPORTS` (lan,p2p,turn,relay); unknown entries are dropped and relay is always kept. */
+export function parseTransports(val: string | undefined): readonly TransportName[] {
+  return normalizeTransports(val)
+}
+
 export function parseHelloTimeout(val: string | undefined): number {
   return normalizeHelloTimeoutMs(val)
 }
@@ -242,6 +251,7 @@ export function createRemoteServer(config: Config) {
     logLevel: config.logLevel,
     logger: logger.child('gateway'),
     turnEnabled: ice.turnUrls.length > 0,
+    transports: config.transports,
   })
   function descriptor(d: ReturnType<Store['get']>) {
     return { ...d.descriptor, membershipId: `account:${hash(store.account).slice(0, 16)}`, online: gateway.peers.has(d.descriptor.deviceId), lastSeenAt: d.lastSeenAt }

@@ -128,3 +128,46 @@ export function normalizeGatewayOptions(options?: GatewayTimingOptions | null): 
     forceTerminateGraceMs: normalizeForceTerminateGraceMs(source.forceTerminateGraceMs),
   }
 }
+
+/**
+ * Transport capabilities a peer may negotiate. `relay` is mandatory: the
+ * protocol requires every connection to offer it, and dropping it would make
+ * `hello.ack` negotiation fail for clients that insist on it.
+ *
+ * Operators disable direct transports to make phones skip ICE entirely: a
+ * phone that keeps trying P2P/TURN on a network where neither can work spends
+ * two full WebRTC deadlines (12s each, `webrtcFallbackTimeoutMs`) before it
+ * falls back to the relay it will end up using anyway.
+ */
+export const TRANSPORT_NAMES = ['lan', 'p2p', 'turn', 'relay'] as const
+export type TransportName = (typeof TRANSPORT_NAMES)[number]
+export const DEFAULT_TRANSPORTS: readonly TransportName[] = TRANSPORT_NAMES
+
+function isTransportName(value: string): value is TransportName {
+  return (TRANSPORT_NAMES as readonly string[]).includes(value)
+}
+
+/**
+ * Parse `DSH_SERVER_TRANSPORTS` / programmatic `transports`. Empty or absent
+ * means all four; unknown entries are dropped (never echoed: the value can be
+ * copy/pasted text) and `relay` is appended when an operator leaves it out.
+ */
+export function normalizeTransports(value: unknown): TransportName[] {
+  const items = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []
+  const names: TransportName[] = []
+  let unknown = false
+  for (const item of items) {
+    if (typeof item !== 'string') continue
+    const name = item.trim().toLowerCase()
+    if (name === '') continue
+    if (!isTransportName(name)) {
+      unknown = true
+      continue
+    }
+    if (!names.includes(name)) names.push(name)
+  }
+  if (unknown) console.warn('[config] Ignoring unknown entry in DSH_SERVER_TRANSPORTS. Valid names: lan, p2p, turn, relay.')
+  if (names.length === 0) return [...DEFAULT_TRANSPORTS]
+  if (!names.includes('relay')) names.push('relay')
+  return names
+}

@@ -56,6 +56,7 @@ npm start
 | `DSH_SERVER_FORCE_TERMINATE_GRACE_MS` | `1000` | 半关闭连接的强制终止宽限（100-10000）。 |
 | `DSH_SERVER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` / `silent`。 |
 | `DSH_SERVER_STUN_URLS` | 空 | 逗号分隔的 STUN URL。留空则只有同局域网能直连、其余走 Relay；`.env.example` 里已备好一份国内实测可用的公共 STUN 列表。 |
+| `DSH_SERVER_TRANSPORTS` | `lan,p2p,turn,relay` | 对外宣告的传输方式，`relay` 始终保留。去掉 `p2p`/`turn` 会让客户端**跳过 ICE 直接走中继**，省掉每次连接的两段 12 秒 WebRTC 超时；保留 `lan` 仍可在同 Wi-Fi 直连，例如 `lan,relay`。 |
 | `DSH_SERVER_TURN_URLS` | 空 | 逗号分隔的 TURN URL（建议同时给 `turn:…?transport=tcp` 与 `turns:…:5349`）。 |
 | `DSH_SERVER_TURN_SECRET` | 空 | coturn `static-auth-secret`（REST API），Server 据此签发短期凭据，永不外泄 secret。 |
 | `DSH_SERVER_TURN_USERNAME` / `DSH_SERVER_TURN_PASSWORD` | 空 | 静态 TURN 账号；与 `TURN_SECRET` 二选一，不能同时设置。 |

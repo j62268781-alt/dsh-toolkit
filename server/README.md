@@ -56,6 +56,7 @@ Open <http://127.0.0.1:8080/healthz> for `{"status":"ok"}`; the human-readable p
 | `DSH_SERVER_FORCE_TERMINATE_GRACE_MS` | `1000` | Grace period before a half-closed socket is force-terminated (100-10000). |
 | `DSH_SERVER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` / `silent`. |
 | `DSH_SERVER_STUN_URLS` | empty | Comma-separated STUN URLs. Empty means only same-LAN sessions connect directly and everything else goes through Relay; `.env.example` ships a tested mainland-China public list. |
+| `DSH_SERVER_TRANSPORTS` | `lan,p2p,turn,relay` | Transports advertised to peers; `relay` is always kept. Dropping `p2p`/`turn` makes Clients **skip ICE and go straight to the Relay**, instead of burning two 12s WebRTC deadlines per attempt. Keep `lan` for same-Wi-Fi direct sessions, e.g. `lan,relay`. |
 | `DSH_SERVER_TURN_URLS` | empty | Comma-separated TURN URLs (advertise a `turn:…?transport=tcp` and `turns:…:5349` entry too). |
 | `DSH_SERVER_TURN_SECRET` | empty | coturn `static-auth-secret`; the Server issues short-lived credentials and never exposes the secret. |
 | `DSH_SERVER_TURN_USERNAME` / `DSH_SERVER_TURN_PASSWORD` | empty | Static TURN credentials — mutually exclusive with `TURN_SECRET`. |
