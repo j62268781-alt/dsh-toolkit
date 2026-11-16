@@ -71,7 +71,9 @@ async function rawJsonRequest(path: string, body: string | Uint8Array, token?: s
 }
 
 async function start(pass = password, trustedProxyIps: readonly string[] = [], configOverrides: Partial<Config> = {}) {
-  app = createRemoteServer({ account, password: pass, dataFile: join(dir, 'state.json'), publicUrl: 'http://localhost:8080', trustedProxyIps, ...configOverrides })
+  // Tests pin the full capability set so they exercise every transport; the
+  // shipped default (LAN + relay) is covered explicitly in the transport test.
+  app = createRemoteServer({ account, password: pass, dataFile: join(dir, 'state.json'), publicUrl: 'http://localhost:8080', trustedProxyIps, transports: ['lan', 'p2p', 'turn', 'relay'], ...configOverrides })
   app.server.listen(0, '127.0.0.1')
   await once(app.server, 'listening')
   base = `http://127.0.0.1:${(app.server.address() as { port: number }).port}`
@@ -633,6 +635,15 @@ describe('webrtc signaling and TURN credentials', () => {
     // A phone whose P2P/TURN attempts cannot succeed spends two full WebRTC
     // deadlines (12s each) before it lands on the relay. Not advertising the
     // transports removes those attempts instead of letting them time out.
+    // Shipped default (no override): LAN + relay only.
+    await app.close()
+    await start(password, [], { transports: undefined })
+    accountToken = (await request('/auth/login', 'POST', { email: account, password })).data.token
+    const byDefault = await socket(await device(), { capabilities: fullCapabilities })
+    expect(await byDefault.next('hello.ack')).toMatchObject({
+      capabilities: ['transport.lan', 'transport.relay'],
+      webrtcEnabled: true,
+    })
     await app.close()
     await start(password, [], { transports: ['lan', 'relay'] })
     accountToken = (await request('/auth/login', 'POST', { email: account, password })).data.token
@@ -652,11 +663,11 @@ describe('webrtc signaling and TURN credentials', () => {
   })
 
   it('parses DSH_SERVER_TRANSPORTS leniently but never drops relay', () => {
-    expect(parseTransports(undefined)).toEqual(['lan', 'p2p', 'turn', 'relay'])
+    expect(parseTransports(undefined)).toEqual(['lan', 'relay'])
     expect(parseTransports('lan,relay')).toEqual(['lan', 'relay'])
     expect(parseTransports(' LAN , p2p ')).toEqual(['lan', 'p2p', 'relay'])
     expect(parseTransports('lan,bogus,lan')).toEqual(['lan', 'relay'])
-    expect(parseTransports('')).toEqual(['lan', 'p2p', 'turn', 'relay'])
+    expect(parseTransports('')).toEqual(['lan', 'relay'])
   })
 })
 

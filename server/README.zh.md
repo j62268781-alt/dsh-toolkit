@@ -2,7 +2,7 @@
 
 **中文** · [English](README.md)
 
-单账号、单进程的 DSH Remote Server：设备注册与凭据刷新、Control 控制通道、WebRTC（LAN / P2P / TURN）协商、端到端加密 Relay，以及本目录新增的 **device-pairing v1** 扫码配对。
+单账号、单进程的 DSH Remote Server：设备注册与凭据刷新、Control 控制通道、WebRTC（LAN / P2P）协商、端到端加密 Relay，以及本目录新增的 **device-pairing v1** 扫码配对。
 
 > **来源声明**：本目录 vendored 自 [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote)（MIT，v0.6.5），并新增 `device-pairing v1`（`src/pairing.ts`）。协议层已同步到上游 v0.6.5：`src/protocol/{binary-upload,lan-upload}.ts`（`workspace.upload.binary.v1`、`workspace.upload.lan.v1`）、异步压缩契约（`harness.remote.compaction.submit|status|cancel`、`remote.compaction.async.v1`）与 `remote.session.events.v1` capability；本目录独有改动只有 `deviceId` / `platform` 两处 schema 放宽（见下文「与上游的差异」）。上游为 pnpm workspace 布局，这里改造为独立 npm 包：协议源码 vendored 到 `src/protocol/`，只依赖 `ws` 与 `zod`；上游的 React 管理界面（`web/`）与其构建步骤已移除。许可证见 [LICENSE](LICENSE)。
 
@@ -11,7 +11,7 @@
 桌面端 DSH 插件（Host）与手机端（Client）需要一台常驻服务来做三件事：
 
 1. **配对**：桌面显示二维码 → 手机扫码 → 手机显示 8 位验证码 → 用户把验证码输入桌面 → 双端各自拿到 credentials（新增的 device-pairing v1）。
-2. **信令**：为两台设备协商 WebRTC 直连（LAN / P2P / TURN）；协商失败时自动回落到 Relay。
+2. **信令**：为两台设备协商 WebRTC 直连（LAN / P2P）；协商失败时自动回落到 Relay。
 3. **Relay**：在无法打洞的网络里转发端到端加密的控制帧（Server 只见密文）。
 
 Server 不保存任何明文凭据：state 文件里只有 token 的 SHA-256 摘要，Web 登录会话用 HttpOnly Cookie。
@@ -43,7 +43,7 @@ npm start
 | --- | --- | --- |
 | `DSH_SERVER_ACCOUNT` | 无（必填） | 单账号模型的账号标识，例如邮箱。 |
 | `DSH_SERVER_PASSWORD` | 无（必填） | 账号密码，**至少 12 个字符**。改动密码会立即让所有既有设备凭据失效。 |
-| `DSH_SERVER_PUBLIC_URL` | 回落为 `http://localhost:<port>` | 客户端实际访问的 origin，例如 `https://remote.example.com`。用于 origin 校验与签发 TURN 凭据，不要填容器内部地址或带路径；**强烈建议显式设置**，否则跨机器访问时 origin 校验会失败。 |
+| `DSH_SERVER_PUBLIC_URL` | 回落为 `http://localhost:<port>` | 客户端实际访问的 origin，例如 `https://remote.example.com`。用于 origin 校验，不要填容器内部地址或带路径；**强烈建议显式设置**，否则跨机器访问时 origin 校验会失败。 |
 | `DSH_SERVER_HOST` | `127.0.0.1` | 监听地址。默认只听本机；放进容器/需要对外时设为 `0.0.0.0`。 |
 | `DSH_SERVER_PORT` | `8080` | 监听端口。 |
 | `DSH_SERVER_DATA_FILE` | `./data/state.json` | 状态文件路径（设备、token 摘要、账号校验值），权限 0600，目录 0700。 |
@@ -56,11 +56,7 @@ npm start
 | `DSH_SERVER_FORCE_TERMINATE_GRACE_MS` | `1000` | 半关闭连接的强制终止宽限（100-10000）。 |
 | `DSH_SERVER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` / `silent`。 |
 | `DSH_SERVER_STUN_URLS` | 空 | 逗号分隔的 STUN URL。留空则只有同局域网能直连、其余走 Relay；`.env.example` 里已备好一份国内实测可用的公共 STUN 列表。 |
-| `DSH_SERVER_TRANSPORTS` | `lan,p2p,turn,relay` | 对外宣告的传输方式，`relay` 始终保留。去掉 `p2p`/`turn` 会让客户端**跳过 ICE 直接走中继**，省掉每次连接的两段 12 秒 WebRTC 超时；保留 `lan` 仍可在同 Wi-Fi 直连，例如 `lan,relay`。 |
-| `DSH_SERVER_TURN_URLS` | 空 | 逗号分隔的 TURN URL（建议同时给 `turn:…?transport=tcp` 与 `turns:…:5349`）。 |
-| `DSH_SERVER_TURN_SECRET` | 空 | coturn `static-auth-secret`（REST API），Server 据此签发短期凭据，永不外泄 secret。 |
-| `DSH_SERVER_TURN_USERNAME` / `DSH_SERVER_TURN_PASSWORD` | 空 | 静态 TURN 账号；与 `TURN_SECRET` 二选一，不能同时设置。 |
-| `DSH_SERVER_TURN_TTL_SECONDS` | `300` | TURN 凭据有效期（60-3600）。 |
+| `DSH_SERVER_TRANSPORTS` | `lan,relay` | 对外宣告的传输方式，`relay` 始终保留。`p2p` 需要打洞，国内移动网络多为 CGNAT + IPv4，打不通时要白等 12 秒才回落，所以默认不开；两端都有公网地址（如公网 IPv6）时可改成 `lan,p2p,relay`。`turn` 需自建 TURN 服务器，本文不覆盖。 |
 
 越界或非法的可选值会打印一条 warning 并回退到默认值，启动不会失败；`ACCOUNT` / `PASSWORD` 缺失或非法会直接启动失败，`PUBLIC_URL` 不设置时代码会回落成 `http://localhost:<port>`（仅适合本机调试）。完整示例见 [.env.example](.env.example)。
 
@@ -106,7 +102,6 @@ npm start
 | GET | `/api/v1/devices` | Client 设备 token，列出可用 Host。 |
 | GET | `/api/v1/devices/{id}`、`/presence` | 订阅自己的设备或查询同账号设备的在线状态。 |
 | POST | `/api/v1/devices/{id}/name` | 账号 token，改名。 |
-| GET | `/api/v1/turn/credentials?connection_id=` | 连接参与者，签发短期 TURN 凭据。 |
 | WS | `/ws/v1/connect` | 控制通道（hello → hello.ack，心跳、connect、signal、relay、ping）。 |
 
 此外所有 `/api/v1/*` 共享 240 次/分钟/IP 的上限，超出返回 429 `RATE_LIMITED`。错误统一为 `{"error":{"code","message","requestId","retryable"}}`。
@@ -156,15 +151,14 @@ docker compose up -d --build server
 
 ## 生产部署（systemd + 反向代理）
 
-Docker 只是其中一种方式。裸机/云主机上用 systemd 常驻、Caddy 或 Nginx 提供 HTTPS，并可选接 coturn 做 WebRTC 打洞，模板都在 [`deploy/`](deploy/)：
+Docker 只是其中一种方式。裸机/云主机上用 systemd 常驻、Caddy 或 Nginx 提供 HTTPS，模板都在 [`deploy/`](deploy/)：
 
 | 文件 | 用途 |
 | --- | --- |
-| [`deploy/DEPLOY.zh.md`](deploy/DEPLOY.zh.md) | 完整步骤：用户/目录、构建、环境变量、systemd、Caddy/Nginx、TURN、升级回滚、故障排查 |
+| [`deploy/DEPLOY.zh.md`](deploy/DEPLOY.zh.md) | 完整步骤：用户/目录、构建、环境变量、systemd、Caddy/Nginx、STUN/P2P、升级回滚、故障排查 |
 | [`deploy/dsh-server.service`](deploy/dsh-server.service) | systemd 单元（非 root、ProtectSystem=strict、Restart=always） |
 | [`deploy/env.example`](deploy/env.example) | `/etc/dsh-toolkit-server.env` 示例 |
 | [`deploy/Caddyfile`](deploy/Caddyfile) / [`deploy/nginx.conf`](deploy/nginx.conf) | 反代模板（WebSocket 升级齐备，`X-Forwarded-For` 保持单值） |
-| [`deploy/coturn.conf`](deploy/coturn.conf) | 可选 TURN/STUN 配置 |
 
 要点：Server 只监听 `127.0.0.1:8080`，公网只开反代的 443；`DSH_SERVER_PUBLIC_URL` 必须与手机实际访问的 origin 完全一致；反代与 Server 同机时 `DSH_SERVER_TRUSTED_PROXY_IPS=127.0.0.1`。
 
@@ -176,7 +170,7 @@ npm run build
 npm test          # vitest run，真实起 HTTP server（端口 0），全程离线
 ```
 
-覆盖：账号/设备授权与凭据轮换恢复、Control 帧校验与 Relay 路由、WebRTC 信令与 TURN 凭据、反向代理限流、hello 超时与状态机、日志脱敏、配置归一化，以及 device-pairing v1 全流程（创建 → 领取 → 错误验证码 → 正确确认 → 双端 credentials 可用、幂等重放、过期、proof 失败、超大请求体、非法 identityKey、resolve 404）。
+覆盖：账号/设备授权与凭据轮换恢复、Control 帧校验与 Relay 路由、WebRTC 信令、反向代理限流、hello 超时与状态机、日志脱敏、配置归一化，以及 device-pairing v1 全流程（创建 → 领取 → 错误验证码 → 正确确认 → 双端 credentials 可用、幂等重放、过期、proof 失败、超大请求体、非法 identityKey、resolve 404）。
 
 此外 `tests/pairing-compat.test.ts` 用上游 `fixtures/pairing/v1/proof.json`（Python `cryptography` 生成、NSec 独立验证）作为外部基准，校验 proof 算法逐字节一致，并把官方 fixture 的 host/mobile/confirm proof 直接打到本服务的真实端点上；同一文件里的 zod schema 逐字复制自官方 `pairing-contract.ts`（全部 `.strict()`），因此也验证了响应字段集不多不少。
 
@@ -228,12 +222,12 @@ server/
 │   ├── gateway.ts     # WebSocket 控制通道、Relay、WebRTC 信令
 │   ├── store.ts       # 设备与 token 摘要持久化、轮换与恢复
 │   ├── config.ts      # 环境变量解析与归一化
-│   ├── ice.ts         # STUN/TURN 配置与短期凭据
+│   ├── ice.ts         # STUN 配置（TURN 代码保留，默认不宣告）
 │   ├── logger.ts      # 单行 JSON 日志 + 脱敏
 │   └── protocol/      # vendored 自上游 packages/protocol
 ├── tests/             # vitest：server / pairing / pairing-compat / refresh-recovery
 ├── Dockerfile, compose.yaml, .env.example
-├── deploy/            # systemd 单元、env 文件、Caddy/Nginx、coturn、DEPLOY.zh.md
+├── deploy/            # systemd 单元、env 文件、Caddy/Nginx、DEPLOY.zh.md
 ├── LICENSE            # 上游 MIT
 └── README.md / README.zh.md
 ```

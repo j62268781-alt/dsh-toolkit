@@ -2,7 +2,7 @@
 
 **English** · [中文](README.zh.md)
 
-A single-account, single-process DSH Remote Server: device registration and credential refresh, the Control channel, WebRTC (LAN / P2P / TURN) coordination, end-to-end encrypted Relay, and the **device-pairing v1** QR pairing flow added in this directory.
+A single-account, single-process DSH Remote Server: device registration and credential refresh, the Control channel, WebRTC (LAN / P2P) coordination, end-to-end encrypted Relay, and the **device-pairing v1** QR pairing flow added in this directory.
 
 > **Provenance**: this directory is vendored from [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote) (MIT, v0.6.5) with device-pairing v1 added (`src/pairing.ts`). The protocol layer is synced to upstream v0.6.5: `src/protocol/{binary-upload,lan-upload}.ts` (`workspace.upload.binary.v1`, `workspace.upload.lan.v1`), the async compaction contract (`harness.remote.compaction.submit|status|cancel`, `remote.compaction.async.v1`) and the `remote.session.events.v1` capability. The only local deviations are the two relaxed schemas for `deviceId` / `platform` (see "Differences from upstream"). Upstream ships as a pnpm workspace; here it is a standalone npm package: the protocol sources live in `src/protocol/`, the only runtime dependencies are `ws` and `zod`, and the React admin UI (`web/`) and its build step were removed. See [LICENSE](LICENSE).
 
@@ -11,7 +11,7 @@ A single-account, single-process DSH Remote Server: device registration and cred
 A desktop DSH plugin (Host) and a phone (Client) need one always-on service for three things:
 
 1. **Pairing** — the desktop shows a QR code, the phone scans it, the phone shows an 8-digit code, the user types that code into the desktop, and both sides receive credentials (device-pairing v1).
-2. **Signaling** — negotiate a direct WebRTC link (LAN / P2P / TURN), falling back to Relay when traversal fails.
+2. **Signaling** — negotiate a direct WebRTC link (LAN / P2P), falling back to Relay when traversal fails.
 3. **Relay** — forward end-to-end encrypted control frames when no direct path exists (the Server only ever sees ciphertext).
 
 The Server stores no plaintext credentials: the state file holds only SHA-256 token digests, and web sessions use HttpOnly cookies.
@@ -43,7 +43,7 @@ Open <http://127.0.0.1:8080/healthz> for `{"status":"ok"}`; the human-readable p
 | --- | --- | --- |
 | `DSH_SERVER_ACCOUNT` | none (required) | Account identifier for the single-account model, e.g. an email address. |
 | `DSH_SERVER_PASSWORD` | none (required) | Account password, **at least 12 characters**. Changing it invalidates every existing device credential. |
-| `DSH_SERVER_PUBLIC_URL` | falls back to `http://localhost:<port>` | Origin clients actually use, e.g. `https://remote.example.com`. Drives origin checks and TURN credentials; never a container-internal address or a path. **Set it explicitly** — the fallback only works for local debugging. |
+| `DSH_SERVER_PUBLIC_URL` | falls back to `http://localhost:<port>` | Origin clients actually use, e.g. `https://remote.example.com`. Drives origin checks; never a container-internal address or a path. **Set it explicitly** — the fallback only works for local debugging. |
 | `DSH_SERVER_HOST` | `127.0.0.1` | Listen address. Loopback by default; set `0.0.0.0` inside a container or when exposing the port. |
 | `DSH_SERVER_PORT` | `8080` | Listen port. |
 | `DSH_SERVER_DATA_FILE` | `./data/state.json` | State file (devices, token digests, account verifier), written 0600 in a 0700 directory. |
@@ -56,11 +56,7 @@ Open <http://127.0.0.1:8080/healthz> for `{"status":"ok"}`; the human-readable p
 | `DSH_SERVER_FORCE_TERMINATE_GRACE_MS` | `1000` | Grace period before a half-closed socket is force-terminated (100-10000). |
 | `DSH_SERVER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` / `silent`. |
 | `DSH_SERVER_STUN_URLS` | empty | Comma-separated STUN URLs. Empty means only same-LAN sessions connect directly and everything else goes through Relay; `.env.example` ships a tested mainland-China public list. |
-| `DSH_SERVER_TRANSPORTS` | `lan,p2p,turn,relay` | Transports advertised to peers; `relay` is always kept. Dropping `p2p`/`turn` makes Clients **skip ICE and go straight to the Relay**, instead of burning two 12s WebRTC deadlines per attempt. Keep `lan` for same-Wi-Fi direct sessions, e.g. `lan,relay`. |
-| `DSH_SERVER_TURN_URLS` | empty | Comma-separated TURN URLs (advertise a `turn:…?transport=tcp` and `turns:…:5349` entry too). |
-| `DSH_SERVER_TURN_SECRET` | empty | coturn `static-auth-secret`; the Server issues short-lived credentials and never exposes the secret. |
-| `DSH_SERVER_TURN_USERNAME` / `DSH_SERVER_TURN_PASSWORD` | empty | Static TURN credentials — mutually exclusive with `TURN_SECRET`. |
-| `DSH_SERVER_TURN_TTL_SECONDS` | `300` | TURN credential lifetime (60-3600). |
+| `DSH_SERVER_TRANSPORTS` | `lan,relay` | Transports advertised to peers; `relay` is always kept. `p2p` needs hole punching, which carrier CGNAT usually blocks — a failed attempt costs a 12s WebRTC deadline before the Relay is used, so it stays off by default; enable it as `lan,p2p,relay` when both ends have a public address (public IPv6). `turn` requires a TURN server of your own and is not covered here. |
 
 Out-of-range optional values log one warning and fall back to the default, so startup still succeeds; missing or invalid `ACCOUNT` / `PASSWORD` fail startup, and an unset `PUBLIC_URL` falls back to `http://localhost:<port>`. See [.env.example](.env.example) for the annotated list.
 
@@ -106,7 +102,6 @@ Account and device routes (unchanged from upstream):
 | GET | `/api/v1/devices` | Client device token; lists available Hosts. |
 | GET | `/api/v1/devices/{id}`, `/presence` | Subscribe to its own device, or read presence of same-account devices. |
 | POST | `/api/v1/devices/{id}/name` | Account token; rename. |
-| GET | `/api/v1/turn/credentials?connection_id=` | Connection participants only; issues short-lived TURN credentials. |
 | WS | `/ws/v1/connect` | Control channel (hello → hello.ack, heartbeat, connect, signal, relay, ping). |
 
 Every `/api/v1/*` request also shares a 240/minute/IP budget and returns 429 `RATE_LIMITED` when exceeded. Errors are always `{"error":{"code","message","requestId","retryable"}}`.
@@ -156,13 +151,12 @@ docker compose up -d --build server
 
 ## Production deployment (systemd + reverse proxy)
 
-Docker is only one option. `deploy/` ships templates for a bare-metal/VM install: systemd unit, environment file, Caddy or Nginx reverse proxy, and an optional coturn config for WebRTC.
+Docker is only one option. `deploy/` ships templates for a bare-metal/VM install: systemd unit, environment file, Caddy or Nginx reverse proxy, .
 
 - Step-by-step guide (Chinese): [`deploy/DEPLOY.zh.md`](deploy/DEPLOY.zh.md)
 - [`deploy/dsh-server.service`](deploy/dsh-server.service) — systemd unit (non-root, `ProtectSystem=strict`, `Restart=always`)
 - [`deploy/env.example`](deploy/env.example) — `/etc/dsh-toolkit-server.env`
 - [`deploy/Caddyfile`](deploy/Caddyfile), [`deploy/nginx.conf`](deploy/nginx.conf) — reverse proxies with WebSocket upgrade and a single-value `X-Forwarded-For` (Caddy does this by default; Nginx template sets it explicitly)
-- [`deploy/coturn.conf`](deploy/coturn.conf) — optional TURN/STUN
 
 Key points: keep the Server on `127.0.0.1:8080` and expose only the proxy's 443; `DSH_SERVER_PUBLIC_URL` must match the exact origin phones use; when the proxy runs on the same host, set `DSH_SERVER_TRUSTED_PROXY_IPS=127.0.0.1`.
 
@@ -174,7 +168,7 @@ npm run build
 npm test          # vitest run — real HTTP servers on port 0, fully offline
 ```
 
-Coverage: account/device authorization and credential rotation recovery, Control frame validation and Relay routing, WebRTC signaling and TURN credentials, reverse-proxy rate limiting, hello timeout and gateway state machine, log redaction, configuration normalization, and the full device-pairing v1 flow (create → claim → wrong code → correct confirm → both credential sets usable, idempotent replay, expiry, proof failures, oversized bodies, invalid identityKeys, resolve 404).
+Coverage: account/device authorization and credential rotation recovery, Control frame validation and Relay routing, WebRTC signaling, reverse-proxy rate limiting, hello timeout and gateway state machine, log redaction, configuration normalization, and the full device-pairing v1 flow (create → claim → wrong code → correct confirm → both credential sets usable, idempotent replay, expiry, proof failures, oversized bodies, invalid identityKeys, resolve 404).
 
 `tests/pairing-compat.test.ts` additionally uses the upstream `fixtures/pairing/v1/proof.json` (generated with Python `cryptography`, verified independently with NSec) as external ground truth: it proves the proof algorithm byte for byte, replays the published host/mobile/confirm proofs against the real endpoints, and parses every response with zod schemas copied verbatim from the official `pairing-contract.ts` (all `.strict()`, so no extra fields).
 
@@ -221,12 +215,12 @@ server/
 │   ├── gateway.ts     # WebSocket control channel, Relay, WebRTC signaling
 │   ├── store.ts       # device and token-digest persistence, rotation and recovery
 │   ├── config.ts      # environment parsing and normalization
-│   ├── ice.ts         # STUN/TURN configuration and short-lived credentials
+│   ├── ice.ts         # STUN configuration (TURN code kept, not advertised by default)
 │   ├── logger.ts      # single-line JSON logs with redaction
 │   └── protocol/      # vendored from upstream packages/protocol
 ├── tests/             # vitest: server / pairing / pairing-compat / refresh-recovery
 ├── Dockerfile, compose.yaml, .env.example
-├── deploy/            # systemd unit, env file, Caddy/Nginx, coturn, DEPLOY.zh.md
+├── deploy/            # systemd unit, env file, Caddy/Nginx, DEPLOY.zh.md
 ├── LICENSE            # upstream MIT
 └── README.md / README.zh.md
 ```

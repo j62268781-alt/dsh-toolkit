@@ -1,4 +1,4 @@
-# 生产部署：systemd + HTTPS 反向代理（可选 TURN）
+# 生产部署：systemd + HTTPS 反向代理
 
 本目录是 `server/`（`dsh-toolkit-server`）的自托管部署模板。三份配置文件加一份环境变量示例：
 
@@ -8,7 +8,6 @@
 | `env.example` | systemd 读取的环境变量（`/etc/dsh-toolkit-server.env`） |
 | `Caddyfile` | Caddy v2 反代 + 自动证书 |
 | `nginx.conf` | Nginx 反代（自带证书，如 certbot） |
-| `coturn.conf` | 可选：TURN/STUN，用于 WebRTC 打洞失败时的回落 |
 
 > 只想本机/局域网跑一跑，看 [README.zh.md](../README.zh.md#快速开始本地) 就够了；想用容器，看 [Docker 部署](../README.zh.md#docker-部署)。本文是「一台有域名的公网服务器」的完整步骤。
 
@@ -24,14 +23,14 @@
                     桌面 DSH（ds-harness-remote host）──WSS──► 同一个 Server
 ```
 
-- Server 只监听 `127.0.0.1:8080`，公网只开 443（和可选的 TURN 端口）。
+- Server 只监听 `127.0.0.1:8080`，公网只开 443。
 - 手机与桌面都通过 `https://<你的域名>` 访问；`DSH_SERVER_PUBLIC_URL` 必须与这个 origin 完全一致。
 - 配对会话 180 秒，手机显示 8 位验证码，桌面输入后完成绑定；凭据保存在 Server 的状态文件里。
 
 ## 1. 准备主机
 
 - Linux（Debian 12 / Ubuntu 22.04+ 均可），公网 IP，域名 A/AAAA 记录已指向它。
-- 防火墙放行 80/443；若配 TURN，再放行 3478/udp、5349/tcp、49152–65535/udp。
+- 防火墙放行 80/443 即可：直连（LAN/P2P）不占服务器端口，Relay 走的是 443 上的同一条 WebSocket。
 - 不需要 Docker，也不需要数据库：状态就是一个 JSON 文件。
 
 安装 Node.js 22（NodeSource 示例，其他发行版用对应仓库）：
@@ -85,6 +84,9 @@ sudoedit /etc/dsh-toolkit-server.env
 | `DSH_SERVER_DATA_FILE` | `/var/lib/dsh-toolkit-server/state.json` | 必须落在单元声明的 `ReadWritePaths` 里 |
 
 反代与 Server 同机时保留 `DSH_SERVER_TRUSTED_PROXY_IPS=127.0.0.1`；Server 与反代不同机时填反代的实际出口 IP（裸 IP，不支持 CIDR/域名）。
+
+`DSH_SERVER_TRANSPORTS` 默认 `lan,relay`（同 Wi-Fi 直连 + 其余走 Relay）。想让手机在流量下也尝试
+P2P 时改成 `lan,p2p,relay`，前提是两端都有可直连的公网地址；打不通会先白等 12 秒，详见[第 7 节](#7-让手机流量也直连可选stun--p2p)。
 
 ## 4. 启动 systemd 服务
 
@@ -200,43 +202,21 @@ journalctl -u dsh-server | grep -o 'ws_peer_disconnected.*code[^,]*' | sort | un
 
 
 
-不配 STUN/TURN 也能工作，但要分清三种情形（客户端 `preferredTransports` 默认是 `lan → p2p → turn → relay`）：
+## 7. 让手机流量也直连（可选：STUN + P2P）
 
-| 手机与桌面所在网络 | 未配 STUN/TURN 时的实际路径 |
+默认 `DSH_SERVER_TRANSPORTS=lan,relay`：同 Wi-Fi 直连，其余一律走 Relay，**不会**去尝试打洞。
+手机走 4G/5G 时能否直连，取决于两端能不能拿到可直连的地址——国内移动网络多为 CGNAT，
+IPv4 基本打不通；只有两端都有公网 IPv6 时才现实。
+
+| 手机与桌面所在网络 | 实际路径 |
 | --- | --- |
-| 同一个局域网（同一 Wi-Fi / 同一 VPC 内网可互通） | 仍然是**直连**：双方交换 host candidate，Server 只转发信令，业务数据不过服务器 |
-| 不同网络（手机 4G/5G、公司网与家里网） | 直连打不通，回落 **Relay**：所有帧经 Server 的加密 WebSocket 转发 |
-| 配了 TURN | 直连失败时经 TURN 中转，比 Relay 少一次应用层转发，但流量仍过 TURN |
+| 同一个局域网（同一 Wi-Fi / 同一 VPC 内网可互通） | **直连**：双方交换 host candidate，Server 只转发信令，业务数据不过服务器 |
+| 不同网络（手机 4G/5G、公司网与家里网） | 回落 **Relay**：所有帧经 Server 的加密 WebSocket 转发 |
 
-未配 ICE 时客户端会用一个较短的协商超时快速失败（`DEFAULT_EMPTY_ICE_NEGOTIATE_TIMEOUT_MS`）再回落 Relay，所以跨网场景不会长时间卡在打洞上。
+想尝试 P2P：先配好下面的 STUN，再把 `DSH_SERVER_TRANSPORTS` 改成 `lan,p2p,relay`。
+打洞失败时客户端要等满一次 12 秒的 WebRTC 超时（服务端下发的 `webrtcFallbackTimeoutMs`）
+才回落 Relay——这就是默认不开 P2P 的原因：在打不通的网络里它只会拖慢首连。
 
-注意：Relay 模式下手机切换网络（Wi-Fi ↔ 4G）、进后台被 Doze 冻结、或反向代理把空闲 WebSocket 掐断，都会表现为「断线重连」——这类现象与 Server 是否同区域无关，根因在长连接本身。想让手机离开局域网也能直连（低延迟、少抖动），才需要下面的 TURN：
-
-```bash
-sudo apt install -y coturn
-sudo sed -i 's/^#TURNSERVER_ENABLED=.*/TURNSERVER_ENABLED=1/' /etc/default/coturn
-sudo cp deploy/coturn.conf /etc/turnserver.conf   # 再按注释改域名/公网 IP/secret
-sudo systemctl enable --now coturn
-```
-
-- **A 方案（推荐）**：`static-auth-secret` 与 `DSH_SERVER_TURN_SECRET` 填同一个随机串；Server 每次签发短期凭据，secret 不外泄。
-- **B 方案**：`user=` 静态账号，与 `DSH_SERVER_TURN_USERNAME`/`DSH_SERVER_TURN_PASSWORD` 对应。两者不能同时设置。
-- `external-ip` 必须是公网 IP（云主机 NAT 场景尤其重要），否则客户端拿到的 relay 候选不可达。
-- 自检：用 Trickle ICE 或 `turnutils_uclient -u <user> -w <pass> turn.example.com` 确认 3478/udp 通。
-
-配好后在环境变量里加：
-
-```bash
-DSH_SERVER_STUN_URLS=stun:turn.example.com:3478
-DSH_SERVER_TURN_URLS=turn:turn.example.com:3478?transport=udp,turns:turn.example.com:5349
-DSH_SERVER_TURN_SECRET=<与 static-auth-secret 相同>
-```
-
-然后 `sudo systemctl restart dsh-server`。
-
-> 只想打洞、不中继流量时，可以只配 STUN：coturn 配置文件里加一行 `stun-only`，
-> 然后把 `DSH_SERVER_STUN_URLS` 指向这台机器即可——STUN 绑定请求只有几个 UDP 包，
-> 几乎不占上行带宽。
 
 ### 7.1 先做这一步：只配 STUN（零成本，通常已经够用）
 
@@ -263,7 +243,8 @@ DSH_SERVER_TURN_SECRET=<与 static-auth-secret 相同>
 DSH_SERVER_STUN_URLS=stun:stun.hitv.com:3478,stun:stun.chat.bilibili.com:3478,stun:stun.miwifi.com:3478,stun:stun.douyucdn.cn:18000
 ```
 
-重启后用手机**关闭 Wi-Fi 走流量**重连，看链路是否从 Relay 变成 P2P；仍是 Relay 再往下做 TURN。
+重启后用手机**关闭 Wi-Fi 走流量**重连，看面板里的连接方式是否从「中继」变成「P2P」；
+仍是「中继」说明两端都没有可直连的公网地址（CGNAT），属于预期。
 
 ## 8. 升级与回滚
 
@@ -292,7 +273,6 @@ sudo systemctl restart dsh-server
 | 手机连上就断 / 反复重连 | WebSocket 没升级成功：Nginx 缺 `Upgrade`/`Connection` 头或 `proxy_http_version 1.1`；Caddy 一般无此问题。看 `journalctl -u dsh-server` 是否有 hello 超时。 |
 | 桌面端 `401 CLIENT_CREDENTIALS_STALE` | 服务端改了密码或轮换了凭据；桌面重新登录 DSH CLI，再在面板里重新配对。 |
 | 面板提示「账号冲突」 | 该设备在 Server 上还剩旧账号：点面板里的「解绑并重试」，或删 `~/.dsh/ds-harness-remote/servers/<hash>/host/server-credentials.json` 后重开。 |
-| TURN 不通 | `external-ip` 未配置、端口没放行、`TURN_URLS` 与 coturn 的端口/传输不一致，或 secret/账号不匹配。 |
 | systemd 起不来，日志写不进状态文件 | 状态目录不在单元的 `ReadWritePaths`，或属主不是 `dsh`。 |
 
 ## 10. 安全清单

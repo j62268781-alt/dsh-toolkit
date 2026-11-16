@@ -141,7 +141,16 @@ export function normalizeGatewayOptions(options?: GatewayTimingOptions | null): 
  */
 export const TRANSPORT_NAMES = ['lan', 'p2p', 'turn', 'relay'] as const
 export type TransportName = (typeof TRANSPORT_NAMES)[number]
-export const DEFAULT_TRANSPORTS: readonly TransportName[] = TRANSPORT_NAMES
+/**
+ * Shipped default: LAN (same Wi-Fi) plus the relay. `p2p` and `turn` are opt-in
+ * because hole punching fails on most carrier networks (CGNAT) and TURN needs a
+ * server of one's own; advertising them only costs the peer two 12s WebRTC
+ * deadlines per connection attempt.
+ *
+ *   DSH_SERVER_TRANSPORTS=lan,p2p,relay   both ends have public IPv6
+ *   DSH_SERVER_TRANSPORTS=lan,turn,relay  you run your own TURN server
+ */
+export const DEFAULT_TRANSPORTS: readonly TransportName[] = ['lan', 'relay']
 
 function isTransportName(value: string): value is TransportName {
   return (TRANSPORT_NAMES as readonly string[]).includes(value)
