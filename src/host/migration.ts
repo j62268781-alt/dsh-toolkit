@@ -5,7 +5,7 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | { [key:
 
 export const ROOT_IDS: readonly string[] = ['shell-kit', 'dsh-toolkit', 'dsh-shell-kit']
 export const MODULE_NAMESPACES = Object.freeze({
-  boot: 'boot', theme: 'theme', archived: 'archived', browser: 'browser',
+  boot: 'boot', theme: 'theme', archived: 'archived',
   judgement: 'judgment', mobile: 'mobile', skillsMcp: 'skills-mcp', notification: 'notification', pet: 'pet',
   hooks: 'hooks',
 })

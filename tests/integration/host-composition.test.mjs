@@ -86,17 +86,15 @@ const judgmentConfig = {
   connections: {
     main: { credentialRef: 'JUDGMENT_API_KEY_1' },
   },
-  purposes: { 'browser.action': { connection: 'main' } },
+  purposes: { 'phone.action': { connection: 'main' } },
   ledger: { enabled: false },
 }
 
 test('root schema preserves module defaults and existing volatile boundaries', () => {
   const config = Config({ mobile: { enabled: false, routePrefix: '/custom-mobile' } })
-  assert.deepEqual(Object.keys(config).sort(), ['archived', 'boot', 'browser', 'git', 'hooks', 'judgement', 'mobile', 'notification', 'pet', 'remote', 'shell', 'skillsMcp', 'theme'])
-  assert.equal(isVolatile(config.browser), false)
-  assert.equal(isVolatile(config.browser.enabled), true)
-  assert.equal(config.browser.enabled.get(), true)
-  assert.equal(config.browser.limits.get().commandTimeoutMs, 30_000)
+  assert.deepEqual(Object.keys(config).sort(), ['archived', 'boot', 'git', 'hooks', 'judgement', 'mobile', 'notification', 'pet', 'remote', 'shell', 'skillsMcp', 'theme'])
+  // 浏览器模块已整体删除：根配置不应再冒出 browser 键（防止注册点被误加回来）。
+  assert.equal(Object.hasOwn(config, 'browser'), false)
   assert.equal(isVolatile(config.judgement.connections), true)
   assert.deepEqual(config.judgement.connections.get(), {})
   assert.equal(isVolatile(config.skillsMcp.toolFilters), true)
@@ -137,60 +135,47 @@ test('root schema preserves module defaults and existing volatile boundaries', (
   assert.equal(config.notification.permissionSound.get(), 'alert')
 })
 
-test('root mounts both services without revalidating refs and runs Service.init', async (t) => {
-  const { ctx, fiber } = await boot(t, {
-    browser: { enabled: false },
-    judgement: judgmentConfig,
-  })
-  const browser = ctx.get('browser')
+test('root mounts judgment without revalidating refs and runs Service.init', async (t) => {
+  const { ctx, fiber } = await boot(t, { judgement: judgmentConfig })
   const judgment = ctx.get('judgment')
-  assert.ok(browser)
   assert.ok(judgment)
-  assert.equal(browser.config, fiber.config.browser)
+  assert.equal(ctx.get('browser'), undefined)
   assert.equal(judgment.config, fiber.config.judgement)
   assert.equal(judgment.status().connections[0].credentialPresent, true)
   assert.deepEqual(ctx.get('credentials').described, ['JUDGMENT_API_KEY_1'])
   assert.equal(judgment.typertRemote.serviceKey, 'judgment')
-  assert.equal(browser.typertRemote.serviceKey, 'browser')
   assert.deepEqual(remoteMethods(judgment).map(({ method }) => method).sort(), ['health', 'status'])
-  assert.deepEqual(remoteMethods(browser).map(({ method }) => method).sort(), ['checkJudgment', 'installCli', 'probe'])
 })
 
-test('volatile writes reach the existing browser instance and update registered tools', async (t) => {
-  const { ctx, fiber } = await boot(t, { browser: { enabled: false } })
-  const browser = ctx.get('browser')
-  const enabled = fiber.config.browser.enabled
+test('volatile writes reach the existing judgment instance without re-registering tools', async (t) => {
+  const { ctx, fiber } = await boot(t, { judgement: judgmentConfig })
+  const judgment = ctx.get('judgment')
+  const connections = fiber.config.judgement.connections
   assert.equal(ctx.get('tools').registered.length, 0)
-  updateVolatile(enabled, Config({ browser: { enabled: true } }).browser.enabled)
+  updateVolatile(connections, Config({ judgement: { connections: { other: { credentialRef: 'K' } } } }).judgement.connections)
   ctx.emit('loader/volatile-update')
   // Context reads create traceable Service proxies; compare their binding,
   // which is owned by the live instance, instead of comparing those proxies.
-  assert.equal(ctx.get('browser').typertRemote, browser.typertRemote)
-  assert.equal(fiber.config.browser.enabled, enabled)
-  assert.equal(ctx.get('tools').registered.length, 5)
-  updateVolatile(enabled, Config({ browser: { enabled: false } }).browser.enabled)
-  ctx.emit('loader/volatile-update')
+  assert.equal(ctx.get('judgment').typertRemote, judgment.typertRemote)
+  assert.equal(fiber.config.judgement.connections, connections)
+  // 没有任何模块在 volatile 更新时注册工具（原先只有浏览器模块这么做，它已删除）。
   assert.equal(ctx.get('tools').registered.length, 0)
 })
 
 test('missing module dependencies do not block independent services', async (t) => {
-  const withoutTools = await boot(t, {
-    browser: { enabled: false },
-    judgement: judgmentConfig,
-  }, { tools: false })
-  assert.equal(withoutTools.ctx.get('browser'), undefined)
+  const withoutTools = await boot(t, { judgement: judgmentConfig }, { tools: false })
+  assert.equal(withoutTools.ctx.get('tools'), undefined)
   assert.equal(withoutTools.ctx.get('judgment').status().connections[0].credentialPresent, true)
 
-  const withoutCredentials = await boot(t, { browser: { enabled: false } }, { credentials: false })
+  const withoutCredentials = await boot(t, { judgement: judgmentConfig }, { credentials: false })
   assert.equal(withoutCredentials.ctx.get('judgment'), undefined)
-  assert.ok(withoutCredentials.ctx.get('browser'))
   // No sessions or loader services are installed in either boot: their children
-  // stay pending while the independent browser/judgment children are active.
+  // stay pending while the independent judgment child is active.
   assert.equal(withoutCredentials.fiber.state, 2)
 })
 
 test('boot injects its assets without sessions and unregisters with the root', async (t) => {
-  const { ctx, fiber } = await boot(t, { browser: { enabled: false } })
+  const { ctx, fiber } = await boot(t)
   assert.equal(ctx.get('sessions'), undefined)
   const table = []
   await ctx.emit('webserver/index-inject', table)
@@ -210,7 +195,7 @@ test('boot injects its assets without sessions and unregisters with the root', a
 test('notification child waits for both webServer and connection, mounts authenticated routes, and disposes with root', async (t) => {
   const ctx = new Context()
   await ctx.plugin(WebServer)
-  const fiber = ctx.plugin(toolkit, { mobile: { enabled: false }, browser: { enabled: false } })
+  const fiber = ctx.plugin(toolkit, { mobile: { enabled: false } })
   t.after(() => fiber.dispose())
   await fiber
   await settle(ctx)
@@ -255,7 +240,8 @@ test('notification child waits for both webServer and connection, mounts authent
 test('disposing the root removes child services and their effects', async (t) => {
   const { ctx, fiber } = await boot(t)
   const tools = ctx.get('tools')
-  assert.equal(tools.registered.length, 5)
+  // 默认组合下没有任何模块注册工具（浏览器模块已删除；git 需要自己的注入面）。
+  assert.equal(tools.registered.length, 0)
   await fiber.dispose()
   assert.equal(ctx.get('browser'), undefined)
   assert.equal(ctx.get('judgment'), undefined)

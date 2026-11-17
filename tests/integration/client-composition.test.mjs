@@ -10,7 +10,6 @@ const EXPECTED_INJECT = {
   'dsh-toolkit-archived-client': ['slots', 'locale', 'sessions', 'workspaces'],
   'dsh-toolkit-skills-mcp-client': ['slots', 'configForms', 'remote', 'remote.pluginInventory'],
   'dsh-toolkit-judgment-client': ['slots', 'configForms', 'remote', 'remote.credentials'],
-  'dsh-toolkit-browser-client': ['slots', 'configForms', 'remote'],
   'dsh-toolkit-mobile-client': ['slots', 'sidebarRightTabs'],
   'dsh-toolkit-notification-client': ['slots', 'locale', 'configForms', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'workspaces'],
   'dsh-toolkit-boot-client': ['slots', 'configForms'],
@@ -111,7 +110,6 @@ async function boot({ missing = [] } = {}) {
     },
   }
   const value = {
-    browser: { enabled: false, tools: { read: true } },
     judgement: { connections: { main: {} } },
     skillsMcp: { toolFilters: { disabled: [] }, mcpRows: [] },
     git: { branchPrefix: '', alwaysForcePush: false, commitInstructions: '' },
@@ -224,17 +222,16 @@ test('the real classic factory uses only Host seed modules and mounts twelve sep
 
 test('the unified bundle registers the original settings pages, Remote faces, and mobile tab', async () => {
   const result = await boot()
-  assert.equal(result.children.length, 12)
-  assert.equal(result.active.length, 12)
+  assert.equal(result.children.length, 11)
+  assert.equal(result.active.length, 11)
   assert.deepEqual(result.pending, [])
   assert.deepEqual(result.warnings, [])
   const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
-  assert.deepEqual(sections.map(({ registration }) => registration.id).sort(), ['archived-chats', 'boot', 'browser', 'desktop-pet', 'git', 'hooks', 'judgment', 'notification', 'skills-mcp', 'theme'])
+  assert.deepEqual(sections.map(({ registration }) => registration.id).sort(), ['archived-chats', 'boot', 'desktop-pet', 'git', 'hooks', 'judgment', 'notification', 'skills-mcp', 'theme'])
 
   const expected = {
     'archived-chats': { namespace: 'shell-kit.archived', order: 40, label: '已归档的聊天' },
     boot: { namespace: 'boot', order: 7, label: '启动动画' },
-    browser: { namespace: 'browser', order: 22, label: '浏览器' },
     judgment: { namespace: 'judgement', order: 21, label: '决策' },
     notification: { namespace: 'notification', order: 9, label: '通知' },
     'desktop-pet': { namespace: 'pet', order: 8, label: '桌面宠物' },
@@ -304,16 +301,14 @@ test('the unified bundle registers the original settings pages, Remote faces, an
     assert.equal(write.revision, 12)
   }
   const faces = Object.fromEntries(sections.filter(({ registration }) => registration.inject).map(({ registration }) => [registration.id, registration.inject()]))
-  assert.equal(faces.browser.primitives, result.primitives)
   assert.equal(faces.judgment.primitives, result.primitives)
   assert.equal(faces.judgment.credentials, result.credentials)
   assert.equal(faces['skills-mcp'].inventory, result.inventory)
-  assert.equal(faces.browser.browser, result.remoteServices.get('remote.browser'))
   assert.equal(faces.judgment.judgment, result.remoteServices.get('remote.judgment'))
-  assert.notEqual(faces.browser.form, faces.judgment.form)
-  assert.notEqual(faces.browser.form, faces['skills-mcp'].form)
+  assert.notEqual(faces.judgment.form, faces['skills-mcp'].form)
 
-  assert.equal(result.mounted.length, 2)
+  // 只有 judgment 自检需要先挂 Remote（浏览器模块的 installCli 已随模块删除）。
+  assert.equal(result.mounted.length, 1)
   for (const { plugin, contribution } of result.mounted) {
     const namespace = contribution.descriptors[0].namespace
     assert.ok(result.trace.indexOf(`${plugin}:mount:${namespace}`) < result.trace.indexOf(`${plugin}:slot:${namespace}`), 'self-check Remote must mount before its settings page')
@@ -346,8 +341,8 @@ test('missing archived session services leave theme, other pages, and the mobile
   const result = await boot({ missing: ['sessions'] })
   // pet 客户端现在也读 sessions（主视图切会话时上报已读），缺该服务时与其他会话相关插件一起等待。
   assert.deepEqual(result.pending, ['dsh-toolkit-archived-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-pet-client'])
-  assert.equal(result.active.length, 9)
-  assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['boot', 'browser', 'git', 'hooks', 'judgment', 'skills-mcp', 'theme'])
+  assert.equal(result.active.length, 8)
+  assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['boot', 'git', 'hooks', 'judgment', 'skills-mcp', 'theme'])
   assert.equal(result.tabTypes.length, 1)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'dsh-toolkit-theme-client'), true)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'dsh-toolkit-archived-client'), false)
@@ -361,24 +356,24 @@ test('nested Remote dependencies block only the client that declares them', asyn
   ]) {
     const result = await boot({ missing: [dependency] })
     assert.deepEqual(result.pending, [pending])
-    assert.equal(result.active.length, 11)
+    assert.equal(result.active.length, 10)
     const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
-    assert.equal(sections.length, 9)
+    assert.equal(sections.length, 8)
     assert.equal(sections.some(({ registration }) => registration.id === absentSection), false)
-    assert.equal(sections.some(({ registration }) => registration.id === 'browser'), true)
+    assert.equal(sections.some(({ registration }) => registration.id === 'theme'), true)
     assert.equal(result.tabTypes.length, 1)
   }
 })
 
 test('missing settings forms or mobile tab services do not suspend unrelated children', async () => {
   const withoutForms = await boot({ missing: ['configForms'] })
-  assert.deepEqual(withoutForms.pending, ['dsh-toolkit-theme-client', 'dsh-toolkit-skills-mcp-client', 'dsh-toolkit-judgment-client', 'dsh-toolkit-browser-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-boot-client', 'dsh-toolkit-pet-client', 'dsh-toolkit-git-client'])
+  assert.deepEqual(withoutForms.pending, ['dsh-toolkit-theme-client', 'dsh-toolkit-skills-mcp-client', 'dsh-toolkit-judgment-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-boot-client', 'dsh-toolkit-pet-client', 'dsh-toolkit-git-client'])
   assert.deepEqual(withoutForms.active.sort(), ['dsh-toolkit-archived-client', 'dsh-toolkit-hooks-client', 'dsh-toolkit-mobile-client', 'dsh-toolkit-remote-client'])
   assert.equal(withoutForms.tabTypes.length, 1)
 
   const withoutTabs = await boot({ missing: ['sidebarRightTabs'] })
   assert.deepEqual(withoutTabs.pending, ['dsh-toolkit-mobile-client'])
-  assert.equal(withoutTabs.active.length, 11)
+  assert.equal(withoutTabs.active.length, 10)
   assert.equal(withoutTabs.tabTypes.length, 0)
-  assert.equal(withoutTabs.registrations.length, 11)
+  assert.equal(withoutTabs.registrations.length, 10)
 })

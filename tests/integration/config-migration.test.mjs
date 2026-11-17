@@ -33,7 +33,7 @@ function apply(rows, patches) {
 }
 
 for (const rootId of ROOT_IDS) test(`migrates ${rootId} top-level overrides and preserves unknown root data`, () => {
-  const input = [{ id: rootId, config: { browser: { enabled: true }, judgement: { connections: { main: { model: 'x' } } }, skillsMcp: { toolFilters: {} }, shell: { retained: true }, custom: 42 }, note: 'keep' }, { id: 'unrelated', disabled: true, config: { keep: true } }]
+  const input = [{ id: rootId, config: { pet: { enabled: true }, judgement: { connections: { main: { model: 'x' } } }, skillsMcp: { toolFilters: {} }, shell: { retained: true }, custom: 42 }, note: 'keep' }, { id: 'unrelated', disabled: true, config: { keep: true } }]
   const original = structuredClone(input)
   const result = migratePatch(input)
   assert.deepEqual(input, original)
@@ -46,16 +46,16 @@ for (const rootId of ROOT_IDS) test(`migrates ${rootId} top-level overrides and 
   assert.equal(result.patches.some((row) => row.id === moduleId('judgement')), false)
   const bundle = Object.values(MODULE_NAMESPACES).map((name) => ({ id: moduleId(name), name: moduleId(name) }))
   const applied = apply(bundle, result.patches)
-  assert.deepEqual(applied.find((row) => row.id === moduleId('browser')).config, { enabled: true })
+  assert.deepEqual(applied.find((row) => row.id === moduleId('pet')).config, { enabled: true })
   assert.deepEqual(migratePatch(result.patches), { patches: result.patches, changed: false, migratedModules: [] })
 })
 
 test('existing module fields and disabled state win while missing nested values are filled', () => {
-  const input = [{ insert: [{ id: 'shell-kit', name: 'dsh-toolkit', disabled: true, config: { browser: { enabled: true, limits: { timeout: 1, retries: 2 }, tools: ['old'] } } }, { id: moduleId('browser'), name: moduleId('browser'), disabled: false, metadata: { title: 'custom' }, config: { enabled: false, limits: { timeout: 9 }, tools: [], custom: null } }] }]
+  const input = [{ insert: [{ id: 'shell-kit', name: 'dsh-toolkit', disabled: true, config: { pet: { enabled: true, limits: { timeout: 1, retries: 2 }, tools: ['old'] } } }, { id: moduleId('pet'), name: moduleId('pet'), disabled: false, metadata: { title: 'custom' }, config: { enabled: false, limits: { timeout: 9 }, tools: [], custom: null } }] }]
   const result = migratePatch(input)
-  const override = last(result.patches, moduleId('browser'))
+  const override = last(result.patches, moduleId('pet'))
   assert.deepEqual(override.config, { enabled: false, limits: { timeout: 9, retries: 2 }, tools: [], custom: null })
-  const active = apply([], result.patches).find((row) => row.id === moduleId('browser'))
+  const active = apply([], result.patches).find((row) => row.id === moduleId('pet'))
   assert.equal(active.disabled, false)
   assert.equal(active.metadata.title, 'custom')
   assert.equal(last(result.patches, moduleId('mobile')).disabled, true)
@@ -64,14 +64,14 @@ test('existing module fields and disabled state win while missing nested values 
 
 test('repeated root/module override config uses final whole object rather than earlier values', () => {
   const result = migratePatch([
-    { id: 'shell-kit', config: { browser: { discarded: true }, theme: { discarded: true } } },
-    { id: 'shell-kit', config: { browser: { keep: true } } },
-    { id: moduleId('browser'), disabled: true, config: { discarded: 1 } },
-    { id: moduleId('browser'), config: { present: 2 } },
+    { id: 'shell-kit', config: { pet: { discarded: true }, theme: { discarded: true } } },
+    { id: 'shell-kit', config: { pet: { keep: true } } },
+    { id: moduleId('pet'), disabled: true, config: { discarded: 1 } },
+    { id: moduleId('pet'), config: { present: 2 } },
   ])
-  assert.deepEqual(last(result.patches, moduleId('browser')).config, { keep: true, present: 2 })
+  assert.deepEqual(last(result.patches, moduleId('pet')).config, { keep: true, present: 2 })
   assert.equal(last(result.patches, moduleId('theme')).config, undefined)
-  assert.equal(apply([{ id: moduleId('browser') }], result.patches)[0].disabled, true)
+  assert.equal(apply([{ id: moduleId('pet') }], result.patches)[0].disabled, true)
   assert.equal(migratePatch(result.patches).changed, false)
 })
 
@@ -81,7 +81,8 @@ test('no root is unchanged; no config creates only explicit module switch overri
   assert.equal(migratePatch(unrelated).changed, false)
   for (const disabled of [false, true]) {
     const result = migratePatch([{ id: 'shell-kit', disabled }])
-    assert.equal(result.patches.length, 11)
+    // 一条根补丁 + 每个模块命名空间一条开关补丁（模块清单说了算，不写死数字）。
+    assert.equal(result.patches.length, Object.keys(MODULE_NAMESPACES).length + 1)
     for (const row of result.patches.slice(1)) {
       assert.equal(row.disabled, disabled)
       assert.equal('config' in row, false)
@@ -100,7 +101,7 @@ test('nested inserted groups and group-targeted insert patches preserve structur
 })
 
 test('unsafe shapes and ambiguous legacy roots fail explicitly', () => {
-  for (const input of [null, {}, [null], [{ insert: {} }], [{ id: 'shell-kit', config: [] }], [{ id: 'shell-kit', config: { browser: false } }], [{ id: 'shell-kit', disabled: 'false' }], [{ id: 'shell-kit', config: { browser: { __jsExpr: 'env.x' } } }], [{ id: 'group', group: true, config: [] }], [{ insert: [{ id: 'group', group: true, disabled: true, config: [{ id: 'shell-kit' }] }] }], [{ id: 'shell-kit', config: { browser: { x: 1 } } }, { id: 'dsh-toolkit', config: { browser: { x: 2 } } }]]) {
+  for (const input of [null, {}, [null], [{ insert: {} }], [{ id: 'shell-kit', config: [] }], [{ id: 'shell-kit', config: { pet: false } }], [{ id: 'shell-kit', disabled: 'false' }], [{ id: 'shell-kit', config: { pet: { __jsExpr: 'env.x' } } }], [{ id: 'group', group: true, config: [] }], [{ insert: [{ id: 'group', group: true, disabled: true, config: [{ id: 'shell-kit' }] }] }], [{ id: 'shell-kit', config: { pet: { x: 1 } } }, { id: 'dsh-toolkit', config: { pet: { x: 2 } } }]]) {
     assert.throws(() => migratePatch(input), /expected|safely|expressions|conflicting|manual migration/)
   }
   assert.throws(() => migrateYaml('- id: shell-kit\n  config: !!js process.env\n'), /Unsafe YAML/)
@@ -108,9 +109,9 @@ test('unsafe shapes and ambiguous legacy roots fail explicitly', () => {
 })
 
 test('YAML comments, unrelated metadata and source on repeat are retained', () => {
-  const source = '# profile note\n- id: shell-kit # root note\n  config:\n    browser: { enabled: false } # browser note\n    shell: { custom: keep }\n  customMeta: value\n- id: untouched\n  config: { keep: true }\n'
+  const source = '# profile note\n- id: shell-kit # root note\n  config:\n    pet: { enabled: false } # pet note\n    shell: { custom: keep }\n  customMeta: value\n- id: untouched\n  config: { keep: true }\n'
   const result = migrateYaml(source)
-  for (const comment of ['# profile note', '# root note', '# browser note']) assert.ok(result.text.includes(comment))
+  for (const comment of ['# profile note', '# root note', '# pet note']) assert.ok(result.text.includes(comment))
   assert.equal(parse(result.text)[0].customMeta, 'value')
   assert.equal(migrateYaml(result.text).text, result.text)
   assert.equal(migrateYaml(result.text).changed, false)
@@ -119,7 +120,7 @@ test('YAML comments, unrelated metadata and source on repeat are retained', () =
 test('CLI preview leaves bytes unchanged; --write retains exact exclusive backup and is idempotent', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'dsh-config-migration-'))
   const path = join(directory, 'patch.yml')
-  const source = '# keep original bytes\n- id: shell-kit\n  config:\n    browser: { enabled: false }\n'
+  const source = '# keep original bytes\n- id: shell-kit\n  config:\n    pet: { enabled: false }\n'
   await writeFile(path, source)
   await main([path])
   assert.equal(await readFile(path, 'utf8'), source)

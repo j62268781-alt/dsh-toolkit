@@ -26,7 +26,6 @@ export const PACKAGE_MODULES = Object.freeze([
   { name: 'boot', client: { entry: 'src/modules/boot/client/index', factory: false }, skills: [] },
   { name: 'theme', client: { entry: 'src/modules/theme/client/index', factory: false }, skills: [] },
   { name: 'archived', client: { entry: 'src/modules/archived/client/index', factory: false }, skills: [] },
-  { name: 'browser', client: { entry: 'src/modules/browser/client/index', factory: false }, skills: ['agent-browser'] },
   { name: 'judgment', client: { entry: 'src/modules/judgment/client/index', factory: false }, skills: [] },
   { name: 'mobile', client: { entry: 'src/modules/mobile/client/index', factory: true }, skills: ['mobilecli'] },
   { name: 'skills-mcp', client: { entry: 'src/modules/skills-mcp/client/client', factory: true }, skills: [] },

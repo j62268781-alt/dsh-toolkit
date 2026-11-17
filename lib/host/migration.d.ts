@@ -8,7 +8,6 @@ export declare const MODULE_NAMESPACES: Readonly<{
     boot: "boot";
     theme: "theme";
     archived: "archived";
-    browser: "browser";
     judgement: "judgment";
     mobile: "mobile";
     skillsMcp: "skills-mcp";

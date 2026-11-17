@@ -213,24 +213,6 @@ test('Judgment request validation uses the shared finite JSON predicate', async 
   assert.equal(validateRequest({ value: Infinity }, { q: { kind: 'noul', prompt: 'valid?' } }).rule, 'state-serializable')
 })
 
-test('browser task sleep re-export retains the shared timer behavior', async () => {
-  // Mark the shared module external to compare the public re-export with its source instance.
-  const { sleep: taskSleep } = await bundleModule(`export { sleep } from './src/modules/browser/host/task/utils.ts'`, [{
-    name: 'shared-time-instance',
-    setup(builder) {
-      builder.onResolve({ filter: /[/\\]host[/\\]time\.js$/ }, () => ({
-        path: new URL('../../src/host/time.ts', import.meta.url).href, external: true,
-      }))
-    },
-  }])
-  assert.equal(taskSleep, sleep)
-  let settled = false
-  const pending = sleep(0).then(() => { settled = true })
-  assert.equal(settled, false)
-  await pending
-  assert.equal(settled, true)
-})
-
 test('Skills host split activates routes, adopts agents, reconnects projects and disposes effects', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-skills-lifecycle-'))
   const previousEnv = { DSH_HOME: process.env.DSH_HOME, DSH_AGENTS_HOME: process.env.DSH_AGENTS_HOME }

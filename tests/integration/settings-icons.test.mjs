@@ -28,7 +28,6 @@ const ENTRY = join(ROOT, "src", "client", "ui", "components", "settings-icon", "
 /** One row per module that owns a settings page. */
 const MODULES = [
   { name: "boot", entry: "src/modules/boot/client/index.tsx", section: "boot", icon: "rocket" },
-  { name: "browser", entry: "src/modules/browser/client/index.tsx", section: "browser", icon: "globe" },
   { name: "judgment", entry: "src/modules/judgment/client/index.tsx", section: "judgment", icon: "scale" },
   { name: "notification", entry: "src/modules/notification/client/index.tsx", section: "notification", icon: "bell", factory: true },
   { name: "pet", entry: "src/modules/pet/client/index.tsx", section: "desktop-pet", icon: "paw", factory: true },

@@ -306,7 +306,7 @@ test('sections group like the Qoder menu: 个人 / 集成 / 连接 / 归档管�
     ['account', '账号与余额'], ['general', '通用'], ['theme', '外观'], ['boot', '启动动画'],
     ['desktop-pet', '桌面宠物'], ['notification', '通知'], ['models', '模型'],
     ['plugins', '扩展管理'], ['agent-presets', '智能体'], ['skills-mcp', 'Skills & MCP'],
-    ['judgment', '决策'], ['hooks', '钩子'], ['browser', '浏览器'],
+    ['judgment', '决策'], ['hooks', '钩子'],
     ['mobile', '移动端'], ['archived-chats', '已归档的会话'],
   ]
   rows.forEach(([id, label], index) => {
@@ -328,7 +328,7 @@ test('sections group like the Qoder menu: 个人 / 集成 / 连接 / 归档管�
   const idsIn = (title) => [...menu.querySelector(`section[aria-label="${title}"]`).querySelectorAll('[data-settings-id]')]
     .map((node) => node.getAttribute('data-settings-id'))
   assert.deepEqual(idsIn('个人'), ['account', 'general', 'theme', 'boot', 'desktop-pet', 'notification', 'models'])
-  assert.deepEqual(idsIn('集成'), ['plugins', 'agent-presets', 'skills-mcp', 'judgment', 'hooks', 'browser'])
+  assert.deepEqual(idsIn('集成'), ['plugins', 'agent-presets', 'skills-mcp', 'judgment', 'hooks'])
   assert.deepEqual(idsIn('连接'), ['mobile'])
   assert.deepEqual(idsIn('归档管理'), ['archived-chats'])
 })
