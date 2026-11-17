@@ -286,7 +286,6 @@ export function createBranchChip(ctx: any) {
               {Input === undefined ? null : (
                 <div className="sk-git-branch__search">
                   <Input
-                    autoFocus
                     icon={SearchIcon === undefined ? undefined : <SearchIcon size={14} />}
                     value={query}
                     placeholder={t("branchSearch")}

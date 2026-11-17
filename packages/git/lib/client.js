@@ -944,7 +944,6 @@ window.__ModuleLoader__.load({
           /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git-branch__menu" }, Input === void 0 ? null : /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git-branch__search" }, /* @__PURE__ */ __dshReact.createElement(
             Input,
             {
-              autoFocus: true,
               icon: SearchIcon === void 0 ? void 0 : /* @__PURE__ */ __dshReact.createElement(SearchIcon, { size: 14 }),
               value: query,
               placeholder: t("branchSearch"),
