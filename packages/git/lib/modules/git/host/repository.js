@@ -28,6 +28,13 @@ const defaultRunner = async (cwd, args) => {
 function failure(reason, detail) {
     return { ok: false, reason, detail };
 }
+/**
+ * 本地正则先挡下来的那类名字（空、含空格、以 `-` 开头、以 `.` 或 `/` 结尾……）。
+ *
+ * 与 git 的裁决分开一句话：git 拒绝的名字模型改个拼写就能过，形状不对的名字得先知道
+ * 「哪里不对」，所以 detail 直接写规则，而不是只丢一句「不合法」。
+ */
+const SHAPE_DETAIL = '名称无效：只能包含字母、数字与 . _ - /，且不能以 - 开头或以 . 结尾。';
 /** `cwd` 必须是绝对路径：相对路径会相对宿主进程自己的工作目录解析，那是 DSH 的安装目录。 */
 function assertDirectory(cwd) {
     if (typeof cwd !== 'string' || cwd === '')
@@ -100,7 +107,7 @@ export function createRepository(run = defaultRunner) {
             if (typeof resolved !== 'string')
                 return resolved;
             if (typeof name !== 'string' || !isBranchName(name)) {
-                return failure('invalid-branch', '分支名不合法。');
+                return failure('invalid-branch', SHAPE_DETAIL);
             }
             const failed = await switchTo(run, resolved, name, false);
             if (failed !== undefined)
@@ -112,17 +119,19 @@ export function createRepository(run = defaultRunner) {
             if (typeof resolved !== 'string')
                 return resolved;
             if (typeof name !== 'string' || !isBranchName(name)) {
-                return failure('invalid-branch', '分支名不合法。');
+                return failure('invalid-branch', SHAPE_DETAIL);
             }
             const current = await branchOf(resolved);
             if (current.ok !== true)
                 return current;
             if (current.branches.includes(name))
                 return failure('create-failed', '同名分支已存在。');
-            // 最终裁决交给 git：`check-ref-format` 覆盖的规则比本地正则更全（例如已存在的 ref 形态）。
+            // 最终裁决交给 git：`check-ref-format` 覆盖的规则比本地正则更全（`@{`、已有 ref 形态、
+            // 全大写保留名等），本地正则只用来省掉一次进程调用。被 git 拒绝时把它的原话带回去，
+            // 模型据此知道是「名字本身不行」而不是「仓库状态不允许」。
             const checked = await run(resolved, ['check-ref-format', '--branch', name]);
             if (checked.code !== 0)
-                return failure('invalid-branch', firstLine(checked.stderr) || '分支名不合法。');
+                return failure('invalid-branch', firstLine(checked.stderr) || 'git 不接受这个分支名。');
             const failed = await switchTo(run, resolved, name, true);
             if (failed !== undefined)
                 return failed;

@@ -39,7 +39,7 @@ function firstLine(text) {
 }
 const REASON_TEXT = {
     'invalid-cwd': '工作目录必须是绝对路径。',
-    'invalid-branch': '分支名不合法。',
+    'invalid-branch': '新分支名称不符合 Git 规则。',
     'not-a-repository': '这里不是 Git 仓库。',
     'checkout-failed': '切换分支失败。',
     'create-failed': '创建分支失败。',
@@ -113,7 +113,7 @@ export function createGitTools(options) {
             const cwd = directoryOf(exec);
             const branch = args.branch === undefined || args.branch === '' ? undefined : args.branch;
             if (branch !== undefined && !isBranchName(branch))
-                throw new Error(`分支名不合法：${branch}`);
+                throw new Error(`分支名无效：${branch}`);
             if (branch === undefined) {
                 const head = await repository.snapshot(cwd);
                 if (head.ok && head.detached) {
@@ -155,7 +155,7 @@ export function createGitTools(options) {
             const seed = (args.name ?? '').trim() === '' ? stamp(now()) : (args.name ?? '').trim();
             const name = prefixedName(normalizeBranchPrefix(settings().branchPrefix), seed);
             if (!isBranchName(name))
-                throw new Error(`分支名不合法：${name}`);
+                throw new Error(`新分支名称无效：${name}`);
             const snapshot = await repository.snapshot(cwd);
             // `ok` 是布尔字面量判别式；emit 档关掉了 strictNullChecks，这里的窄化必须写成 `!== true`。
             if (snapshot.ok !== true)

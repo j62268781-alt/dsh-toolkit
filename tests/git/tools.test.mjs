@@ -80,7 +80,29 @@ test('git_push：显式分支名、游离 HEAD、非法名字', async () => {
   await assert.rejects(() => detached.push.execute({}, EXEC), /游离 HEAD/)
 
   const illegal = build()
-  await assert.rejects(() => illegal.push.execute({ branch: 'bad name' }, EXEC), /分支名不合法/)
+  await assert.rejects(() => illegal.push.execute({ branch: 'bad name' }, EXEC), /分支名无效/)
+})
+
+test('git_branch_create：形状不对与 git 拒绝说的是两句话', async () => {
+  const shape = build()
+  await assert.rejects(() => shape.branch.execute({ name: 'bad name' }, EXEC), /新分支名称无效/)
+
+  // `HEAD` 能过本地正则、过不了 git——这类名字必须由 git 裁决，且把它的原话带回来。
+  const refused = build({
+    'check-ref-format --branch HEAD': {
+      code: 1,
+      stdout: '',
+      stderr: "'HEAD' is not a valid branch name\n",
+    },
+  })
+  await assert.rejects(
+    () => refused.branch.execute({ name: 'HEAD' }, EXEC),
+    (error) => {
+      assert.match(error.message, /新分支名称不符合 Git 规则/)
+      assert.match(error.message, /is not a valid branch name/)
+      return true
+    },
+  )
 })
 
 test('git_push：失败时带上真实命令与「远端有你没有的提交」的下一步', async () => {
