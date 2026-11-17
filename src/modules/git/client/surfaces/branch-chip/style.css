@@ -127,6 +127,17 @@
   padding: 2px 2px 4px;
 }
 
+/*
+ * 宿主 Input primitive 的根是 `display:inline-flex; width:180px`（写死的，按它自己的场景定），
+ * 放进我们 280px 的弹层里右侧会空出一截。两级选择器压过它自己的类，把根拉满。
+ */
+.sk-git-branch__menu .sk-git-branch__search > * {
+  /* 它自己是 content-box（左右还有 8px 内边距），只给 width:100% 会向右溢出，
+     所以连带把盒模型压成 border-box，让"拉满"等于父容器宽度。 */
+  box-sizing: border-box;
+  width: 100%;
+}
+
 .sk-git-branch__groupLabel {
   margin: 2px 0 0;
   padding: 0 8px;

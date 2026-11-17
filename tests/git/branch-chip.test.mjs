@@ -79,6 +79,8 @@ test('模块自述：NAME 与全局注入的样式文本', () => {
   // 图标不许被压扁：宿主用 .SJRB_q_triggerIcon{flex:none}，我们同样给包裹层 flex:none，
   // 否则 max-width 夹紧时裸 <svg> 会从 14px 缩成 5px 宽。
   assert.match(CSS, /\.sk-git-branch__icon\s*\{[^}]*flex: none/)
+  // 弹层里的搜索框要拉满：宿主 Input primitive 的根写死 180px 且是 content-box。
+  assert.match(CSS, /\.sk-git-branch__search > \*\s*\{[^}]*box-sizing: border-box[^}]*width: 100%/)
 })
 
 test('createBranchChip 在缺 configForms 时也能装出组件', () => {
