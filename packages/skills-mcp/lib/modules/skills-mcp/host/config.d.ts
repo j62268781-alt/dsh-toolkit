@@ -1,7 +1,7 @@
 import z from '@deepseek-ai/schemastery';
 /** One queued change against a row the profile itself configures. */
 export declare const RowOp: z<Schemastery.ObjectS<NoInfer<{
-    op: z<"delete" | "add" | "update" | "toggle", "delete" | "add" | "update" | "toggle", "plain">;
+    op: z<"add" | "delete" | "update" | "toggle", "add" | "delete" | "update" | "toggle", "plain">;
     /** delete/update: the row to touch; add: the id for the new row (blank = derive). */
     entryId: z<string, string, "defined">;
     serverName: z<string, string, "defined">;
@@ -64,7 +64,7 @@ export declare const RowOp: z<Schemastery.ObjectS<NoInfer<{
     /** update: whether the user actually changed the tier (blank = leave it alone). */
     scopeChanged: z<boolean, boolean, "defined">;
 }>>, Schemastery.ObjectT<NoInfer<{
-    op: z<"delete" | "add" | "update" | "toggle", "delete" | "add" | "update" | "toggle", "plain">;
+    op: z<"add" | "delete" | "update" | "toggle", "add" | "delete" | "update" | "toggle", "plain">;
     /** delete/update: the row to touch; add: the id for the new row (blank = derive). */
     entryId: z<string, string, "defined">;
     serverName: z<string, string, "defined">;
