@@ -51,6 +51,7 @@ function page(t, html) {
     }
   })
   return {
+    window: dom.window,
     document: dom.window.document,
     ctx,
     entries,
@@ -155,6 +156,8 @@ test('settings toolbar remounts once after a native panel is replaced', async (t
   await flush()
   assert.equal(document.querySelectorAll('.sk-setnav__back').length, 1)
   assert.equal(document.querySelectorAll('[data-sk-setnav]').length, 1)
+  assert.equal(document.querySelectorAll('.sk-setnav__toggle').length, 1, 'the cloned panel does not keep a stale toggle')
+  assert.equal(document.querySelectorAll('.sk-setnav__scrim').length, 1, 'the cloned panel does not keep a stale scrim')
   assert.equal(next.querySelector('.sk-setnav__back').parentElement, next)
 })
 test('grouped menu keeps React rows in place and orders by stable settings identity', async (t) => {
@@ -328,4 +331,77 @@ test('sections group like the Qoder menu: 个人 / 集成 / 连接 / 归档管�
   assert.deepEqual(idsIn('集成'), ['plugins', 'agent-presets', 'skills-mcp', 'judgment', 'hooks', 'browser'])
   assert.deepEqual(idsIn('连接'), ['mobile'])
   assert.deepEqual(idsIn('归档管理'), ['archived-chats'])
+})
+test('narrow windows collapse the settings nav into a drawer at the workspace breakpoint', async (t) => {
+  const { window, document, ctx, flush, onCleanup } = page(t, PANEL_HTML)
+  const viewport = (width) => Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  viewport(900)
+  onCleanup(installSettingsNav(ctx))
+  await flush()
+  const panel = document.querySelector('[data-shortcut-modal="settings"]')
+  const nav = panel.querySelector('nav')
+  const toggle = panel.querySelector('.sk-setnav__toggle')
+  const scrim = panel.querySelector('.sk-setnav__scrim')
+  assert.equal(panel.getAttribute('data-sk-settings-nav'), 'collapsed')
+  assert.equal(toggle.getAttribute('aria-controls'), nav.id)
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false')
+  assert.equal(toggle.getAttribute('aria-label'), '展开设置导航')
+  assert.ok(toggle.querySelector('svg[aria-hidden="true"]'))
+  assert.equal(scrim.hidden, true)
+
+  toggle.click()
+  assert.equal(panel.getAttribute('data-sk-settings-nav'), 'open')
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true')
+  assert.equal(toggle.getAttribute('aria-label'), '收起设置导航')
+  assert.equal(scrim.hidden, false)
+  assert.equal(document.activeElement, nav.querySelector('.sk-setnav__input'))
+
+  // Escape closes the drawer first, without closing the settings modal.
+  const escape = new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+  document.dispatchEvent(escape)
+  assert.equal(panel.getAttribute('data-sk-settings-nav'), 'collapsed')
+  assert.equal(escape.defaultPrevented, true)
+  assert.equal(document.activeElement, toggle)
+
+  // A destination closes the drawer after selection.
+  toggle.click()
+  nav.querySelector('[data-settings-id="notification"]').click()
+  assert.equal(panel.getAttribute('data-sk-settings-nav'), 'collapsed')
+  assert.equal(scrim.hidden, true)
+
+  // The scrim is the pointer path.
+  toggle.click()
+  scrim.click()
+  assert.equal(panel.getAttribute('data-sk-settings-nav'), 'collapsed')
+
+  // Widening restores the inline rail and drops the manual override, like the
+  // host resetting narrowExpanded when the workspace crosses the breakpoint.
+  toggle.click()
+  viewport(1200)
+  window.dispatchEvent(new window.Event('resize'))
+  assert.equal(panel.getAttribute('data-sk-settings-nav'), 'wide')
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false')
+  assert.equal(scrim.hidden, true)
+  viewport(900)
+  window.dispatchEvent(new window.Event('resize'))
+  assert.equal(panel.getAttribute('data-sk-settings-nav'), 'collapsed', 'a new narrow window starts collapsed')
+  viewport(1024)
+  window.dispatchEvent(new window.Event('resize'))
+  assert.equal(panel.getAttribute('data-sk-settings-nav'), 'wide', '1024px is still a wide window, matching SIDEBAR_AUTO_COLLAPSE')
+  viewport(1023)
+  window.dispatchEvent(new window.Event('resize'))
+  assert.equal(panel.getAttribute('data-sk-settings-nav'), 'collapsed')
+})
+
+test('the drawer keeps a native nav id instead of owning it', async (t) => {
+  const { document, ctx, flush, onCleanup } = page(t, PANEL_HTML.replace('<nav class=', '<nav id="native-settings-nav" class='))
+  const dispose = installSettingsNav(ctx)
+  onCleanup(dispose)
+  await flush()
+  const nav = document.querySelector('nav')
+  const toggle = document.querySelector('.sk-setnav__toggle')
+  assert.equal(nav.id, 'native-settings-nav')
+  assert.equal(toggle.getAttribute('aria-controls'), 'native-settings-nav')
+  dispose()
+  assert.equal(nav.id, 'native-settings-nav')
 })

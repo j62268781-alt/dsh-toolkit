@@ -1147,7 +1147,8 @@ window.__ModuleLoader__.load({
     }
 
     :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav [class*="_navCell"]:focus-visible,
-    .sk-setnav__back:focus-visible {
+    .sk-setnav__back:focus-visible,
+    .sk-setnav__toggle:focus-visible {
       outline: 1px solid var(--dsw-alias-label-dimmed, var(--dsw-alias-border-l2));
       outline-offset: -1px;
     }
@@ -1237,6 +1238,70 @@ window.__ModuleLoader__.load({
       width: auto;
       min-width: 0;
     }
+
+    /* Small windows reuse the workspace's collapse rule: at < 1024px the native
+       sidebar auto-collapses (SIDEBAR_AUTO_COLLAPSE) and exposes a titlebar toggle.
+       The settings menu follows the same breakpoint, turning the rail into a drawer
+       so the content column keeps a readable width. \`data-sk-settings-nav\` is set
+       by settings-nav.ts and survives the exit snapshot clone. */
+    html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"]:has(> [class*="_options"]),
+    html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"]:has(> [class*="_options"]) {
+      grid-template: "header" auto "options" minmax(0, 1fr) / minmax(0, 1fr);
+    }
+
+    html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"] > nav,
+    html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > nav {
+      position: absolute;
+      inset: 0 auto 0 0;
+      z-index: 4;
+      width: min(280px, calc(100% - 40px));
+      height: 100%;
+      border-radius: 0;
+      transform: translateX(-100%);
+      visibility: hidden;
+      pointer-events: none;
+      box-shadow: none;
+      border-block-end: 0;
+      transition: transform 180ms cubic-bezier(.2, 0, 0, 1), visibility 0s linear 180ms;
+    }
+
+    html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > nav {
+      transform: translateX(0);
+      visibility: visible;
+      pointer-events: auto;
+      box-shadow: 12px 0 32px #0003;
+      transition: transform 180ms cubic-bezier(.2, 0, 0, 1), visibility 0s;
+    }
+
+    /* The browser layout flips the native list to a horizontal strip below 768px;
+       inside the drawer it must stay a vertical menu. */
+    html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"] > nav > [class*="_navList"],
+    html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > nav > [class*="_navList"] {
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"] > nav > [class*="_navList"] > [class*="_navCell"],
+    html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > nav > [class*="_navList"] > [class*="_navCell"] {
+      justify-content: flex-start;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"] > nav,
+      html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > nav {
+        transition: none;
+      }
+    }
+
+    /* The mask covers the section content only; the titlebar controls stay above it. */
+    .sk-setnav__scrim {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      background: var(--dsw-alias-bg-mask-1);
+      backdrop-filter: var(--dsw-mask-blur);
+    }
+    .sk-setnav__scrim[hidden] { display: none; }
     :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_navTitle"] {
       position: absolute;
       width: 1px;
@@ -1316,6 +1381,7 @@ window.__ModuleLoader__.load({
     }
 
     .sk-setnav__back,
+    .sk-setnav__toggle,
     .sk-setnav__more {
       position: fixed;
       top: calc((var(--sk-settings-band-h) - 28px) / 2);
@@ -1335,9 +1401,22 @@ window.__ModuleLoader__.load({
       -webkit-app-region: no-drag;
     }
 
-    .sk-setnav__back:hover {
+    .sk-setnav__back:hover,
+    .sk-setnav__toggle:hover {
       background: var(--dsw-alias-interactive-bg-hover);
       color: var(--dsw-alias-label-primary);
+    }
+
+    /* Sits beside the back arrow, in the same band; only narrow windows show it. */
+    .sk-setnav__toggle {
+      left: calc(var(--cx-toggle-x, 12px) + 36px);
+      z-index: 4;
+      display: none;
+    }
+
+    html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"] > .sk-setnav__toggle,
+    html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > .sk-setnav__toggle {
+      display: inline-flex;
     }
 
     .sk-setnav__search {
@@ -3802,6 +3881,7 @@ window.__ModuleLoader__.load({
     var PANEL = '[data-shortcut-modal="settings"]';
     var NAV_LIST = '[class*="_navList"]';
     var NAV_CELL = '[class*="_navCell"]';
+    var NAV_ID = "sk-settings-nav";
     var GROUPS = [
       { title: "个人", ids: ["account", "general", "theme", "boot", "desktop-pet", "notification", "models"] },
       { title: "集成", ids: ["plugins", "agent-presets", "skills-mcp", "judgment", "hooks", "browser"] },
@@ -3818,6 +3898,20 @@ window.__ModuleLoader__.load({
         bubbles: true,
         cancelable: true
       }));
+    }
+    function buildNavToggle() {
+      const toggle2 = document.createElement("button");
+      toggle2.type = "button";
+      toggle2.className = "sk-setnav__toggle";
+      toggle2.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true"><rect x="2.25" y="3.25" width="11.5" height="9.5" rx="2"></rect><path d="M6.5 3.25v9.5"></path></svg>';
+      return toggle2;
+    }
+    function buildScrim() {
+      const scrim = document.createElement("div");
+      scrim.className = "sk-setnav__scrim";
+      scrim.setAttribute("aria-hidden", "true");
+      scrim.hidden = true;
+      return scrim;
     }
     function buildBackButton() {
       const back = document.createElement("button");
@@ -3963,17 +4057,74 @@ window.__ModuleLoader__.load({
       let overlay = null;
       let block = null;
       let back = null;
+      let toggle2 = null;
+      let scrim = null;
+      let nav = null;
       let grouped = null;
       let actions = null;
+      let narrow = false;
+      let navOpen = false;
+      let ownsNavId = false;
       const motion = createSettingsMotion();
+      const applyViewport = () => {
+        if (!panel) return;
+        panel.setAttribute("data-sk-settings-nav", narrow ? navOpen ? "open" : "collapsed" : "wide");
+        if (toggle2) {
+          toggle2.setAttribute("aria-expanded", String(narrow && navOpen));
+          const label = narrow && navOpen ? "收起设置导航" : "展开设置导航";
+          if (toggle2.getAttribute("aria-label") !== label) toggle2.setAttribute("aria-label", label);
+          if (toggle2.title !== label) toggle2.title = label;
+        }
+        if (scrim) scrim.hidden = !(narrow && navOpen);
+      };
+      const syncViewport = () => {
+        const next = (window.innerWidth || 0) < SHELL_MIN_WIDTH;
+        if (next !== narrow) {
+          narrow = next;
+          navOpen = false;
+        }
+        applyViewport();
+      };
+      const openNav = () => {
+        if (!narrow || navOpen) return;
+        navOpen = true;
+        applyViewport();
+        block?.querySelector("input")?.focus();
+      };
+      const closeNav = (restoreFocus = false) => {
+        if (!navOpen) return;
+        navOpen = false;
+        applyViewport();
+        if (restoreFocus && toggle2?.isConnected) toggle2.focus();
+      };
+      const onNavClick = (event) => {
+        if (!narrow || !navOpen) return;
+        if (!event.target?.closest?.(".sk-setnav__item, " + NAV_CELL)) return;
+        closeNav(true);
+      };
+      const onEscape = (event) => {
+        if (!navOpen || event.key !== "Escape") return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closeNav(true);
+      };
+      const onResize = () => syncViewport();
       const teardown = () => {
         actions?.dispose();
         grouped?.dispose();
+        window.removeEventListener("resize", onResize);
+        window.removeEventListener("keydown", onEscape, true);
+        nav?.removeEventListener("click", onNavClick);
+        if (ownsNavId && nav?.id === NAV_ID) nav.removeAttribute("id");
         panel?.removeAttribute("data-sk-settings-toolbar");
+        panel?.removeAttribute("data-sk-settings-nav");
         overlay?.removeAttribute("data-sk-settings-overlay");
         block?.remove();
         back?.remove();
-        panel = overlay = block = back = grouped = actions = null;
+        toggle2?.remove();
+        scrim?.remove();
+        panel = overlay = block = back = toggle2 = scrim = nav = grouped = actions = null;
+        ownsNavId = false;
       };
       const scan = () => {
         const next = document.querySelector(PANEL);
@@ -3982,17 +4133,37 @@ window.__ModuleLoader__.load({
           if (panel) teardown();
           return;
         }
-        const nav = [...next.children].find((child) => child.localName === "nav") ?? null;
-        if (!nav) return;
+        const navElement = [...next.children].find((child) => child.localName === "nav") ?? null;
+        if (!navElement) return;
         if (panel !== next || !block?.isConnected || !back?.isConnected) {
           teardown();
           panel = next;
           overlay = next.closest('[role="presentation"]') ?? next.parentElement;
           overlay?.setAttribute("data-sk-settings-overlay", "");
+          nav = navElement;
+          ownsNavId = !nav.id;
+          if (ownsNavId) nav.id = NAV_ID;
+          for (const stale of next.querySelectorAll(":scope > .sk-setnav__back, :scope > .sk-setnav__toggle, :scope > .sk-setnav__scrim")) stale.remove();
           block = buildBlock(() => grouped?.sync());
           back = buildBackButton();
+          toggle2 = buildNavToggle();
+          toggle2.setAttribute("aria-controls", nav.id);
+          scrim = buildScrim();
           nav.prepend(block);
           panel.prepend(back);
+          back.after(toggle2);
+          panel.append(scrim);
+          toggle2.addEventListener("click", () => {
+            if (!narrow) return;
+            if (navOpen) closeNav(true);
+            else openNav();
+          });
+          scrim.addEventListener("click", () => closeNav(true));
+          nav.addEventListener("click", onNavClick);
+          window.addEventListener("resize", onResize);
+          window.addEventListener("keydown", onEscape, true);
+          navOpen = false;
+          syncViewport();
           panel.setAttribute("data-sk-settings-toolbar", "");
           grouped = installGroupedMenu(ctx, nav, block.querySelector("input"));
           actions = installSettingsActions(panel);

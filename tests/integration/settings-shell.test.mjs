@@ -338,3 +338,12 @@ test('theme shell CSS uses structural selectors and reserves the Windows caption
   await walk(THEME_CLIENT)
   assert.deepEqual(offenders, [], 'theme sources must not select CSS module hashes')
 })
+
+test('narrow windows turn the settings rail into a titlebar-controlled drawer', async () => {
+  const css = await readFile(join(THEME_CLIENT, 'styles/settings-shell.css'), 'utf8')
+  assert.match(css, /\[data-sk-settings-nav="collapsed"\]/)
+  assert.match(css, /\[data-sk-settings-nav="open"\]/)
+  assert.match(css, /\.sk-setnav__toggle\s*\{[^}]*display:\s*none/)
+  assert.match(css, /\.sk-setnav__scrim\s*\{[^}]*position:\s*absolute/)
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/)
+})

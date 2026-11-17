@@ -110,7 +110,8 @@ html[data-platform="darwin"][data-fullscreen] :is([role="presentation"]:has(> [d
 }
 
 :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav [class*="_navCell"]:focus-visible,
-.sk-setnav__back:focus-visible {
+.sk-setnav__back:focus-visible,
+.sk-setnav__toggle:focus-visible {
   outline: 1px solid var(--dsw-alias-label-dimmed, var(--dsw-alias-border-l2));
   outline-offset: -1px;
 }
@@ -200,6 +201,70 @@ html[data-platform="darwin"][data-fullscreen] :is([role="presentation"]:has(> [d
   width: auto;
   min-width: 0;
 }
+
+/* Small windows reuse the workspace's collapse rule: at < 1024px the native
+   sidebar auto-collapses (SIDEBAR_AUTO_COLLAPSE) and exposes a titlebar toggle.
+   The settings menu follows the same breakpoint, turning the rail into a drawer
+   so the content column keeps a readable width. `data-sk-settings-nav` is set
+   by settings-nav.ts and survives the exit snapshot clone. */
+html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"]:has(> [class*="_options"]),
+html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"]:has(> [class*="_options"]) {
+  grid-template: "header" auto "options" minmax(0, 1fr) / minmax(0, 1fr);
+}
+
+html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"] > nav,
+html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > nav {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 4;
+  width: min(280px, calc(100% - 40px));
+  height: 100%;
+  border-radius: 0;
+  transform: translateX(-100%);
+  visibility: hidden;
+  pointer-events: none;
+  box-shadow: none;
+  border-block-end: 0;
+  transition: transform 180ms cubic-bezier(.2, 0, 0, 1), visibility 0s linear 180ms;
+}
+
+html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > nav {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+  box-shadow: 12px 0 32px #0003;
+  transition: transform 180ms cubic-bezier(.2, 0, 0, 1), visibility 0s;
+}
+
+/* The browser layout flips the native list to a horizontal strip below 768px;
+   inside the drawer it must stay a vertical menu. */
+html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"] > nav > [class*="_navList"],
+html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > nav > [class*="_navList"] {
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"] > nav > [class*="_navList"] > [class*="_navCell"],
+html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > nav > [class*="_navList"] > [class*="_navCell"] {
+  justify-content: flex-start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"] > nav,
+  html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > nav {
+    transition: none;
+  }
+}
+
+/* The mask covers the section content only; the titlebar controls stay above it. */
+.sk-setnav__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: var(--dsw-alias-bg-mask-1);
+  backdrop-filter: var(--dsw-mask-blur);
+}
+.sk-setnav__scrim[hidden] { display: none; }
 :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > [class*="_navTitle"] {
   position: absolute;
   width: 1px;
@@ -279,6 +344,7 @@ html[data-platform="darwin"][data-fullscreen] :is([role="presentation"]:has(> [d
 }
 
 .sk-setnav__back,
+.sk-setnav__toggle,
 .sk-setnav__more {
   position: fixed;
   top: calc((var(--sk-settings-band-h) - 28px) / 2);
@@ -298,9 +364,22 @@ html[data-platform="darwin"][data-fullscreen] :is([role="presentation"]:has(> [d
   -webkit-app-region: no-drag;
 }
 
-.sk-setnav__back:hover {
+.sk-setnav__back:hover,
+.sk-setnav__toggle:hover {
   background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-primary);
+}
+
+/* Sits beside the back arrow, in the same band; only narrow windows show it. */
+.sk-setnav__toggle {
+  left: calc(var(--cx-toggle-x, 12px) + 36px);
+  z-index: 4;
+  display: none;
+}
+
+html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="collapsed"] > .sk-setnav__toggle,
+html :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot])[data-sk-settings-nav="open"] > .sk-setnav__toggle {
+  display: inline-flex;
 }
 
 .sk-setnav__search {
