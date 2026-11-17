@@ -82,6 +82,20 @@ test('JSON transport preserves admission handling and consumes a body once', asy
   assert.equal(reads, 1)
 })
 
+test('a JSON body implies POST so a forgotten method cannot become GET with a body', async t => {
+  const calls = []
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    calls.push({ url, options })
+    return { ok: true, status: 200, text: async () => '{}' }
+  })
+  await fetchJson('/json', { json: { value: 1 } })
+  await fetchJson('/explicit', { method: 'PUT', json: { value: 1 } })
+  await fetchJson('/plain')
+  assert.equal(calls[0].options.method, 'POST')
+  assert.equal(calls[1].options.method, 'PUT')
+  assert.equal(calls[2].options.method, undefined)
+})
+
 test('JSON diagnostics carry status and a bounded body preview without retries', async t => {
   let calls = 0
   t.mock.method(globalThis, 'fetch', async () => { calls++; return { ok: false, status: 502, text: async () => '<html>'.repeat(100) } })

@@ -668,7 +668,10 @@ window.__ModuleLoader__.load({
         cache: "no-store",
         ...options,
         headers: Object.fromEntries(headers),
-        ...json === void 0 ? {} : { body: JSON.stringify(json) }
+        // `json` 意味着有请求体，而 fetch 默认 GET —— 浏览器在发请求前就抛
+        // "Request with GET/HEAD method cannot have body"。调用方没写 method 时按 POST 补齐，
+        // 该行为在 fetchJson 这一层收口，免得每个「忘了写 method」的调用点各炸一次。
+        ...json === void 0 ? {} : { method: options.method ?? "POST", body: JSON.stringify(json) }
       });
       let parsed;
       return {

@@ -20,7 +20,10 @@ export async function fetchJson(url: string, { json, ...options }: FetchJsonOpti
   const response = await fetch(url, {
     credentials: 'same-origin', cache: 'no-store', ...options,
     headers: Object.fromEntries(headers),
-    ...(json === undefined ? {} : { body: JSON.stringify(json) }),
+    // `json` 意味着有请求体，而 fetch 默认 GET —— 浏览器在发请求前就抛
+    // "Request with GET/HEAD method cannot have body"。调用方没写 method 时按 POST 补齐，
+    // 该行为在 fetchJson 这一层收口，免得每个「忘了写 method」的调用点各炸一次。
+    ...(json === undefined ? {} : { method: options.method ?? 'POST', body: JSON.stringify(json) }),
   })
   // Parse lazily so adapters can handle admission/missing-route statuses before reading a body.
   let parsed: Promise<any> | undefined
