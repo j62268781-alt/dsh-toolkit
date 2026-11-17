@@ -411,6 +411,104 @@ window.__ModuleLoader__.load({
       return () => tag.remove();
     }
 
+    // src/client/ui/toast.css
+    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+
+    // src/client/ui/toast.ts
+    var HOST_KEY = "__dshToolkitToast__";
+    var STYLE_ID = "dsh-toolkit-toast";
+    var MAX_VISIBLE = 3;
+    var MAX_TEXT = 300;
+    var EXIT_MS = 180;
+    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
+    function resolveHost() {
+      if (typeof document === "undefined" || document.body === null) return null;
+      const scope = globalThis;
+      const existing = scope[HOST_KEY];
+      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
+      const root = document.createElement("div");
+      root.className = "sk-toast-stack";
+      root.setAttribute("aria-live", "polite");
+      document.body.appendChild(root);
+      const created = { root, entries: [] };
+      scope[HOST_KEY] = created;
+      return created;
+    }
+    function ensureStyles() {
+      try {
+        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
+      } catch {
+      }
+      installStylesheet(toast_default, STYLE_ID);
+    }
+    function normalizeHold(tone, holdMs) {
+      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
+      return holdMs;
+    }
+    function clamp(text) {
+      return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
+    }
+    function dismiss(host, entry) {
+      if (host.entries.indexOf(entry) === -1) return;
+      host.entries = host.entries.filter((item) => item !== entry);
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      entry.el.classList.add("sk-toast--leaving");
+      const remove = () => entry.el.remove();
+      const timeout = setTimeout(remove, EXIT_MS);
+      entry.el.addEventListener("animationend", () => {
+        clearTimeout(timeout);
+        remove();
+      }, { once: true });
+    }
+    function arm(host, entry, holdMs) {
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      if (holdMs === 0) {
+        entry.timer = void 0;
+        return;
+      }
+      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
+    }
+    function showToast(text, options = {}) {
+      const message = clamp(String(text ?? "").trim());
+      if (message === "") return;
+      const host = resolveHost();
+      if (host === null) return;
+      ensureStyles();
+      const tone = options.tone ?? "info";
+      const holdMs = normalizeHold(tone, options.holdMs);
+      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
+      if (duplicate !== void 0) {
+        arm(host, duplicate, holdMs);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = `sk-toast sk-toast--${tone}`;
+      el.dataset.tone = tone;
+      el.setAttribute("role", tone === "error" ? "alert" : "status");
+      if (tone !== "info") {
+        const icon = document.createElement("span");
+        icon.className = "sk-toast__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = tone === "error" ? "!" : "✓";
+        el.appendChild(icon);
+      }
+      const body = document.createElement("span");
+      body.className = "sk-toast__text";
+      body.textContent = message;
+      el.appendChild(body);
+      host.root.appendChild(el);
+      const entry = { tone, text: message, el, timer: void 0 };
+      host.entries.push(entry);
+      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
+      arm(host, entry, holdMs);
+    }
+    var toast = {
+      show: showToast,
+      info: (text, options = {}) => showToast(text, { ...options, tone: "info" }),
+      success: (text, options = {}) => showToast(text, { ...options, tone: "success" }),
+      error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
+    };
+
     // src/client/styles/settings.css
     var settings_default = `/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */
     .ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}
@@ -524,7 +622,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/boot/client/styles.css
-    var styles_default = ".boot-page { box-sizing: border-box; width: 100%; max-width: 960px; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }\n.boot-preview-section { min-width: 0; }\n.boot-preview-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }\n.boot-preview-title h3 { margin: 0; font-size: 14px; line-height: 20px; font-weight: 500; }\n.boot-preview-title h3 span { color: var(--dsw-alias-label-secondary); font-size: 12px; font-weight: 400; }\n.boot-preview { display: block; box-sizing: border-box; width: 100%; height: clamp(240px, 30vw, 340px); border: .5px solid var(--dsw-alias-border-l2); border-radius: 16px; background: var(--dsw-alias-bg-layer-1); }\n.boot-preview-caption { margin-top: 9px !important; }\n/* All three static cards use the same unmodified desktop mark. */\n/* 卡片本体（边框/圆角/内边距/字号/选中环）由公共 settings-parts 的 OptionCard 提供，\n * 这里只剩图区自己的画面：宽高吃完 media 盒子，圆角由盒子裁。 */\n.boot-mode-art { position: relative; display: grid; place-items: center; width: 100%; height: 100%; overflow: hidden; isolation: isolate; }\n.boot-mode-art img { position: relative; z-index: 1; width: 64px; height: 64px; object-fit: contain; user-select: none; }\n.boot-mode-art--draw { color: #34545c; background: #edf3f3; }\n.boot-mode-art--water { color: #f1fdff; background: linear-gradient(180deg, #79cbd7, #247e99); }\n.boot-mode-art--water::after { content: ''; position: absolute; inset: 60% -15% auto; height: 64px; border: 1px solid #dcfaff66; border-radius: 50%; box-shadow: 0 8px 0 3px #dcfaff22; }\n.boot-mode-art--abyss { color: #d9fcff; background: radial-gradient(ellipse at 50% 48%, #164c6d, #061b32 78%); }\n.boot-mode-art--abyss img { filter: drop-shadow(0 0 12px #73deff55); }\n.boot-row { box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 72px; padding: 16px 0; border-bottom: .5px solid var(--dsw-alias-border-l2); }\n.boot-row:last-child { border-bottom: 0; }\n.boot-row-text { min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 20px; }\n.boot-row-text small { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; }\n/* 外观与通知面板共用 src/client/styles/settings.css 里的 .boot-select/.ntf-select，这里只约束行内宽度。 */\n.boot-row .boot-select { flex: none; max-width: 55%; min-width: 120px; }\n/* DSH General Settings Switch: 36×20 track, 16px thumb, native state tokens. */\n.boot-switch { box-sizing: border-box; position: relative; flex: 0 0 auto; width: 36px; height: 20px; padding: 2px; border: 0; border-radius: 999px; corner-shape: round; background: var(--dsw-alias-border-l3); cursor: pointer; }\n.boot-switch[aria-checked=true] { background: var(--dsw-alias-brand-primary); }\n.boot-page .boot-switch:disabled { cursor: default; opacity: .5; }\n.boot-page .boot-switch:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }\n.boot-switch-thumb { display: block; width: 16px; height: 16px; border-radius: 50%; corner-shape: round; background: var(--dsw-alias-label-primary-foreground); transition: transform .12s ease; }\n.boot-switch[aria-checked=false] .boot-switch-thumb { background: var(--dsw-alias-switch-thumb); }\n.boot-switch[aria-checked=true] .boot-switch-thumb { transform: translate(16px); }\n.boot-footer { display: flex; align-items: center; gap: 16px; }\n.boot-button { display: inline-flex; align-items: center; justify-content: center; flex: none; min-height: 30px; padding: 0 10px; border: .5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); color: inherit; background: transparent; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }\n.boot-button:hover { background: var(--dsw-alias-interactive-bg-hover); }\n.boot-switch:disabled { opacity: .5; cursor: not-allowed; }\n.boot-page button:focus-visible,.boot-page input:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 3px; }\n.boot-note,.boot-error,.boot-ok { margin: 0; font-size: 12px; line-height: 18px; }\n.boot-note { color: var(--dsw-alias-label-secondary); }\n.boot-error { color: var(--dsw-alias-state-error-primary, #b42318); }\n.boot-ok { color: var(--dsw-alias-state-success-primary, #11745f); }\n.boot-feedback:empty { display: none; }\n@media (max-width: 620px) { .boot-row { gap: 12px; } .boot-preview { height: 240px; } }\n@media (prefers-reduced-motion: reduce) { .boot-switch > span { transition: none; } }\n";
+    var styles_default = ".boot-page { box-sizing: border-box; width: 100%; max-width: 960px; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }\n.boot-preview-section { min-width: 0; }\n.boot-preview-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }\n.boot-preview-title h3 { margin: 0; font-size: 14px; line-height: 20px; font-weight: 500; }\n.boot-preview-title h3 span { color: var(--dsw-alias-label-secondary); font-size: 12px; font-weight: 400; }\n.boot-preview { display: block; box-sizing: border-box; width: 100%; height: clamp(240px, 30vw, 340px); border: .5px solid var(--dsw-alias-border-l2); border-radius: 16px; background: var(--dsw-alias-bg-layer-1); }\n.boot-preview-caption { margin-top: 9px !important; }\n/* All three static cards use the same unmodified desktop mark. */\n/* 卡片本体（边框/圆角/内边距/字号/选中环）由公共 settings-parts 的 OptionCard 提供，\n * 这里只剩图区自己的画面：宽高吃完 media 盒子，圆角由盒子裁。 */\n.boot-mode-art { position: relative; display: grid; place-items: center; width: 100%; height: 100%; overflow: hidden; isolation: isolate; }\n.boot-mode-art img { position: relative; z-index: 1; width: 64px; height: 64px; object-fit: contain; user-select: none; }\n.boot-mode-art--draw { color: #34545c; background: #edf3f3; }\n.boot-mode-art--water { color: #f1fdff; background: linear-gradient(180deg, #79cbd7, #247e99); }\n.boot-mode-art--water::after { content: ''; position: absolute; inset: 60% -15% auto; height: 64px; border: 1px solid #dcfaff66; border-radius: 50%; box-shadow: 0 8px 0 3px #dcfaff22; }\n.boot-mode-art--abyss { color: #d9fcff; background: radial-gradient(ellipse at 50% 48%, #164c6d, #061b32 78%); }\n.boot-mode-art--abyss img { filter: drop-shadow(0 0 12px #73deff55); }\n.boot-row { box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 72px; padding: 16px 0; border-bottom: .5px solid var(--dsw-alias-border-l2); }\n.boot-row:last-child { border-bottom: 0; }\n.boot-row-text { min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 20px; }\n.boot-row-text small { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; }\n/* 外观与通知面板共用 src/client/styles/settings.css 里的 .boot-select/.ntf-select，这里只约束行内宽度。 */\n.boot-row .boot-select { flex: none; max-width: 55%; min-width: 120px; }\n/* DSH General Settings Switch: 36×20 track, 16px thumb, native state tokens. */\n.boot-switch { box-sizing: border-box; position: relative; flex: 0 0 auto; width: 36px; height: 20px; padding: 2px; border: 0; border-radius: 999px; corner-shape: round; background: var(--dsw-alias-border-l3); cursor: pointer; }\n.boot-switch[aria-checked=true] { background: var(--dsw-alias-brand-primary); }\n.boot-page .boot-switch:disabled { cursor: default; opacity: .5; }\n.boot-page .boot-switch:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }\n.boot-switch-thumb { display: block; width: 16px; height: 16px; border-radius: 50%; corner-shape: round; background: var(--dsw-alias-label-primary-foreground); transition: transform .12s ease; }\n.boot-switch[aria-checked=false] .boot-switch-thumb { background: var(--dsw-alias-switch-thumb); }\n.boot-switch[aria-checked=true] .boot-switch-thumb { transform: translate(16px); }\n.boot-button { display: inline-flex; align-items: center; justify-content: center; flex: none; min-height: 30px; padding: 0 10px; border: .5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); color: inherit; background: transparent; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }\n.boot-button:hover { background: var(--dsw-alias-interactive-bg-hover); }\n.boot-switch:disabled { opacity: .5; cursor: not-allowed; }\n.boot-page button:focus-visible,.boot-page input:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 3px; }\n.boot-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }\n@media (max-width: 620px) { .boot-row { gap: 12px; } .boot-preview { height: 240px; } }\n@media (prefers-reduced-motion: reduce) { .boot-switch > span { transition: none; } }\n";
 
     // src/client/ui/components/settings-parts/index.tsx
     function PageHeader(props) {
@@ -625,7 +723,6 @@ window.__ModuleLoader__.load({
     ${styles_default}`;
     var DEFAULTS = Object.freeze({ animation: "draw", theme: "auto", showWordmark: true, allowSkip: true });
     var FIELDS = Object.keys(DEFAULTS);
-    var LABELS = Object.freeze({ animation: "启动动画", theme: "画面配色", showWordmark: "显示文字标识", allowSkip: "允许跳过" });
     var MODES = [
       { id: "draw", name: "经典描摹", caption: "笔尖微光，勾勒启程", detail: "描边勾勒鲸标，填充成形，字标随后浮现" },
       { id: "water", name: "代码降落", caption: "代码如雨，解码成标", detail: "纵深字雨自天而降，中央解码收敛为品牌标识" },
@@ -648,64 +745,56 @@ window.__ModuleLoader__.load({
     function Toggle({ label, checked, disabled, onChange }) {
       return /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "boot-switch", role: "switch", "aria-label": label, "aria-checked": checked, disabled, onClick: () => onChange(!checked) }, /* @__PURE__ */ __dshReact.createElement("span", { className: "boot-switch-thumb", "aria-hidden": "true" }));
     }
+    function without(record, field) {
+      const next = { ...record };
+      delete next[field];
+      return next;
+    }
     function BootPanel({ form }) {
       const [, setVersion] = import_react4.default.useState(0);
-      const [error, setError] = import_react4.default.useState("");
-      const [saving, setSaving] = import_react4.default.useState("");
-      const [notice, setNotice] = import_react4.default.useState("");
-      const [pendingAnimation, setPendingAnimation] = import_react4.default.useState("");
+      const [pending, setPending] = import_react4.default.useState({});
       const [replay, setReplay] = import_react4.default.useState(0);
-      const savingRef = import_react4.default.useRef(false);
+      const queue = import_react4.default.useRef(Promise.resolve());
       import_react4.default.useEffect(() => {
         if (typeof form?.subscribe !== "function") return void 0;
-        return form.subscribe(() => setVersion((value) => value + 1));
+        return form.subscribe(() => {
+          setVersion((value) => value + 1);
+          setPending((previous) => {
+            const fields = Object.keys(previous);
+            if (fields.length === 0) return previous;
+            const written = readForm(form);
+            let settled = false;
+            let next = previous;
+            for (const field of fields) {
+              if (written[field] !== previous[field]) continue;
+              next = without(next, field);
+              settled = true;
+            }
+            return settled ? next : previous;
+          });
+        });
       }, [form]);
-      const current = readForm(form);
+      const current = { ...readForm(form), ...pending };
       const status = snapshotOf(form);
       const writable = typeof form?.set === "function" && form?.writable !== false && status?.writable !== false && status?.status !== "loading";
-      const controlsDisabled = !writable || saving !== "";
-      const animation = pendingAnimation || current.animation;
+      const animation = current.animation;
       const mode = MODES.find((item) => item.id === animation) ?? MODES[0];
       const doc = import_react4.default.useMemo(() => createPreviewDocument({ css: boot_default, html: boot_default2, script: "" }, { ...current, animation }), [animation, current.theme, current.showWordmark, current.allowSkip]);
-      const write = async (field, next) => {
-        if (!writable || savingRef.current || current[field] === next) return;
-        savingRef.current = true;
-        setSaving(field);
-        setNotice("");
-        setError("");
-        try {
-          await acceptConfigWrite(() => form.set(field, next), field);
-          setVersion((value) => value + 1);
-          setNotice(`${LABELS[field]}已更新，下次启动生效。`);
-        } catch (cause) {
-          setError(String(cause?.message ?? cause));
-        } finally {
-          savingRef.current = false;
-          setSaving("");
-        }
+      const write = (field, next) => {
+        if (!writable || current[field] === next) return;
+        setPending((previous) => ({ ...previous, [field]: next }));
+        queue.current = queue.current.then(() => acceptConfigWrite(() => form.set(field, next), field)).then(() => setVersion((value) => value + 1)).catch((cause) => {
+          toast.error(String(cause?.message ?? cause));
+          setPending((previous) => previous[field] === next ? without(previous, field) : previous);
+        });
       };
-      const choose = async (next) => {
-        if (!writable || savingRef.current) return;
+      const choose = (next) => {
+        if (!writable) return;
         if (next === current.animation) {
           setReplay((value) => value + 1);
           return;
         }
-        savingRef.current = true;
-        setSaving("animation");
-        setPendingAnimation(next);
-        setNotice("");
-        setError("");
-        try {
-          await acceptConfigWrite(() => form.set("animation", next), "animation");
-          setVersion((value) => value + 1);
-          setNotice(`已使用${MODES.find((item) => item.id === next).name}，下次启动生效。`);
-        } catch (cause) {
-          setError(String(cause?.message ?? cause));
-        } finally {
-          savingRef.current = false;
-          setPendingAnimation("");
-          setSaving("");
-        }
+        write("animation", next);
       };
       return /* @__PURE__ */ __dshReact.createElement("main", { className: "boot-page" }, /* @__PURE__ */ __dshReact.createElement(PageHeader, { title: "启动动画", subtitle: "让每一次启程，都有自己的仪式感。" }), !writable ? /* @__PURE__ */ __dshReact.createElement("p", { className: "boot-note", role: "status" }, "当前配置不可写，此页只读。") : null, /* @__PURE__ */ __dshReact.createElement("section", { className: "boot-preview-section", "aria-label": "动画预览" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "boot-preview-title" }, /* @__PURE__ */ __dshReact.createElement("h3", null, "实时预览 ", /* @__PURE__ */ __dshReact.createElement("span", null, "· ", mode.name)), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "boot-button", onClick: () => setReplay((value) => value + 1) }, "重新播放")), /* @__PURE__ */ __dshReact.createElement("iframe", { key: replay, className: "boot-preview", title: "启动画面实时预览", sandbox: "", srcDoc: doc }), /* @__PURE__ */ __dshReact.createElement("p", { className: "boot-note boot-preview-caption" }, mode.detail)), /* @__PURE__ */ __dshReact.createElement(CardSection, { bare: true, title: "选择动画", hint: /* @__PURE__ */ __dshReact.createElement("span", { className: "boot-note" }, "点选即用"), "aria-label": "动画模式" }, /* @__PURE__ */ __dshReact.createElement(OptionGrid, null, MODES.map((item) => /* @__PURE__ */ __dshReact.createElement(
         OptionCard,
@@ -714,13 +803,13 @@ window.__ModuleLoader__.load({
           role: "button",
           selected: current.animation === item.id,
           label: item.name,
-          hint: pendingAnimation === item.id ? "正在应用…" : item.caption,
+          hint: item.caption,
           badge: current.animation === item.id ? "使用中" : void 0,
           media: /* @__PURE__ */ __dshReact.createElement(ModeArt, { mode: item.id }),
-          disabled: controlsDisabled,
-          onSelect: () => void choose(item.id)
+          disabled: !writable,
+          onSelect: () => choose(item.id)
         }
-      )))), /* @__PURE__ */ __dshReact.createElement("div", { className: "boot-feedback", "aria-live": "polite" }, error ? /* @__PURE__ */ __dshReact.createElement("p", { className: "boot-error", role: "alert" }, error) : notice ? /* @__PURE__ */ __dshReact.createElement("p", { className: "boot-ok", role: "status" }, notice) : null), /* @__PURE__ */ __dshReact.createElement(CardSection, { title: "显示设置", "aria-label": "显示设置" }, /* @__PURE__ */ __dshReact.createElement("label", { className: "boot-row" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "boot-row-text" }, /* @__PURE__ */ __dshReact.createElement("span", null, "画面配色"), /* @__PURE__ */ __dshReact.createElement("small", null, "独立设置启动画面的明暗")), /* @__PURE__ */ __dshReact.createElement("select", { className: "boot-select", disabled: controlsDisabled, value: current.theme, onChange: (event) => void write("theme", event.target.value) }, /* @__PURE__ */ __dshReact.createElement("option", { value: "auto" }, "跟随系统"), /* @__PURE__ */ __dshReact.createElement("option", { value: "light" }, "浅色"), /* @__PURE__ */ __dshReact.createElement("option", { value: "dark" }, "深色"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "boot-row" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "boot-row-text" }, /* @__PURE__ */ __dshReact.createElement("span", null, "显示文字标识"), /* @__PURE__ */ __dshReact.createElement("small", null, "在鲸标下方显示 DEEPSEEK HARNESS")), /* @__PURE__ */ __dshReact.createElement(Toggle, { label: "显示文字标识", checked: current.showWordmark, disabled: controlsDisabled, onChange: (value) => void write("showWordmark", value) }))), /* @__PURE__ */ __dshReact.createElement(CardSection, { title: "交互设置", "aria-label": "交互设置" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "boot-row" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "boot-row-text" }, /* @__PURE__ */ __dshReact.createElement("span", null, "允许跳过"), /* @__PURE__ */ __dshReact.createElement("small", null, "点击画面，或按 Esc、空格、Enter 跳过")), /* @__PURE__ */ __dshReact.createElement(Toggle, { label: "允许跳过", checked: current.allowSkip, disabled: controlsDisabled, onChange: (value) => void write("allowSkip", value) }))), /* @__PURE__ */ __dshReact.createElement("footer", { className: "boot-footer" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "boot-note" }, saving === "" ? "以上设置点选即写入配置，下次启动生效。" : `正在保存${LABELS[saving]}…`)));
+      )))), /* @__PURE__ */ __dshReact.createElement(CardSection, { title: "显示设置", "aria-label": "显示设置" }, /* @__PURE__ */ __dshReact.createElement("label", { className: "boot-row" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "boot-row-text" }, /* @__PURE__ */ __dshReact.createElement("span", null, "画面配色"), /* @__PURE__ */ __dshReact.createElement("small", null, "独立设置启动画面的明暗")), /* @__PURE__ */ __dshReact.createElement("select", { className: "boot-select", disabled: !writable, value: current.theme, onChange: (event) => write("theme", event.target.value) }, /* @__PURE__ */ __dshReact.createElement("option", { value: "auto" }, "跟随系统"), /* @__PURE__ */ __dshReact.createElement("option", { value: "light" }, "浅色"), /* @__PURE__ */ __dshReact.createElement("option", { value: "dark" }, "深色"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "boot-row" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "boot-row-text" }, /* @__PURE__ */ __dshReact.createElement("span", null, "显示文字标识"), /* @__PURE__ */ __dshReact.createElement("small", null, "在鲸标下方显示 DEEPSEEK HARNESS")), /* @__PURE__ */ __dshReact.createElement(Toggle, { label: "显示文字标识", checked: current.showWordmark, disabled: !writable, onChange: (value) => write("showWordmark", value) }))), /* @__PURE__ */ __dshReact.createElement(CardSection, { title: "交互设置", "aria-label": "交互设置" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "boot-row" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "boot-row-text" }, /* @__PURE__ */ __dshReact.createElement("span", null, "允许跳过"), /* @__PURE__ */ __dshReact.createElement("small", null, "点击画面，或按 Esc、空格、Enter 跳过")), /* @__PURE__ */ __dshReact.createElement(Toggle, { label: "允许跳过", checked: current.allowSkip, disabled: !writable, onChange: (value) => write("allowSkip", value) }))));
     }
     function apply(ctx) {
       const { form } = findScopedForm(ctx, "boot");

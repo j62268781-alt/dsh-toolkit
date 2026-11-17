@@ -268,7 +268,9 @@ test('settings panel previews above choices and writes every control through the
   assert.equal(value().showWordmark, false)
   assert.equal(document.querySelector('[aria-label="显示文字标识"]').getAttribute('aria-checked'), 'false')
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-wordmark="false"/)
-  assert.match(app.text(), /显示文字标识已更新/)
+  // The write is local and instant, so the panel never announces progress or a
+  // "next launch" notice: the control state itself is the feedback.
+  assert.doesNotMatch(app.text(), /已更新|下次启动生效|正在保存|点选即写入配置/)
   const themeSelect = document.querySelector('.boot-row select')
   await act(async () => {
     themeSelect.value = 'dark'
@@ -281,7 +283,8 @@ test('settings panel previews above choices and writes every control through the
   assert.equal(value().animation, 'water')
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="water"/)
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-duration="3400"/)
-  assert.match(app.text(), /已使用代码降落/)
+  assert.match(document.querySelector('.sk-ui-option[aria-pressed="true"]').textContent, /代码降落/)
+  assert.doesNotMatch(app.text(), /已使用|正在应用/)
   const previousFrame = document.querySelector('.boot-preview')
   await choose('重新播放')
   assert.notEqual(document.querySelector('.boot-preview'), previousFrame)
@@ -350,13 +353,15 @@ test('rejected animation writes restore the persisted selection and report the f
   const app = await mountPanel(t, form)
   const { document } = app.dom.window
   await act(async () => document.querySelector('.boot-mode-art--abyss').closest('button').click())
-  assert.match(document.querySelector('[role="alert"]').textContent, /宿主拒绝/)
+  // 失败告知走 body 上的 toast 栈，面板里不再有一行会撑高页面的反馈位。
+  assert.match(document.querySelector('.sk-toast-stack').textContent, /宿主拒绝/)
+  assert.equal(document.querySelector('.boot-error'), null)
   assert.match(document.querySelector('.sk-ui-option[aria-pressed="true"]').textContent, /经典描摹/)
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="draw"/)
-  assert.doesNotMatch(app.text(), /已使用星海成标/)
+  assert.doesNotMatch(app.text(), /已使用|正在应用|已更新/)
 })
 
-test('animation writes disable competing edits until accepted and persist only animation', async (t) => {
+test('animation writes apply optimistically without locking the rest of the panel', async (t) => {
   const { form, writes } = makeForm({ animation: 'draw', durationMs: 2400, theme: 'auto', showWordmark: true, allowSkip: true })
   const set = form.set
   let release
@@ -367,9 +372,11 @@ test('animation writes disable competing edits until accepted and persist only a
   const app = await mountPanel(t, form)
   const { document } = app.dom.window
   await act(async () => document.querySelector('.boot-mode-art--abyss').closest('button').click())
-  assert.match(app.text(), /正在应用/)
-  for (const control of document.querySelectorAll('.sk-ui-option,[role="switch"],select,input')) assert.equal(control.disabled, true)
+  // 点击即生效：写入还在路上时预览和选中态已经切到新动画，控件保持可用、不出现进度文案。
   assert.match(document.querySelector('.boot-preview').srcdoc, /data-sk-animation="abyss"/)
+  assert.match(document.querySelector('.sk-ui-option[aria-pressed="true"]').textContent, /星海成标/)
+  assert.doesNotMatch(app.text(), /正在应用|正在保存|已使用/)
+  for (const control of document.querySelectorAll('.sk-ui-option,[role="switch"],select,input')) assert.equal(control.disabled, false, control.outerHTML)
   await act(async () => release())
   assert.deepEqual(writes, [['animation', 'abyss']])
   assert.match(document.querySelector('.sk-ui-option[aria-pressed="true"]').textContent, /星海成标/)

@@ -6,6 +6,7 @@ import { createPreviewDocument } from '../host/scene.js'
 import { findScopedForm } from '../../../client/config.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
 import { installStylesheet } from '../../../client/ui/stylesheet.js'
+import { toast } from '../../../client/ui/toast.js'
 import { settingsStyles } from '../../../client/styles/settings.js'
 import { DSH_DESKTOP_LOGO } from '../../../client/ui/components/dsh-logo/index.js'
 import { registerSettingsIcon } from '../../../client/ui/components/settings-icon/index.jsx'
@@ -18,7 +19,6 @@ export const inject = ['slots', 'configForms']
 const panelCss = `${settingsStyles('boot')}\n${panelStyles}`
 const DEFAULTS = Object.freeze({ animation: 'draw', theme: 'auto', showWordmark: true, allowSkip: true })
 const FIELDS = Object.keys(DEFAULTS)
-const LABELS = Object.freeze({ animation: '启动动画', theme: '画面配色', showWordmark: '显示文字标识', allowSkip: '允许跳过' })
 const MODES = [
   { id: 'draw', name: '经典描摹', caption: '笔尖微光，勾勒启程', detail: '描边勾勒鲸标，填充成形，字标随后浮现' },
   { id: 'water', name: '代码降落', caption: '代码如雨，解码成标', detail: '纵深字雨自天而降，中央解码收敛为品牌标识' },
@@ -46,66 +46,71 @@ function Toggle({ label, checked, disabled, onChange }) {
   return <button type="button" className="boot-switch" role="switch" aria-label={label} aria-checked={checked} disabled={disabled} onClick={() => onChange(!checked)}><span className="boot-switch-thumb" aria-hidden="true" /></button>
 }
 
+/** Drop one optimistic field (used when the form snapshot settles or a write fails). */
+function without(record, field) {
+  const next = { ...record }
+  delete next[field]
+  return next
+}
+
 export function BootPanel({ form }) {
   const [, setVersion] = React.useState(0)
-  const [error, setError] = React.useState('')
-  const [saving, setSaving] = React.useState('')
-  const [notice, setNotice] = React.useState('')
-  const [pendingAnimation, setPendingAnimation] = React.useState('')
+  // Render the clicked value before the form snapshot catches up: the write is a
+  // local webServer round-trip of a few dozen milliseconds, but waiting for it
+  // makes a click look like a two-step operation (old value → new value).
+  const [pending, setPending] = React.useState<Record<string, any>>({})
   const [replay, setReplay] = React.useState(0)
-  const savingRef = React.useRef(false)
+  const queue = React.useRef<Promise<unknown>>(Promise.resolve())
 
   React.useEffect(() => {
     if (typeof form?.subscribe !== 'function') return undefined
-    return form.subscribe(() => setVersion((value) => value + 1))
+    return form.subscribe(() => {
+      setVersion((value) => value + 1)
+      setPending((previous) => {
+        const fields = Object.keys(previous)
+        if (fields.length === 0) return previous
+        const written = readForm(form)
+        let settled = false
+        let next = previous
+        for (const field of fields) {
+          if (written[field] !== previous[field]) continue
+          next = without(next, field)
+          settled = true
+        }
+        return settled ? next : previous
+      })
+    })
   }, [form])
 
-  const current = readForm(form)
+  const current = { ...readForm(form), ...pending }
   const status = snapshotOf(form)
   const writable = typeof form?.set === 'function' && form?.writable !== false && status?.writable !== false && status?.status !== 'loading'
-  const controlsDisabled = !writable || saving !== ''
-  const animation = pendingAnimation || current.animation
+  const animation = current.animation
   const mode = MODES.find((item) => item.id === animation) ?? MODES[0]
   const doc = React.useMemo(() => createPreviewDocument({ css: bootCss, html: bootHtml, script: '' }, { ...current, animation }), [animation, current.theme, current.showWordmark, current.allowSkip])
   // Every field is volatile and already lives in the profile patch, so a click
   // writes straight through `form.set` — same contract as the pet and
   // notification panels — instead of staging a draft behind a Save button.
-  const write = async (field, next) => {
-    if (!writable || savingRef.current || current[field] === next) return
-    savingRef.current = true
-    setSaving(field)
-    setNotice('')
-    setError('')
-    try {
-      await acceptConfigWrite(() => form.set(field, next), field)
-      setVersion((value) => value + 1)
-      setNotice(`${LABELS[field]}已更新，下次启动生效。`)
-    } catch (cause) {
-      setError(String(cause?.message ?? cause))
-    } finally {
-      savingRef.current = false
-      setSaving('')
-    }
+  // The click is the whole interaction: the local value flips immediately, the
+  // write queues behind it, and only a failure reverts the field. No progress
+  // copy and no disabled state, since the write is local and effectively instant.
+  const write = (field, next) => {
+    if (!writable || current[field] === next) return
+    setPending((previous) => ({ ...previous, [field]: next }))
+    queue.current = queue.current
+      .then(() => acceptConfigWrite(() => form.set(field, next), field))
+      .then(() => setVersion((value) => value + 1))
+      .catch((cause) => {
+        // 失败提示走全局 toast：这块反馈曾经是页面里的一行（`.boot-feedback`），
+        // 出现/消失会把整页推高推低，而它本来只是一次性的告知。
+        toast.error(String(cause?.message ?? cause))
+        setPending((previous) => (previous[field] === next ? without(previous, field) : previous))
+      })
   }
-  const choose = async (next) => {
-    if (!writable || savingRef.current) return
+  const choose = (next) => {
+    if (!writable) return
     if (next === current.animation) { setReplay((value) => value + 1); return }
-    savingRef.current = true
-    setSaving('animation')
-    setPendingAnimation(next)
-    setNotice('')
-    setError('')
-    try {
-      await acceptConfigWrite(() => form.set('animation', next), 'animation')
-      setVersion((value) => value + 1)
-      setNotice(`已使用${MODES.find((item) => item.id === next).name}，下次启动生效。`)
-    } catch (cause) {
-      setError(String(cause?.message ?? cause))
-    } finally {
-      savingRef.current = false
-      setPendingAnimation('')
-      setSaving('')
-    }
+    write('animation', next)
   }
 
   return <main className="boot-page">
@@ -122,20 +127,18 @@ export function BootPanel({ form }) {
         role="button"
         selected={current.animation === item.id}
         label={item.name}
-        hint={pendingAnimation === item.id ? '正在应用…' : item.caption}
+        hint={item.caption}
         badge={current.animation === item.id ? '使用中' : undefined}
         media={<ModeArt mode={item.id} />}
-        disabled={controlsDisabled}
-        onSelect={() => void choose(item.id)}
+        disabled={!writable}
+        onSelect={() => choose(item.id)}
       />)}</OptionGrid>
     </CardSection>
-    <div className="boot-feedback" aria-live="polite">{error ? <p className="boot-error" role="alert">{error}</p> : notice ? <p className="boot-ok" role="status">{notice}</p> : null}</div>
     <CardSection title="显示设置" aria-label="显示设置">
-      <label className="boot-row"><span className="boot-row-text"><span>画面配色</span><small>独立设置启动画面的明暗</small></span><select className="boot-select" disabled={controlsDisabled} value={current.theme} onChange={(event) => void write('theme', event.target.value)}><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
-      <div className="boot-row"><span className="boot-row-text"><span>显示文字标识</span><small>在鲸标下方显示 DEEPSEEK HARNESS</small></span><Toggle label="显示文字标识" checked={current.showWordmark} disabled={controlsDisabled} onChange={(value) => void write('showWordmark', value)} /></div>
+      <label className="boot-row"><span className="boot-row-text"><span>画面配色</span><small>独立设置启动画面的明暗</small></span><select className="boot-select" disabled={!writable} value={current.theme} onChange={(event) => write('theme', event.target.value)}><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
+      <div className="boot-row"><span className="boot-row-text"><span>显示文字标识</span><small>在鲸标下方显示 DEEPSEEK HARNESS</small></span><Toggle label="显示文字标识" checked={current.showWordmark} disabled={!writable} onChange={(value) => write('showWordmark', value)} /></div>
     </CardSection>
-    <CardSection title="交互设置" aria-label="交互设置"><div className="boot-row"><span className="boot-row-text"><span>允许跳过</span><small>点击画面，或按 Esc、空格、Enter 跳过</small></span><Toggle label="允许跳过" checked={current.allowSkip} disabled={controlsDisabled} onChange={(value) => void write('allowSkip', value)} /></div></CardSection>
-    <footer className="boot-footer"><span className="boot-note">{saving === '' ? '以上设置点选即写入配置，下次启动生效。' : `正在保存${LABELS[saving]}…`}</span></footer>
+    <CardSection title="交互设置" aria-label="交互设置"><div className="boot-row"><span className="boot-row-text"><span>允许跳过</span><small>点击画面，或按 Esc、空格、Enter 跳过</small></span><Toggle label="允许跳过" checked={current.allowSkip} disabled={!writable} onChange={(value) => write('allowSkip', value)} /></div></CardSection>
   </main>
 }
 
