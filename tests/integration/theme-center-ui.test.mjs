@@ -91,24 +91,28 @@ test('color mode and style stay independently selected across all fifteen combin
   }
 })
 
-test('rejected async palette writes keep the selected style and show the error', async t => {
+test('rejected async palette writes keep the selected style and report through the toast channel', async t => {
   let response = false
   const panel = await renderPanel(t, { save: async () => {
     await Promise.resolve()
     if (response instanceof Error) throw response
     return response
   } })
+  // 一次性的失败告知走 body 上的 toast 栈：它不该在页面里常驻一行、把下面的卡片推上推下。
+  const toastText = () => document.querySelector('.sk-toast-stack')?.textContent ?? ''
   await panel.click('夕阳红')
   assert.deepEqual(panel.selected('主题风格'), ['大海蓝鲸'])
-  assert.match(document.querySelector('[role="status"]').textContent, /宿主拒绝/)
+  assert.match(toastText(), /宿主拒绝/)
+  assert.equal(document.querySelector('.sk-theme-status'), null)
   response = new Error('保存失败')
   await panel.click('夕阳红')
   assert.deepEqual(panel.selected('主题风格'), ['大海蓝鲸'])
-  assert.match(document.querySelector('[role="status"]').textContent, /保存失败/)
+  assert.match(toastText(), /保存失败/)
   response = undefined
   await panel.click('夕阳红')
   assert.deepEqual(panel.selected('主题风格'), ['夕阳红'])
-  assert.equal(document.querySelector('[role="status"]'), null)
+  assert.equal(document.querySelector('.sk-theme-status'), null)
+  assert.doesNotMatch(document.body.textContent, /正在保存/)
 })
 
 test('read-only palette config does not disable the independent native color mode', async t => {

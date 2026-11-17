@@ -6,6 +6,7 @@ import { HERO_FISH_PATH, HERO_ICONS, SEND_PATH } from './hero-art.js'
 import { createPaletteScene, readPalette } from './palette.js'
 import { isCodexShell } from './platform.js'
 import { CardSection, OptionCard, OptionGrid, PageHeader } from '../../../client/ui/components/settings-parts/index.jsx'
+import { toast } from '../../../client/ui/toast.js'
 
 const MODE_CARDS = [
   { id: 'light', label: '浅色', hint: '明亮界面' },
@@ -180,12 +181,20 @@ function ThemeCard({ selected, label, hint, onClick, children, disabled = false,
 export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
   const [snapshot, setSnapshot] = React.useState(() => theme?.getTheme?.() ?? {})
   const [palette, setPalette] = React.useState(() => readPalette(form))
-  const [busy, setBusy] = React.useState(false)
-  const [error, setError] = React.useState('')
+  // Same optimistic rule as the boot panel: a click flips the local value at
+  // once and the write follows behind it. Both writes are local (theme store /
+  // webServer config), so a busy state and a 正在保存 line would only make one
+  // click look like two steps. Failures revert the value and show the reason.
+  const [modeDraft, setModeDraft] = React.useState('')
+  const queue = React.useRef<Promise<unknown>>(Promise.resolve())
 
   React.useEffect(() => {
     if (typeof subscribeTheme !== 'function') return undefined
-    return subscribeTheme(() => setSnapshot(theme?.getTheme?.() ?? {}))
+    return subscribeTheme(() => {
+      const next = theme?.getTheme?.() ?? {}
+      setSnapshot(next)
+      setModeDraft((previous) => (previous && next.preference === previous ? '' : previous))
+    })
   }, [theme, subscribeTheme])
 
   React.useEffect(() => {
@@ -194,35 +203,30 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
   }, [form])
 
   const writable = isWritable(form) && typeof form?.set === 'function'
-  const preference = snapshot.preference ?? 'system'
-  const colorScheme = snapshot.colorScheme ?? 'light'
+  const preference = modeDraft || snapshot.preference || 'system'
+  const colorScheme = modeDraft === 'light' || modeDraft === 'dark' ? modeDraft : snapshot.colorScheme ?? 'light'
 
-  const pickMode = async (id) => {
-    if (typeof theme?.setTheme !== 'function' || busy || preference === id) return
-    setBusy(true)
-    setError('')
-    try {
-      await theme.setTheme(id)
-      setSnapshot(theme.getTheme?.() ?? {})
-    } catch (err) {
-      setError(String(err?.message ?? err))
-    } finally {
-      setBusy(false)
-    }
+  const pickMode = (id) => {
+    if (typeof theme?.setTheme !== 'function' || preference === id) return
+    setModeDraft(id)
+    queue.current = queue.current
+      .then(() => theme.setTheme(id))
+      .then(() => setSnapshot(theme.getTheme?.() ?? {}))
+      .catch((err) => {
+        toast.error(String(err?.message ?? err))
+        setModeDraft((previous) => (previous === id ? '' : previous))
+      })
   }
 
-  const pickPalette = async (id) => {
-    if (!writable || busy || palette === id) return
-    setBusy(true)
-    setError('')
-    try {
-      await acceptConfigWrite(() => form?.set?.('palette', id), 'palette')
-      setPalette(id)
-    } catch (err) {
-      setError(String(err?.message ?? err))
-    } finally {
-      setBusy(false)
-    }
+  const pickPalette = (id) => {
+    if (!writable || palette === id) return
+    setPalette(id)
+    queue.current = queue.current
+      .then(() => acceptConfigWrite(() => form?.set?.('palette', id), 'palette'))
+      .catch((err) => {
+        toast.error(String(err?.message ?? err))
+        setPalette(readPalette(form))
+      })
   }
 
   return (
@@ -245,7 +249,7 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
               label={card.label}
               hint={card.hint}
               selected={preference === card.id}
-              disabled={busy || typeof theme?.setTheme !== 'function'}
+              disabled={typeof theme?.setTheme !== 'function'}
               onClick={() => pickMode(card.id)}
             >
               <span className="sk-theme-mode-art" data-mode={card.id} data-resolved-mode={colorScheme} />
@@ -262,7 +266,7 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
               label={card.label}
               hint={card.hint}
               selected={palette === card.id}
-              disabled={!writable || busy}
+              disabled={!writable}
               colorScheme={colorScheme}
               palette={card.id}
               onClick={() => pickPalette(card.id)}
@@ -281,9 +285,10 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
         </p>
       ) : null}
 
-      {!writable || error || busy ? (
-        <p className="sk-theme-status" role="status" data-tone={error ? 'error' : 'idle'}>
-          {error || (busy ? '正在保存…' : '当前配置为只读，主题风格暂不可修改。')}
+      {/* 只读是**常驻状态**，留在页面上；一次性的失败已经走 toast，不再撑高这一页。 */}
+      {!writable ? (
+        <p className="sk-theme-status" role="status" data-tone="idle">
+          当前配置为只读，主题风格暂不可修改。
         </p>
       ) : null}
     </section>

@@ -4551,6 +4551,104 @@ window.__ModuleLoader__.load({
       );
     }
 
+    // src/client/ui/toast.css
+    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+
+    // src/client/ui/toast.ts
+    var HOST_KEY = "__dshToolkitToast__";
+    var STYLE_ID = "dsh-toolkit-toast";
+    var MAX_VISIBLE = 3;
+    var MAX_TEXT = 300;
+    var EXIT_MS = 180;
+    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
+    function resolveHost() {
+      if (typeof document === "undefined" || document.body === null) return null;
+      const scope = globalThis;
+      const existing = scope[HOST_KEY];
+      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
+      const root = document.createElement("div");
+      root.className = "sk-toast-stack";
+      root.setAttribute("aria-live", "polite");
+      document.body.appendChild(root);
+      const created = { root, entries: [] };
+      scope[HOST_KEY] = created;
+      return created;
+    }
+    function ensureStyles() {
+      try {
+        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
+      } catch {
+      }
+      installStylesheet(toast_default, STYLE_ID);
+    }
+    function normalizeHold(tone, holdMs) {
+      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
+      return holdMs;
+    }
+    function clamp(text) {
+      return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
+    }
+    function dismiss(host, entry) {
+      if (host.entries.indexOf(entry) === -1) return;
+      host.entries = host.entries.filter((item) => item !== entry);
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      entry.el.classList.add("sk-toast--leaving");
+      const remove = () => entry.el.remove();
+      const timeout = setTimeout(remove, EXIT_MS);
+      entry.el.addEventListener("animationend", () => {
+        clearTimeout(timeout);
+        remove();
+      }, { once: true });
+    }
+    function arm(host, entry, holdMs) {
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      if (holdMs === 0) {
+        entry.timer = void 0;
+        return;
+      }
+      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
+    }
+    function showToast(text, options = {}) {
+      const message = clamp(String(text ?? "").trim());
+      if (message === "") return;
+      const host = resolveHost();
+      if (host === null) return;
+      ensureStyles();
+      const tone = options.tone ?? "info";
+      const holdMs = normalizeHold(tone, options.holdMs);
+      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
+      if (duplicate !== void 0) {
+        arm(host, duplicate, holdMs);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = `sk-toast sk-toast--${tone}`;
+      el.dataset.tone = tone;
+      el.setAttribute("role", tone === "error" ? "alert" : "status");
+      if (tone !== "info") {
+        const icon = document.createElement("span");
+        icon.className = "sk-toast__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = tone === "error" ? "!" : "✓";
+        el.appendChild(icon);
+      }
+      const body = document.createElement("span");
+      body.className = "sk-toast__text";
+      body.textContent = message;
+      el.appendChild(body);
+      host.root.appendChild(el);
+      const entry = { tone, text: message, el, timer: void 0 };
+      host.entries.push(entry);
+      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
+      arm(host, entry, holdMs);
+    }
+    var toast = {
+      show: showToast,
+      info: (text, options = {}) => showToast(text, { ...options, tone: "info" }),
+      success: (text, options = {}) => showToast(text, { ...options, tone: "success" }),
+      error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
+    };
+
     // src/modules/theme/client/settings-theme.tsx
     var MODE_CARDS = [
       { id: "light", label: "浅色", hint: "明亮界面" },
@@ -4627,44 +4725,38 @@ window.__ModuleLoader__.load({
     function ThemeCenterPanel({ form, theme, subscribeTheme }) {
       const [snapshot, setSnapshot] = import_react3.default.useState(() => theme?.getTheme?.() ?? {});
       const [palette, setPalette] = import_react3.default.useState(() => readPalette(form));
-      const [busy, setBusy] = import_react3.default.useState(false);
-      const [error, setError] = import_react3.default.useState("");
+      const [modeDraft, setModeDraft] = import_react3.default.useState("");
+      const queue = import_react3.default.useRef(Promise.resolve());
       import_react3.default.useEffect(() => {
         if (typeof subscribeTheme !== "function") return void 0;
-        return subscribeTheme(() => setSnapshot(theme?.getTheme?.() ?? {}));
+        return subscribeTheme(() => {
+          const next = theme?.getTheme?.() ?? {};
+          setSnapshot(next);
+          setModeDraft((previous) => previous && next.preference === previous ? "" : previous);
+        });
       }, [theme, subscribeTheme]);
       import_react3.default.useEffect(() => {
         if (typeof form?.subscribe !== "function") return void 0;
         return form.subscribe(() => setPalette(readPalette(form)));
       }, [form]);
       const writable = isWritable(form) && typeof form?.set === "function";
-      const preference = snapshot.preference ?? "system";
-      const colorScheme = snapshot.colorScheme ?? "light";
-      const pickMode = async (id) => {
-        if (typeof theme?.setTheme !== "function" || busy || preference === id) return;
-        setBusy(true);
-        setError("");
-        try {
-          await theme.setTheme(id);
-          setSnapshot(theme.getTheme?.() ?? {});
-        } catch (err) {
-          setError(String(err?.message ?? err));
-        } finally {
-          setBusy(false);
-        }
+      const preference = modeDraft || snapshot.preference || "system";
+      const colorScheme = modeDraft === "light" || modeDraft === "dark" ? modeDraft : snapshot.colorScheme ?? "light";
+      const pickMode = (id) => {
+        if (typeof theme?.setTheme !== "function" || preference === id) return;
+        setModeDraft(id);
+        queue.current = queue.current.then(() => theme.setTheme(id)).then(() => setSnapshot(theme.getTheme?.() ?? {})).catch((err) => {
+          toast.error(String(err?.message ?? err));
+          setModeDraft((previous) => previous === id ? "" : previous);
+        });
       };
-      const pickPalette = async (id) => {
-        if (!writable || busy || palette === id) return;
-        setBusy(true);
-        setError("");
-        try {
-          await acceptConfigWrite(() => form?.set?.("palette", id), "palette");
-          setPalette(id);
-        } catch (err) {
-          setError(String(err?.message ?? err));
-        } finally {
-          setBusy(false);
-        }
+      const pickPalette = (id) => {
+        if (!writable || palette === id) return;
+        setPalette(id);
+        queue.current = queue.current.then(() => acceptConfigWrite(() => form?.set?.("palette", id), "palette")).catch((err) => {
+          toast.error(String(err?.message ?? err));
+          setPalette(readPalette(form));
+        });
       };
       return /* @__PURE__ */ __dshReact.createElement("section", { className: "sk-theme-page", "aria-label": "外观" }, /* @__PURE__ */ __dshReact.createElement(
         PageHeader,
@@ -4680,7 +4772,7 @@ window.__ModuleLoader__.load({
           label: card.label,
           hint: card.hint,
           selected: preference === card.id,
-          disabled: busy || typeof theme?.setTheme !== "function",
+          disabled: typeof theme?.setTheme !== "function",
           onClick: () => pickMode(card.id)
         },
         /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-theme-mode-art", "data-mode": card.id, "data-resolved-mode": colorScheme })
@@ -4691,13 +4783,13 @@ window.__ModuleLoader__.load({
           label: card.label,
           hint: card.hint,
           selected: palette === card.id,
-          disabled: !writable || busy,
+          disabled: !writable,
           colorScheme,
           palette: card.id,
           onClick: () => pickPalette(card.id)
         },
         ["native", "codex"].includes(card.id) ? /* @__PURE__ */ __dshReact.createElement(ThemeEmblem, { palette: card.id }) : /* @__PURE__ */ __dshReact.createElement(SceneBox, { palette: card.id, compact: true })
-      )))), palette === "codex" && !isCodexShell() ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-note", role: "note" }, "窗口较窄时 Codex 会收起标题带与工作区外壳，改用 DSH 原生布局；桌面应用与宽窗口保持完整外观。") : null, !writable || error || busy ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-status", role: "status", "data-tone": error ? "error" : "idle" }, error || (busy ? "正在保存…" : "当前配置为只读，主题风格暂不可修改。")) : null);
+      )))), palette === "codex" && !isCodexShell() ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-note", role: "note" }, "窗口较窄时 Codex 会收起标题带与工作区外壳，改用 DSH 原生布局；桌面应用与宽窗口保持完整外观。") : null, !writable ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-theme-status", role: "status", "data-tone": "idle" }, "当前配置为只读，主题风格暂不可修改。") : null);
     }
     var themeCenterMeta = Object.freeze({
       name: "settings.section",
