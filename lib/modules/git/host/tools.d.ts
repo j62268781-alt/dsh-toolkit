@@ -18,7 +18,7 @@ export declare function prefixedName(prefix: string, seed: string): string;
 /** 重名时退到 `-2`、`-3`……：自动命名连着建两次不该报错。 */
 export declare function uniqueName(base: string, taken: readonly string[]): string;
 /**
- * 生成两个工具定义。`alwaysForcePush` 与 `branchPrefix` 在 execute 里读，
+ * 生成工具定义。`alwaysForcePush` 与 `branchPrefix` 在 execute 里读，
  * 所以同一个定义在设置变化后（插件重启）不需要重新编译 schema。
  */
 export declare function createGitTools(options: GitToolsOptions): import("@deepseek-ai/dsh-tools").ToolDefinition[];

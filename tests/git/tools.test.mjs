@@ -36,13 +36,13 @@ function fakeGit(overrides = {}) {
 
 function build(overrides = {}, settings = {}) {
   const git = fakeGit(overrides)
-  const [push, branch] = createGitTools({
+  const [push, branch, commit, sync, removeBranch, renameBranch] = createGitTools({
     settings: () => ({ ...DEFAULTS, ...settings }),
     run: git.run,
     now: () => new Date('2026-01-17T09:30:00'),
   })
   const argvOf = (command) => git.calls.find((call) => call.args.join(' ') === command)?.args ?? []
-  return { push, branch, calls: git.calls, argvOf }
+  return { push, branch, commit, sync, removeBranch, renameBranch, calls: git.calls, argvOf }
 }
 
 test('git_push：开关打开时自动加 --force-with-lease，关闭时一个参数都不多', async () => {
@@ -214,4 +214,117 @@ test('纯函数：前缀与去重', () => {
   assert.equal(prefixedName('dsh/', 'dsh/x'), 'dsh/x')
   assert.equal(uniqueName('a', ['a', 'a-2']), 'a-3')
   assert.equal(uniqueName('a', []), 'a')
+})
+
+test('git_commit：paths 只暂存指定路径，回显带上新提交的短哈希', async () => {
+  const git = build({
+    'add -- src/a.ts': { code: 0 },
+    'diff --cached --quiet': { code: 1 },
+    'commit -m fix: 修 A': { code: 0, stdout: '[main 1234abc] fix: 修 A\n' },
+    'rev-parse --short HEAD': { code: 0, stdout: '1234abc\n' },
+  })
+  const output = await git.commit.execute({ message: 'fix: 修 A', paths: ['src/a.ts'] }, EXEC)
+  assert.match(output, /^\$ git commit -m "fix: 修 A"/)
+  assert.match(output, /新提交 1234abc。/)
+  assert.deepEqual(git.argvOf('commit -m fix: 修 A'), ['commit', '-m', 'fix: 修 A'])
+})
+
+test('git_commit：空说明与空暂存区都不跑 git commit', async () => {
+  const empty = build()
+  await assert.rejects(() => empty.commit.execute({ message: '   ' }, EXEC), /提交说明不能为空/)
+  assert.equal(empty.calls.some((call) => call.args[0] === 'commit'), false)
+
+  const nothing = build()
+  await assert.rejects(
+    () => nothing.commit.execute({ message: 'fix: a' }, EXEC),
+    (error) => {
+      assert.match(error.message, /还没有暂存任何改动/)
+      assert.match(error.message, /all: true/)
+      return true
+    },
+  )
+  assert.equal(nothing.calls.some((call) => call.args[0] === 'commit'), false)
+})
+
+test('git_sync：fetch 只取不合并，落后几个提交会说出来', async () => {
+  const git = build({
+    'rev-parse --abbrev-ref --symbolic-full-name @{upstream}': { code: 0, stdout: 'origin/main\n', stderr: '' },
+    'rev-list --left-right --count @{upstream}...HEAD': { code: 0, stdout: '3\t0\n', stderr: '' },
+  })
+  const output = await git.sync.execute({ action: 'fetch' }, EXEC)
+  assert.match(output, /^\$ git fetch --prune origin/)
+  assert.match(output, /上游比本地多 3 个提交/)
+  assert.match(output, /action: "pull"/)
+})
+
+test('git_sync：pull 说清楚合并了几个提交；冲突时提示继续变基', async () => {
+  const merged = build({
+    'rev-parse --abbrev-ref --symbolic-full-name @{upstream}': { code: 0, stdout: 'origin/main\n', stderr: '' },
+    'for-each-ref --format=%(upstream:short) refs/heads/main': { code: 0, stdout: 'origin/main\n', stderr: '' },
+    'rev-list --left-right --count @{upstream}...HEAD': { code: 0, stdout: '2\t0\n', stderr: '' },
+  })
+  const output = await merged.sync.execute({ action: 'pull' }, EXEC)
+  assert.match(output, /合并了 2 个上游提交/)
+  assert.ok(merged.argvOf('pull --rebase').length > 0)
+
+  const conflicted = build({
+    'for-each-ref --format=%(upstream:short) refs/heads/main': { code: 0, stdout: 'origin/main\n', stderr: '' },
+    'pull --rebase': { code: 1, stdout: '', stderr: 'CONFLICT (content): Merge conflict in src/a.ts\n' },
+  })
+  await assert.rejects(
+    () => conflicted.sync.execute({ action: 'pull' }, EXEC),
+    (error) => {
+      assert.match(error.message, /CONFLICT/)
+      assert.match(error.message, /git rebase --continue/)
+      return true
+    },
+  )
+
+  const bogus = build()
+  await assert.rejects(() => bogus.sync.execute({ action: 'merge' }, EXEC), /只能是 `fetch` 或 `pull`/)
+})
+
+test('git_branch_delete：删完提醒远端还在；未合并时提示再传 force', async () => {
+  const git = build({
+    'for-each-ref --count=200 --sort=-committerdate --format=%(refname:short) refs/heads': { code: 0, stdout: 'feat/a\nmain\n', stderr: '' },
+    'for-each-ref --format=%(upstream:short) refs/heads/feat/a': { code: 0, stdout: 'origin/feat/a\n', stderr: '' },
+    'branch -d feat/a': { code: 0, stdout: 'Deleted branch feat/a\n', stderr: '' },
+  })
+  const output = await git.removeBranch.execute({ name: 'feat/a' }, EXEC)
+  assert.match(output, /^\$ git branch -d feat\/a/)
+  assert.match(output, /远端 origin\/feat\/a 仍然存在/)
+
+  const unmerged = build({
+    'for-each-ref --count=200 --sort=-committerdate --format=%(refname:short) refs/heads': { code: 0, stdout: 'feat/a\nmain\n', stderr: '' },
+    'branch -d feat/a': { code: 1, stdout: '', stderr: "error: the branch 'feat/a' is not fully merged\n" },
+  })
+  await assert.rejects(
+    () => unmerged.removeBranch.execute({ name: 'feat/a' }, EXEC),
+    (error) => {
+      assert.match(error.message, /not fully merged/)
+      assert.match(error.message, /force: true/)
+      return true
+    },
+  )
+
+  const empty = build()
+  await assert.rejects(() => empty.removeBranch.execute({ name: ' ' }, EXEC), /不能为空/)
+})
+
+test('git_branch_rename：没有上游时提醒下次推送会补 -u', async () => {
+  const git = build({
+    'branch -m main feat/rename-me': { code: 0, stdout: '', stderr: '' },
+    'for-each-ref --format=%(upstream:short) refs/heads/feat/rename-me': { code: 0, stdout: '', stderr: '' },
+  })
+  const output = await git.renameBranch.execute({ to: 'feat/rename-me' }, EXEC)
+  assert.match(output, /^\$ git branch -m main feat\/rename-me/)
+  assert.match(output, /还没有上游/)
+
+  const tracked = build({
+    'branch -m main feat/rename-me': { code: 0, stdout: '', stderr: '' },
+    'for-each-ref --format=%(upstream:short) refs/heads/feat/rename-me': { code: 0, stdout: 'origin/main\n', stderr: '' },
+  })
+  assert.match(await tracked.renameBranch.execute({ to: 'feat/rename-me' }, EXEC), /跟踪 origin\/main/)
+
+  await assert.rejects(() => build().renameBranch.execute({ to: '' }, EXEC), /不能为空/)
 })

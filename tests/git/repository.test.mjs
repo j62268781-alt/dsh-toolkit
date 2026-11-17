@@ -210,3 +210,150 @@ test('checkout：远端跟踪检出失败时把 git 的原话带回来', async (
   const result = await createRepository(run).checkout(REPO, 'origin/feat/x')
   assert.deepEqual(result, { ok: false, reason: 'checkout-failed', detail: 'fatal: a branch named feat/x already exists' })
 })
+// ---- 提交 / 同步 / 删分支 / 改分支名 ----
+
+test('commit：传 paths 时只暂存这些路径，然后提交', async () => {
+  const run = runnerOf(repoTable({
+    'add -- src/a.ts': { code: 0 },
+    'diff --cached --quiet': { code: 1 },
+    'commit -m fix: a': { code: 0, stdout: '[main 1234abc] fix: a\n' },
+  }))
+  const result = await createRepository(run).commit(REPO, 'fix: a', { paths: ['src/a.ts'] })
+  assert.equal(result.ok, true)
+  assert.deepEqual(result.command, ['commit', '-m', 'fix: a'])
+  assert.deepEqual(run.calls.filter((call) => call !== REFS && call !== REMOTE_REFS), [
+    'rev-parse --show-toplevel',
+    'rev-parse --abbrev-ref HEAD',
+    'status --porcelain --untracked-files=no',
+    'add -- src/a.ts',
+    'diff --cached --quiet',
+    'commit -m fix: a',
+  ])
+})
+
+test('commit：既没暂存内容也没传 all/paths 时直接拦下，并说明两条入口', async () => {
+  const result = await createRepository(runnerOf(repoTable())).commit(REPO, 'fix: a')
+  assert.equal(result.ok, false)
+  assert.equal(result.reason, 'commit-failed')
+  assert.match(result.detail, /还没有暂存任何改动/)
+  assert.match(result.detail, /all: true/)
+})
+
+test('commit：all: true 先 add -A；暂存后仍然空则说「暂存之后没有改动」', async () => {
+  const empty = runnerOf(repoTable({ 'add -A': { code: 0 } }))
+  const blocked = await createRepository(empty).commit(REPO, 'fix: a', { all: true })
+  assert.equal(blocked.ok, false)
+  assert.match(blocked.detail, /暂存之后没有可提交的改动/)
+
+  const run = runnerOf(repoTable({ 'add -A': { code: 0 }, 'diff --cached --quiet': { code: 1 } }))
+  const result = await createRepository(run).commit(REPO, 'fix: a', { all: true })
+  assert.equal(result.ok, true)
+  assert.ok(run.calls.includes('add -A'))
+})
+
+test('commit：git 拒绝时说它的原话，空提交说明在跑 git 之前就挡下', async () => {
+  const rejected = runnerOf(repoTable({
+    'diff --cached --quiet': { code: 1 },
+    'commit -m fix: a': { code: 1, stderr: 'no changes added to commit\n' },
+  }))
+  const failed = await createRepository(rejected).commit(REPO, 'fix: a')
+  assert.equal(failed.ok, false)
+  assert.equal(failed.detail, 'no changes added to commit')
+
+  const run = runnerOf(repoTable())
+  const empty = await createRepository(run).commit(REPO, '   ')
+  assert.equal(empty.ok, false)
+  assert.equal(empty.detail, '提交说明不能为空。')
+  assert.deepEqual(run.calls, [], '空说明不该触发任何 git 调用')
+})
+
+test('sync fetch：只更新远端引用，没有 origin 时先说是远端的问题', async () => {
+  const run = runnerOf(repoTable({ remote: { stdout: 'origin\n' } }))
+  const result = await createRepository(run).sync(REPO, 'fetch')
+  assert.equal(result.ok, true)
+  assert.deepEqual(result.command, ['fetch', '--prune', 'origin'])
+
+  const noRemote = await createRepository(runnerOf(repoTable({ remote: { stdout: '' } }))).sync(REPO, 'fetch')
+  assert.equal(noRemote.ok, false)
+  assert.equal(noRemote.reason, 'sync-failed')
+  assert.match(noRemote.detail, /还没有配置任何远端/)
+})
+
+test('sync pull：游离 HEAD / 脏工作区 / 没有上游 各说各的下一步', async () => {
+  const detached = runnerOf(repoTable({
+    remote: { stdout: 'origin\n' },
+    'rev-parse --abbrev-ref HEAD': { stdout: 'HEAD\n' },
+  }))
+  const one = await createRepository(detached).sync(REPO, 'pull')
+  assert.equal(one.ok, false)
+  assert.match(one.detail, /游离 HEAD/)
+
+  const dirty = runnerOf(repoTable({
+    remote: { stdout: 'origin\n' },
+    'status --porcelain --untracked-files=no': { stdout: ' M src/a.ts\n' },
+  }))
+  const two = await createRepository(dirty).sync(REPO, 'pull')
+  assert.equal(two.ok, false)
+  assert.match(two.detail, /未提交的改动/)
+
+  const untracked = runnerOf(repoTable({
+    remote: { stdout: 'origin\n' },
+    'for-each-ref --format=%(upstream:short) refs/heads/main': { stdout: '\n' },
+  }))
+  const three = await createRepository(untracked).sync(REPO, 'pull')
+  assert.equal(three.ok, false)
+  assert.match(three.detail, /还没有上游/)
+})
+
+test('sync pull：默认 --rebase，显式关掉才用 merge', async () => {
+  const table = () => repoTable({
+    remote: { stdout: 'origin\n' },
+    'for-each-ref --format=%(upstream:short) refs/heads/main': { stdout: 'origin/main\n' },
+  })
+  const rebaseRun = runnerOf(table())
+  assert.deepEqual((await createRepository(rebaseRun).sync(REPO, 'pull')).command, ['pull', '--rebase'])
+  assert.ok(rebaseRun.calls.includes('pull --rebase'))
+
+  const mergeRun = runnerOf(table())
+  assert.deepEqual((await createRepository(mergeRun).sync(REPO, 'pull', false)).command, ['pull', '--no-rebase'])
+  assert.ok(mergeRun.calls.includes('pull --no-rebase'))
+})
+
+test('deleteBranch：不删当前分支，也不删不存在的；未合并的分支要显式 force', async () => {
+  const current = await createRepository(runnerOf(repoTable())).deleteBranch(REPO, 'main')
+  assert.equal(current.ok, false)
+  assert.match(current.detail, /不能删除当前分支/)
+
+  const missing = await createRepository(runnerOf(repoTable({
+    [REMOTE_REFS]: { stdout: 'origin/feat/gone\n' },
+  }))).deleteBranch(REPO, 'feat/gone')
+  assert.equal(missing.ok, false)
+  assert.match(missing.detail, /远端引用/)
+
+  const run = runnerOf(repoTable({ 'branch -d feat/a': { code: 1, stderr: "error: the branch 'feat/a' is not fully merged\n" } }))
+  const unmerged = await createRepository(run).deleteBranch(REPO, 'feat/a')
+  assert.equal(unmerged.ok, false)
+  assert.equal(unmerged.reason, 'delete-failed')
+  assert.match(unmerged.detail, /not fully merged/)
+
+  const forced = runnerOf(repoTable({ 'branch -D feat/a': { code: 0, stdout: 'Deleted branch feat/a\n' } }))
+  const result = await createRepository(forced).deleteBranch(REPO, 'feat/a', true)
+  assert.equal(result.ok, true)
+  assert.deepEqual(result.command, ['branch', '-D', 'feat/a'])
+})
+
+test('renameBranch：from 省略时改当前分支，重名与非法名字在跑 git 之前挡下', async () => {
+  const run = runnerOf(repoTable({ 'branch -m main feat/rename-me': { code: 0 } }))
+  const result = await createRepository(run).renameBranch(REPO, '', 'feat/rename-me')
+  assert.equal(result.ok, true)
+  assert.deepEqual(result.command, ['branch', '-m', 'main', 'feat/rename-me'])
+
+  const duplicate = await createRepository(runnerOf(repoTable())).renameBranch(REPO, 'main', 'feat/a')
+  assert.equal(duplicate.ok, false)
+  assert.equal(duplicate.reason, 'rename-failed')
+  assert.match(duplicate.detail, /已经有名为 feat\/a 的分支/)
+
+  const invalid = await createRepository(runnerOf(repoTable())).renameBranch(REPO, 'main', 'bad name')
+  assert.equal(invalid.ok, false)
+  assert.equal(invalid.reason, 'invalid-branch')
+})

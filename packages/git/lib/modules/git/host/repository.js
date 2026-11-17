@@ -87,6 +87,33 @@ async function switchTracking(run, cwd, remoteRef, short) {
         return undefined;
     return failure('checkout-failed', firstLine(second.stderr));
 }
+function succeeded(command, result) {
+    return { ok: true, command, stdout: result.stdout, stderr: result.stderr };
+}
+/**
+ * 本工具的远端一律是 `origin`：没有就当场说清楚。
+ *
+ * 让 git 自己报 `'origin' does not appear to be a git repository` 的话，模型分不清是
+ * 远端没配、网络不通还是权限不够，而这三种的下一步完全不同。
+ */
+async function requireOrigin(run, cwd) {
+    const remotes = await run(cwd, ['remote']);
+    if (remotes.spawnError !== undefined)
+        return failure('git-missing', '找不到 git 可执行文件。');
+    if (remotes.code !== 0)
+        return failure('sync-failed', firstLine(remotes.stderr) || '读取远端列表失败。');
+    const names = remotes.stdout.split(/\r?\n/).map((name) => name.trim()).filter((name) => name !== '');
+    if (names.includes('origin'))
+        return undefined;
+    return failure('sync-failed', names.length === 0
+        ? '这个仓库还没有配置任何远端：先 `git remote add origin <url>`。'
+        : `这个仓库没有名为 origin 的远端（现有：${names.join('、')}）：先 \`git remote rename\` 或补一个 origin。`);
+}
+/** 这个本地分支跟踪谁（`origin/main` 这种）；空串表示还没有上游。工具层也要用它写提示。 */
+export async function upstreamOf(run, cwd, branch) {
+    const result = await run(cwd, ['for-each-ref', '--format=%(upstream:short)', `refs/heads/${branch}`]);
+    return result.code === 0 ? result.stdout.trim() : '';
+}
 export function createRepository(run = defaultRunner) {
     /** 当前分支：detached HEAD 时 git 回的是字面量 `HEAD`，那是「没有分支」而不是分支名。 */
     async function branchOf(cwd) {
@@ -178,6 +205,169 @@ export function createRepository(run = defaultRunner) {
             if (failed !== undefined)
                 return failed;
             return branchOf(resolved);
+        },
+        /**
+         * 提交改动。
+         *
+         * 三种入口按「谁来挑改动」分：`paths` 只提交指定路径、`all` 先 `add -A`、都不给则只提交
+         * 已经暂存的内容。`diff --cached --quiet` 的退出码是这里的判别式（0=没有暂存内容，
+         * 1=有），先探一次是因为空提交在任何入口下都是错的——尤其是模型「以为改过」的时候。
+         */
+        async commit(cwd, message, options = {}) {
+            const resolved = assertDirectory(cwd);
+            if (typeof resolved !== 'string')
+                return resolved;
+            if (typeof message !== 'string' || message.trim() === '') {
+                return failure('commit-failed', '提交说明不能为空。');
+            }
+            const current = await branchOf(resolved);
+            if (current.ok !== true)
+                return current;
+            const paths = Array.isArray(options.paths)
+                ? options.paths.filter((item) => typeof item === 'string' && item !== '')
+                : [];
+            // 初值用「上一次 add 成功」的退出码：没传 paths/all 时也要走下面那次暂存区检查。
+            let staged = { code: 0, stdout: '', stderr: '' };
+            if (paths.length > 0) {
+                const add = ['add', '--', ...paths];
+                staged = await run(resolved, add);
+                if (staged.spawnError !== undefined)
+                    return failure('git-missing', '找不到 git 可执行文件。');
+                if (staged.code !== 0) {
+                    return failure('commit-failed', `暂存 ${paths.join('、')} 失败：${firstLine(staged.stderr)}`);
+                }
+            }
+            else if (options.all === true) {
+                staged = await run(resolved, ['add', '-A']);
+                if (staged.spawnError !== undefined)
+                    return failure('git-missing', '找不到 git 可执行文件。');
+                if (staged.code !== 0)
+                    return failure('commit-failed', `暂存改动失败：${firstLine(staged.stderr)}`);
+            }
+            if (staged.code === 0) {
+                const check = await run(resolved, ['diff', '--cached', '--quiet']);
+                if (check.spawnError !== undefined)
+                    return failure('git-missing', '找不到 git 可执行文件。');
+                if ((check.code ?? 1) === 0) {
+                    const how = paths.length > 0 || options.all === true
+                        ? '暂存之后没有可提交的改动。'
+                        : '还没有暂存任何改动：先 `git add <路径>`，或调用本工具时传 paths / all: true。';
+                    return failure('commit-failed', how);
+                }
+                if ((check.code ?? 0) > 1)
+                    return failure('commit-failed', firstLine(check.stderr) || '读取暂存区失败。');
+            }
+            const argv = ['commit', '-m', message];
+            const result = await run(resolved, argv);
+            if (result.spawnError !== undefined)
+                return failure('git-missing', '找不到 git 可执行文件。');
+            if (result.code !== 0)
+                return failure('commit-failed', firstLine(result.stderr) || '提交失败。');
+            return succeeded(argv, result);
+        },
+        /**
+         * 同步远端：`fetch` 只更新跟踪引用，`pull` 把上游合进来（默认 rebase）。
+         *
+         * 三条前置检查都在本地做，因为它们各自的下一步完全不同：游离 HEAD（先切分支）、
+         * 工作区脏（先提交或 stash）、没有上游（先推一次 -u）。交给 git 只能得到
+         * 「failed to pull」一句话。
+         */
+        async sync(cwd, action, rebase) {
+            const resolved = assertDirectory(cwd);
+            if (typeof resolved !== 'string')
+                return resolved;
+            if (action !== 'fetch' && action !== 'pull') {
+                return failure('sync-failed', 'action 只能是 `fetch` 或 `pull`。');
+            }
+            const current = await branchOf(resolved);
+            if (current.ok !== true)
+                return current;
+            const missing = await requireOrigin(run, resolved);
+            if (missing !== undefined)
+                return missing;
+            if (action === 'fetch') {
+                const argv = ['fetch', '--prune', 'origin'];
+                const result = await run(resolved, argv);
+                if (result.spawnError !== undefined)
+                    return failure('git-missing', '找不到 git 可执行文件。');
+                if (result.code !== 0)
+                    return failure('sync-failed', firstLine(result.stderr) || '拉取远端引用失败。');
+                return succeeded(argv, result);
+            }
+            if (current.detached || current.branch === '') {
+                return failure('sync-failed', '当前处于游离 HEAD：拉取前先切到一个本地分支。');
+            }
+            if (current.dirty) {
+                return failure('sync-failed', '工作区有未提交的改动：先提交（git_commit）或 `git stash`，再拉取。');
+            }
+            const upstream = await upstreamOf(run, resolved, current.branch);
+            if (upstream === '') {
+                return failure('sync-failed', `${current.branch} 还没有上游：先用 git_push 推一次（会自动加 -u），`
+                    + `或 \`git branch --set-upstream-to=origin/${current.branch}\`。`);
+            }
+            // rebase 默认开：本地提交重放到上游之上，历史比 merge commit 干净；要保留合并节点才显式关掉。
+            const argv = rebase === false ? ['pull', '--no-rebase'] : ['pull', '--rebase'];
+            const result = await run(resolved, argv);
+            if (result.spawnError !== undefined)
+                return failure('git-missing', '找不到 git 可执行文件。');
+            if (result.code !== 0)
+                return failure('sync-failed', firstLine(result.stderr) || '拉取失败。');
+            return succeeded(argv, result);
+        },
+        /** 删除本地分支：默认 `-d`（只删已合并的），要删未合并的必须显式 force。 */
+        async deleteBranch(cwd, name, force) {
+            const resolved = assertDirectory(cwd);
+            if (typeof resolved !== 'string')
+                return resolved;
+            if (typeof name !== 'string' || !isBranchName(name)) {
+                return failure('invalid-branch', SHAPE_DETAIL);
+            }
+            const current = await branchOf(resolved);
+            if (current.ok !== true)
+                return current;
+            if (current.branch === name) {
+                return failure('delete-failed', `不能删除当前分支 ${name}：先切到别的分支再删。`);
+            }
+            if (!current.branches.includes(name)) {
+                // `remotes` 里存的是 `origin/feat/x` 这种带远端名的引用，所以比后缀而不是全等。
+                const tracked = current.remotes.some((ref) => ref === name || ref.endsWith(`/${name}`));
+                return failure('delete-failed', `没有名为 ${name} 的本地分支`
+                    + (tracked ? '（它是远端引用：删远端要 `git push origin --delete <分支>`）。' : '。'));
+            }
+            const argv = ['branch', force === true ? '-D' : '-d', name];
+            const result = await run(resolved, argv);
+            if (result.spawnError !== undefined)
+                return failure('git-missing', '找不到 git 可执行文件。');
+            if (result.code !== 0)
+                return failure('delete-failed', firstLine(result.stderr) || '删除分支失败。');
+            return succeeded(argv, result);
+        },
+        /** 重命名本地分支：`from` 省略时改当前分支。改名不会动远端，也不自动改上游名。 */
+        async renameBranch(cwd, from, to) {
+            const resolved = assertDirectory(cwd);
+            if (typeof resolved !== 'string')
+                return resolved;
+            if (typeof to !== 'string' || !isBranchName(to))
+                return failure('invalid-branch', SHAPE_DETAIL);
+            const current = await branchOf(resolved);
+            if (current.ok !== true)
+                return current;
+            const source = typeof from === 'string' && from !== '' ? from : current.branch;
+            if (source === '')
+                return failure('rename-failed', '当前处于游离 HEAD：请显式给出 from。');
+            if (!isBranchName(source))
+                return failure('invalid-branch', SHAPE_DETAIL);
+            if (!current.branches.includes(source))
+                return failure('rename-failed', `没有名为 ${source} 的本地分支。`);
+            if (current.branches.includes(to))
+                return failure('rename-failed', `已经有名为 ${to} 的分支。`);
+            const argv = ['branch', '-m', source, to];
+            const result = await run(resolved, argv);
+            if (result.spawnError !== undefined)
+                return failure('git-missing', '找不到 git 可执行文件。');
+            if (result.code !== 0)
+                return failure('rename-failed', firstLine(result.stderr) || '重命名失败。');
+            return succeeded(argv, result);
         },
     };
 }

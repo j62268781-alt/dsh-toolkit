@@ -1,18 +1,21 @@
 /**
- * 两个内置工具：`git_push` 与 `git_branch_create`。
+ * 内置 git 工具：推送、建分支、提交、同步、删分支、改分支名。
  *
  * 为什么做成工具而不是继续只写提示词：Qoder 的三项 Git 设置由它自己的服务执行——push 时
  * 加 `--force-with-lease`、建分支时拼前缀。DSH 没有那层服务，设置只能变成提示词里的**约定**，
  * 模型漏看一次就退化成一个裸 `git push`。工具把参数拼装搬回宿主：模型只负责「调用」，
  * `--force-with-lease` 与前缀由这里决定，用户改了设置下一次调用就生效。
  *
- * 拒绝 `git` 名字前缀式命名（`git_status` 之类）：工具只包那两件**有隐含参数**的事，
- * 其余 git 命令留给 agent 在 shell 里敲——多包一层只会让工具表变长而不增加正确性。
+ * 后四个（提交/同步/删/改名）包的是另一类东西：**下一步取决于本地状态**。空暂存区、
+ * 脏工作区、没有上游、未合并的分支——交给裸 git 只得到一句 `failed`，检查搬到这里
+ * 才能把「接下来做什么」写进输出。
+ *
+ * 仍然拒绝 `git_status`/`git_log` 这类纯查询：它们没有隐含参数，模型在 shell 里敲更灵活。
  */
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { runProcess } from '../../../host/process.js';
-import { createRepository } from './repository.js';
-import { BRANCH_TOOL_NAME, GIT_PUSH_TIMEOUT_MS, GIT_TIMEOUT_MS, MAX_BRANCH_NAME_LENGTH, PUSH_TOOL_NAME, isBranchName, normalizeBranchPrefix, } from './constants.js';
+import { createRepository, upstreamOf } from './repository.js';
+import { BRANCH_TOOL_NAME, COMMIT_TOOL_NAME, DELETE_TOOL_NAME, GIT_PUSH_TIMEOUT_MS, GIT_TIMEOUT_MS, MAX_BRANCH_NAME_LENGTH, PUSH_TOOL_NAME, RENAME_TOOL_NAME, SYNC_TOOL_NAME, isBranchName, normalizeBranchPrefix, } from './constants.js';
 /**
  * cwd 只能从 agent 上推：`ToolRunContext` 自己没有目录字段（skills-mcp 的 mount 也这么取）。
  * 取不到就报错而不是退回 `process.cwd()`——那是 DSH 自己的安装目录，在那里跑 git 几乎必然出错。
@@ -43,6 +46,10 @@ const REASON_TEXT = {
     'not-a-repository': '这里不是 Git 仓库。',
     'checkout-failed': '切换分支失败。',
     'create-failed': '创建分支失败。',
+    'commit-failed': '提交失败。',
+    'sync-failed': '与远端同步失败。',
+    'delete-failed': '删除分支失败。',
+    'rename-failed': '重命名分支失败。',
     'git-missing': '找不到 git 可执行文件。',
 };
 function reasonText(reason, detail) {
@@ -103,6 +110,14 @@ async function inspectPush(run, cwd, snapshotBranch, target, wantsUpstream) {
     }
     return { target, upstream, behind, ahead };
 }
+/** 当前分支比上游落后几个提交；没有上游或读不出来时按 0 算（不拿它做拦截依据）。 */
+async function behindCount(run, cwd) {
+    const counts = await run(cwd, ['rev-list', '--left-right', '--count', '@{upstream}...HEAD']);
+    if (counts.code !== 0)
+        return 0;
+    const [left] = counts.stdout.trim().split(/\s+/);
+    return Number(left) || 0;
+}
 /** 重名时退到 `-2`、`-3`……：自动命名连着建两次不该报错。 */
 export function uniqueName(base, taken) {
     if (!taken.includes(base))
@@ -115,7 +130,7 @@ export function uniqueName(base, taken) {
     throw new Error(`分支名冲突太多：${base}-2 到 ${base}-99 都已被占用。`);
 }
 /**
- * 生成两个工具定义。`alwaysForcePush` 与 `branchPrefix` 在 execute 里读，
+ * 生成工具定义。`alwaysForcePush` 与 `branchPrefix` 在 execute 里读，
  * 所以同一个定义在设置变化后（插件重启）不需要重新编译 schema。
  */
 export function createGitTools(options) {
@@ -217,6 +232,143 @@ export function createGitTools(options) {
             return `已创建并切换到 ${final}（基于 ${from}）。`;
         },
     });
-    return [push, createBranch];
+    /**
+     * 提交、同步、删分支、改分支名。
+     *
+     * 与推送/建分支同样的理由：这几件事的**下一步**取决于本地状态（有没有暂存内容、工作区脏不脏、
+     * 有没有上游），交给裸 git 只能拿到一句 `failed`。这里把检查搬到调用之前，模型不用自己
+     * 敲三条命令去猜。
+     */
+    const commit = defineTool({
+        name: COMMIT_TOOL_NAME,
+        description: '把改动提交到当前分支。省略 paths 与 all 时只提交已暂存的改动；传 all: true 先 `git add -A`；'
+            + '传 paths 只暂存并提交这些路径。提交说明按 Git 设置里的「提交说明指令」写。'
+            + '提交前会检查暂存区：没有可提交的改动会直接说明，不会产生空提交。',
+        parameters: {
+            message: { type: 'string', description: '提交说明（可多行：第一行是标题）' },
+            all: { type: 'boolean', description: '先 `git add -A` 再提交（连新文件与删除一起）' },
+            paths: {
+                type: 'array',
+                items: { type: 'string' },
+                description: '只暂存并提交这些路径（相对仓库根）；与 all 二选一',
+            },
+        },
+        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+        async execute(args, exec) {
+            const cwd = directoryOf(exec);
+            const message = typeof args.message === 'string' ? args.message : '';
+            if (message.trim() === '')
+                throw new Error('提交说明不能为空。');
+            const result = await repository.commit(cwd, message, {
+                all: args.all === true,
+                paths: Array.isArray(args.paths) ? args.paths : [],
+            });
+            if (result.ok !== true)
+                throw new Error(reasonText(result.reason, result.detail));
+            const head = await pushRun(cwd, ['rev-parse', '--short', 'HEAD']);
+            const hash = head.code === 0 ? head.stdout.trim() : '';
+            const output = `${result.stdout}\n${result.stderr}`.trim();
+            const title = message.trim().split('\n')[0].slice(0, 120);
+            return [
+                `$ git commit -m "${title}"`,
+                output === '' ? '（git 没有输出）' : output,
+                hash === '' ? '' : `新提交 ${hash}。`,
+            ].filter((line) => line !== '').join('\n');
+        },
+    });
+    const sync = defineTool({
+        name: SYNC_TOOL_NAME,
+        description: '与 origin 同步。action: "fetch" 只更新远端跟踪引用（带 --prune，已删的远端分支会一起清掉）；'
+            + 'action: "pull" 把上游合进来（默认 --rebase，rebase: false 改用 merge）。'
+            + '拉取前会检查游离 HEAD、未提交的改动与上游是否存在——这三件事的下一步各不相同，'
+            + '所以不让 git 用一句 `failed to pull` 带过。拉取后冲突要自己解决。',
+        parameters: {
+            action: { type: 'string', description: 'fetch（只取）或 pull（取并合并）' },
+            rebase: { type: 'boolean', description: 'pull 时是否变基（默认 true）' },
+        },
+        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+        async execute(args, exec) {
+            const cwd = directoryOf(exec);
+            const action = args.action === 'fetch' ? 'fetch' : 'pull';
+            if (args.action !== 'fetch' && args.action !== 'pull')
+                throw new Error('action 只能是 `fetch` 或 `pull`。');
+            const before = action === 'pull' ? await behindCount(pushRun, cwd) : 0;
+            const result = await repository.sync(cwd, action, args.rebase);
+            if (result.ok !== true) {
+                const base = reasonText(result.reason, result.detail);
+                throw new Error(/conflict|CONFLICT/.test(result.detail)
+                    ? `${base}\n有冲突要解决：改完冲突文件后 \`git add <文件>\`，再 \`git rebase --continue\`（merge 用 \`git commit\`）。`
+                    : base);
+            }
+            const output = `${result.stdout}\n${result.stderr}`.trim();
+            const notes = [];
+            if (action === 'pull')
+                notes.push(before > 0 ? `合并了 ${before} 个上游提交。` : '本来就是最新的。');
+            const remaining = await behindCount(pushRun, cwd);
+            if (remaining > 0) {
+                notes.push(action === 'fetch'
+                    ? `取回后上游比本地多 ${remaining} 个提交：要合并就调用本工具 action: "pull"。`
+                    : `上游仍比本地多 ${remaining} 个提交。`);
+            }
+            return [`$ git ${result.command.join(' ')}`, output === '' ? '（git 没有输出）' : output, ...notes].join('\n');
+        },
+    });
+    const removeBranch = defineTool({
+        name: DELETE_TOOL_NAME,
+        description: '删除本地分支。默认只删**已合并**的分支（`git branch -d`）；确有未合并的提交要丢，才传 force: true'
+            + '（等价 `-D`）。不能删当前分支。删本地不影响远端——输出会说明远端分支还在。',
+        parameters: {
+            name: { type: 'string', description: '要删除的本地分支名' },
+            force: { type: 'boolean', description: '删未合并的分支时传 true（会丢掉那些提交）' },
+        },
+        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+        async execute(args, exec) {
+            const cwd = directoryOf(exec);
+            const name = typeof args.name === 'string' ? args.name.trim() : '';
+            if (name === '')
+                throw new Error('要删除的分支名不能为空。');
+            // 先记上游：删完之后这个分支就查不到了。
+            const tracking = await upstreamOf(pushRun, cwd, name);
+            const result = await repository.deleteBranch(cwd, name, args.force === true);
+            if (result.ok !== true) {
+                const base = reasonText(result.reason, result.detail);
+                throw new Error(/not fully merged/i.test(result.detail)
+                    ? `${base}\n它还有没合并进别处的提交：确认要丢掉就再调用一次，传 force: true。`
+                    : base);
+            }
+            return [
+                `$ git ${result.command.join(' ')}`,
+                tracking === '' ? '' : `远端 ${tracking} 仍然存在：要删远端用 \`git push origin --delete ${name}\`。`,
+            ].filter((line) => line !== '').join('\n');
+        },
+    });
+    const renameBranchTool = defineTool({
+        name: RENAME_TOOL_NAME,
+        description: '重命名本地分支（`git branch -m`）。from 省略时改当前分支。新名字按你写的原样使用，'
+            + '**不会**自动加「分支前缀」——前缀只用于新建分支。改名不动远端。',
+        parameters: {
+            from: { type: 'string', description: '要改名的本地分支；省略时改当前分支' },
+            to: { type: 'string', description: '新的分支名（完整名字，不加前缀）' },
+        },
+        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+        async execute(args, exec) {
+            const cwd = directoryOf(exec);
+            const to = typeof args.to === 'string' ? args.to.trim() : '';
+            if (to === '')
+                throw new Error('新的分支名不能为空。');
+            const from = typeof args.from === 'string' ? args.from.trim() : '';
+            const result = await repository.renameBranch(cwd, from, to);
+            if (result.ok !== true)
+                throw new Error(reasonText(result.reason, result.detail));
+            const tracking = await upstreamOf(pushRun, cwd, to);
+            return [
+                `$ git ${result.command.join(' ')}`,
+                tracking === ''
+                    ? `新分支 ${to} 还没有上游：推送时调用 git_push（会自动加 -u）。`
+                    : `新分支 ${to} 跟踪 ${tracking}。`,
+            ].join('\n');
+        },
+    });
+    return [push, createBranch, commit, sync, removeBranch, renameBranchTool];
 }
 //# sourceMappingURL=tools.js.map

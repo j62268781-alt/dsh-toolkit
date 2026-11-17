@@ -15,9 +15,11 @@ const HEADER = '## Git conventions'
 
 const INTRO =
   'The user configured these Git preferences in the DSH Toolkit settings panel. '
-  + 'The `git_push` and `git_branch_create` tools apply them automatically — prefer those tools over running '
-  + '`git push` / `git switch -c` by hand. If you do run git yourself, follow the same preferences. '
-  + 'They apply to every Git operation in their repositories, unless the current request says otherwise.'
+  + 'The `git_*` tools (`git_push`, `git_branch_create`, `git_commit`, `git_sync`, `git_branch_delete`, '
+  + '`git_branch_rename`) apply them automatically — prefer those tools over running '
+  + '`git push` / `git switch -c` / `git commit` / `git pull` by hand. If you do run git yourself, follow '
+  + 'the same preferences. They apply to every Git operation in their repositories, unless the current request '
+  + 'says otherwise.'
 
 function branchRule(prefix: string): string {
   return `- New branches start with \`${prefix}\` (for example \`${prefix}fix-login-retry\`); `
@@ -33,6 +35,7 @@ function instructionsRule(instructions: string): string[] {
   // 既不会变成代码块，也不会把用户的换行压成一行。
   return [
     '- When you write a commit message, follow the user\'s instructions below.',
+    '  Write it through the `git_commit` tool, not by running `git commit` yourself.',
     '',
     ...instructions.split('\n').map((line) => (line === '' ? '  ' : `  ${line}`)),
   ]

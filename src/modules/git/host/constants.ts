@@ -31,9 +31,13 @@ export const GIT_TIMEOUT_MS = 15_000
  */
 export const GIT_PUSH_TIMEOUT_MS = 120_000
 
-/** 两个内置工具的名字：宿主把它们和别的工具一起放进模型上下文，前缀保持模块化。 */
+/** 内置工具的名字：宿主把它们和别的工具一起放进模型上下文，前缀保持模块化。 */
 export const PUSH_TOOL_NAME = 'git_push'
 export const BRANCH_TOOL_NAME = 'git_branch_create'
+export const COMMIT_TOOL_NAME = 'git_commit'
+export const SYNC_TOOL_NAME = 'git_sync'
+export const DELETE_TOOL_NAME = 'git_branch_delete'
+export const RENAME_TOOL_NAME = 'git_branch_rename'
 
 /** 系统提示词段的注册名；同一段重复注册会被宿主换掉，因此带上模块前缀。 */
 export const PROMPT_SECTION = 'dsh-toolkit:git'
@@ -117,11 +121,25 @@ export const GIT_REASON = {
   notRepository: 4103,
   checkoutFailed: 4104,
   createFailed: 4105,
+  commitFailed: 4106,
+  syncFailed: 4107,
+  deleteFailed: 4108,
+  renameFailed: 4109,
   gitMissing: 5201,
 } as const
 
 /** `GIT_REASON` 反向查：`snapshot` 里给 client 的是稳定的字符串 key。 */
-export type GitReasonKey = 'invalid-cwd' | 'invalid-branch' | 'not-a-repository' | 'checkout-failed' | 'create-failed' | 'git-missing'
+export type GitReasonKey =
+  | 'invalid-cwd'
+  | 'invalid-branch'
+  | 'not-a-repository'
+  | 'checkout-failed'
+  | 'create-failed'
+  | 'commit-failed'
+  | 'sync-failed'
+  | 'delete-failed'
+  | 'rename-failed'
+  | 'git-missing'
 
 /**
  * 归一化提交说明：统一换行符、去掉控制字符（保留 `\n` 与 `\t`）、裁掉首尾空白、截断超长部分。
