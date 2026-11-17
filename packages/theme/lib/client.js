@@ -1963,13 +1963,12 @@ window.__ModuleLoader__.load({
 
     /* Status ----------------------------------------------------------------- */
 
+    /* 失败已经走全局 toast（\`src/client/ui/toast.ts\`），这行只剩「只读」这种常驻状态。 */
     .sk-theme-status {
       margin: 0;
       font-size: 12px;
       color: var(--dsw-alias-label-secondary);
     }
-
-    .sk-theme-status[data-tone="error"] { color: var(--dsw-alias-state-error-primary); }
 
     /* The Codex shell needs the desktop window; browsers keep the host layout. */
 
@@ -4562,7 +4561,7 @@ window.__ModuleLoader__.load({
     var EXIT_MS = 180;
     var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
     function resolveHost() {
-      if (typeof document === "undefined" || document.body === null) return null;
+      if (typeof document === "undefined" || document.body == null || typeof document.createElement !== "function") return null;
       const scope = globalThis;
       const existing = scope[HOST_KEY];
       if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;

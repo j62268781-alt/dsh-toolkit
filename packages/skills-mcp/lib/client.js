@@ -205,6 +205,104 @@ window.__ModuleLoader__.load({
       return installSharedStylesheet(SETTINGS_PARTS_CSS, SETTINGS_PARTS_ID);
     }
 
+    // src/client/ui/toast.css
+    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+
+    // src/client/ui/toast.ts
+    var HOST_KEY = "__dshToolkitToast__";
+    var STYLE_ID = "dsh-toolkit-toast";
+    var MAX_VISIBLE = 3;
+    var MAX_TEXT = 300;
+    var EXIT_MS = 180;
+    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
+    function resolveHost() {
+      if (typeof document === "undefined" || document.body == null || typeof document.createElement !== "function") return null;
+      const scope = globalThis;
+      const existing = scope[HOST_KEY];
+      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
+      const root = document.createElement("div");
+      root.className = "sk-toast-stack";
+      root.setAttribute("aria-live", "polite");
+      document.body.appendChild(root);
+      const created = { root, entries: [] };
+      scope[HOST_KEY] = created;
+      return created;
+    }
+    function ensureStyles() {
+      try {
+        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
+      } catch {
+      }
+      installStylesheet(toast_default, STYLE_ID);
+    }
+    function normalizeHold(tone, holdMs) {
+      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
+      return holdMs;
+    }
+    function clamp(text2) {
+      return text2.length > MAX_TEXT ? `${text2.slice(0, MAX_TEXT)}…` : text2;
+    }
+    function dismiss(host, entry) {
+      if (host.entries.indexOf(entry) === -1) return;
+      host.entries = host.entries.filter((item) => item !== entry);
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      entry.el.classList.add("sk-toast--leaving");
+      const remove = () => entry.el.remove();
+      const timeout = setTimeout(remove, EXIT_MS);
+      entry.el.addEventListener("animationend", () => {
+        clearTimeout(timeout);
+        remove();
+      }, { once: true });
+    }
+    function arm(host, entry, holdMs) {
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      if (holdMs === 0) {
+        entry.timer = void 0;
+        return;
+      }
+      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
+    }
+    function showToast(text2, options = {}) {
+      const message = clamp(String(text2 ?? "").trim());
+      if (message === "") return;
+      const host = resolveHost();
+      if (host === null) return;
+      ensureStyles();
+      const tone = options.tone ?? "info";
+      const holdMs = normalizeHold(tone, options.holdMs);
+      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
+      if (duplicate !== void 0) {
+        arm(host, duplicate, holdMs);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = `sk-toast sk-toast--${tone}`;
+      el.dataset.tone = tone;
+      el.setAttribute("role", tone === "error" ? "alert" : "status");
+      if (tone !== "info") {
+        const icon = document.createElement("span");
+        icon.className = "sk-toast__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = tone === "error" ? "!" : "✓";
+        el.appendChild(icon);
+      }
+      const body = document.createElement("span");
+      body.className = "sk-toast__text";
+      body.textContent = message;
+      el.appendChild(body);
+      host.root.appendChild(el);
+      const entry = { tone, text: message, el, timer: void 0 };
+      host.entries.push(entry);
+      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
+      arm(host, entry, holdMs);
+    }
+    var toast = {
+      show: showToast,
+      info: (text2, options = {}) => showToast(text2, { ...options, tone: "info" }),
+      success: (text2, options = {}) => showToast(text2, { ...options, tone: "success" }),
+      error: (text2, options = {}) => showToast(text2, { ...options, tone: "error" })
+    };
+
     // src/modules/skills-mcp/client/config.ts
     function snapshotOf(form) {
       const snapshot = form?.getSnapshot?.() ?? form?.store?.getSnapshot?.() ?? form?.snapshot;
@@ -1688,7 +1786,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/skills-mcp/client/views/listCard.tsx
-    function listCardView({ key, identity, description, enabled, details, pending, statusNode, authNote, isOpen, onToggle, menu, error }) {
+    function listCardView({ key, identity, description, enabled, details, pending, statusNode, authNote, isOpen, onToggle, menu }) {
       return /* @__PURE__ */ __dshReact.createElement("li", { className: "smp-card", key }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardRow", key: "row" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardMain", key: "main" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardHead", key: "head" }, /* @__PURE__ */ __dshReact.createElement(
         "button",
         {
@@ -1699,7 +1797,7 @@ window.__ModuleLoader__.load({
         },
         /* @__PURE__ */ __dshReact.createElement(Chevron, { key: "c", open: isOpen }),
         /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardIdentity", key: "id" }, identity)
-      ), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardEnd", key: "end" }, enabled === false ? null : statusNode ?? null)), description ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDescription", key: "desc" }, description) : null), pending ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "pending" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-pending", key: "p" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-spinner", key: "s" }), pending)) : /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "actions" }, menu)), isOpen ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDetails", key: "details" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-details", key: "grid" }, detailNodes(details, "k")), authNote ?? null, error ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-error", key: "err", style: { marginTop: 8 } }, error) : null) : null);
+      ), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardEnd", key: "end" }, enabled === false ? null : statusNode ?? null)), description ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDescription", key: "desc" }, description) : null), pending ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "pending" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-pending", key: "p" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-spinner", key: "s" }), pending)) : /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "actions" }, menu)), isOpen ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDetails", key: "details" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-details", key: "grid" }, detailNodes(details, "k")), authNote ?? null) : null);
     }
 
     // src/modules/skills-mcp/client/components/toolList.tsx
@@ -1919,6 +2017,14 @@ window.__ModuleLoader__.load({
         const [skillDialog, setSkillDialog] = useState(null);
         const [skillDraft, setSkillDraft] = useState({ name: "", description: "", body: "" });
         const [skillError, setSkillError] = useState("");
+        const fail = (message) => {
+          setError(message);
+          toast.error(message);
+        };
+        const failSkill = (message) => {
+          setSkillError(message);
+          toast.error(message);
+        };
         const [skillNonce, setSkillNonce] = useState("");
         const skillSentAtRef = useRef(0);
         const resetSkillPending = () => {
@@ -1938,7 +2044,7 @@ window.__ModuleLoader__.load({
               setRemovedKeys((list) => hideSkillUntilGone(list, target.name, target.scopeKey));
             }
           } else {
-            setSkillError(String(delResult?.reason ?? "删除失败"));
+            failSkill(String(delResult?.reason ?? "删除失败"));
             if (target !== null) setOptimistic((list) => dropOptimisticSkill(list, target.name));
           }
           deleteTargetRef.current = null;
@@ -1982,7 +2088,7 @@ window.__ModuleLoader__.load({
           const timer = setTimeout(() => {
             setSkillPendingPath("");
             setDeletePending(false);
-            setSkillError("删除没有回执（应用可能正在重载），请刷新后再确认一次");
+            failSkill("删除没有回执（应用可能正在重载），请刷新后再确认一次");
           }, 15e3);
           return () => clearTimeout(timer);
         }, [skillPendingPath]);
@@ -1992,7 +2098,7 @@ window.__ModuleLoader__.load({
             editBodyTaskRef.current.invalidate();
             setEditBodyPending(false);
             setEditBodyNonce("");
-            setSkillError("读取正文没有回执（应用可能正在重载），请关掉重开一次");
+            failSkill("读取正文没有回执（应用可能正在重载），请关掉重开一次");
           }, 15e3);
           return () => clearTimeout(timer);
         }, [editBodyPending, editBodyNonce]);
@@ -2075,7 +2181,7 @@ window.__ModuleLoader__.load({
             scanTaskRef.current.invalidate();
             setScanPending(false);
             setScanNonce("");
-            setError("扫描超时");
+            fail("扫描超时");
           }, 15e3);
           return () => clearTimeout(timer);
         }, [scanPending, scanNonce]);
@@ -2192,7 +2298,7 @@ window.__ModuleLoader__.load({
             refresh();
             bumpRefresh();
           } catch (cause) {
-            setError(String(cause?.message ?? cause));
+            fail(String(cause?.message ?? cause));
           } finally {
             setBusy(false);
           }
@@ -2288,7 +2394,7 @@ window.__ModuleLoader__.load({
               delete next[key];
               return next;
             });
-            setError(result.reason);
+            fail(result.reason);
           });
         };
         const enabledSwitch = (row) => {
@@ -2460,8 +2566,7 @@ window.__ModuleLoader__.load({
             authNote,
             isOpen: expanded === key,
             onToggle: () => setExpanded(expanded === key ? "" : key),
-            menu: pending ? null : moreMenu({ entryId: key }, menuItems),
-            error
+            menu: pending ? null : moreMenu({ entryId: key }, menuItems)
           });
         }
         function profileCard(row, tier = "global") {
@@ -2597,12 +2702,12 @@ window.__ModuleLoader__.load({
               setImportScan({ ...payload, ...target });
               setScanPending(false);
               setScanNonce("");
-              if (payload?.ok !== true) setError(String(payload?.error ?? "扫描失败"));
+              if (payload?.ok !== true) fail(String(payload?.error ?? "扫描失败"));
             }).catch((error2) => {
               if (!task.isCurrent()) return;
               setScanPending(false);
               setScanNonce("");
-              setError(String(error2?.message ?? error2));
+              fail(String(error2?.message ?? error2));
             });
           },
           onImport: ({ scope: scope2, target, result }) => {
@@ -2621,7 +2726,7 @@ window.__ModuleLoader__.load({
                 scope: scope2 === "global" ? "" : target,
                 scopeChanged: scope2 !== "global"
               })).then((outcome) => {
-                if (!outcome.ok) setError(outcome.reason);
+                if (!outcome.ok) fail(outcome.reason);
               });
             }
             setImportScan(null);
@@ -2828,7 +2933,7 @@ window.__ModuleLoader__.load({
             }));
             setEditBodyPending(false);
             setEditBodyNonce("");
-            if (result.ok !== true) setSkillError(String(result.reason ?? "读取正文失败"));
+            if (result.ok !== true) failSkill(String(result.reason ?? "读取正文失败"));
           });
         };
         const openPreview = (skill) => {
@@ -2909,7 +3014,7 @@ window.__ModuleLoader__.load({
                 bumpRefresh();
                 return;
               }
-              setSkillError(String(result.reason ?? "写入失败"));
+              failSkill(String(result.reason ?? "写入失败"));
             });
           }
         });
@@ -2999,7 +3104,7 @@ window.__ModuleLoader__.load({
           `全局写 ${skillDirs.userDsh || "~/.dsh/skills"} 或 ${skillDirs.userAgents || "~/.agents/skills"}，项目级写 <工作区>/.dsh/skills 或 <工作区>/.agents/skills`
         ].join(" · ");
         const skillsSections = [skillsList];
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-page" }, /* @__PURE__ */ __dshReact.createElement("style", { key: "css" }, CSS), head, tabs, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-groupSub smp-summaryAbove", key: "summary" }, tab === "mcp" ? mcpSummary : skillsSummary), filterRowView, statusOf(form) === "loading" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-empty", key: "loading" }, "正在读取设置…") : null, error && !editing ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-error", key: "err" }, error) : null, skillError !== "" && skillDialog === null ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-error", key: "skillerr" }, skillError) : null, confirmDeleteDialog, skillPreviewDialogView, skillDialogElement, tab === "mcp" ? mcpSections : skillsSections, debugOn ? /* @__PURE__ */ __dshReact.createElement("section", { className: "smp-group", key: "debug" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-groupTitleRow", key: "h" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-groupTitle" }, `Loader 诊断：共 ${inventoryRows.length} 行，其中 mcp 相关 ${debugMcp.length} 行`)), /* @__PURE__ */ __dshReact.createElement("ul", { className: "smp-cards", key: "list" }, debugMcp.map((row) => /* @__PURE__ */ __dshReact.createElement("li", { className: "smp-card", key: row.entryId }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardContent", key: "c", style: { cursor: "default" } }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardMainRow", key: "r" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardIdentity", key: "i" }, row.entryId), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardEnd", key: "e" }, /* @__PURE__ */ __dshReact.createElement(Tag, null, `${row.enabled ? "on" : "off"}${row.fiberPhase ? ` · ${row.fiberPhase}` : ""}`))), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDescription", key: "d" }, row.moduleName)))))) : null);
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-page" }, /* @__PURE__ */ __dshReact.createElement("style", { key: "css" }, CSS), head, tabs, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-groupSub smp-summaryAbove", key: "summary" }, tab === "mcp" ? mcpSummary : skillsSummary), filterRowView, statusOf(form) === "loading" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-empty", key: "loading" }, "正在读取设置…") : null, confirmDeleteDialog, skillPreviewDialogView, skillDialogElement, tab === "mcp" ? mcpSections : skillsSections, debugOn ? /* @__PURE__ */ __dshReact.createElement("section", { className: "smp-group", key: "debug" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-groupTitleRow", key: "h" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-groupTitle" }, `Loader 诊断：共 ${inventoryRows.length} 行，其中 mcp 相关 ${debugMcp.length} 行`)), /* @__PURE__ */ __dshReact.createElement("ul", { className: "smp-cards", key: "list" }, debugMcp.map((row) => /* @__PURE__ */ __dshReact.createElement("li", { className: "smp-card", key: row.entryId }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardContent", key: "c", style: { cursor: "default" } }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardMainRow", key: "r" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardIdentity", key: "i" }, row.entryId), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardEnd", key: "e" }, /* @__PURE__ */ __dshReact.createElement(Tag, null, `${row.enabled ? "on" : "off"}${row.fiberPhase ? ` · ${row.fiberPhase}` : ""}`))), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDescription", key: "d" }, row.moduleName)))))) : null);
       }
       return Panel;
     }

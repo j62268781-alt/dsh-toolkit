@@ -299,13 +299,67 @@ export async function bootPanel(doc = emptyDoc(), options = {}) {
    */
   const listeners = new Map()
   let visibilityState = options.visibilityState ?? 'visible'
+  /**
+   * 极简 DOM 节点。
+   *
+   * 面板自己渲染成 React 树（见 `createRuntime`），真正碰 DOM 的只有全局 toast ——
+   * 它往 `document.body` 里挂一个栈。这个包故意不带 DOM shim（jsdom 太重），所以这里
+   * 只实现 toast 真正调用的那几个成员；`toasts()` 再把栈读成「屏幕上弹了什么」，
+   * 让「失败要告诉用户」这类断言仍然有意义，而不是删掉。
+   */
+  const createNode = (tagName) => {
+    const node = {
+      tagName,
+      dataset: {},
+      children: [],
+      parentNode: null,
+      className: '',
+      textContent: '',
+      attributes: {},
+      classList: {
+        add(name) { if (!node.className.split(/\s+/).includes(name)) node.className = `${node.className} ${name}`.trim() },
+        remove(name) { node.className = node.className.split(/\s+/).filter((item) => item !== name).join(' ') },
+        contains(name) { return node.className.split(/\s+/).includes(name) },
+      },
+      setAttribute(name, value) { node.attributes[name] = String(value) },
+      getAttribute(name) { return node.attributes[name] ?? null },
+      appendChild(child) { node.children.push(child); child.parentNode = node; return child },
+      remove() {
+        if (node.parentNode === null) return
+        node.parentNode.children = node.parentNode.children.filter((item) => item !== node)
+        node.parentNode = null
+      },
+      addEventListener() {},
+      removeEventListener() {},
+      get isConnected() { return node.parentNode !== null },
+    }
+    node.ownerDocument = globalThis.document
+    return node
+  }
+  const body = createNode('#body')
+  const head = createNode('#head')
   globalThis.document = {
+    body,
+    head,
     get visibilityState() { return visibilityState },
+    createElement(tagName) { return createNode(tagName) },
+    querySelector() { return null },
     addEventListener(type, fn) {
       if (!listeners.has(type)) listeners.set(type, new Set())
       listeners.get(type).add(fn)
     },
     removeEventListener(type, fn) { listeners.get(type)?.delete(fn) },
+  }
+  body.ownerDocument = globalThis.document
+  head.ownerDocument = globalThis.document
+  /** 当前 toast 栈里的每一条，按到达顺序：`{ tone, text }`。 */
+  const toasts = () => {
+    const stack = body.children.find((node) => node.className.split(/\s+/).includes('sk-toast-stack'))
+    if (stack === undefined) return []
+    return stack.children.map((node) => ({
+      tone: node.dataset.tone,
+      text: node.children.filter((child) => child.className.split(/\s+/).includes('sk-toast__text')).map((child) => child.textContent).join(''),
+    }))
   }
   /** Test-only: 切换可见性并像浏览器那样派发一次 `visibilitychange`。 */
   const setVisibility = (next) => {
@@ -459,5 +513,5 @@ export async function bootPanel(doc = emptyDoc(), options = {}) {
     else globalThis.BroadcastChannel = realBroadcastChannel
   }
 
-  return { doc, runtime, settle, find, findAll, byClass, byText, byPlaceholder, click, change, toggle, switchNamed, flip, text, openMenu, restore, channels, setVisibility }
+  return { doc, runtime, settle, find, findAll, byClass, byText, byPlaceholder, click, change, toggle, switchNamed, flip, text, toasts, openMenu, restore, channels, setVisibility }
 }

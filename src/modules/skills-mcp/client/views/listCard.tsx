@@ -18,7 +18,6 @@ export interface ListCardProps {
   isOpen?: any
   onToggle?: any
   menu?: any
-  error?: any
   /**
    * Accepted but unused: the panel's `card()` builds `menu` from this same list and
    * passes it along. Declared so the caller's literal stays exact.
@@ -26,7 +25,7 @@ export interface ListCardProps {
   menuItems?: any
 }
 
-export function listCardView({ key, identity, description, enabled, details, pending, statusNode, authNote, isOpen, onToggle, menu, error }: ListCardProps) {
+export function listCardView({ key, identity, description, enabled, details, pending, statusNode, authNote, isOpen, onToggle, menu }: ListCardProps) {
   return (
     <li className="smp-card" key={key}>
       <div className="smp-cardRow" key="row">
@@ -66,7 +65,6 @@ export function listCardView({ key, identity, description, enabled, details, pen
         <div className="smp-cardDetails" key="details">
           <div className="smp-details" key="grid">{detailNodes(details, 'k')}</div>
           {authNote ?? null}
-          {error ? <div className="smp-error" key="err" style={{ marginTop: 8 }}>{error}</div> : null}
         </div>
       ) : null}
     </li>

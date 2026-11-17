@@ -677,6 +677,104 @@ window.__ModuleLoader__.load({
       return extra === void 0 || extra === "" ? base : `${base} ${extra}`;
     }
 
+    // src/client/ui/toast.css
+    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+
+    // src/client/ui/toast.ts
+    var HOST_KEY = "__dshToolkitToast__";
+    var STYLE_ID = "dsh-toolkit-toast";
+    var MAX_VISIBLE = 3;
+    var MAX_TEXT = 300;
+    var EXIT_MS = 180;
+    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
+    function resolveHost() {
+      if (typeof document === "undefined" || document.body == null || typeof document.createElement !== "function") return null;
+      const scope = globalThis;
+      const existing = scope[HOST_KEY];
+      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
+      const root = document.createElement("div");
+      root.className = "sk-toast-stack";
+      root.setAttribute("aria-live", "polite");
+      document.body.appendChild(root);
+      const created = { root, entries: [] };
+      scope[HOST_KEY] = created;
+      return created;
+    }
+    function ensureStyles() {
+      try {
+        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
+      } catch {
+      }
+      installStylesheet(toast_default, STYLE_ID);
+    }
+    function normalizeHold(tone, holdMs) {
+      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
+      return holdMs;
+    }
+    function clamp(text) {
+      return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
+    }
+    function dismiss(host, entry) {
+      if (host.entries.indexOf(entry) === -1) return;
+      host.entries = host.entries.filter((item) => item !== entry);
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      entry.el.classList.add("sk-toast--leaving");
+      const remove = () => entry.el.remove();
+      const timeout = setTimeout(remove, EXIT_MS);
+      entry.el.addEventListener("animationend", () => {
+        clearTimeout(timeout);
+        remove();
+      }, { once: true });
+    }
+    function arm(host, entry, holdMs) {
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      if (holdMs === 0) {
+        entry.timer = void 0;
+        return;
+      }
+      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
+    }
+    function showToast(text, options = {}) {
+      const message = clamp(String(text ?? "").trim());
+      if (message === "") return;
+      const host = resolveHost();
+      if (host === null) return;
+      ensureStyles();
+      const tone = options.tone ?? "info";
+      const holdMs = normalizeHold(tone, options.holdMs);
+      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
+      if (duplicate !== void 0) {
+        arm(host, duplicate, holdMs);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = `sk-toast sk-toast--${tone}`;
+      el.dataset.tone = tone;
+      el.setAttribute("role", tone === "error" ? "alert" : "status");
+      if (tone !== "info") {
+        const icon = document.createElement("span");
+        icon.className = "sk-toast__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = tone === "error" ? "!" : "✓";
+        el.appendChild(icon);
+      }
+      const body = document.createElement("span");
+      body.className = "sk-toast__text";
+      body.textContent = message;
+      el.appendChild(body);
+      host.root.appendChild(el);
+      const entry = { tone, text: message, el, timer: void 0 };
+      host.entries.push(entry);
+      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
+      arm(host, entry, holdMs);
+    }
+    var toast = {
+      show: showToast,
+      info: (text, options = {}) => showToast(text, { ...options, tone: "info" }),
+      success: (text, options = {}) => showToast(text, { ...options, tone: "success" }),
+      error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
+    };
+
     // src/modules/pet/client/panel.tsx
     var PAGE_SIZE = 20;
     function createPetPanel(React2, { t, settings, connection, actions, primitives }) {
@@ -714,7 +812,6 @@ window.__ModuleLoader__.load({
         const value = useSyncExternalStore(settings.subscribe, settings.getSnapshot, settings.getSnapshot);
         const state = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot);
         const [pending, setPending] = useState2(null);
-        const [error, setError] = useState2("");
         const [query, setQuery] = useState2("");
         const [library, setLibrary] = useState2({ open: false, loading: false, pets: [], error: "", page: 0, pages: 1, matched: 0, filter: "all" });
         const [installing, setInstalling] = useState2(null);
@@ -723,20 +820,19 @@ window.__ModuleLoader__.load({
         useEffect2(() => {
           let active = true;
           connection.refresh().catch((reason) => {
-            if (active) setError(String(reason.message ?? reason));
+            if (active) toast.error(String(reason.message ?? reason));
           });
           return () => {
             active = false;
           };
         }, []);
         const run = async (key, work) => {
-          setError("");
           setPending(key);
           try {
             await work();
             return true;
           } catch (reason) {
-            setError(String(reason.message ?? reason));
+            toast.error(String(reason.message ?? reason));
             return false;
           } finally {
             setPending((current) => current === key ? null : current);
@@ -808,7 +904,7 @@ window.__ModuleLoader__.load({
           return /* @__PURE__ */ __dshReact.createElement("article", { className: installed ? "pet-tile pet-tileInstalled" : "pet-tile", key: pet.slug, title: installed ? `${name} · ${t("installed")}` : name }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-tileArt", role: "img", "aria-label": name, style: { backgroundImage: `url("${petPreviewUrl(pet.slug)}")` } }), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-tileCopy" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, name), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-desc" }, pet.slug)), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-tileActions" }, progressOf(pet.slug) !== null ? /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-button pet-tileButton pet-tileProgress", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": progressOf(pet.slug), "aria-label": t("installing", { name }) }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-tileProgressFill", style: { width: `${progressOf(pet.slug)}%` }, "aria-hidden": "true" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-tileProgressText" }, progressOf(pet.slug), "%")) : installed ? /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton pet-tileButton", disabled: busyFor(`pet:${pet.slug}`), onClick: () => void run(`pet:${pet.slug}`, () => togglePet(pet, true)) }, t("uninstall")) : /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-tileButton", disabled: busyFor(`pet:${pet.slug}`), onClick: () => void run(`pet:${pet.slug}`, () => togglePet(pet, false)) }, t("install"))));
         };
         const libraryBody = library.error ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-error", role: "alert" }, t("catalogFailed")) : library.pets.length === 0 ? library.loading ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("searching")) : /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("noResults")) : /* @__PURE__ */ __dshReact.createElement(OptionGrid, { columns: 6, className: library.loading ? "pet-grid pet-gridBusy" : "pet-grid", "aria-busy": library.loading || void 0 }, library.pets.map(tile));
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-page" }, /* @__PURE__ */ __dshReact.createElement(PageHeader, { title: t("title"), subtitle: t("intro") }), readonly && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-notice", role: "status" }, t("readOnly")), error && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-error", role: "alert" }, t("failed", { reason: error })), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("appearance"), "aria-label": t("appearance"), hint: /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: busyFor("catalog"), onClick: () => void run("catalog", openLibrary) }, t("browseLibrary")) }, /* @__PURE__ */ __dshReact.createElement(Row, { title: t("identity"), description: t("identityDesc") }, /* @__PURE__ */ __dshReact.createElement("select", { "aria-label": t("identity"), value: value.activePet, disabled: readonly || busyFor("write:activePet") || !state.pets.length, onChange: (event) => change("activePet", event.target.value) }, !selected && /* @__PURE__ */ __dshReact.createElement("option", { value: value.activePet }, state.pets.length ? t("missingPet") : t("emptyPets")), state.pets.map((pet) => /* @__PURE__ */ __dshReact.createElement("option", { key: pet.id, value: pet.id }, pet.name))))), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("desktop"), "aria-label": t("desktop") }, toggle("petEnabled"), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("petSize"), description: t("petSizeDesc") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "petSize", value: value.petSize, disabled: readonly || busyFor("write:petSize"), change })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("bubbleWidth"), description: t("bubbleWidthDesc") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "bubbleWidth", value: value.bubbleWidth, disabled: readonly || busyFor("write:bubbleWidth"), change }))), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("screenTop"), "aria-label": t("screenTop") }, toggle("islandEnabled"), toggle("islandIdle"), toggle("islandAllDisplays"), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-size" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-sectionHeader" }, /* @__PURE__ */ __dshReact.createElement("div", null, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, t("islandSize")), /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc" }, t("islandSizeDesc"))), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: readonly || busyFor("reset:islandSize") || value.islandWidth === 100 && value.islandHeight === 100, onClick: () => run("reset:islandSize", async () => {
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-page" }, /* @__PURE__ */ __dshReact.createElement(PageHeader, { title: t("title"), subtitle: t("intro") }), readonly && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-notice", role: "status" }, t("readOnly")), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("appearance"), "aria-label": t("appearance"), hint: /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: busyFor("catalog"), onClick: () => void run("catalog", openLibrary) }, t("browseLibrary")) }, /* @__PURE__ */ __dshReact.createElement(Row, { title: t("identity"), description: t("identityDesc") }, /* @__PURE__ */ __dshReact.createElement("select", { "aria-label": t("identity"), value: value.activePet, disabled: readonly || busyFor("write:activePet") || !state.pets.length, onChange: (event) => change("activePet", event.target.value) }, !selected && /* @__PURE__ */ __dshReact.createElement("option", { value: value.activePet }, state.pets.length ? t("missingPet") : t("emptyPets")), state.pets.map((pet) => /* @__PURE__ */ __dshReact.createElement("option", { key: pet.id, value: pet.id }, pet.name))))), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("desktop"), "aria-label": t("desktop") }, toggle("petEnabled"), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("petSize"), description: t("petSizeDesc") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "petSize", value: value.petSize, disabled: readonly || busyFor("write:petSize"), change })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("bubbleWidth"), description: t("bubbleWidthDesc") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "bubbleWidth", value: value.bubbleWidth, disabled: readonly || busyFor("write:bubbleWidth"), change }))), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("screenTop"), "aria-label": t("screenTop") }, toggle("islandEnabled"), toggle("islandIdle"), toggle("islandAllDisplays"), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-size" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-sectionHeader" }, /* @__PURE__ */ __dshReact.createElement("div", null, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, t("islandSize")), /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc" }, t("islandSizeDesc"))), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: readonly || busyFor("reset:islandSize") || value.islandWidth === 100 && value.islandHeight === 100, onClick: () => run("reset:islandSize", async () => {
           await actions.write("islandWidth", DEFAULT_SETTINGS.islandWidth);
           await actions.write("islandHeight", DEFAULT_SETTINGS.islandHeight);
         }) }, t("restore"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-previews" }, /* @__PURE__ */ __dshReact.createElement(Preview, { builtIn: true, width: value.islandWidth, height: value.islandHeight }), /* @__PURE__ */ __dshReact.createElement(Preview, { width: value.islandWidth, height: value.islandHeight })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("width") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "islandWidth", label: t("width"), value: value.islandWidth, disabled: readonly || busyFor("write:islandWidth"), change })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("height") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "islandHeight", label: t("height"), value: value.islandHeight, disabled: readonly || busyFor("write:islandHeight"), change })))), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("runtime"), "aria-label": t("runtime") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: t(runtimeText), description: runtime.error }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-runtimeActions" }, state.loaded && runtime.status === "error" ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busyFor("action:retry"), onClick: () => run("action:retry", () => connection.action("retry")) }, t("retry")) : state.loaded && runtime.available === false && runtime.status !== "starting" ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busyFor("action:prepare"), onClick: () => run("action:prepare", () => connection.action("prepare")) }, t("prepare")) : state.loaded && runtime.available === true && runtime.status === "stopped" && (value.petEnabled || value.islandEnabled) ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busyFor("action:start"), onClick: () => run("action:start", () => connection.action("start")) }, t("start")) : null)), state.loaded && !state.connected && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc", role: "status" }, t("reconnecting"))), /* @__PURE__ */ __dshReact.createElement(Modal, { open: library.open, onClose: closeLibrary, storageKey: "dsh-toolkit:pet-library-size", title: t("library"), closeLabel: t("close"), resizeLabel: t("resizeDialog"), description: t("libraryIntro"), toolbar: /* @__PURE__ */ __dshReact.createElement("form", { className: "pet-search", onSubmit: (event) => {

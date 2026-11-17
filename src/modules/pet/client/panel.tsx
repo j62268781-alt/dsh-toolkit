@@ -3,6 +3,7 @@ import { petPreviewUrl } from './connection.js'
 import { Pagination } from '../../../client/ui/components/pagination/index.jsx'
 import { ResizableDialog } from '../../../client/ui/components/resizable-dialog/index.jsx'
 import { CardSection, OptionGrid, PageHeader, Row } from '../../../client/ui/components/settings-parts/index.jsx'
+import { toast } from '../../../client/ui/toast.js'
 
 /** 宠物库一页 20 只，宫格每行 4 个。 */
 const PAGE_SIZE = 20
@@ -41,17 +42,16 @@ export function createPetPanel(React, { t, settings, connection, actions, primit
     const state = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot)
     // 正在跑的动作（只禁用它自己那个控件）：共用一个 busy 会让点任何一下都把整页控件闪成灰。
     const [pending, setPending] = useState(null)
-    const [error, setError] = useState('')
     const [query, setQuery] = useState('')
     const [library, setLibrary] = useState({ open: false, loading: false, pets: [], error: '', page: 0, pages: 1, matched: 0, filter: 'all' })
     const [installing, setInstalling] = useState(null)
     // 目录请求的序号：切筛选/翻页时旧的响应直接丢掉，这样控件不必禁用（禁用会让输入框和分页条闪一下）。
     const searchTicket = useRef(0)
     const readonly = !actions.isWritable()
-    useEffect(() => { let active = true; connection.refresh().catch((reason) => { if (active) setError(String(reason.message ?? reason)) }); return () => { active = false } }, [])
+    useEffect(() => { let active = true; connection.refresh().catch((reason) => { if (active) toast.error(String(reason.message ?? reason)) }); return () => { active = false } }, [])
     const run = async (key, work) => {
-      setError(''); setPending(key)
-      try { await work(); return true } catch (reason) { setError(String(reason.message ?? reason)); return false } finally { setPending((current) => (current === key ? null : current)) }
+      setPending(key)
+      try { await work(); return true } catch (reason) { toast.error(String(reason.message ?? reason)); return false } finally { setPending((current) => (current === key ? null : current)) }
     }
     const busyFor = (key) => pending === key
     const change = (field, next) => run(`write:${field}`, () => actions.write(field, next))
@@ -139,7 +139,6 @@ export function createPetPanel(React, { t, settings, connection, actions, primit
     return <div className="pet-page">
       <PageHeader title={t('title')} subtitle={t('intro')} />
       {readonly && <p className="pet-notice" role="status">{t('readOnly')}</p>}
-      {error && <p className="pet-error" role="alert">{t('failed', { reason: error })}</p>}
       <CardSection className="pet-section" title={t('appearance')} aria-label={t('appearance')} hint={<button type="button" className="pet-button pet-quietButton" disabled={busyFor('catalog')} onClick={() => void run('catalog', openLibrary)}>{t('browseLibrary')}</button>}><Row title={t('identity')} description={t('identityDesc')}><select aria-label={t('identity')} value={value.activePet} disabled={readonly || busyFor('write:activePet') || !state.pets.length} onChange={(event) => change('activePet', event.target.value)}>{!selected && <option value={value.activePet}>{state.pets.length ? t('missingPet') : t('emptyPets')}</option>}{state.pets.map((pet) => <option key={pet.id} value={pet.id}>{pet.name}</option>)}</select></Row></CardSection>
       <CardSection className="pet-section" title={t('desktop')} aria-label={t('desktop')}>{toggle('petEnabled')}<Row title={t('petSize')} description={t('petSizeDesc')}><Slider field="petSize" value={value.petSize} disabled={readonly || busyFor('write:petSize')} change={change} /></Row><Row title={t('bubbleWidth')} description={t('bubbleWidthDesc')}><Slider field="bubbleWidth" value={value.bubbleWidth} disabled={readonly || busyFor('write:bubbleWidth')} change={change} /></Row></CardSection>
       <CardSection className="pet-section" title={t('screenTop')} aria-label={t('screenTop')}>{toggle('islandEnabled')}{toggle('islandIdle')}{toggle('islandAllDisplays')}<div className="pet-size"><div className="pet-sectionHeader"><div><div className="pet-title">{t('islandSize')}</div><p className="pet-desc">{t('islandSizeDesc')}</p></div><button type="button" className="pet-button pet-quietButton" disabled={readonly || busyFor('reset:islandSize') || (value.islandWidth === 100 && value.islandHeight === 100)} onClick={() => run('reset:islandSize', async () => { await actions.write('islandWidth', DEFAULT_SETTINGS.islandWidth); await actions.write('islandHeight', DEFAULT_SETTINGS.islandHeight) })}>{t('restore')}</button></div><div className="pet-previews"><Preview builtIn width={value.islandWidth} height={value.islandHeight} /><Preview width={value.islandWidth} height={value.islandHeight} /></div><Row title={t('width')}><Slider field="islandWidth" label={t('width')} value={value.islandWidth} disabled={readonly || busyFor('write:islandWidth')} change={change} /></Row><Row title={t('height')}><Slider field="islandHeight" label={t('height')} value={value.islandHeight} disabled={readonly || busyFor('write:islandHeight')} change={change} /></Row></div></CardSection>

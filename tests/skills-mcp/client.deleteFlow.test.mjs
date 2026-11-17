@@ -90,7 +90,8 @@ test('技能写入：路由返回 404 时报错，不回退设置队列', { skip
     await panel.settle()
     assert.equal(doc.skillRequest?.op ?? '', '', '不该再写设置队列')
     assert.deepEqual(doc.skillCommands ?? [], [], '404 不该被当成写入成功')
-    assert.match(panel.text(), /没有技能写入路由/, '失败原因要显示出来')
+    // 失败原因走全局 toast：面板里那一行会把列表整体顶下去，一失败整页跳一下。
+    assert.ok(panel.toasts().some((entry) => entry.tone === 'error' && /没有技能写入路由/.test(entry.text)), '失败原因要弹出来')
   } finally {
     restore()
   }

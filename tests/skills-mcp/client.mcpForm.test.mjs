@@ -409,11 +409,11 @@ test('保存遇到 500 时必须报失败，不能当成「换旧通道」', { s
 
     // 不该退到队列通道（那会写 rowOps）
     assert.deepEqual(panel.doc.rowOps ?? [], [], `500 不该被当成「换旧通道」：${JSON.stringify(panel.doc.rowOps)}`)
-    // 失败原因必须显示出来。**只查元素文本**：`panel.text()` 连内联样式表一起返回，
-    // 拿它做断言永远不会失败（本仓库已经踩过一次）。
-    const errorNode = panel.find((node) => String(node.props.className ?? '') === 'smp-error')
-    assert.ok(errorNode, '必须显示一条错误')
-    assert.match(textOf(errorNode), /patch 被占用/, '必须把 Host 的失败原因显示出来')
+    // 失败原因必须让用户看见。现在它走全局 toast（`src/client/ui/toast.ts`），不再渲染进
+    // 页面 —— 面板里那一行文案会把列表整体往下顶，一失败整页跳一下。
+    const reported = panel.toasts().filter((entry) => entry.tone === 'error')
+    assert.equal(reported.length, 1, '必须弹一条错误 toast')
+    assert.match(reported[0].text, /patch 被占用/, '必须把 Host 的失败原因显示出来')
   } finally {
     panel.restore()
   }

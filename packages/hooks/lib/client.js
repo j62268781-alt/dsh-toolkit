@@ -169,6 +169,7 @@ window.__ModuleLoader__.load({
         subtitle: "在任务的关键节点自动运行你自己的命令：会话开始、提交提示词、工具执行前后、回合结束。",
         refresh: "刷新",
         refreshing: "刷新中…",
+        refreshed: "已重新读取钩子配置",
         disabled: "钩子已关闭：下面的配置照常展示，但不会执行。到插件设置里重新启用即可。",
         error: "读取失败：{reason}",
         issuesTitle: "配置问题",
@@ -222,6 +223,7 @@ window.__ModuleLoader__.load({
         subtitle: "Run your own commands at key points of a task: session start, prompt submit, around tool calls, turn end.",
         refresh: "Refresh",
         refreshing: "Refreshing…",
+        refreshed: "Reloaded the hook configuration",
         disabled: "Hooks are turned off: the configuration below is still shown, but nothing runs. Re-enable it in the plugin settings.",
         error: "Failed to read: {reason}",
         issuesTitle: "Configuration issues",
@@ -416,7 +418,7 @@ window.__ModuleLoader__.load({
     var EXIT_MS = 180;
     var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
     function resolveHost() {
-      if (typeof document === "undefined" || document.body === null) return null;
+      if (typeof document === "undefined" || document.body == null || typeof document.createElement !== "function") return null;
       const scope = globalThis;
       const existing = scope[HOST_KEY];
       if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
@@ -690,6 +692,7 @@ window.__ModuleLoader__.load({
             const response = await fetchJson(HOOKS_SNAPSHOT_PATH);
             setSnapshot(readSnapshot(await response.json()));
             everLoaded.current = true;
+            toast.success(t("refreshed"));
           } catch (reason) {
             report(reason, true);
           } finally {

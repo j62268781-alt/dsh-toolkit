@@ -123,6 +123,8 @@ export function createGitSection(ctx) {
       try {
         await acceptConfigWrite(() => form.set("branchPrefix", next), "branchPrefix");
         setPrefixDraft(null);
+        // 前缀是失焦自动保存的：输入框自己不会变，不弹一条用户根本不知道存没存上。
+        toast.success(t("saved"));
       } catch (cause) {
         // 失败时把草稿留在输入框里：用户能看到自己敲的是什么，改完还能再存一次。
         toast.error(t("saveFailed", { reason: String(cause?.message ?? cause) }));
@@ -167,6 +169,7 @@ export function createGitSection(ctx) {
       try {
         await acceptConfigWrite(() => form.set("alwaysForcePush", next), "alwaysForcePush");
         setForceDraft(null);
+        toast.success(t("saved"));
       } catch (cause) {
         setForceDraft(null);
         toast.error(t("saveFailed", { reason: String(cause?.message ?? cause) }));

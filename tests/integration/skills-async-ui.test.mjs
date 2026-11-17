@@ -52,19 +52,21 @@ test('Skills filter writes report rejected or absent channels and accept legacy 
     panel.click(panel.byText('只保留勾选'))
     await panel.settle()
     assert.equal(calls, 1)
-    assert.match(panel.text(), /宿主拒绝了这次写入/)
+    // 拒绝原因走全局 toast，不再渲染进面板（渲染进面板会让整页高度跳一下）。
+    const reported = panel.toasts()
+    assert.ok(reported.some((entry) => entry.tone === 'error' && /宿主拒绝了这次写入/.test(entry.text)), '拒绝写入要弹一条错误 toast')
     assert.equal(panel.doc.runtimeFetches, before, 'rejected write does not trigger success refresh')
     panel.runtime.props.form.set = async () => { calls++; return undefined }
     panel.click(panel.byText('只保留勾选'))
     await panel.settle()
     assert.equal(calls, 2)
-    assert.doesNotMatch(panel.text(), /宿主拒绝了这次写入/)
+    assert.equal(panel.toasts().length, reported.length, '旧通道接受写入时不该再弹')
     assert.ok(panel.doc.runtimeFetches > before, 'legacy accepted write refreshes runtime')
     panel.runtime.props.form.set = undefined
     panel.runtime.props.mutate = undefined
     panel.click(panel.byText('只保留勾选'))
     await panel.settle()
-    assert.match(panel.text(), /当前环境没有配置写入通道/)
+    assert.ok(panel.toasts().some((entry) => /当前环境没有配置写入通道/.test(entry.text)))
   } finally { panel.restore() }
 })
 

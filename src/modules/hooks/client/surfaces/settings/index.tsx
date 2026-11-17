@@ -97,6 +97,8 @@ function createHooksSection(ctx: any) {
         const response = await fetchJson(HOOKS_SNAPSHOT_PATH);
         setSnapshot(readSnapshot(await response.json()));
         everLoaded.current = true;
+        // 点刷新后页面上只有数字在变，用户分不清「读到了」还是「按了没反应」。
+        toast.success(t("refreshed"));
       } catch (reason) {
         report(reason, true);
       } finally {

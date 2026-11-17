@@ -952,7 +952,7 @@ window.__ModuleLoader__.load({
     var EXIT_MS = 180;
     var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
     function resolveHost() {
-      if (typeof document === "undefined" || document.body === null) return null;
+      if (typeof document === "undefined" || document.body == null || typeof document.createElement !== "function") return null;
       const scope = globalThis;
       const existing = scope[HOST_KEY];
       if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;

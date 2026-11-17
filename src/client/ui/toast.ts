@@ -51,7 +51,9 @@ const HOLD_MS: Record<ToastTone, number> = { info: 4000, success: 2400, error: 6
 /** 同一个页面里有几份 bundle 就有几份模块实例，host 只能有一个。 */
 function resolveHost(): ToastHost | null {
   // 单测（node 环境）与 SSR 里没有 document：静默丢弃，绝不抛错。
-  if (typeof document === "undefined" || document.body === null) return null;
+  // `createElement` 也要探一下：报错通道自己抛异常会顶掉调用方的 catch 分支，
+  // 比少一条提示严重得多（测试里的 document 桩就只给了 visibilityState）。
+  if (typeof document === "undefined" || document.body == null || typeof document.createElement !== "function") return null;
   const scope = globalThis as any;
   const existing = scope[HOST_KEY] as ToastHost | undefined;
   // 文档也要对得上：jsdom 每个用例换一份 document，而 host 挂在 globalThis 上会跨用例存活。

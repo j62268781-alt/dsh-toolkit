@@ -185,7 +185,11 @@ test('开关：Host 拒绝时回滚乐观状态并说明原因', { skip: skipWit
     panel.click(findSwitch(panel))
     await panel.settle()
     assert.equal(findSwitch(panel).props['aria-checked'], true, '命令失败后开关应回到原状态')
-    assert.match(panel.text(), /not found in the profile patch/, '失败原因要显示出来')
+    // 原因走全局 toast：卡片收起时页面里没有那一行文案，而列表高度一旦被文案顶开就会跳。
+    assert.ok(
+      panel.toasts().some((entry) => entry.tone === 'error' && /not found in the profile patch/.test(entry.text)),
+      '失败原因要显示出来',
+    )
   } finally {
     panel.restore()
   }

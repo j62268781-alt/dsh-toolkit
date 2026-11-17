@@ -1,4 +1,5 @@
 import { NAME as NS } from '../host/identity.js'
+import { toast } from '../../../client/ui/toast.js'
 import { ROOT_ENTRIES } from '../../../client/config.js'
 import { snapshotOf, statusOf } from './config.js'
 import { filterRow } from './components/filterRow.jsx'
@@ -85,6 +86,9 @@ export function createPanel(React, primitives) {
     const [skillDialog, setSkillDialog] = useState(null)
     const [skillDraft, setSkillDraft] = useState({ name: "", description: "", body: "" })
     const [skillError, setSkillError] = useState("")
+    // 一次性失败同时进全局 toast：卡片里那行红字会把下面整段设置往下顶，而模态框里仍留着就地的一份。
+    const fail = (message: string) => { setError(message); toast.error(message) }
+    const failSkill = (message: string) => { setSkillError(message); toast.error(message) }
     const [skillNonce, setSkillNonce] = useState("")
     const skillSentAtRef = useRef(0)
     // Reset only when opening or closing a dialog; an active save keeps its markers.
@@ -106,7 +110,7 @@ export function createPanel(React, primitives) {
           setRemovedKeys((list) => hideSkillUntilGone(list, target.name, target.scopeKey))
         }
       } else {
-        setSkillError(String(delResult?.reason ?? "删除失败"))
+        failSkill(String(delResult?.reason ?? "删除失败"))
         if (target !== null) setOptimistic((list) => dropOptimisticSkill(list, target.name))
       }
       deleteTargetRef.current = null
@@ -153,7 +157,7 @@ export function createPanel(React, primitives) {
       const timer = setTimeout(() => {
         setSkillPendingPath("")
         setDeletePending(false)
-        setSkillError("删除没有回执（应用可能正在重载），请刷新后再确认一次")
+        failSkill("删除没有回执（应用可能正在重载），请刷新后再确认一次")
       }, 15000)
       return () => clearTimeout(timer)
     }, [skillPendingPath])
@@ -163,7 +167,7 @@ export function createPanel(React, primitives) {
         editBodyTaskRef.current.invalidate()
         setEditBodyPending(false)
         setEditBodyNonce("")
-        setSkillError("读取正文没有回执（应用可能正在重载），请关掉重开一次")
+        failSkill("读取正文没有回执（应用可能正在重载），请关掉重开一次")
       }, 15000)
       return () => clearTimeout(timer)
     }, [editBodyPending, editBodyNonce])
@@ -233,7 +237,7 @@ export function createPanel(React, primitives) {
         scanTaskRef.current.invalidate()
         setScanPending(false)
         setScanNonce('')
-        setError('扫描超时')
+        fail('扫描超时')
       }, 15000)
       return () => clearTimeout(timer)
     }, [scanPending, scanNonce])
@@ -366,7 +370,7 @@ export function createPanel(React, primitives) {
         refresh()
         bumpRefresh()
       } catch (cause) {
-        setError(String(cause?.message ?? cause))
+        fail(String(cause?.message ?? cause))
       } finally {
         setBusy(false)
       }
@@ -478,7 +482,7 @@ export function createPanel(React, primitives) {
           delete next[key]
           return next
         })
-        setError(result.reason)
+        fail(result.reason)
       })
     }
 
@@ -661,7 +665,7 @@ export function createPanel(React, primitives) {
       return listCardView({
         key, identity, description, enabled, details, menuItems, pending, statusNode, authNote,
         isOpen: expanded === key, onToggle: () => setExpanded(expanded === key ? '' : key),
-        menu: pending ? null : moreMenu({ entryId: key }, menuItems), error,
+        menu: pending ? null : moreMenu({ entryId: key }, menuItems),
       })
     }
 
@@ -767,12 +771,12 @@ export function createPanel(React, primitives) {
           setImportScan({ ...payload, ...target })
           setScanPending(false)
           setScanNonce("")
-          if (payload?.ok !== true) setError(String(payload?.error ?? "扫描失败"))
+          if (payload?.ok !== true) fail(String(payload?.error ?? "扫描失败"))
         }).catch((error) => {
           if (!task.isCurrent()) return
           setScanPending(false)
           setScanNonce("")
-          setError(String(error?.message ?? error))
+          fail(String(error?.message ?? error))
         })
       },
       onImport: ({ scope, target, result }) => {
@@ -791,7 +795,7 @@ export function createPanel(React, primitives) {
             env: server.env ?? "", headers: server.headers ?? "",
             scope: scope === "global" ? "" : target,
             scopeChanged: scope !== "global",
-          })).then((outcome) => { if (!outcome.ok) setError(outcome.reason) })
+          })).then((outcome) => { if (!outcome.ok) fail(outcome.reason) })
         }
         setImportScan(null)
       },
@@ -969,7 +973,7 @@ export function createPanel(React, primitives) {
         }))
         setEditBodyPending(false)
         setEditBodyNonce("")
-        if (result.ok !== true) setSkillError(String(result.reason ?? "读取正文失败"))
+        if (result.ok !== true) failSkill(String(result.reason ?? "读取正文失败"))
       })
     }
 
@@ -1043,7 +1047,7 @@ export function createPanel(React, primitives) {
             bumpRefresh()
             return
           }
-          setSkillError(String(result.reason ?? "写入失败"))
+          failSkill(String(result.reason ?? "写入失败"))
         })
       },
     })
@@ -1166,9 +1170,6 @@ export function createPanel(React, primitives) {
         </div>
         {filterRowView}
         {statusOf(form) === "loading" ? <p className="smp-empty" key="loading">正在读取设置…</p> : null}
-        {error && !editing ? <p className="smp-error" key="err">{error}</p> : null}
-        {/* Disk-delete errors remain visible after its confirmation closes. */}
-        {skillError !== "" && skillDialog === null ? <p className="smp-error" key="skillerr">{skillError}</p> : null}
         {confirmDeleteDialog}
         {skillPreviewDialogView}
         {skillDialogElement}
