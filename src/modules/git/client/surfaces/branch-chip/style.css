@@ -46,6 +46,13 @@
   white-space: nowrap;
 }
 
+/* 顶栏里宿主自己已经展示过一次分支名（只读标签），这里补一个「切换」把这颗按钮的动作
+   说出来，否则并排的两个 main 看起来像重复的标签，而不是一个能点的控件。 */
+.sk-git-branch__lead {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary, inherit);
+}
+
 /* detached HEAD 没有名字可言：给它斜体，省得跟真分支名混起来。 */
 .sk-git-branch__name[data-detached="true"] {
   font-style: italic;

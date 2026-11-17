@@ -17,5 +17,7 @@ export function apply(ctx) {
   ctx.effect(() => installStylesheet(branch.CSS, "dsh-toolkit-git:branch-chip"), "dsh-toolkit-git:branch-chip-styles");
   ctx.effect(() => settings.install(ctx), `dsh-toolkit-git:${settings.NAME}`);
   ctx.effect(() => branch.install(ctx), `dsh-toolkit-git:${branch.NAME}`);
+  // 新会话页顶栏与 composer 底栏互斥（同一个组件、两处注册，按 session.blank 取舍）。
+  ctx.effect(() => branch.installHero(ctx), `dsh-toolkit-git:${branch.NAME}:hero`);
   ctx.effect(() => registerSettingsIcon(ctx, "git", "git"), "dsh-toolkit-git:settings-icon");
 }

@@ -52,3 +52,12 @@ export function filterBranches(branches: readonly string[], query: string): stri
 export function prefilledBranchName(prefix: string, typed: string): string {
   return `${prefix}${typed}`;
 }
+
+/**
+ * 同一个分支按钮挂在两个位置（新会话顶栏 / 已开始会话的 composer），只能显示一个：
+ * 新会话页顶栏已经有宿主的 worktree 控件，再露出底栏按钮就是用户说的「2 个 git」。
+ * `blank` 取宿主自己的口径（session 快照的 `blank`，见会话行的 hero 判定）。
+ */
+export function showsAt(placement: "hero" | "composer", blank: boolean): boolean {
+  return placement === "hero" ? blank : !blank;
+}

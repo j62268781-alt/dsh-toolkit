@@ -6,7 +6,7 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { EMPTY_VIEW, filterBranches, prefilledBranchName, toBranchView } from '../../src/modules/git/client/model.ts'
+import { EMPTY_VIEW, filterBranches, prefilledBranchName, showsAt, toBranchView } from '../../src/modules/git/client/model.ts'
 
 test('toBranchView：正常载荷原样投影，当前分支永远在最前', () => {
   const view = toBranchView({
@@ -59,4 +59,13 @@ test('filterBranches：不改动入参', () => {
 test('prefilledBranchName：前缀为空时不加任何字符', () => {
   assert.equal(prefilledBranchName('', 'feat/x'), 'feat/x')
   assert.equal(prefilledBranchName('qoder/', 'feat/x'), 'qoder/feat/x')
+})
+
+test('showsAt：新会话只留顶栏，已开始的会话只留 composer', () => {
+  // 新会话页（blank）：顶栏已有宿主的 worktree 控件，底栏不能再露一个 git。
+  assert.equal(showsAt('hero', true), true)
+  assert.equal(showsAt('composer', true), false)
+  // 发第一条消息后 hero 行消失，按钮落到 composer。
+  assert.equal(showsAt('hero', false), false)
+  assert.equal(showsAt('composer', false), true)
 })

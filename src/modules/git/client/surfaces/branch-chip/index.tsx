@@ -1,9 +1,19 @@
 /**
- * Composer 里的分支按钮：显示当前分支，点开是可搜索的本地分支列表，底部一条「新建分支」。
+ * 分支按钮：显示当前分支，点开是可搜索的本地分支列表，底部一条「新建分支」。
  *
- * 为什么挂在 `conversation.input.left`：这是宿主留给插件的、完全空闲的 composer 槽位
- * （`kind:list, scope:session`，内置占用者为空），而且它只在我们这一条输入行里，不会改动
- * 任何宿主节点的位置。弹层必须 portal —— composer 是「贴底」容器，会被它裁切。
+ * 同一个组件挂两处，按会话状态互斥：
+ * - `conversation.input.left`：已经开始对话的会话，就在我们那条输入行的左侧；
+ * - `conversation.hero.options`：新会话页的顶栏（`[项目] [标准模式] … [基于 main] [新建工作树]`）。
+ *   宿主把这一行做成了右对齐的 list 槽，是那排控件旁边唯一能增量挂载的位置 ——
+ *   `hero.workspace` / `hero.agentPreset` 都是 single，占位就等于替换宿主的控件。
+ *   forge 的 worktree toggle 用默认 order 0，这里取 10 排在它右侧。
+ *   那颗 toggle 在没勾选时显示的是**只读**的当前分支标签，所以我们这颗按钮在顶栏里
+ *   前面带一个「切换」，免得两个一样的 main 并排时没人看得出哪个能点。
+ *
+ * 两处不能同时显示：新会话时顶栏那行本来就有 git 信息，再来一个底栏按钮就是「2 个 git」。
+ * 互斥判据用宿主自己的口径 —— session 快照的 `blank`（`summaryBlank`）。
+ *
+ * 弹层必须 portal —— composer 是「贴底」容器，会被它裁切。
  *
  * 数据全部来自本模块自己的三条路由：DSH 宿主没有「切换分支」的实现（`worktrees` 只有
  * create/restore/cleanup），forge 的分支列表只服务 worktree 起点，不能拿来切分支。
@@ -23,7 +33,7 @@ import {
   MAX_BRANCH_NAME_LENGTH,
   isBranchName,
 } from "../../constants.js";
-import { EMPTY_VIEW, filterBranches, toBranchView, type BranchView } from "../../model.js";
+import { EMPTY_VIEW, filterBranches, showsAt, toBranchView, type BranchView } from "../../model.js";
 import panelCss from "./style.css";
 
 export const NAME = "branch-chip";
@@ -31,6 +41,9 @@ export const CSS = panelCss;
 
 /** 优先级：排在其它 composer 控件之后，不至于把宿主的左边距挤掉。 */
 export const ORDER = 100;
+
+/** 新会话顶栏：宿主 worktree toggle 的 order 缺省是 0，这里排到它右侧。 */
+export const HERO_ORDER = 10;
 
 type Busy = "" | "switch" | "create";
 
@@ -76,6 +89,12 @@ export function createBranchChip(ctx: any) {
 
   return function BranchChip(props: any) {
     const { sessionId, useSessions, useProjection } = props;
+    const hero = props.placement === "hero";
+    // 宿主的 hero 行只在 `summaryBlank` 时渲染；底栏反过来只在非 blank 时显示，
+    // 否则新会话页会同时出现顶栏 git 与底栏分支按钮。
+    const blank = typeof useSessions === "function"
+      ? useSessions((snapshot: any) => snapshot?.byId?.[sessionId]?.blank === true)
+      : false;
     // 真正的当前目录：worktree 切换后 workspace 归属目录不变，`workingDirectory` 投影才跟着走。
     const projected = typeof useProjection === "function" ? useProjection("workingDirectory") : undefined;
     const owned = typeof useSessions === "function"
@@ -92,6 +111,8 @@ export function createBranchChip(ctx: any) {
     const [busy, setBusy] = React.useState<Busy>("");
     const [error, setError] = React.useState("");
     const [pending, setPending] = React.useState<{ name: string } | null>(null);
+    // 脏工作区确认框自己留一条失败原因：此时分支菜单已经收起，菜单里的 error 用户看不到。
+    const [switchError, setSwitchError] = React.useState("");
     const [creator, setCreator] = React.useState<CreatorState>(CLOSED_CREATOR);
     // 加载期间不显示「没有分支」：那是读失败与真空仓共用的空态，混在一起会误导。
     const [loading, setLoading] = React.useState(true);
@@ -137,6 +158,7 @@ export function createBranchChip(ctx: any) {
       if (cwd === "" || busy !== "") return;
       setBusy(create ? "create" : "switch");
       setError("");
+      setSwitchError("");
       try {
         const response = await fetchJson(create ? GIT_CREATE_BRANCH_PATH : GIT_CHECKOUT_PATH, { json: { cwd, name } });
         const payload = await response.json().catch(() => null);
@@ -149,11 +171,13 @@ export function createBranchChip(ctx: any) {
           const message = t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: reasonOf(payload) });
           setError(message);
           if (create) setCreator((state) => ({ ...state, error: message }));
+          else setSwitchError(message);
         }
       } catch (cause: any) {
         const message = t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: cause?.message ?? "network" });
         setError(message);
         if (create) setCreator((state) => ({ ...state, error: message }));
+        else setSwitchError(message);
       } finally {
         setBusy("");
       }
@@ -161,8 +185,14 @@ export function createBranchChip(ctx: any) {
 
     /** 切换前：工作区有未提交改动就先确认一次（与 Qoder 的行为一致）。 */
     const pick = React.useCallback((name: string) => {
-      if (name === view.branch || busy !== "") return;
+      if (busy !== "") return;
+      if (name === view.branch) {
+        // 点当前分支不是错误，只是没事可做：收菜单位置留给「已经在这个分支上」这个反馈。
+        setOpen(false);
+        return;
+      }
       if (view.dirty) {
+        setSwitchError("");
         setPending({ name });
         return;
       }
@@ -176,6 +206,7 @@ export function createBranchChip(ctx: any) {
     const draft = creator.draft;
     const draftValid = isBranchName(draft);
 
+    if (!showsAt(hero ? "hero" : "composer", blank)) return null;
     if (hidden) return null;
 
     const label = view.detached || view.branch === "" ? t("branchDetached") : view.branch;
@@ -195,6 +226,7 @@ export function createBranchChip(ctx: any) {
         }}
       >
         {BranchIcon === undefined ? null : <BranchIcon size={14} />}
+        {hero ? <span className="sk-git-branch__lead">{t("branchSwitchLead")}</span> : null}
         <span className="sk-git-branch__name" data-detached={view.detached || view.branch === "" ? "true" : undefined}>
           {label}
         </span>
@@ -230,8 +262,8 @@ export function createBranchChip(ctx: any) {
             open={open}
             portal
             dense
-            side="top"
-            align="start"
+            side={hero ? "bottom" : "top"}
+            align={hero ? "end" : "start"}
             anchor={trigger}
             onClose={() => setOpen(false)}
           >
@@ -267,11 +299,15 @@ export function createBranchChip(ctx: any) {
           primitives,
           title: t("branchTrigger"),
           description: t("branchDirty"),
+          children: switchError === "" ? null : <p className="sk-git-branch__error" role="alert">{switchError}</p>,
           cancelLabel: t("branchCancel"),
           confirmLabel: t("branchDirtyConfirm"),
           pending: busy !== "",
           pendingLabel: t("branchLoading"),
-          onCancel: () => setPending(null),
+          onCancel: () => {
+            setPending(null);
+            setSwitchError("");
+          },
           onConfirm: () => void submit(pending.name, false),
         })}
         {creator.open ? confirmDialog({
@@ -337,5 +373,15 @@ export function install(ctx: any) {
     id: "dsh-toolkit.git.branch",
     order: ORDER,
     locale: GIT_NS,
+  }, createBranchChip(ctx));
+}
+
+export function installHero(ctx: any) {
+  return installSlot(ctx, {
+    name: "conversation.hero.options",
+    id: "dsh-toolkit.git.branch",
+    order: HERO_ORDER,
+    locale: GIT_NS,
+    inject: () => ({ placement: "hero" }),
   }, createBranchChip(ctx));
 }
