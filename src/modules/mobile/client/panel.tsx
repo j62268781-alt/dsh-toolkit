@@ -1,4 +1,5 @@
 import { startPolling } from "../../../client/poll.js";
+import { toast } from "../../../client/ui/toast.js";
 import { deviceKindLabel } from "./presentation.js";
 import { CHASSIS_INSET } from "./stream/canvas.js";
 import { REGRANT_MIN_INTERVAL_MS, REGRANT_TICK_MS, newRegrantStreak, neededPixelWidth, nextCooldownAfterGrant, tickRegrant } from "./stream/adaptive.js";
@@ -28,7 +29,6 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
     const [busy, setBusy] = useState(false);
     const rootRef = useRef(null);
     const [booting, setBooting] = useState(false);
-    const [error, setError] = useState(null);
     const [streaming, setStreaming] = useState(false);
     const [adb, setAdb] = useState(null);
     // 列表尚未查到时状态未知，不能把面板首次打开误报为设备掉线。
@@ -62,7 +62,6 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
       async (deviceId, options) => {
         setBusy(true);
         busyRef.current = true;
-        setError(null);
         lastRegrantAtRef.current = options?.regrant === true ? performance.now() : 0;
         regrantStreakRef.current = newRegrantStreak();
         try {
@@ -92,10 +91,11 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
             regrantCooldownRef.current = REGRANT_MIN_INTERVAL_MS;
           }
           if (typeof result.bootError === "string" && result.bootError !== "") {
-            setError(`设备已选中，但启动失败：${result.bootError}`);
+            // 失败提示一律走全局 toast：状态条里那截文字会把工具栏挤歪，而且它只是一次告知。
+            toast.error(`设备已选中，但启动失败：${result.bootError}`);
           }
         } catch (err) {
-          setError(err?.message ?? String(err));
+          toast.error(err?.message ?? String(err));
           setToken(null);
         } finally {
           setBooting(false);
@@ -195,11 +195,10 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
     }, []);
     const act = useCallback(
       async (action) => {
-        setError(null);
         try {
           await api("device-action", { action });
         } catch (err) {
-          setError(err?.message ?? String(err));
+          toast.error(err?.message ?? String(err));
         }
       },
       []
@@ -283,7 +282,6 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
       </span>}
       {active === null ? null : <span>{`${active.platform} · ${deviceKindLabel(active.type)} · ${active.version ?? "?"}`}</span>}
       {format === "unknown" ? null : <span>{format === "h264" ? "H.264" : format === "mjpeg" ? "MJPEG" : format}</span>}
-      {error === null ? null : <span className="mbm-err">{error}</span>}
     </div>;
     const adbWarning = devices.length === 0 && adb !== null && adb.reason !== "ok" && adb.message ? <div className="mbm-adb">
       <strong>无法发现 Android 设备</strong>
@@ -305,7 +303,7 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
         deviceKind={active?.platform ?? null}
         deviceState={deviceState}
         frameSizeRef={frameSizeRef}
-        onError={(message) => setError(message)}
+        onError={(message) => toast.error(message)}
       />
       {status}
     </div>;

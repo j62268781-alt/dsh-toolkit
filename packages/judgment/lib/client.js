@@ -707,7 +707,6 @@ window.__ModuleLoader__.load({
     .jdg-empty{color:var(--dsw-alias-label-tertiary);margin:0;font-size:13px;line-height:20px;list-style:none}
     .jdg-note{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;margin:0;list-style:none}
     .jdg-note code{font-family:var(--dsw-font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:11px;background:var(--dsw-alias-bg-module-platform);border-radius:var(--dsw-radius-xs,4px);padding:0 4px}
-    .jdg-error{color:var(--dsw-alias-state-error-primary,var(--dsw-alias-label-primary));font-size:12px;line-height:18px;margin:0}
     `;
 
     // src/client/ui/components/settings-parts/index.tsx
@@ -771,6 +770,104 @@ window.__ModuleLoader__.load({
       return accepted;
     }
 
+    // src/client/ui/toast.css
+    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+
+    // src/client/ui/toast.ts
+    var HOST_KEY = "__dshToolkitToast__";
+    var STYLE_ID = "dsh-toolkit-toast";
+    var MAX_VISIBLE = 3;
+    var MAX_TEXT = 300;
+    var EXIT_MS = 180;
+    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
+    function resolveHost() {
+      if (typeof document === "undefined" || document.body === null) return null;
+      const scope = globalThis;
+      const existing = scope[HOST_KEY];
+      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
+      const root = document.createElement("div");
+      root.className = "sk-toast-stack";
+      root.setAttribute("aria-live", "polite");
+      document.body.appendChild(root);
+      const created = { root, entries: [] };
+      scope[HOST_KEY] = created;
+      return created;
+    }
+    function ensureStyles() {
+      try {
+        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
+      } catch {
+      }
+      installStylesheet(toast_default, STYLE_ID);
+    }
+    function normalizeHold(tone, holdMs) {
+      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
+      return holdMs;
+    }
+    function clamp(text) {
+      return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
+    }
+    function dismiss(host, entry) {
+      if (host.entries.indexOf(entry) === -1) return;
+      host.entries = host.entries.filter((item) => item !== entry);
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      entry.el.classList.add("sk-toast--leaving");
+      const remove = () => entry.el.remove();
+      const timeout = setTimeout(remove, EXIT_MS);
+      entry.el.addEventListener("animationend", () => {
+        clearTimeout(timeout);
+        remove();
+      }, { once: true });
+    }
+    function arm(host, entry, holdMs) {
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      if (holdMs === 0) {
+        entry.timer = void 0;
+        return;
+      }
+      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
+    }
+    function showToast(text, options = {}) {
+      const message = clamp(String(text ?? "").trim());
+      if (message === "") return;
+      const host = resolveHost();
+      if (host === null) return;
+      ensureStyles();
+      const tone = options.tone ?? "info";
+      const holdMs = normalizeHold(tone, options.holdMs);
+      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
+      if (duplicate !== void 0) {
+        arm(host, duplicate, holdMs);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = `sk-toast sk-toast--${tone}`;
+      el.dataset.tone = tone;
+      el.setAttribute("role", tone === "error" ? "alert" : "status");
+      if (tone !== "info") {
+        const icon = document.createElement("span");
+        icon.className = "sk-toast__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = tone === "error" ? "!" : "✓";
+        el.appendChild(icon);
+      }
+      const body = document.createElement("span");
+      body.className = "sk-toast__text";
+      body.textContent = message;
+      el.appendChild(body);
+      host.root.appendChild(el);
+      const entry = { tone, text: message, el, timer: void 0 };
+      host.entries.push(entry);
+      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
+      arm(host, entry, holdMs);
+    }
+    var toast = {
+      show: showToast,
+      info: (text, options = {}) => showToast(text, { ...options, tone: "info" }),
+      success: (text, options = {}) => showToast(text, { ...options, tone: "success" }),
+      error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
+    };
+
     // src/modules/judgment/client/panel.tsx
     var CSS = `${settingsStyles("jdg")}
     ${styles_default}`;
@@ -778,7 +875,6 @@ window.__ModuleLoader__.load({
     function Panel(props) {
       const form = props.form;
       const [tick, setTick] = (0, import_react7.useState)(0);
-      const [error, setError] = (0, import_react7.useState)("");
       const [busy, setBusy] = (0, import_react7.useState)(false);
       const [editor, setEditor] = (0, import_react7.useState)(props.initialEditor === "connection" || props.initialEditor === "purpose" ? { kind: props.initialEditor, isNew: true } : null);
       const [draft, setDraft] = (0, import_react7.useState)(props.initialEditor === "connection" ? blankConnection() : props.initialEditor === "purpose" ? blankPurpose() : EMPTY2);
@@ -867,7 +963,6 @@ window.__ModuleLoader__.load({
       const purposeIds = Object.keys(purposes).filter((name) => name === editingPurpose || matchesQuery([name, purposeTargetLabel(purposes[name], defaultConnection)], query));
       async function commit(field, next) {
         setBusy(true);
-        setError("");
         try {
           await acceptConfigWrite(() => {
             if (typeof form?.set === "function") return form.set(field, next);
@@ -877,7 +972,7 @@ window.__ModuleLoader__.load({
           setTick((count) => count + 1);
           return true;
         } catch (cause) {
-          setError(String(cause?.message ?? cause));
+          toast.error(String(cause?.message ?? cause));
           return false;
         } finally {
           setBusy(false);
@@ -888,32 +983,30 @@ window.__ModuleLoader__.load({
         setDraft(EMPTY2);
       }
       function openCreate(kind) {
-        setError("");
         setEditor({ kind, isNew: true });
         setDraft(kind === "connection" ? blankConnection() : blankPurpose());
       }
       function openEdit(kind, id) {
-        setError("");
         setEditor({ kind, id, isNew: false });
         setDraft(kind === "connection" ? connectionDraft(id, connections[id]) : { name: id, connection: purposes[id]?.connection ?? "" });
       }
       async function saveConnection() {
         const message = validateConnection(draft);
         if (message !== null) {
-          setError(message);
+          toast.error(message);
           return;
         }
         const key = String(draft.key ?? "").trim();
         if (key !== "") {
           const invalid = validateKey(key);
           if (invalid !== null) {
-            setError(invalid);
+            toast.error(invalid);
             return;
           }
         }
         const name = String(draft.name).trim();
         if (editor?.isNew === true && connections[name] !== void 0) {
-          setError(`连接 "${name}" 已经存在`);
+          toast.error(`连接 "${name}" 已经存在`);
           return;
         }
         const previousRef = editor?.isNew === true ? "" : String(connections[name]?.credentialRef ?? "");
@@ -924,15 +1017,14 @@ window.__ModuleLoader__.load({
           return;
         }
         setBusy(true);
-        setError("");
         try {
           const response = await credentials.set(entry.credentialRef, key);
           if (response?.ok !== true) {
-            setError(`密钥未写入：${response?.error?.message ?? "未知原因"}`);
+            toast.error(`密钥未写入：${response?.error?.message ?? "未知原因"}`);
             return;
           }
         } catch (cause) {
-          setError(`密钥未写入：${String(cause?.message ?? cause)}`);
+          toast.error(`密钥未写入：${String(cause?.message ?? cause)}`);
           return;
         } finally {
           setBusy(false);
@@ -943,12 +1035,12 @@ window.__ModuleLoader__.load({
       async function savePurpose() {
         const message = validatePurpose(draft);
         if (message !== null) {
-          setError(message);
+          toast.error(message);
           return;
         }
         const name = String(draft.name).trim();
         if (editor?.isNew === true && purposes[name] !== void 0) {
-          setError(`用途 "${name}" 已经存在`);
+          toast.error(`用途 "${name}" 已经存在`);
           return;
         }
         if (await commit("purposes", { ...purposes, [name]: { connection: String(draft.connection ?? "") } })) closeEditor();
@@ -959,7 +1051,7 @@ window.__ModuleLoader__.load({
           if (typeof window !== "undefined" && !window.confirm(`删除${verb}「${label}」？
 
     ${note}`)) return;
-          void run().catch((cause) => setError(String(cause?.message ?? cause)));
+          void run().catch((cause) => toast.error(String(cause?.message ?? cause)));
           return;
         }
         setConfirmError("");
@@ -1014,7 +1106,6 @@ window.__ModuleLoader__.load({
         setEditor(null);
         setDraft(EMPTY2);
         setQuery("");
-        setError("");
       }
       function verificationOf(id) {
         const probed = probes[id];
@@ -1265,7 +1356,7 @@ window.__ModuleLoader__.load({
           onClick: () => openCreate(tab === "connections" ? "connection" : "purpose")
         },
         active.addLabel
-      )), status === "loading" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "jdg-empty" }, "正在读取设置…") : null, writable ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "jdg-note" }, "当前设置文档不可写：这个 profile 里该插件的配置被更高层覆盖了。"), error !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "jdg-error" }, error) : null, tab === "purposes" ? /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-inlineRow" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-label" }, "未指定连接的用途落到"), /* @__PURE__ */ __dshReact.createElement(
+      )), status === "loading" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "jdg-empty" }, "正在读取设置…") : null, writable ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "jdg-note" }, "当前设置文档不可写：这个 profile 里该插件的配置被更高层覆盖了。"), tab === "purposes" ? /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-inlineRow" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-label" }, "未指定连接的用途落到"), /* @__PURE__ */ __dshReact.createElement(
         "select",
         {
           className: "jdg-select",

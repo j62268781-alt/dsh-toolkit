@@ -15,8 +15,7 @@
 .ntf-button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 30px; padding: 0 10px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; cursor: pointer; flex: none; white-space: nowrap; }
 .ntf-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
 .ntf-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.ntf-error, .ntf-notice, .ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
-.ntf-error { color: var(--dsw-alias-state-error-primary); }
+.ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
 @media (max-width: 720px) {
   .ntf-selectSound { width: 120px; }
   .ntf-range { width: 80px; }

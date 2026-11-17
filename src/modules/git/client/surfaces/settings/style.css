@@ -14,8 +14,7 @@
   margin-top: 8px;
 }
 
-.sk-git__note,
-.sk-git__error {
+.sk-git__note {
   margin: 0;
   padding: 8px 10px;
   font-size: 13px;
@@ -23,10 +22,6 @@
   border-radius: var(--dsw-radius-md);
   border: 0.5px solid var(--dsw-alias-border-l3);
   background-color: var(--dsw-alias-bg-layer-1);
-}
-
-.sk-git__error {
-  color: var(--dsw-alias-state-danger-primary, #d0453f);
 }
 
 .sk-git__note {

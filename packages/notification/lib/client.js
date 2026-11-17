@@ -27,7 +27,7 @@ window.__ModuleLoader__.load({
     ));
 
     // src/modules/notification/client/styles.css
-    var styles_default = "/* 页头 / 卡片 / 行由 src/client/ui/components/settings-parts 统一提供（.sk-ui-*），\n * 这里只留通知自己的控件：开关、下拉、按钮、声音试听。 */\n.ntf-page { box-sizing: border-box; width: 100%; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }\n.ntf-page > * { width: 100%; max-width: 960px; }\n.ntf-selectSound { width: 156px; }\n.ntf-button:focus-visible, .ntf-switch:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }\n.ntf-range:disabled, .ntf-switch:disabled, .ntf-button:disabled { opacity: 0.5; cursor: not-allowed; }\n.ntf-volume { display: flex; align-items: center; gap: 10px; max-width: 100%; }\n.ntf-range { width: 140px; min-width: 50px; accent-color: var(--dsw-alias-state-business-primary, var(--dsw-alias-button-primary-fill)); cursor: pointer; }\n.ntf-volumeValue { min-width: 38px; text-align: right; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; font-variant-numeric: tabular-nums; }\n.ntf-switch { box-sizing: border-box; flex: none; position: relative; width: 26px; height: 15px; padding: 0; border: 0; border-radius: 999px; cursor: pointer; background: var(--dsw-alias-border-l3); transition: background 0.12s ease; }\n.ntf-switch[data-on=true] { background: var(--dsw-alias-state-success-primary, var(--dsw-alias-state-business-primary)); }\n.ntf-switchKnob { position: absolute; top: 1.5px; left: 1.5px; width: 12px; height: 12px; border-radius: 50%; background: var(--dsw-alias-label-primary-foreground); box-shadow: 0 1px 2px var(--dsw-alias-bg-mask-1, transparent); transition: transform 0.12s ease; }\n.ntf-switch[data-on=true] .ntf-switchKnob { transform: translateX(11px); }\n.ntf-button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 30px; padding: 0 10px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; cursor: pointer; flex: none; white-space: nowrap; }\n.ntf-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }\n.ntf-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }\n.ntf-error, .ntf-notice, .ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }\n.ntf-error { color: var(--dsw-alias-state-error-primary); }\n@media (max-width: 720px) {\n  .ntf-selectSound { width: 120px; }\n  .ntf-range { width: 80px; }\n}\n";
+    var styles_default = "/* 页头 / 卡片 / 行由 src/client/ui/components/settings-parts 统一提供（.sk-ui-*），\n * 这里只留通知自己的控件：开关、下拉、按钮、声音试听。 */\n.ntf-page { box-sizing: border-box; width: 100%; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }\n.ntf-page > * { width: 100%; max-width: 960px; }\n.ntf-selectSound { width: 156px; }\n.ntf-button:focus-visible, .ntf-switch:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }\n.ntf-range:disabled, .ntf-switch:disabled, .ntf-button:disabled { opacity: 0.5; cursor: not-allowed; }\n.ntf-volume { display: flex; align-items: center; gap: 10px; max-width: 100%; }\n.ntf-range { width: 140px; min-width: 50px; accent-color: var(--dsw-alias-state-business-primary, var(--dsw-alias-button-primary-fill)); cursor: pointer; }\n.ntf-volumeValue { min-width: 38px; text-align: right; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; font-variant-numeric: tabular-nums; }\n.ntf-switch { box-sizing: border-box; flex: none; position: relative; width: 26px; height: 15px; padding: 0; border: 0; border-radius: 999px; cursor: pointer; background: var(--dsw-alias-border-l3); transition: background 0.12s ease; }\n.ntf-switch[data-on=true] { background: var(--dsw-alias-state-success-primary, var(--dsw-alias-state-business-primary)); }\n.ntf-switchKnob { position: absolute; top: 1.5px; left: 1.5px; width: 12px; height: 12px; border-radius: 50%; background: var(--dsw-alias-label-primary-foreground); box-shadow: 0 1px 2px var(--dsw-alias-bg-mask-1, transparent); transition: transform 0.12s ease; }\n.ntf-switch[data-on=true] .ntf-switchKnob { transform: translateX(11px); }\n.ntf-button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 30px; padding: 0 10px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; cursor: pointer; flex: none; white-space: nowrap; }\n.ntf-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }\n.ntf-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }\n.ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }\n@media (max-width: 720px) {\n  .ntf-selectSound { width: 120px; }\n  .ntf-range { width: 80px; }\n}\n";
 
     // src/client/ui/stylesheet.ts
     function installStylesheet(css, id) {
@@ -1482,6 +1482,104 @@ window.__ModuleLoader__.load({
       return extra === void 0 || extra === "" ? base : `${base} ${extra}`;
     }
 
+    // src/client/ui/toast.css
+    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+
+    // src/client/ui/toast.ts
+    var HOST_KEY = "__dshToolkitToast__";
+    var STYLE_ID = "dsh-toolkit-toast";
+    var MAX_VISIBLE = 3;
+    var MAX_TEXT = 300;
+    var EXIT_MS = 180;
+    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
+    function resolveHost() {
+      if (typeof document === "undefined" || document.body === null) return null;
+      const scope = globalThis;
+      const existing = scope[HOST_KEY];
+      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
+      const root = document.createElement("div");
+      root.className = "sk-toast-stack";
+      root.setAttribute("aria-live", "polite");
+      document.body.appendChild(root);
+      const created = { root, entries: [] };
+      scope[HOST_KEY] = created;
+      return created;
+    }
+    function ensureStyles() {
+      try {
+        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
+      } catch {
+      }
+      installStylesheet(toast_default, STYLE_ID);
+    }
+    function normalizeHold(tone, holdMs) {
+      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
+      return holdMs;
+    }
+    function clamp(text) {
+      return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
+    }
+    function dismiss(host, entry) {
+      if (host.entries.indexOf(entry) === -1) return;
+      host.entries = host.entries.filter((item) => item !== entry);
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      entry.el.classList.add("sk-toast--leaving");
+      const remove = () => entry.el.remove();
+      const timeout = setTimeout(remove, EXIT_MS);
+      entry.el.addEventListener("animationend", () => {
+        clearTimeout(timeout);
+        remove();
+      }, { once: true });
+    }
+    function arm(host, entry, holdMs) {
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      if (holdMs === 0) {
+        entry.timer = void 0;
+        return;
+      }
+      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
+    }
+    function showToast(text, options = {}) {
+      const message = clamp(String(text ?? "").trim());
+      if (message === "") return;
+      const host = resolveHost();
+      if (host === null) return;
+      ensureStyles();
+      const tone = options.tone ?? "info";
+      const holdMs = normalizeHold(tone, options.holdMs);
+      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
+      if (duplicate !== void 0) {
+        arm(host, duplicate, holdMs);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = `sk-toast sk-toast--${tone}`;
+      el.dataset.tone = tone;
+      el.setAttribute("role", tone === "error" ? "alert" : "status");
+      if (tone !== "info") {
+        const icon = document.createElement("span");
+        icon.className = "sk-toast__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = tone === "error" ? "!" : "✓";
+        el.appendChild(icon);
+      }
+      const body = document.createElement("span");
+      body.className = "sk-toast__text";
+      body.textContent = message;
+      el.appendChild(body);
+      host.root.appendChild(el);
+      const entry = { tone, text: message, el, timer: void 0 };
+      host.entries.push(entry);
+      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
+      arm(host, entry, holdMs);
+    }
+    var toast = {
+      show: showToast,
+      info: (text, options = {}) => showToast(text, { ...options, tone: "info" }),
+      success: (text, options = {}) => showToast(text, { ...options, tone: "success" }),
+      error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
+    };
+
     // src/modules/notification/client/panel.tsx
     var KIND_COPY = { completed: "typeCompleted", failed: "typeFailed", question: "typeQuestion", permission: "typePermission" };
     var MODE_COPY = { never: "currentNever", unfocused: "currentUnfocused", always: "currentAlways" };
@@ -1535,8 +1633,6 @@ window.__ModuleLoader__.load({
           };
         }, []);
         const [busy, setBusy] = React2.useState(false);
-        const [error, setError] = React2.useState("");
-        const [notice, setNotice] = React2.useState("");
         const [sounds, setSounds] = React2.useState([]);
         const [soundStatus, setSoundStatus] = React2.useState("loading");
         const [volume, setVolume] = React2.useState(snapshot.volume);
@@ -1549,11 +1645,10 @@ window.__ModuleLoader__.load({
         }, [snapshot.volume]);
         const changeVolume = (value) => {
           setVolume(value);
-          setError("");
           const writes = volumeWrites.current;
           writes.pending += 1;
           writes.tail = writes.tail.then(() => actions.setVolume(value)).catch((cause) => {
-            setError(translate("saveFailed", { reason: String(cause?.message ?? cause) }));
+            toast.error(translate("saveFailed", { reason: String(cause?.message ?? cause) }));
           }).finally(() => {
             writes.pending -= 1;
             if (writes.pending === 0) setVolume(settings.getSnapshot().volume);
@@ -1579,12 +1674,10 @@ window.__ModuleLoader__.load({
         const inactive = readOnly || !enabled;
         const run = async (task) => {
           setBusy(true);
-          setError("");
-          setNotice("");
           try {
             await task();
           } catch (cause) {
-            setError(translate("saveFailed", { reason: String(cause?.message ?? cause) }));
+            toast.error(translate("saveFailed", { reason: String(cause?.message ?? cause) }));
           } finally {
             setBusy(false);
           }
@@ -1593,13 +1686,11 @@ window.__ModuleLoader__.load({
           void run(task);
         };
         const changeField = (field, value, task) => {
-          setError("");
-          setNotice("");
           setPending((prev) => ({ ...prev, [field]: value }));
           const inflight = fieldInflight.current;
           inflight[field] = (inflight[field] ?? 0) + 1;
           writeQueue.current = writeQueue.current.then(() => task()).catch((cause) => {
-            setError(translate("saveFailed", { reason: String(cause?.message ?? cause) }));
+            toast.error(translate("saveFailed", { reason: String(cause?.message ?? cause) }));
           }).finally(() => {
             inflight[field] -= 1;
             if (inflight[field] === 0) setPending((prev) => withoutField(prev, field));
@@ -1608,19 +1699,17 @@ window.__ModuleLoader__.load({
         const requestPermission = () => change(async () => {
           const next = await actions.requestPermission();
           setPermission(next);
-          if (next === "granted") setNotice(translate("grantedJustNow"));
-          else if (next === "denied") setError(translate("deniedHint"));
+          if (next === "granted") toast.success(translate("grantedJustNow"));
+          else if (next === "denied") toast.error(translate("deniedHint"));
         });
         const testNotification = () => change(async () => {
-          if (!await actions.testNotification()) setError(translate("testFailed", { reason: translate(permissionCopy) }));
+          if (!await actions.testNotification()) toast.error(translate("testFailed", { reason: translate(permissionCopy) }));
         });
         const recheckPermission = () => {
-          setError("");
-          setNotice("");
           setPermission(actions.permission?.() ?? "unsupported");
         };
         const preview = () => change(async () => {
-          if (await actions.previewSound(valueOf("sound") ?? "system") === false) setError(translate("soundUnavailable"));
+          if (await actions.previewSound(valueOf("sound") ?? "system") === false) toast.error(translate("soundUnavailable"));
         });
         const selectedSound = valueOf("sound") ?? "system";
         const soundChoices = [{ id: "system", label: translate("soundSystem") }, ...sounds.filter((entry) => entry.id !== "system")];
@@ -1631,7 +1720,7 @@ window.__ModuleLoader__.load({
           const title = translate(`${KIND_COPY[kind]}Title`);
           const field = `${kind}Enabled`;
           return /* @__PURE__ */ __dshReact.createElement(Row, { key: kind, title, description: translate(`${KIND_COPY[kind]}Desc`) }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: valueOf(field) === true, disabled: inactive, label: title, onChange: (next) => changeField(field, next, () => actions.setKindEnabled(kind, next)) }));
-        })), /* @__PURE__ */ __dshReact.createElement(CardSection, { title: translate("soundsHeading"), "aria-label": translate("soundsHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTitle"), description: translate("soundDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: soundEnabled, disabled: inactive, label: translate("soundTitle"), onChange: (next) => changeField("soundEnabled", next, () => actions.setSoundEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTypeTitle"), description: translate(soundStatus === "unavailable" ? "soundCatalogUnavailable" : "soundTypeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement("select", { className: "ntf-select ntf-selectSound", "aria-label": translate("soundTypeTitle"), value: selectedSound, disabled: inactive || soundStatus === "loading", onChange: (event) => changeField("sound", event.target.value, () => actions.setSound(event.target.value)) }, soundChoices.map(({ id, label }) => /* @__PURE__ */ __dshReact.createElement("option", { value: id, key: id }, label))), /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: inactive || soundStatus !== "ready" || busy, onClick: preview }, translate("previewButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("volumeTitle"), description: translate("volumeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-volume" }, /* @__PURE__ */ __dshReact.createElement("input", { className: "ntf-range", type: "range", min: "0", max: "100", step: "1", value: Math.round(volume * 100), "aria-label": translate("volumeTitle"), disabled: inactive, onChange: (event) => changeVolume(Number(event.target.value) / 100) }), /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-volumeValue" }, translate("volumeValue", { percent: Math.round(volume * 100) }))))), error !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-error", role: "alert" }, error) : null, notice !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-notice", role: "status" }, notice) : null, readOnly ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-note" }, translate("readOnly")) : null);
+        })), /* @__PURE__ */ __dshReact.createElement(CardSection, { title: translate("soundsHeading"), "aria-label": translate("soundsHeading") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTitle"), description: translate("soundDesc") }, /* @__PURE__ */ __dshReact.createElement(Toggle, { checked: soundEnabled, disabled: inactive, label: translate("soundTitle"), onChange: (next) => changeField("soundEnabled", next, () => actions.setSoundEnabled(next)) })), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("soundTypeTitle"), description: translate(soundStatus === "unavailable" ? "soundCatalogUnavailable" : "soundTypeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-actions" }, /* @__PURE__ */ __dshReact.createElement("select", { className: "ntf-select ntf-selectSound", "aria-label": translate("soundTypeTitle"), value: selectedSound, disabled: inactive || soundStatus === "loading", onChange: (event) => changeField("sound", event.target.value, () => actions.setSound(event.target.value)) }, soundChoices.map(({ id, label }) => /* @__PURE__ */ __dshReact.createElement("option", { value: id, key: id }, label))), /* @__PURE__ */ __dshReact.createElement(ActionButton, { disabled: inactive || soundStatus !== "ready" || busy, onClick: preview }, translate("previewButton")))), /* @__PURE__ */ __dshReact.createElement(Row, { title: translate("volumeTitle"), description: translate("volumeDesc") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "ntf-volume" }, /* @__PURE__ */ __dshReact.createElement("input", { className: "ntf-range", type: "range", min: "0", max: "100", step: "1", value: Math.round(volume * 100), "aria-label": translate("volumeTitle"), disabled: inactive, onChange: (event) => changeVolume(Number(event.target.value) / 100) }), /* @__PURE__ */ __dshReact.createElement("span", { className: "ntf-volumeValue" }, translate("volumeValue", { percent: Math.round(volume * 100) }))))), readOnly ? /* @__PURE__ */ __dshReact.createElement("p", { className: "ntf-note" }, translate("readOnly")) : null);
       };
     }
 

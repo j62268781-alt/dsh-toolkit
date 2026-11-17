@@ -1,6 +1,7 @@
 /** Notification preferences, using the host General settings item typography. */
 import { CURRENT_MODES, KINDS } from './model.js'
 import { CardSection, PageHeader, Row } from '../../../client/ui/components/settings-parts/index.jsx'
+import { toast } from '../../../client/ui/toast.js'
 
 const KIND_COPY = { completed: 'typeCompleted', failed: 'typeFailed', question: 'typeQuestion', permission: 'typePermission' }
 const MODE_COPY = { never: 'currentNever', unfocused: 'currentUnfocused', always: 'currentAlways' }
@@ -95,8 +96,6 @@ export function createNotificationPanel(React, options: NotificationPanelOptions
       }
     }, [])
     const [busy, setBusy] = React.useState(false)
-    const [error, setError] = React.useState('')
-    const [notice, setNotice] = React.useState('')
     const [sounds, setSounds] = React.useState([])
     const [soundStatus, setSoundStatus] = React.useState('loading')
     const [volume, setVolume] = React.useState(snapshot.volume)
@@ -111,11 +110,10 @@ export function createNotificationPanel(React, options: NotificationPanelOptions
     }, [snapshot.volume])
     const changeVolume = (value) => {
       setVolume(value)
-      setError('')
       const writes = volumeWrites.current
       writes.pending += 1
       writes.tail = writes.tail.then(() => actions.setVolume(value)).catch((cause) => {
-        setError(translate('saveFailed', { reason: String(cause?.message ?? cause) }))
+        toast.error(translate('saveFailed', { reason: String(cause?.message ?? cause) }))
       }).finally(() => {
         writes.pending -= 1
         if (writes.pending === 0) setVolume(settings.getSnapshot().volume)
@@ -138,19 +136,18 @@ export function createNotificationPanel(React, options: NotificationPanelOptions
     const inactive = readOnly || !enabled
     // 「播放声音」只关掉通知的自动播放；选音、试听、音量是显式的本地动作，不该跟着它变灰。
     const run = async (task) => {
-      setBusy(true); setError(''); setNotice('')
-      try { await task() } catch (cause) { setError(translate('saveFailed', { reason: String(cause?.message ?? cause) })) } finally { setBusy(false) }
+      setBusy(true)
+      try { await task() } catch (cause) { toast.error(translate('saveFailed', { reason: String(cause?.message ?? cause) })) } finally { setBusy(false) }
     }
     const change = (task) => { void run(task) }
     /** 配置写入：乐观回显 + 串行队列，写入期间不禁用控件、不改灰。 */
     const changeField = (field, value, task) => {
-      setError(''); setNotice('')
       setPending((prev) => ({ ...prev, [field]: value }))
       const inflight = fieldInflight.current
       inflight[field] = (inflight[field] ?? 0) + 1
       // 队列只串行落盘；一次失败不该卡住后续点击，所以 catch 就地消化掉。
       writeQueue.current = writeQueue.current.then(() => task()).catch((cause) => {
-        setError(translate('saveFailed', { reason: String(cause?.message ?? cause) }))
+        toast.error(translate('saveFailed', { reason: String(cause?.message ?? cause) }))
       }).finally(() => {
         inflight[field] -= 1
         // 该字段的写入全部落定才交还配置快照：成功时快照已追上，失败时退回原值。
@@ -160,15 +157,15 @@ export function createNotificationPanel(React, options: NotificationPanelOptions
     const requestPermission = () => change(async () => {
       const next = await actions.requestPermission()
       setPermission(next)
-      if (next === 'granted') setNotice(translate('grantedJustNow'))
-      else if (next === 'denied') setError(translate('deniedHint'))
+      if (next === 'granted') toast.success(translate('grantedJustNow'))
+      else if (next === 'denied') toast.error(translate('deniedHint'))
     })
     const testNotification = () => change(async () => {
-      if (!await actions.testNotification()) setError(translate('testFailed', { reason: translate(permissionCopy) }))
+      if (!await actions.testNotification()) toast.error(translate('testFailed', { reason: translate(permissionCopy) }))
     })
-    const recheckPermission = () => { setError(''); setNotice(''); setPermission(actions.permission?.() ?? 'unsupported') }
+    const recheckPermission = () => { setPermission(actions.permission?.() ?? 'unsupported') }
     const preview = () => change(async () => {
-      if (await actions.previewSound(valueOf('sound') ?? 'system') === false) setError(translate('soundUnavailable'))
+      if (await actions.previewSound(valueOf('sound') ?? 'system') === false) toast.error(translate('soundUnavailable'))
     })
     const selectedSound = valueOf('sound') ?? 'system'
     const soundChoices = [{ id: 'system', label: translate('soundSystem') }, ...sounds.filter((entry) => entry.id !== 'system')]
@@ -191,8 +188,6 @@ export function createNotificationPanel(React, options: NotificationPanelOptions
         <Row title={translate('soundTypeTitle')} description={translate(soundStatus === 'unavailable' ? 'soundCatalogUnavailable' : 'soundTypeDesc')}><div className="ntf-actions"><select className="ntf-select ntf-selectSound" aria-label={translate('soundTypeTitle')} value={selectedSound} disabled={inactive || soundStatus === 'loading'} onChange={(event) => changeField('sound', event.target.value, () => actions.setSound(event.target.value))}>{soundChoices.map(({ id, label }) => <option value={id} key={id}>{label}</option>)}</select><ActionButton disabled={inactive || soundStatus !== 'ready' || busy} onClick={preview}>{translate('previewButton')}</ActionButton></div></Row>
         <Row title={translate('volumeTitle')} description={translate('volumeDesc')}><div className="ntf-volume"><input className="ntf-range" type="range" min="0" max="100" step="1" value={Math.round(volume * 100)} aria-label={translate('volumeTitle')} disabled={inactive} onChange={(event) => changeVolume(Number(event.target.value) / 100)} /><span className="ntf-volumeValue">{translate('volumeValue', { percent: Math.round(volume * 100) })}</span></div></Row>
       </CardSection>
-      {error !== '' ? <p className="ntf-error" role="alert">{error}</p> : null}
-      {notice !== '' ? <p className="ntf-notice" role="status">{notice}</p> : null}
       {readOnly ? <p className="ntf-note">{translate('readOnly')}</p> : null}
     </div>
   }

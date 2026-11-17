@@ -392,8 +392,106 @@ window.__ModuleLoader__.load({
       });
     }
 
+    // src/client/ui/toast.css
+    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+
+    // src/client/ui/toast.ts
+    var HOST_KEY = "__dshToolkitToast__";
+    var STYLE_ID = "dsh-toolkit-toast";
+    var MAX_VISIBLE = 3;
+    var MAX_TEXT = 300;
+    var EXIT_MS = 180;
+    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
+    function resolveHost() {
+      if (typeof document === "undefined" || document.body === null) return null;
+      const scope = globalThis;
+      const existing = scope[HOST_KEY];
+      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
+      const root = document.createElement("div");
+      root.className = "sk-toast-stack";
+      root.setAttribute("aria-live", "polite");
+      document.body.appendChild(root);
+      const created = { root, entries: [] };
+      scope[HOST_KEY] = created;
+      return created;
+    }
+    function ensureStyles() {
+      try {
+        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
+      } catch {
+      }
+      installStylesheet(toast_default, STYLE_ID);
+    }
+    function normalizeHold(tone, holdMs) {
+      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
+      return holdMs;
+    }
+    function clamp(text) {
+      return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
+    }
+    function dismiss(host, entry) {
+      if (host.entries.indexOf(entry) === -1) return;
+      host.entries = host.entries.filter((item) => item !== entry);
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      entry.el.classList.add("sk-toast--leaving");
+      const remove = () => entry.el.remove();
+      const timeout = setTimeout(remove, EXIT_MS);
+      entry.el.addEventListener("animationend", () => {
+        clearTimeout(timeout);
+        remove();
+      }, { once: true });
+    }
+    function arm(host, entry, holdMs) {
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      if (holdMs === 0) {
+        entry.timer = void 0;
+        return;
+      }
+      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
+    }
+    function showToast(text, options = {}) {
+      const message = clamp(String(text ?? "").trim());
+      if (message === "") return;
+      const host = resolveHost();
+      if (host === null) return;
+      ensureStyles();
+      const tone = options.tone ?? "info";
+      const holdMs = normalizeHold(tone, options.holdMs);
+      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
+      if (duplicate !== void 0) {
+        arm(host, duplicate, holdMs);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = `sk-toast sk-toast--${tone}`;
+      el.dataset.tone = tone;
+      el.setAttribute("role", tone === "error" ? "alert" : "status");
+      if (tone !== "info") {
+        const icon = document.createElement("span");
+        icon.className = "sk-toast__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = tone === "error" ? "!" : "✓";
+        el.appendChild(icon);
+      }
+      const body = document.createElement("span");
+      body.className = "sk-toast__text";
+      body.textContent = message;
+      el.appendChild(body);
+      host.root.appendChild(el);
+      const entry = { tone, text: message, el, timer: void 0 };
+      host.entries.push(entry);
+      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
+      arm(host, entry, holdMs);
+    }
+    var toast = {
+      show: showToast,
+      info: (text, options = {}) => showToast(text, { ...options, tone: "info" }),
+      success: (text, options = {}) => showToast(text, { ...options, tone: "success" }),
+      error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
+    };
+
     // src/modules/git/client/surfaces/settings/style.css
-    var style_default2 = '.sk-git {\n  max-width: 760px;\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  color: var(--dsw-alias-label-primary);\n}\n\n/* 页头 / 卡片 / 行的骨架来自 src/client/ui/components/settings-parts（.sk-ui-*）。 */\n\n/* 第一组标题跟页头副标题离得太近（容器 gap 只有 12px），单独再加一点顶部留白；\n * 第二组「提交信息」与上一张卡片之间保持原间距，避免整页被拉散。 */\n.sk-git__groupLead {\n  margin-top: 8px;\n}\n\n.sk-git__note,\n.sk-git__error {\n  margin: 0;\n  padding: 8px 10px;\n  font-size: 13px;\n  line-height: 18px;\n  border-radius: var(--dsw-radius-md);\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  background-color: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-git__error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-git__note {\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-git__field {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  width: 260px;\n  max-width: 100%;\n}\n\n/* 输入框的底色用半透明灰而不是 layer-2：浅色主题里 layer-2 是纯白，会跟卡片糊在一起。 */\n.sk-git__input,\n.sk-git__textarea {\n  width: 100%;\n  box-sizing: border-box;\n  font: inherit;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  padding: 6px 10px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background-color: rgba(128, 128, 128, 0.08);\n}\n\n.sk-git__input:focus-visible,\n.sk-git__textarea:focus-visible {\n  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n.sk-git__input[aria-invalid="true"] {\n  border-color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-git__input:disabled,\n.sk-git__textarea:disabled {\n  opacity: 0.6;\n  cursor: default;\n}\n\n.sk-git__hint {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-git__hint--error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n/* 提交说明要占满整行，`Row` 的右侧控件栏只有 55% 宽，所以这里直接用骨架的行结构自己排版。 */\n.sk-git__stack {\n  flex-direction: column;\n  align-items: stretch;\n  gap: 8px;\n}\n\n.sk-git__stackBody {\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n}\n\n.sk-git__textarea {\n  min-height: 132px;\n  resize: vertical;\n}\n\n.sk-git__meta {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.sk-git__status {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-git__status--error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-git__count {\n  margin-left: auto;\n  color: var(--dsw-alias-label-tertiary);\n  font-variant-numeric: tabular-nums;\n}\n\n/* 宿主没发布 UI kit 时的降级开关（正常路径走 primitives.Switch）。 */\n.sk-git__switch {\n  flex: none;\n  position: relative;\n  width: 36px;\n  height: 20px;\n  padding: 0;\n  border: 0;\n  border-radius: 999px;\n  corner-shape: round;\n  background-color: rgba(128, 128, 128, 0.45);\n  cursor: pointer;\n  transition: background-color 120ms ease;\n}\n\n.sk-git__switch[aria-checked="true"] {\n  background-color: var(--dsw-alias-state-business-primary, #3a6fd8);\n}\n\n.sk-git__switch:disabled {\n  opacity: 0.5;\n  cursor: default;\n}\n\n/* 画圆必须显式 corner-shape: round —— 宿主注入了 superellipse(1.5)，50% 会被画成超椭圆。 */\n.sk-git__switchThumb {\n  position: absolute;\n  top: 2px;\n  left: 2px;\n  width: 16px;\n  height: 16px;\n  border-radius: 50%;\n  corner-shape: round;\n  background-color: #fff;\n  transition: transform 120ms ease;\n}\n\n.sk-git__switch[aria-checked="true"] .sk-git__switchThumb {\n  transform: translateX(16px);\n}\n';
+    var style_default2 = '.sk-git {\n  max-width: 760px;\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  color: var(--dsw-alias-label-primary);\n}\n\n/* 页头 / 卡片 / 行的骨架来自 src/client/ui/components/settings-parts（.sk-ui-*）。 */\n\n/* 第一组标题跟页头副标题离得太近（容器 gap 只有 12px），单独再加一点顶部留白；\n * 第二组「提交信息」与上一张卡片之间保持原间距，避免整页被拉散。 */\n.sk-git__groupLead {\n  margin-top: 8px;\n}\n\n.sk-git__note {\n  margin: 0;\n  padding: 8px 10px;\n  font-size: 13px;\n  line-height: 18px;\n  border-radius: var(--dsw-radius-md);\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  background-color: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-git__note {\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-git__field {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  width: 260px;\n  max-width: 100%;\n}\n\n/* 输入框的底色用半透明灰而不是 layer-2：浅色主题里 layer-2 是纯白，会跟卡片糊在一起。 */\n.sk-git__input,\n.sk-git__textarea {\n  width: 100%;\n  box-sizing: border-box;\n  font: inherit;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  padding: 6px 10px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background-color: rgba(128, 128, 128, 0.08);\n}\n\n.sk-git__input:focus-visible,\n.sk-git__textarea:focus-visible {\n  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n.sk-git__input[aria-invalid="true"] {\n  border-color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-git__input:disabled,\n.sk-git__textarea:disabled {\n  opacity: 0.6;\n  cursor: default;\n}\n\n.sk-git__hint {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-git__hint--error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n/* 提交说明要占满整行，`Row` 的右侧控件栏只有 55% 宽，所以这里直接用骨架的行结构自己排版。 */\n.sk-git__stack {\n  flex-direction: column;\n  align-items: stretch;\n  gap: 8px;\n}\n\n.sk-git__stackBody {\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n}\n\n.sk-git__textarea {\n  min-height: 132px;\n  resize: vertical;\n}\n\n.sk-git__meta {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.sk-git__status {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-git__status--error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-git__count {\n  margin-left: auto;\n  color: var(--dsw-alias-label-tertiary);\n  font-variant-numeric: tabular-nums;\n}\n\n/* 宿主没发布 UI kit 时的降级开关（正常路径走 primitives.Switch）。 */\n.sk-git__switch {\n  flex: none;\n  position: relative;\n  width: 36px;\n  height: 20px;\n  padding: 0;\n  border: 0;\n  border-radius: 999px;\n  corner-shape: round;\n  background-color: rgba(128, 128, 128, 0.45);\n  cursor: pointer;\n  transition: background-color 120ms ease;\n}\n\n.sk-git__switch[aria-checked="true"] {\n  background-color: var(--dsw-alias-state-business-primary, #3a6fd8);\n}\n\n.sk-git__switch:disabled {\n  opacity: 0.5;\n  cursor: default;\n}\n\n/* 画圆必须显式 corner-shape: round —— 宿主注入了 superellipse(1.5)，50% 会被画成超椭圆。 */\n.sk-git__switchThumb {\n  position: absolute;\n  top: 2px;\n  left: 2px;\n  width: 16px;\n  height: 16px;\n  border-radius: 50%;\n  corner-shape: round;\n  background-color: #fff;\n  transition: transform 120ms ease;\n}\n\n.sk-git__switch[aria-checked="true"] .sk-git__switchThumb {\n  transform: translateX(16px);\n}\n';
 
     // src/host/paths.ts
     var PLUGIN_API_ROOT = "/api/plugins/toolkit";
@@ -504,7 +602,6 @@ window.__ModuleLoader__.load({
         const [forceBusy, setForceBusy] = import_react2.default.useState(false);
         const [instructionsDraft, setInstructionsDraft] = import_react2.default.useState(null);
         const [saveState, setSaveState] = import_react2.default.useState("");
-        const [error, setError] = import_react2.default.useState("");
         import_react2.default.useEffect(() => {
           if (typeof form?.subscribe !== "function") return void 0;
           return form.subscribe(() => setVersion((value) => value + 1));
@@ -527,12 +624,11 @@ window.__ModuleLoader__.load({
             return;
           }
           setPrefixBusy(true);
-          setError("");
           try {
             await acceptConfigWrite(() => form.set("branchPrefix", next), "branchPrefix");
             setPrefixDraft(null);
           } catch (cause) {
-            setError(t("saveFailed", { reason: String(cause?.message ?? cause) }));
+            toast.error(t("saveFailed", { reason: String(cause?.message ?? cause) }));
           } finally {
             setPrefixBusy(false);
           }
@@ -545,14 +641,13 @@ window.__ModuleLoader__.load({
             return;
           }
           setSaveState("saving");
-          setError("");
           try {
             await acceptConfigWrite(() => form.set("commitInstructions", next), "commitInstructions");
             setInstructionsDraft((current) => current === draft ? null : current);
             setSaveState("saved");
           } catch (cause) {
             setSaveState("failed");
-            setError(t("saveFailed", { reason: String(cause?.message ?? cause) }));
+            toast.error(t("saveFailed", { reason: String(cause?.message ?? cause) }));
           }
         };
         import_react2.default.useEffect(() => {
@@ -567,19 +662,18 @@ window.__ModuleLoader__.load({
           if (!writable || forceBusy) return;
           setForceDraft(next);
           setForceBusy(true);
-          setError("");
           try {
             await acceptConfigWrite(() => form.set("alwaysForcePush", next), "alwaysForcePush");
             setForceDraft(null);
           } catch (cause) {
             setForceDraft(null);
-            setError(t("saveFailed", { reason: String(cause?.message ?? cause) }));
+            toast.error(t("saveFailed", { reason: String(cause?.message ?? cause) }));
           } finally {
             setForceBusy(false);
           }
         };
         const saveLabel = saveState === "saving" ? t("saving") : saveState === "saved" ? t("saved") : "";
-        return /* @__PURE__ */ __dshReact.createElement("main", { className: "sk-git" }, /* @__PURE__ */ __dshReact.createElement("style", null, CSS), /* @__PURE__ */ __dshReact.createElement(PageHeader, { title: t("title"), subtitle: t("subtitle") }), writable ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git__note", role: "status" }, t("readOnly")), error === "" ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git__error", role: "alert" }, error), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "sk-git__groupLead", title: t("sectionTitle"), "aria-label": t("sectionTitle") }, /* @__PURE__ */ __dshReact.createElement(
+        return /* @__PURE__ */ __dshReact.createElement("main", { className: "sk-git" }, /* @__PURE__ */ __dshReact.createElement("style", null, CSS), /* @__PURE__ */ __dshReact.createElement(PageHeader, { title: t("title"), subtitle: t("subtitle") }), writable ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git__note", role: "status" }, t("readOnly")), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "sk-git__groupLead", title: t("sectionTitle"), "aria-label": t("sectionTitle") }, /* @__PURE__ */ __dshReact.createElement(
           Row,
           {
             title: t("branchPrefix"),
@@ -762,7 +856,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/git/client/surfaces/branch-chip/style.css
-    var style_default3 = '/*\n * 分支按钮挂在 composer 的 `conversation.input.left` 里，尺寸必须跟宿主的工具行控件逐像素对齐\n * （28px 高、radius-sm、13px/500），否则要么把整行撑高、要么比旁边的权限 / 模型按钮矮一截。\n *\n * 弹层被 portal 到 document.body（composer 贴底容器会裁切），因此这份样式必须全局注入，\n * 不能跟着设置面板的 <style> 走。选择器全部带 `.sk-git-branch` 前缀，避免误伤宿主。\n */\n\n/*\n * 尺寸 / 圆角 / 悬停全部照抄宿主，两处各对齐各的邻居：\n * - 输入行对齐权限按钮（`.SJRB_q_trigger`：28px、radius-sm、padding 0 4px 0 8px、13px/500）；\n * - 顶栏对齐工作区 / 标准模式那两颗（28px、padding 0 8px、label-primary 色，见下面的 --hero 段）。\n * `--dsw-*` 都带 px 兜底：宿主换皮时至少不会退化成不可见。\n */\n.sk-git-branch__trigger {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  /* 跟着权限 / 模型选择器的做法：给一个上限但不写死宽度，让它在窄屏里跟着容器一起缩\n     （`min-width:0` 才能让 flex 项目缩到内容以下，否则长分支名会把整行顶出去）。 */\n  flex: 0 1 auto;\n  min-width: 0;\n  max-width: min(220px, 38vw);\n  height: 28px;\n  padding: 0 4px 0 8px;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-size: 13px;\n  font-weight: 500;\n  line-height: 20px;\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  .sk-git-branch__trigger:hover:not(:disabled) {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-git-branch__trigger[aria-expanded="true"] {\n  background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n}\n\n.sk-git-branch__trigger:focus-visible {\n  outline: none;\n  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary, rgba(80, 140, 255, 0.6)));\n}\n\n.sk-git-branch__trigger:disabled {\n  color: var(--dsw-alias-label-dimmed, rgba(128, 128, 128, 0.6));\n  cursor: default;\n}\n\n/* 箭头照权限按钮：caption 色、120ms 过渡，展开时转 180°（`--open` 由组件按 open 状态挂）。 */\n.sk-git-branch__chevron {\n  display: inline-flex;\n  flex: none;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  transition: transform 0.12s;\n}\n\n.sk-git-branch__chevron--open {\n  transform: rotate(180deg);\n}\n\n/* 图标与箭头都不参与压缩：宿主被 max-width 夹住时只该截断分支名，不能把图标挤成细条。 */\n.sk-git-branch__icon {\n  display: inline-flex;\n  flex: none;\n}\n\n.sk-git-branch__name {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n/*\n * 新会话顶栏（`conversation.hero.options`）：宿主 forge 的那颗分支按钮在没勾「新建工作树」时\n * 只是个只读标签（`<Tooltip openOnClick>`，没有 onClick），点它只弹一句提示。我们把自己那颗\n * 按钮用 order -1 排到同位置顶上，并把宿主那颗藏掉 —— 于是「点分支开菜单」落在同一个位置上，\n * 不会出现两个 main。\n *\n * 勾上「新建工作树」后宿主换成「基于 X ⌄」的基线选择器（另一种按钮，不再带\n * `data-forge-current-branch`），那是它自己的功能，我们整颗让位 —— 判据写成\n * 「forge 在，但没在显示只读标签」，比盯它换成哪个类名稳。\n * `:has()` 在宿主 Chromium 里可用（与 corner-shape 同级依赖）；万一宿主改了结构、\n * 我们的按钮没让位或没顶上，最坏结果是两个标签并排 —— 功能不会坏。\n */\n[data-slot="conversation.hero.options"] [data-forge-current-branch] {\n  display: none;\n}\n\n[data-slot="conversation.hero.options"]:has([data-forge-worktree]):not(:has([data-forge-current-branch])) .sk-git-branch__trigger--hero {\n  display: none;\n}\n\n/* 顶栏右半边还要放「新建工作树」勾选框，留给分支名的宽度比输入行更紧；\n   左右邻居是「工作区」和「标准模式」两颗按钮，内边距与文字颜色跟它们对齐（它们用 label-primary）。 */\n.sk-git-branch__trigger--hero {\n  max-width: min(200px, 30vw);\n  padding: 0 8px;\n  color: var(--dsw-alias-label-primary, inherit);\n}\n\n/* detached HEAD 没有名字可言：给它斜体，省得跟真分支名混起来。 */\n.sk-git-branch__name[data-detached="true"] {\n  font-style: italic;\n  opacity: 0.8;\n}\n\n.sk-git-branch__menu {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  width: 280px;\n  padding: 4px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-git-branch__search {\n  padding: 2px 2px 4px;\n}\n\n/*\n * 宿主 Input primitive 的根是 `display:inline-flex; width:180px`（写死的，按它自己的场景定），\n * 放进我们 280px 的弹层里右侧会空出一截。两级选择器压过它自己的类，把根拉满。\n */\n.sk-git-branch__menu .sk-git-branch__search > * {\n  /* 它自己是 content-box（左右还有 8px 内边距），只给 width:100% 会向右溢出，\n     所以连带把盒模型压成 border-box，让"拉满"等于父容器宽度。 */\n  box-sizing: border-box;\n  width: 100%;\n}\n\n.sk-git-branch__groupLabel {\n  margin: 2px 0 0;\n  padding: 0 8px;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font-size: 11px;\n  line-height: 18px;\n}\n\n/* 第二组（远端分支）跟在列表中间出现，上面补一道线，不然和最后一条本地分支糊成一块。 */\n.sk-git-branch__groupLabel--nested {\n  display: flex;\n  align-items: baseline;\n  justify-content: space-between;\n  gap: 8px;\n  margin-top: 4px;\n  padding-top: 6px;\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-git-branch__groupHint {\n  color: var(--dsw-alias-label-tertiary, rgba(128, 128, 128, 0.7));\n  font-size: 10px;\n}\n\n.sk-git-branch__list {\n  display: flex;\n  flex-direction: column;\n  max-height: 260px;\n  overflow-y: auto;\n}\n\n.sk-git-branch__option {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  width: 100%;\n  min-width: 0;\n}\n\n.sk-git-branch__optionName {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-git-branch__empty {\n  margin: 0;\n  padding: 10px 8px;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font-size: 12px;\n}\n\n.sk-git-branch__footer {\n  display: flex;\n  flex-direction: column;\n  padding-top: 4px;\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-git-branch__error {\n  margin: 0;\n  padding: 6px 8px 2px;\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n  font-size: 12px;\n  line-height: 18px;\n  word-break: break-word;\n}\n\n.sk-git-branch__hint {\n  margin: 6px 0 0;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.sk-git-branch__creator {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n/* primitives 缺席时的降级输入框：只求能用，别指望它跟宿主输入框逐像素一致。 */\n.sk-git-branch__fallbackInput {\n  width: 100%;\n  height: 32px;\n  padding: 0 10px;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.24));\n  border-radius: 8px;\n  corner-shape: round;\n  background: rgba(128, 128, 128, 0.08);\n  color: inherit;\n  font: inherit;\n  font-size: 13px;\n}\n';
+    var style_default3 = '/*\n * 分支按钮挂在 composer 的 `conversation.input.left` 里，尺寸必须跟宿主的工具行控件逐像素对齐\n * （28px 高、radius-sm、13px/500），否则要么把整行撑高、要么比旁边的权限 / 模型按钮矮一截。\n *\n * 弹层被 portal 到 document.body（composer 贴底容器会裁切），因此这份样式必须全局注入，\n * 不能跟着设置面板的 <style> 走。选择器全部带 `.sk-git-branch` 前缀，避免误伤宿主。\n */\n\n/*\n * 尺寸 / 圆角 / 悬停全部照抄宿主，两处各对齐各的邻居：\n * - 输入行对齐权限按钮（`.SJRB_q_trigger`：28px、radius-sm、padding 0 4px 0 8px、13px/500）；\n * - 顶栏对齐工作区 / 标准模式那两颗（28px、padding 0 8px、label-primary 色，见下面的 --hero 段）。\n * `--dsw-*` 都带 px 兜底：宿主换皮时至少不会退化成不可见。\n */\n.sk-git-branch__trigger {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  /* 跟着权限 / 模型选择器的做法：给一个上限但不写死宽度，让它在窄屏里跟着容器一起缩\n     （`min-width:0` 才能让 flex 项目缩到内容以下，否则长分支名会把整行顶出去）。 */\n  flex: 0 1 auto;\n  min-width: 0;\n  max-width: min(220px, 38vw);\n  height: 28px;\n  padding: 0 4px 0 8px;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-size: 13px;\n  font-weight: 500;\n  line-height: 20px;\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  .sk-git-branch__trigger:hover:not(:disabled) {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-git-branch__trigger[aria-expanded="true"] {\n  background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n}\n\n.sk-git-branch__trigger:focus-visible {\n  outline: none;\n  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary, rgba(80, 140, 255, 0.6)));\n}\n\n.sk-git-branch__trigger:disabled {\n  color: var(--dsw-alias-label-dimmed, rgba(128, 128, 128, 0.6));\n  cursor: default;\n}\n\n/* 箭头照权限按钮：caption 色、120ms 过渡，展开时转 180°（`--open` 由组件按 open 状态挂）。 */\n.sk-git-branch__chevron {\n  display: inline-flex;\n  flex: none;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  transition: transform 0.12s;\n}\n\n.sk-git-branch__chevron--open {\n  transform: rotate(180deg);\n}\n\n/* 图标与箭头都不参与压缩：宿主被 max-width 夹住时只该截断分支名，不能把图标挤成细条。 */\n.sk-git-branch__icon {\n  display: inline-flex;\n  flex: none;\n}\n\n.sk-git-branch__name {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n/*\n * 新会话顶栏（`conversation.hero.options`）：宿主 forge 的那颗分支按钮在没勾「新建工作树」时\n * 只是个只读标签（`<Tooltip openOnClick>`，没有 onClick），点它只弹一句提示。我们把自己那颗\n * 按钮用 order -1 排到同位置顶上，并把宿主那颗藏掉 —— 于是「点分支开菜单」落在同一个位置上，\n * 不会出现两个 main。\n *\n * 勾上「新建工作树」后宿主换成「基于 X ⌄」的基线选择器（另一种按钮，不再带\n * `data-forge-current-branch`），那是它自己的功能，我们整颗让位 —— 判据写成\n * 「forge 在，但没在显示只读标签」，比盯它换成哪个类名稳。\n * `:has()` 在宿主 Chromium 里可用（与 corner-shape 同级依赖）；万一宿主改了结构、\n * 我们的按钮没让位或没顶上，最坏结果是两个标签并排 —— 功能不会坏。\n */\n[data-slot="conversation.hero.options"] [data-forge-current-branch] {\n  display: none;\n}\n\n[data-slot="conversation.hero.options"]:has([data-forge-worktree]):not(:has([data-forge-current-branch])) .sk-git-branch__trigger--hero {\n  display: none;\n}\n\n/* 顶栏右半边还要放「新建工作树」勾选框，留给分支名的宽度比输入行更紧；\n   左右邻居是「工作区」和「标准模式」两颗按钮，内边距与文字颜色跟它们对齐（它们用 label-primary）。 */\n.sk-git-branch__trigger--hero {\n  max-width: min(200px, 30vw);\n  padding: 0 8px;\n  color: var(--dsw-alias-label-primary, inherit);\n}\n\n/* detached HEAD 没有名字可言：给它斜体，省得跟真分支名混起来。 */\n.sk-git-branch__name[data-detached="true"] {\n  font-style: italic;\n  opacity: 0.8;\n}\n\n.sk-git-branch__menu {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  width: 280px;\n  padding: 4px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-git-branch__search {\n  padding: 2px 2px 4px;\n}\n\n/*\n * 宿主 Input primitive 的根是 `display:inline-flex; width:180px`（写死的，按它自己的场景定），\n * 放进我们 280px 的弹层里右侧会空出一截。两级选择器压过它自己的类，把根拉满。\n */\n.sk-git-branch__menu .sk-git-branch__search > * {\n  /* 它自己是 content-box（左右还有 8px 内边距），只给 width:100% 会向右溢出，\n     所以连带把盒模型压成 border-box，让"拉满"等于父容器宽度。 */\n  box-sizing: border-box;\n  width: 100%;\n}\n\n.sk-git-branch__groupLabel {\n  margin: 2px 0 0;\n  padding: 0 8px;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font-size: 11px;\n  line-height: 18px;\n}\n\n/* 第二组（远端分支）跟在列表中间出现，上面补一道线，不然和最后一条本地分支糊成一块。 */\n.sk-git-branch__groupLabel--nested {\n  display: flex;\n  align-items: baseline;\n  justify-content: space-between;\n  gap: 8px;\n  margin-top: 4px;\n  padding-top: 6px;\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-git-branch__groupHint {\n  color: var(--dsw-alias-label-tertiary, rgba(128, 128, 128, 0.7));\n  font-size: 10px;\n}\n\n.sk-git-branch__list {\n  display: flex;\n  flex-direction: column;\n  max-height: 260px;\n  overflow-y: auto;\n}\n\n.sk-git-branch__option {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  width: 100%;\n  min-width: 0;\n}\n\n.sk-git-branch__optionName {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-git-branch__empty {\n  margin: 0;\n  padding: 10px 8px;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font-size: 12px;\n}\n\n.sk-git-branch__footer {\n  display: flex;\n  flex-direction: column;\n  padding-top: 4px;\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-git-branch__hint {\n  margin: 6px 0 0;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.sk-git-branch__creator {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n/* primitives 缺席时的降级输入框：只求能用，别指望它跟宿主输入框逐像素一致。 */\n.sk-git-branch__fallbackInput {\n  width: 100%;\n  height: 32px;\n  padding: 0 10px;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.24));\n  border-radius: 8px;\n  corner-shape: round;\n  background: rgba(128, 128, 128, 0.08);\n  color: inherit;\n  font: inherit;\n  font-size: 13px;\n}\n';
 
     // src/modules/git/client/surfaces/branch-chip/index.tsx
     var NAME2 = "branch-chip";
@@ -810,15 +904,12 @@ window.__ModuleLoader__.load({
         const [open, setOpen] = import_react3.default.useState(false);
         const [query, setQuery] = import_react3.default.useState("");
         const [busy, setBusy] = import_react3.default.useState("");
-        const [error, setError] = import_react3.default.useState("");
         const [pending, setPending] = import_react3.default.useState(null);
-        const [switchError, setSwitchError] = import_react3.default.useState("");
         const [creator, setCreator] = import_react3.default.useState(CLOSED_CREATOR);
         const [loading, setLoading] = import_react3.default.useState(true);
         const accept = import_react3.default.useCallback((payload) => {
           setView(toBranchView(payload));
           setHidden(false);
-          setError("");
         }, []);
         const load = import_react3.default.useCallback(async () => {
           if (cwd === "") return;
@@ -831,10 +922,10 @@ window.__ModuleLoader__.load({
             } else if (payload?.reason === "not-a-repository" || payload?.reason === "invalid-cwd") {
               setHidden(true);
             } else {
-              setError(t("branchLoadFailed", { reason: reasonOf(payload) }));
+              toast.error(t("branchLoadFailed", { reason: reasonOf(payload) }));
             }
           } catch (cause) {
-            setError(t("branchLoadFailed", { reason: cause?.message ?? "network" }));
+            toast.error(t("branchLoadFailed", { reason: cause?.message ?? "network" }));
           } finally {
             setLoading(false);
           }
@@ -850,8 +941,6 @@ window.__ModuleLoader__.load({
         const submit = import_react3.default.useCallback(async (name, create) => {
           if (cwd === "" || busy !== "") return;
           setBusy(create ? "create" : "switch");
-          setError("");
-          setSwitchError("");
           try {
             const response = await fetchJson(create ? GIT_CREATE_BRANCH_PATH : GIT_CHECKOUT_PATH, { json: { cwd, name } });
             const payload = await response.json().catch(() => null);
@@ -861,16 +950,10 @@ window.__ModuleLoader__.load({
               setCreator(CLOSED_CREATOR);
               setPending(null);
             } else {
-              const message = t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: reasonOf(payload) });
-              setError(message);
-              if (create) setCreator((state) => ({ ...state, error: message }));
-              else setSwitchError(message);
+              toast.error(t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: reasonOf(payload) }));
             }
           } catch (cause) {
-            const message = t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: cause?.message ?? "network" });
-            setError(message);
-            if (create) setCreator((state) => ({ ...state, error: message }));
-            else setSwitchError(message);
+            toast.error(t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: cause?.message ?? "network" }));
           } finally {
             setBusy("");
           }
@@ -882,7 +965,6 @@ window.__ModuleLoader__.load({
             return;
           }
           if (view.dirty) {
-            setSwitchError("");
             setPending({ name });
             return;
           }
@@ -967,20 +1049,16 @@ window.__ModuleLoader__.load({
               onSelect: openCreator
             },
             t("branchNew")
-          )), error === "" ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git-branch__error", role: "alert" }, error))
+          )))
         ), pending === null ? null : confirmDialog({
           primitives,
           title: t("branchTrigger"),
           description: t("branchDirty"),
-          children: switchError === "" ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git-branch__error", role: "alert" }, switchError),
           cancelLabel: t("branchCancel"),
           confirmLabel: t("branchDirtyConfirm"),
           pending: busy !== "",
           pendingLabel: t("branchLoading"),
-          onCancel: () => {
-            setPending(null);
-            setSwitchError("");
-          },
+          onCancel: () => setPending(null),
           onConfirm: () => void submit(pending.name, false)
         }), creator.open ? confirmDialog({
           primitives,

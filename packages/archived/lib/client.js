@@ -941,6 +941,104 @@ window.__ModuleLoader__.load({
       return extra === void 0 || extra === "" ? base : `${base} ${extra}`;
     }
 
+    // src/client/ui/toast.css
+    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+
+    // src/client/ui/toast.ts
+    var HOST_KEY = "__dshToolkitToast__";
+    var STYLE_ID = "dsh-toolkit-toast";
+    var MAX_VISIBLE = 3;
+    var MAX_TEXT = 300;
+    var EXIT_MS = 180;
+    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
+    function resolveHost() {
+      if (typeof document === "undefined" || document.body === null) return null;
+      const scope = globalThis;
+      const existing = scope[HOST_KEY];
+      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
+      const root = document.createElement("div");
+      root.className = "sk-toast-stack";
+      root.setAttribute("aria-live", "polite");
+      document.body.appendChild(root);
+      const created = { root, entries: [] };
+      scope[HOST_KEY] = created;
+      return created;
+    }
+    function ensureStyles() {
+      try {
+        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
+      } catch {
+      }
+      installStylesheet(toast_default, STYLE_ID);
+    }
+    function normalizeHold(tone, holdMs) {
+      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
+      return holdMs;
+    }
+    function clamp(text) {
+      return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
+    }
+    function dismiss(host, entry) {
+      if (host.entries.indexOf(entry) === -1) return;
+      host.entries = host.entries.filter((item) => item !== entry);
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      entry.el.classList.add("sk-toast--leaving");
+      const remove = () => entry.el.remove();
+      const timeout = setTimeout(remove, EXIT_MS);
+      entry.el.addEventListener("animationend", () => {
+        clearTimeout(timeout);
+        remove();
+      }, { once: true });
+    }
+    function arm(host, entry, holdMs) {
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      if (holdMs === 0) {
+        entry.timer = void 0;
+        return;
+      }
+      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
+    }
+    function showToast(text, options = {}) {
+      const message = clamp(String(text ?? "").trim());
+      if (message === "") return;
+      const host = resolveHost();
+      if (host === null) return;
+      ensureStyles();
+      const tone = options.tone ?? "info";
+      const holdMs = normalizeHold(tone, options.holdMs);
+      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
+      if (duplicate !== void 0) {
+        arm(host, duplicate, holdMs);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = `sk-toast sk-toast--${tone}`;
+      el.dataset.tone = tone;
+      el.setAttribute("role", tone === "error" ? "alert" : "status");
+      if (tone !== "info") {
+        const icon = document.createElement("span");
+        icon.className = "sk-toast__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = tone === "error" ? "!" : "✓";
+        el.appendChild(icon);
+      }
+      const body = document.createElement("span");
+      body.className = "sk-toast__text";
+      body.textContent = message;
+      el.appendChild(body);
+      host.root.appendChild(el);
+      const entry = { tone, text: message, el, timer: void 0 };
+      host.entries.push(entry);
+      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
+      arm(host, entry, holdMs);
+    }
+    var toast = {
+      show: showToast,
+      info: (text, options = {}) => showToast(text, { ...options, tone: "info" }),
+      success: (text, options = {}) => showToast(text, { ...options, tone: "success" }),
+      error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
+    };
+
     // src/modules/archived/client/surfaces/settings/style.css
     var style_default3 = `.sk-arch {
       max-width: 760px;
@@ -1159,7 +1257,6 @@ window.__ModuleLoader__.load({
         const [query, setQuery] = import_react7.default.useState("");
         const [project, setProject] = import_react7.default.useState("");
         const [busyId, setBusyId] = import_react7.default.useState(null);
-        const [error, setError] = import_react7.default.useState("");
         const removalState = useStore(removal);
         import_react7.default.useEffect(() => {
           const rerender = () => bump((n) => n + 1);
@@ -1194,11 +1291,10 @@ window.__ModuleLoader__.load({
         const shown = visible.reduce((sum, group) => sum + group.rows.length, 0);
         const restore = async (id) => {
           setBusyId(id);
-          setError("");
           try {
             await ctx.workspaces.unarchiveSession(id);
           } catch (reason) {
-            setError(String(reason?.message ?? reason));
+            toast.error(t("restoreFailed").replace("{reason}", String(reason?.message ?? reason)));
           } finally {
             setBusyId(null);
           }
@@ -1233,7 +1329,7 @@ window.__ModuleLoader__.load({
             onClick: () => removal.requestAll(visible)
           },
           t("removeAll")
-        )), error !== "" ? /* @__PURE__ */ import_react7.default.createElement("p", { role: "alert", className: "sk-arch__note--error" }, t("restoreFailed").replace("{reason}", error)) : null, removalState.note !== "" ? /* @__PURE__ */ import_react7.default.createElement("p", { className: "sk-arch__note", role: "status" }, removalState.note) : null, visible.length === 0 ? /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__empty" }, /* @__PURE__ */ import_react7.default.createElement("p", { className: "sk-arch__emptyTitle" }, shown === 0 && total <= removalState.removed.size ? t("empty") : t("noMatch")), total <= removalState.removed.size ? /* @__PURE__ */ import_react7.default.createElement("p", { className: "sk-arch__emptyHint" }, t("emptyHint")) : null) : visible.map((group) => /* @__PURE__ */ import_react7.default.createElement("section", { className: "sk-arch__group", key: group.id }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__groupHead" }, /* @__PURE__ */ import_react7.default.createElement(ArchivedFolderIcon, null), /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__groupTitle" }, group.title || t("ungrouped")), /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__groupCount" }, `${group.rows.length} ${t("chats")}`)), group.rows.map((row) => /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__row", key: row.id }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__rowMain" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__rowTitle", title: row.missing ? row.id : row.title || t("untitled") }, row.title || (row.missing ? t("missing") : t("untitled"))), /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__rowTime" }, row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : "")), /* @__PURE__ */ import_react7.default.createElement(
+        )), removalState.note !== "" ? /* @__PURE__ */ import_react7.default.createElement("p", { className: "sk-arch__note", role: "status" }, removalState.note) : null, visible.length === 0 ? /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__empty" }, /* @__PURE__ */ import_react7.default.createElement("p", { className: "sk-arch__emptyTitle" }, shown === 0 && total <= removalState.removed.size ? t("empty") : t("noMatch")), total <= removalState.removed.size ? /* @__PURE__ */ import_react7.default.createElement("p", { className: "sk-arch__emptyHint" }, t("emptyHint")) : null) : visible.map((group) => /* @__PURE__ */ import_react7.default.createElement("section", { className: "sk-arch__group", key: group.id }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__groupHead" }, /* @__PURE__ */ import_react7.default.createElement(ArchivedFolderIcon, null), /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__groupTitle" }, group.title || t("ungrouped")), /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__groupCount" }, `${group.rows.length} ${t("chats")}`)), group.rows.map((row) => /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__row", key: row.id }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "sk-arch__rowMain" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__rowTitle", title: row.missing ? row.id : row.title || t("untitled") }, row.title || (row.missing ? t("missing") : t("untitled"))), /* @__PURE__ */ import_react7.default.createElement("span", { className: "sk-arch__rowTime" }, row.updatedAt > 0 ? timeFormat.format(new Date(row.updatedAt)) : "")), /* @__PURE__ */ import_react7.default.createElement(
           RestoreButton,
           {
             busy: busyId === row.id,

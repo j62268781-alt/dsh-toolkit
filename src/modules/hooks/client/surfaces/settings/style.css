@@ -14,7 +14,6 @@
 }
 
 
-.sk-hooks__error,
 .sk-hooks__notice {
   margin: 0;
   padding: 8px 10px;
@@ -23,10 +22,6 @@
   border-radius: var(--dsw-radius-md);
   border: 0.5px solid var(--dsw-alias-border-l3);
   background-color: var(--dsw-alias-bg-layer-1);
-}
-
-.sk-hooks__error {
-  color: var(--dsw-alias-state-danger-primary, #d0453f);
 }
 
 .sk-hooks__notice {

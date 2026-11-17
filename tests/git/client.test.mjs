@@ -179,7 +179,8 @@ test('开关：切换即保存；宿主拒绝时回滚并报错', async (t) => {
   const rerender = await mount(rejected, rejecting)
   await rerender.act(async () => query(rejected, '[role="switch"]').click())
   assert.equal(query(rejected, '[role="switch"]').getAttribute('aria-checked'), 'false', '拒绝后回到服务端的值')
-  assert.match(query(rejected, '.sk-git__error').textContent, /无法保存 Git 设置/)
+  // 失败提示是全局 toast（`src/client/ui/toast.ts` 挂在 document.body 上），面板里不再留一行红字。
+  assert.match(query(rejected, '.sk-toast--error').textContent, /无法保存 Git 设置/)
 })
 
 test('提交说明：失焦立即保存，写的是归一化后的文本', async (t) => {

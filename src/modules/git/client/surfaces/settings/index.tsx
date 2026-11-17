@@ -5,6 +5,7 @@ import { primitives } from "../../../../../client/ui/primitives.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { CardSection, PageHeader, Row } from "../../../../../client/ui/components/settings-parts/index.jsx";
 import { settingsStyles } from "../../../../../client/styles/settings.js";
+import { toast } from "../../../../../client/ui/toast.js";
 import panelCss from "./style.css";
 import {
   COMMIT_INSTRUCTIONS_SAVE_DELAY_MS,
@@ -94,7 +95,6 @@ export function createGitSection(ctx) {
     const [forceBusy, setForceBusy] = React.useState(false);
     const [instructionsDraft, setInstructionsDraft] = React.useState(null);
     const [saveState, setSaveState] = React.useState("");
-    const [error, setError] = React.useState("");
 
     React.useEffect(() => {
       if (typeof form?.subscribe !== "function") return undefined;
@@ -120,13 +120,12 @@ export function createGitSection(ctx) {
         return;
       }
       setPrefixBusy(true);
-      setError("");
       try {
         await acceptConfigWrite(() => form.set("branchPrefix", next), "branchPrefix");
         setPrefixDraft(null);
       } catch (cause) {
         // 失败时把草稿留在输入框里：用户能看到自己敲的是什么，改完还能再存一次。
-        setError(t("saveFailed", { reason: String(cause?.message ?? cause) }));
+        toast.error(t("saveFailed", { reason: String(cause?.message ?? cause) }));
       } finally {
         setPrefixBusy(false);
       }
@@ -140,7 +139,6 @@ export function createGitSection(ctx) {
         return;
       }
       setSaveState("saving");
-      setError("");
       try {
         await acceptConfigWrite(() => form.set("commitInstructions", next), "commitInstructions");
         // 保存期间用户又改了字，就别把他的新草稿一起清掉。
@@ -148,7 +146,7 @@ export function createGitSection(ctx) {
         setSaveState("saved");
       } catch (cause) {
         setSaveState("failed");
-        setError(t("saveFailed", { reason: String(cause?.message ?? cause) }));
+        toast.error(t("saveFailed", { reason: String(cause?.message ?? cause) }));
       }
     };
 
@@ -166,13 +164,12 @@ export function createGitSection(ctx) {
       if (!writable || forceBusy) return;
       setForceDraft(next);
       setForceBusy(true);
-      setError("");
       try {
         await acceptConfigWrite(() => form.set("alwaysForcePush", next), "alwaysForcePush");
         setForceDraft(null);
       } catch (cause) {
         setForceDraft(null);
-        setError(t("saveFailed", { reason: String(cause?.message ?? cause) }));
+        toast.error(t("saveFailed", { reason: String(cause?.message ?? cause) }));
       } finally {
         setForceBusy(false);
       }
@@ -189,7 +186,6 @@ export function createGitSection(ctx) {
         <style>{CSS}</style>
         <PageHeader title={t("title")} subtitle={t("subtitle")} />
         {writable ? null : <p className="sk-git__note" role="status">{t("readOnly")}</p>}
-        {error === "" ? null : <p className="sk-git__error" role="alert">{error}</p>}
 
         <CardSection className="sk-git__groupLead" title={t("sectionTitle")} aria-label={t("sectionTitle")}>
           <Row

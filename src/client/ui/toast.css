@@ -1,0 +1,89 @@
+/*
+ * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入
+ * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。
+ *
+ * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），
+ * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。
+ */
+.sk-toast-stack {
+  position: fixed;
+  top: 40px;
+  left: 50%;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: min(640px, calc(100vw - 48px));
+  transform: translateX(-50%);
+  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */
+  pointer-events: none;
+}
+
+.sk-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--dsw-radius-lg, 12px);
+  background: var(--dsw-alias-toast-bg, #21252b);
+  color: var(--dsw-alias-toast-label, #f5f6f8);
+  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));
+  font-size: 13px;
+  line-height: 20px;
+  animation: sk-toast-in 0.16s ease-out;
+}
+
+.sk-toast--leaving {
+  animation: sk-toast-out 0.18s ease-in forwards;
+}
+
+.sk-toast__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.sk-toast__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */
+  corner-shape: round;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.sk-toast--error .sk-toast__icon {
+  background: #e5484d;
+}
+
+.sk-toast--success .sk-toast__icon {
+  background: #30a46c;
+}
+
+@keyframes sk-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sk-toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}

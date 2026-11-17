@@ -120,7 +120,6 @@
 @keyframes mbm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 .mbm-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   color: var(--dsw-alias-label-tertiary, #667085); font-size: 11px; }
-.mbm-err { color: var(--dsw-alias-state-error-primary, #d92d20); line-height: 1.6; }
 
 .mbm-adb { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px;
   border-radius: var(--dsw-radius-sm, 6px); line-height: 1.6;

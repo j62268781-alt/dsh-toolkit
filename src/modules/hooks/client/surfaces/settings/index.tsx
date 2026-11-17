@@ -6,6 +6,7 @@ import { CardSection, PageHeader } from "../../../../../client/ui/components/set
 import { Chevron } from "../../../../../client/ui/components/chevron/index.jsx";
 import { Tag } from "../../../../../client/ui/components/tag/index.jsx";
 import { settingsStyles } from "../../../../../client/styles/settings.js";
+import { toast } from "../../../../../client/ui/toast.js";
 import panelCss from "./style.css";
 import { HOOK_EVENTS, HOOKS_REFRESH_PATH, HOOKS_SNAPSHOT_PATH } from "../../constants.js";
 import type { HookEventDefinition } from "../../constants.js";
@@ -46,10 +47,16 @@ function createHooksSection(ctx: any) {
     const t = ctx.locale.bind(HOOKS_NS);
     const [snapshot, setSnapshot] = React.useState<HookSnapshotView>(() => readSnapshot({}));
     const [loaded, setLoaded] = React.useState(false);
-    const [error, setError] = React.useState("");
     const [busy, setBusy] = React.useState(false);
     const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
     const [showAllHistory, setShowAllHistory] = React.useState(false);
+    // 读成功过就置位：切回窗口会重读一次，读失败不该每切一次就弹一条同样的 toast。
+    const everLoaded = React.useRef(false);
+
+    const report = React.useCallback((reason: unknown, announce: boolean) => {
+      if (!announce && everLoaded.current) return;
+      toast.error(t("error", { reason: String((reason as any)?.message ?? reason) }));
+    }, []);
 
     const load = React.useCallback(async (announce: boolean) => {
       if (announce) setBusy(true);
@@ -57,14 +64,14 @@ function createHooksSection(ctx: any) {
         const response = await fetchJson(HOOKS_SNAPSHOT_PATH);
         const body = await response.json();
         setSnapshot(readSnapshot(body));
-        setError("");
+        everLoaded.current = true;
       } catch (reason) {
-        setError(String((reason as any)?.message ?? reason));
+        report(reason, announce);
       } finally {
         setLoaded(true);
         if (announce) setBusy(false);
       }
-    }, []);
+    }, [report]);
 
     React.useEffect(() => {
       void load(false);
@@ -85,13 +92,13 @@ function createHooksSection(ctx: any) {
 
     const refresh = async () => {
       setBusy(true);
-      setError("");
       try {
         await fetchJson(HOOKS_REFRESH_PATH, { json: {} });
         const response = await fetchJson(HOOKS_SNAPSHOT_PATH);
         setSnapshot(readSnapshot(await response.json()));
+        everLoaded.current = true;
       } catch (reason) {
-        setError(String((reason as any)?.message ?? reason));
+        report(reason, true);
       } finally {
         setBusy(false);
       }
@@ -208,7 +215,6 @@ function createHooksSection(ctx: any) {
         <style>{CSS}</style>
         <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
-        {error !== "" ? <p className="sk-hooks__error">{t("error", { reason: error })}</p> : null}
         {loaded && !snapshot.enabled ? <p className="sk-hooks__notice">{t("disabled")}</p> : null}
 
         {snapshot.issues.length > 0 ? (

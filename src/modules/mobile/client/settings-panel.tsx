@@ -16,6 +16,7 @@
  */
 
 import { fetchJson } from '../../../client/http.js'
+import { toast } from '../../../client/ui/toast.js'
 import { CardSection, PageHeader, Row } from '../../../client/ui/components/settings-parts/index.jsx'
 import { Tag } from '../../../client/ui/components/tag/index.jsx'
 import { API_PREFIX } from '../../remote/host/constants.js'
@@ -187,7 +188,6 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
     const [ready, setReady] = React.useState(false)
     // 每个开关各自忙：一个在等回执时另一个还能点，也不会把整页一起刷一遍。
     const [pending, setPending] = React.useState({ phone: false, wechat: false })
-    const [error, setError] = React.useState(null)
 
     React.useEffect(() => {
       let alive = true
@@ -218,7 +218,6 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
      */
     const apply = React.useCallback(async (key: 'phone' | 'wechat', next: boolean, current: boolean) => {
       mark(key, true)
-      setError(null)
       patch(key, next)
       let persisted = false
       try {
@@ -231,7 +230,8 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
         }
       } catch (failure: any) {
         if (!persisted) patch(key, current)
-        setError(String(failure?.message ?? failure))
+        // 一次性的失败走 toast：以前这行 `<p class="mbm-error">` 会把整张卡片往下顶。
+        toast.error(String(failure?.message ?? failure))
       } finally {
         mark(key, false)
       }
@@ -302,7 +302,6 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
             />
           </Row>
         </CardSection>
-        {error === null ? null : <p className="mbm-error">{error}</p>}
       </div>
     )
   }

@@ -52,13 +52,6 @@
   height: auto;
 }
 
-.mbm-error {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--dsw-alias-state-danger-primary, #d0453f);
-}
-
 /* 宿主没提供 Switch 时用的降级开关，观感与 .sk-ui-* 一路。 */
 .mbm-switch {
   position: relative;

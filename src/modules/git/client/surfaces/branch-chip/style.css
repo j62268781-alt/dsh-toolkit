@@ -198,15 +198,6 @@
   border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
 }
 
-.sk-git-branch__error {
-  margin: 0;
-  padding: 6px 8px 2px;
-  color: var(--dsw-alias-state-danger-primary, #d0453f);
-  font-size: 12px;
-  line-height: 18px;
-  word-break: break-word;
-}
-
 .sk-git-branch__hint {
   margin: 6px 0 0;
   color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));

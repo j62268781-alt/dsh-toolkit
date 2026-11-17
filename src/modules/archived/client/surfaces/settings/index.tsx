@@ -3,6 +3,7 @@ import { primitives } from "../../../../../client/ui/primitives.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { PageHeader } from "../../../../../client/ui/components/settings-parts/index.jsx";
 import { useStore } from "../../../../../client/ui/store.js";
+import { toast } from "../../../../../client/ui/toast.js";
 import { ARCH_NS } from "../../locale.js";
 import { readArchived } from "../../model.js";
 import { DeleteButton } from "../../components/delete-button/index.jsx";
@@ -71,7 +72,6 @@ function createArchivedSection(ctx, removal) {
     // The id whose Restore is in flight, not a section-wide flag: graying every
     // row's buttons for one row's round trip is what read as a flash.
     const [busyId, setBusyId] = React.useState(null);
-    const [error, setError] = React.useState("");
 
     const removalState = useStore<RemovalState>(removal);
 
@@ -113,11 +113,11 @@ function createArchivedSection(ctx, removal) {
 
     const restore = async (id) => {
       setBusyId(id);
-      setError("");
       try {
         await ctx.workspaces.unarchiveSession(id);
       } catch (reason) {
-        setError(String(reason?.message ?? reason));
+        // 这一页的行是分组列表：以前这行错误会插在列表上方，收/放都让整页跳一下。
+        toast.error(t("restoreFailed").replace("{reason}", String(reason?.message ?? reason)));
       } finally {
         setBusyId(null);
       }
@@ -162,7 +162,6 @@ function createArchivedSection(ctx, removal) {
           </DeleteButton>
         </div>
 
-        {error !== "" ? <p role="alert" className="sk-arch__note--error">{t("restoreFailed").replace("{reason}", error)}</p> : null}
         {removalState.note !== "" ? <p className="sk-arch__note" role="status">{removalState.note}</p> : null}
 
         {visible.length === 0 ? (

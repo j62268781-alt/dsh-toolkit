@@ -8,7 +8,7 @@
  * 「点了没反应」。所以这里断言：
  *   - 打开只写功能位，不发任何 ds-harness-remote 控制请求；
  *   - 关闭先写功能位再解绑：撤销设备（settings.logout）、忘掉本地快照、清配对残留；
- *   - 写功能位本身失败才退回原值并给红字；解绑那一步失败不回翻开关。
+ *   - 写功能位本身失败才退回原值并弹错误 toast；解绑那一步失败不回翻开关。
  */
 import assert from 'node:assert/strict'
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -137,7 +137,9 @@ async function mount(replies) {
     dom,
     calls: control.calls,
     phone,
-    error: () => dom.window.document.querySelector('.mbm-error'),
+    // 失败提示是全局 toast（`src/client/ui/toast.ts` 挂在 document.body 上的那个栈），
+    // 面板里不再留一行红字 —— 那一行会把整张卡片往下顶。
+    error: () => dom.window.document.querySelector('.sk-toast--error'),
     async click(node) {
       await act(async () => {
         node.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
@@ -233,7 +235,7 @@ test('写功能位失败时退回原值并报错，且不发解绑', async () =>
     assert.equal(panel.phone().getAttribute('aria-checked'), 'true', '写失败要退回原值')
     assert.equal(callsTo(panel.calls, 'control:settings.logout').length, 0, '功能位没落地就不该解绑')
     const error = panel.error()
-    assert.equal(error !== null, true, '失败要给红字')
+    assert.equal(error !== null, true, '失败要弹一条错误 toast')
     assert.match(error.textContent, /HTTP 500/)
   } finally {
     await panel.unmount()

@@ -54,6 +54,15 @@ function switchFor(document, title) {
   return document.querySelector(`[role="switch"][aria-label="${title}"]`)
 }
 
+/** 面板里一次性的成功/失败提示都走全局 toast 栈，不再在页面上占一行（`src/client/ui/toast.ts`）。 */
+function toasts(document) {
+  return [...document.querySelectorAll('.sk-toast-stack .sk-toast')]
+}
+
+function lastToast(document) {
+  return toasts(document).at(-1)?.textContent ?? ''
+}
+
 function assertWrite(runtime, field, value) {
   assert.deepEqual(runtime.writes.at(-1), [{ op: 'set', path: ['notification', field], value }])
   assert.equal(runtime.formValues[field], value)
@@ -184,7 +193,7 @@ test('页面：四张分组卡片、全局声音与四种类型开关，无最�
   const preview = [...document.querySelectorAll('button')].find((node) => node.textContent === '试听')
   assert.equal(preview.disabled, false)
   await app.click(preview)
-  assert.match(document.querySelector('[role="alert"]').textContent, /声音无法播放/)
+  assert.match(lastToast(document), /声音无法播放/)
   assert.equal(fetch.requests.length, 1, 'without AudioContext preview never requests real audio')
 })
 
@@ -207,7 +216,7 @@ test('音量连续拖动：保存中保持可用，串行写入并在失败时�
   await changeValue(page, range, '60')
   await act(async () => { pending[2].reject(new Error('volume write rejected')); await sleep(10) })
   assert.equal(range.value, '30')
-  assert.match(page.document.querySelector('[role="alert"]').textContent, /volume write rejected/)
+  assert.match(lastToast(page.document), /volume write rejected/)
 })
 
 test('开关点击立即回显，写入在途期间不变灰', async (t) => {
@@ -296,22 +305,23 @@ test('测试通知仍可申请权限并发送；配置保存失败不会乐观�
   assert.equal(stub.instances.length, 1, 'default 权限下也应当真的尝试发送')
   await app.click(button('授权'))
   assert.equal(button('授权'), undefined)
-  assert.match(page.document.body.textContent, /通知权限：已授予|已获得通知权限/)
+  assert.match(lastToast(page.document), /已获得通知权限/)
   await app.click(button('发送测试通知'))
   assert.equal(stub.instances.length, 2)
-  assert.equal(page.document.querySelector('[role="status"]'), null, '发送成功后不再额外提示一条状态文案')
+  // 发送成功不额外提示：toast 栈里不该多出一条「已发送」。
+  assert.equal(toasts(page.document).some((node) => node.textContent.includes('已发送一条测试通知')), false, '发送成功后不再额外提示一条状态文案')
   assert.doesNotMatch(page.document.body.textContent, /已发送一条测试通知/)
 
   runtime.rootForm.mutate = async () => false
   await app.click(switchFor(page.document, '启用通知'))
-  assert.match(page.document.querySelector('[role="alert"]').textContent, /保存失败|宿主拒绝/)
+  assert.match(lastToast(page.document), /保存失败|宿主拒绝/)
   assert.equal(switchFor(page.document, '启用通知').getAttribute('aria-checked'), 'true')
   assert.equal(runtime.formValues.enabled, true)
   assert.deepEqual(runtime.writes, [])
 
   runtime.rootForm.mutate = async () => { throw new Error('disk unavailable') }
   await changeValue(page, page.document.querySelector('.ntf-selectSound'), 'a'.repeat(32))
-  assert.match(page.document.querySelector('[role="alert"]').textContent, /disk unavailable/)
+  assert.match(lastToast(page.document), /disk unavailable/)
   assert.equal(page.document.querySelector('.ntf-selectSound').value, 'system')
   assert.equal(runtime.formValues.sound, 'system')
   assert.deepEqual(runtime.writes, [])

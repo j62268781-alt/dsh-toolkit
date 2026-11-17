@@ -25,6 +25,7 @@ import { findScopedForm } from "../../../../../client/config.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { confirmDialog } from "../../../../../client/ui/components/confirm-dialog/index.jsx";
+import { toast } from "../../../../../client/ui/toast.js";
 import { GIT_NS } from "../../locale.js";
 import {
   DEFAULT_BRANCH_PREFIX,
@@ -111,19 +112,15 @@ export function createBranchChip(ctx: any) {
     const [open, setOpen] = React.useState(false);
     const [query, setQuery] = React.useState("");
     const [busy, setBusy] = React.useState<Busy>("");
-    const [error, setError] = React.useState("");
     const [pending, setPending] = React.useState<{ name: string } | null>(null);
-    // 脏工作区确认框自己留一条失败原因：此时分支菜单已经收起，菜单里的 error 用户看不到。
-    const [switchError, setSwitchError] = React.useState("");
     const [creator, setCreator] = React.useState<CreatorState>(CLOSED_CREATOR);
     // 加载期间不显示「没有分支」：那是读失败与真空仓共用的空态，混在一起会误导。
     const [loading, setLoading] = React.useState(true);
 
-    /** 把一次成功的响应装进视图；失败时只留一行原因，读不到仓库就整块隐藏。 */
+    /** 把一次成功的响应装进视图；失败由调用方弹 toast（这里是全局栈，菜单收起也看得见）。 */
     const accept = React.useCallback((payload: any) => {
       setView(toBranchView(payload));
       setHidden(false);
-      setError("");
     }, []);
 
     const load = React.useCallback(async () => {
@@ -138,10 +135,10 @@ export function createBranchChip(ctx: any) {
           // 不是仓库（或路径失效）时按钮没有意义：直接不渲染，别在输入行里留一个死按钮。
           setHidden(true);
         } else {
-          setError(t("branchLoadFailed", { reason: reasonOf(payload) }));
+          toast.error(t("branchLoadFailed", { reason: reasonOf(payload) }));
         }
       } catch (cause: any) {
-        setError(t("branchLoadFailed", { reason: cause?.message ?? "network" }));
+        toast.error(t("branchLoadFailed", { reason: cause?.message ?? "network" }));
       } finally {
         setLoading(false);
       }
@@ -159,8 +156,6 @@ export function createBranchChip(ctx: any) {
     const submit = React.useCallback(async (name: string, create: boolean) => {
       if (cwd === "" || busy !== "") return;
       setBusy(create ? "create" : "switch");
-      setError("");
-      setSwitchError("");
       try {
         const response = await fetchJson(create ? GIT_CREATE_BRANCH_PATH : GIT_CHECKOUT_PATH, { json: { cwd, name } });
         const payload = await response.json().catch(() => null);
@@ -170,16 +165,10 @@ export function createBranchChip(ctx: any) {
           setCreator(CLOSED_CREATOR);
           setPending(null);
         } else {
-          const message = t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: reasonOf(payload) });
-          setError(message);
-          if (create) setCreator((state) => ({ ...state, error: message }));
-          else setSwitchError(message);
+          toast.error(t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: reasonOf(payload) }));
         }
       } catch (cause: any) {
-        const message = t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: cause?.message ?? "network" });
-        setError(message);
-        if (create) setCreator((state) => ({ ...state, error: message }));
-        else setSwitchError(message);
+        toast.error(t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: cause?.message ?? "network" }));
       } finally {
         setBusy("");
       }
@@ -194,7 +183,6 @@ export function createBranchChip(ctx: any) {
         return;
       }
       if (view.dirty) {
-        setSwitchError("");
         setPending({ name });
         return;
       }
@@ -323,7 +311,6 @@ export function createBranchChip(ctx: any) {
                   {t("branchNew")}
                 </MenuItemButton>
               </div>
-              {error === "" ? null : <p className="sk-git-branch__error" role="alert">{error}</p>}
             </div>
           </Menu>
         )}
@@ -331,15 +318,11 @@ export function createBranchChip(ctx: any) {
           primitives,
           title: t("branchTrigger"),
           description: t("branchDirty"),
-          children: switchError === "" ? null : <p className="sk-git-branch__error" role="alert">{switchError}</p>,
           cancelLabel: t("branchCancel"),
           confirmLabel: t("branchDirtyConfirm"),
           pending: busy !== "",
           pendingLabel: t("branchLoading"),
-          onCancel: () => {
-            setPending(null);
-            setSwitchError("");
-          },
+          onCancel: () => setPending(null),
           onConfirm: () => void submit(pending.name, false),
         })}
         {creator.open ? confirmDialog({

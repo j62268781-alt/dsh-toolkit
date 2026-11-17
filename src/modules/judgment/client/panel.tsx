@@ -19,6 +19,7 @@ import panelCss from './styles.css'
 import { PageHeader } from '../../../client/ui/components/settings-parts/index.jsx'
 import { settingsStyles } from '../../../client/styles/settings.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
+import { toast } from '../../../client/ui/toast.js'
 
 const CSS = `${settingsStyles('jdg')}\n${panelCss}`
 
@@ -34,7 +35,6 @@ interface EditorState {
 export function Panel(props) {
   const form = props.form
   const [tick, setTick] = useState(0)
-  const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   // 首次渲染就打开某个新增表单（测试用；也让将来做深链有落点）。
   const [editor, setEditor] = useState<EditorState | null>(props.initialEditor === 'connection' || props.initialEditor === 'purpose'
@@ -168,7 +168,6 @@ export function Panel(props) {
   /** 一次写入：整个字段一次原子提交。 */
   async function commit(field, next) {
     setBusy(true)
-    setError('')
     try {
       await acceptConfigWrite(() => {
         if (typeof form?.set === 'function') return form.set(field, next)
@@ -178,7 +177,7 @@ export function Panel(props) {
       setTick((count) => count + 1)
       return true
     } catch (cause) {
-      setError(String(cause?.message ?? cause))
+      toast.error(String(cause?.message ?? cause))
       return false
     } finally {
       setBusy(false)
@@ -191,13 +190,11 @@ export function Panel(props) {
   }
 
   function openCreate(kind) {
-    setError('')
     setEditor({ kind, isNew: true })
     setDraft(kind === 'connection' ? blankConnection() : blankPurpose())
   }
 
   function openEdit(kind, id) {
-    setError('')
     setEditor({ kind, id, isNew: false })
     setDraft(kind === 'connection' ? connectionDraft(id, connections[id]) : { name: id, connection: purposes[id]?.connection ?? '' })
   }
@@ -205,7 +202,7 @@ export function Panel(props) {
   async function saveConnection() {
     const message = validateConnection(draft)
     if (message !== null) {
-      setError(message)
+      toast.error(message)
       return
     }
     const key = String(draft.key ?? '').trim()
@@ -213,13 +210,13 @@ export function Panel(props) {
     if (key !== '') {
       const invalid = validateKey(key)
       if (invalid !== null) {
-        setError(invalid)
+        toast.error(invalid)
         return
       }
     }
     const name = String(draft.name).trim()
     if (editor?.isNew === true && connections[name] !== undefined) {
-      setError(`连接 "${name}" 已经存在`)
+      toast.error(`连接 "${name}" 已经存在`)
       return
     }
     const previousRef = editor?.isNew === true ? '' : String(connections[name]?.credentialRef ?? '')
@@ -231,15 +228,14 @@ export function Panel(props) {
       return
     }
     setBusy(true)
-    setError('')
     try {
       const response = await credentials.set(entry.credentialRef, key)
       if (response?.ok !== true) {
-        setError(`密钥未写入：${response?.error?.message ?? '未知原因'}`)
+        toast.error(`密钥未写入：${response?.error?.message ?? '未知原因'}`)
         return
       }
     } catch (cause) {
-      setError(`密钥未写入：${String(cause?.message ?? cause)}`)
+      toast.error(`密钥未写入：${String(cause?.message ?? cause)}`)
       return
     } finally {
       setBusy(false)
@@ -251,12 +247,12 @@ export function Panel(props) {
   async function savePurpose() {
     const message = validatePurpose(draft)
     if (message !== null) {
-      setError(message)
+      toast.error(message)
       return
     }
     const name = String(draft.name).trim()
     if (editor?.isNew === true && purposes[name] !== undefined) {
-      setError(`用途 "${name}" 已经存在`)
+      toast.error(`用途 "${name}" 已经存在`)
       return
     }
     if (await commit('purposes', { ...purposes, [name]: { connection: String(draft.connection ?? '') } })) closeEditor()
@@ -270,7 +266,7 @@ export function Panel(props) {
     if (props.primitives?.Modal === undefined) {
       const verb = kind === 'connection' ? '连接' : '用途'
       if (typeof window !== 'undefined' && !window.confirm(`删除${verb}「${label}」？\n\n${note}`)) return
-      void run().catch((cause) => setError(String(cause?.message ?? cause)))
+      void run().catch((cause) => toast.error(String(cause?.message ?? cause)))
       return
     }
     setConfirmError('')
@@ -333,7 +329,7 @@ export function Panel(props) {
     setExpanded((current) => (current === key ? '' : key))
   }
 
-  /** 换页签时的重置照面板的做法：收起展开行、关掉就地编辑器、清搜索与错误。 */
+  /** 换页签时的重置照面板的做法：收起展开行、关掉就地编辑器、清搜索。 */
   function selectTab(next) {
     if (next === tab) return
     setTab(next)
@@ -341,7 +337,6 @@ export function Panel(props) {
     setEditor(null)
     setDraft(EMPTY)
     setQuery('')
-    setError('')
   }
 
   /* ─────────────────── 连接 ─────────────────── */
@@ -720,7 +715,6 @@ export function Panel(props) {
 
       {status === 'loading' ? <p className="jdg-empty">正在读取设置…</p> : null}
       {writable ? null : <p className="jdg-note">当前设置文档不可写：这个 profile 里该插件的配置被更高层覆盖了。</p>}
-      {error !== '' ? <p className="jdg-error">{error}</p> : null}
 
       {/* 「默认连接」放在用途页：用途卡片上的「跟随默认连接」说的就是它。 */}
       {tab === 'purposes' ? (

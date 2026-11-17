@@ -405,8 +405,106 @@ window.__ModuleLoader__.load({
       });
     }
 
+    // src/client/ui/toast.css
+    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+
+    // src/client/ui/toast.ts
+    var HOST_KEY = "__dshToolkitToast__";
+    var STYLE_ID = "dsh-toolkit-toast";
+    var MAX_VISIBLE = 3;
+    var MAX_TEXT = 300;
+    var EXIT_MS = 180;
+    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
+    function resolveHost() {
+      if (typeof document === "undefined" || document.body === null) return null;
+      const scope = globalThis;
+      const existing = scope[HOST_KEY];
+      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
+      const root = document.createElement("div");
+      root.className = "sk-toast-stack";
+      root.setAttribute("aria-live", "polite");
+      document.body.appendChild(root);
+      const created = { root, entries: [] };
+      scope[HOST_KEY] = created;
+      return created;
+    }
+    function ensureStyles() {
+      try {
+        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
+      } catch {
+      }
+      installStylesheet(toast_default, STYLE_ID);
+    }
+    function normalizeHold(tone, holdMs) {
+      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
+      return holdMs;
+    }
+    function clamp(text2) {
+      return text2.length > MAX_TEXT ? `${text2.slice(0, MAX_TEXT)}…` : text2;
+    }
+    function dismiss(host, entry) {
+      if (host.entries.indexOf(entry) === -1) return;
+      host.entries = host.entries.filter((item) => item !== entry);
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      entry.el.classList.add("sk-toast--leaving");
+      const remove = () => entry.el.remove();
+      const timeout = setTimeout(remove, EXIT_MS);
+      entry.el.addEventListener("animationend", () => {
+        clearTimeout(timeout);
+        remove();
+      }, { once: true });
+    }
+    function arm(host, entry, holdMs) {
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      if (holdMs === 0) {
+        entry.timer = void 0;
+        return;
+      }
+      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
+    }
+    function showToast(text2, options = {}) {
+      const message = clamp(String(text2 ?? "").trim());
+      if (message === "") return;
+      const host = resolveHost();
+      if (host === null) return;
+      ensureStyles();
+      const tone = options.tone ?? "info";
+      const holdMs = normalizeHold(tone, options.holdMs);
+      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
+      if (duplicate !== void 0) {
+        arm(host, duplicate, holdMs);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = `sk-toast sk-toast--${tone}`;
+      el.dataset.tone = tone;
+      el.setAttribute("role", tone === "error" ? "alert" : "status");
+      if (tone !== "info") {
+        const icon = document.createElement("span");
+        icon.className = "sk-toast__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = tone === "error" ? "!" : "✓";
+        el.appendChild(icon);
+      }
+      const body = document.createElement("span");
+      body.className = "sk-toast__text";
+      body.textContent = message;
+      el.appendChild(body);
+      host.root.appendChild(el);
+      const entry = { tone, text: message, el, timer: void 0 };
+      host.entries.push(entry);
+      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
+      arm(host, entry, holdMs);
+    }
+    var toast = {
+      show: showToast,
+      info: (text2, options = {}) => showToast(text2, { ...options, tone: "info" }),
+      success: (text2, options = {}) => showToast(text2, { ...options, tone: "success" }),
+      error: (text2, options = {}) => showToast(text2, { ...options, tone: "error" })
+    };
+
     // src/modules/hooks/client/surfaces/settings/style.css
-    var style_default2 = ".sk-hooks {\n  max-width: 760px;\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  color: var(--dsw-alias-label-primary);\n}\n\n/* 页头由 src/client/ui/components/settings-parts 提供（.sk-ui-pageHead*）。 */\n\n/* 每组与上方内容（页头或上一组）都取宠物面板的 24px 间距；容器本身已有 12px gap，这里补上差额。 */\n.sk-hooks__group {\n  margin-top: 12px;\n}\n\n\n.sk-hooks__error,\n.sk-hooks__notice {\n  margin: 0;\n  padding: 8px 10px;\n  font-size: 13px;\n  line-height: 18px;\n  border-radius: var(--dsw-radius-md);\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  background-color: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-hooks__error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__notice {\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-hooks__hint {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__sectionTitle {\n  margin: 0;\n  font-size: 13px;\n  font-weight: 600;\n  line-height: 20px;\n}\n\n.sk-hooks__issues ul {\n  margin: 6px 0 0;\n  padding: 0;\n  list-style: none;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-hooks__issue {\n  font-size: 12px;\n  line-height: 18px;\n  padding: 4px 8px;\n  border-left: 2px solid var(--dsw-alias-state-warning-primary, #b7791f);\n  background-color: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-hooks__issue.is-error {\n  border-left-color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__issueCode {\n  color: var(--dsw-alias-label-tertiary);\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n}\n\n.sk-hooks__row + .sk-hooks__row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-hooks__rowHead {\n  width: 100%;\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  padding: 16px 0;\n  border: 0;\n  background: none;\n  font: inherit;\n  color: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n.sk-hooks__rowHead:focus-visible {\n  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n.sk-hooks__rowText {\n  min-width: 0;\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n.sk-hooks__rowTitle {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  font-size: 14px;\n  line-height: 20px;\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__groupTitle {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n}\n\n.sk-hooks__rowHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__rowBody {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  padding: 0 0 16px;\n}\n\n.sk-hooks__hooks {\n  margin: 0;\n  padding: 0;\n  list-style: none;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n/* 一条钩子就是一个参数面板：没有自己的标题栏，五行参数直接摊开。\n   底色不能用 `--dsw-alias-bg-layer-2`：它在浅色主题里就是纯白，面板会跟卡片糊成一片，\n   而这里要的是「卡片里的一块浅灰」。半透明灰在深色主题下同样成立（变亮一点而已）。 */\n.sk-hooks__hook {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  padding: 12px 14px;\n  border-radius: var(--dsw-radius-md, 8px);\n  background-color: rgba(128, 128, 128, 0.1);\n}\n\n/* 参数表：左边一列字段名，右边值；命令行与路径允许换行。 */\n.sk-hooks__fields {\n  margin: 0;\n  display: grid;\n  grid-template-columns: 88px minmax(0, 1fr);\n  gap: 6px 10px;\n}\n\n.sk-hooks__fields dt {\n  min-width: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__fields dd {\n  margin: 0;\n  min-width: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__code {\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 12px;\n}\n\n.sk-hooks__sourcePath {\n  color: var(--dsw-alias-label-secondary);\n  word-break: break-all;\n}\n\n.sk-hooks__badge {\n  flex: none;\n  font-size: 11px;\n  line-height: 16px;\n  padding: 0 6px;\n  border-radius: 999px;\n  color: var(--dsw-alias-label-secondary);\n  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.12));\n}\n\n.sk-hooks__badge--project {\n  color: var(--dsw-alias-state-business-primary, #3a6fd8);\n}\n\n.sk-hooks__badge--local {\n  color: var(--dsw-alias-state-warning-primary, #b7791f);\n}\n\n.sk-hooks__link {\n  margin-left: auto;\n  padding: 0;\n  border: 0;\n  background: none;\n  font: inherit;\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n.sk-hooks__link:hover {\n  color: var(--dsw-alias-label-primary);\n  text-decoration: underline;\n}\n\n/* 最近执行：与上面事件卡组同一套行结构（同一边框卡片、16px 行距、行间 0.5px 分隔线）。 */\n.sk-hooks__run {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-hooks__run + .sk-hooks__run {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-hooks__runText {\n  min-width: 0;\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n.sk-hooks__runCommand {\n  min-width: 0;\n  font-size: 14px;\n  line-height: 20px;\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n  color: var(--dsw-alias-label-primary);\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-hooks__runHint {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 6px;\n  min-width: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__runTime,\n.sk-hooks__runMs {\n  flex: none;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-hooks__runNote {\n  min-width: 0;\n  max-width: 100%;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-hooks__runNote.is-error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__runSide {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  font-size: 12px;\n}\n\n.sk-hooks__dot {\n  flex: none;\n  width: 2px;\n  height: 2px;\n  border-radius: 50%;\n  corner-shape: round;\n  background-color: currentColor;\n  opacity: 0.6;\n}\n\n.sk-hooks__decision.is-deny {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__decision.is-ask {\n  color: var(--dsw-alias-state-warning-primary, #b7791f);\n}\n.sk-hooks__btn {\n  padding: 0 10px;\n  height: 28px;\n  font: inherit;\n  font-size: 12px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background-color: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  cursor: pointer;\n}\n\n.sk-hooks__btn:disabled {\n  opacity: 0.6;\n  cursor: default;\n}\n";
+    var style_default2 = ".sk-hooks {\n  max-width: 760px;\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  color: var(--dsw-alias-label-primary);\n}\n\n/* 页头由 src/client/ui/components/settings-parts 提供（.sk-ui-pageHead*）。 */\n\n/* 每组与上方内容（页头或上一组）都取宠物面板的 24px 间距；容器本身已有 12px gap，这里补上差额。 */\n.sk-hooks__group {\n  margin-top: 12px;\n}\n\n\n.sk-hooks__notice {\n  margin: 0;\n  padding: 8px 10px;\n  font-size: 13px;\n  line-height: 18px;\n  border-radius: var(--dsw-radius-md);\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  background-color: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-hooks__notice {\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-hooks__hint {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__sectionTitle {\n  margin: 0;\n  font-size: 13px;\n  font-weight: 600;\n  line-height: 20px;\n}\n\n.sk-hooks__issues ul {\n  margin: 6px 0 0;\n  padding: 0;\n  list-style: none;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-hooks__issue {\n  font-size: 12px;\n  line-height: 18px;\n  padding: 4px 8px;\n  border-left: 2px solid var(--dsw-alias-state-warning-primary, #b7791f);\n  background-color: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-hooks__issue.is-error {\n  border-left-color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__issueCode {\n  color: var(--dsw-alias-label-tertiary);\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n}\n\n.sk-hooks__row + .sk-hooks__row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-hooks__rowHead {\n  width: 100%;\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  padding: 16px 0;\n  border: 0;\n  background: none;\n  font: inherit;\n  color: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n.sk-hooks__rowHead:focus-visible {\n  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n.sk-hooks__rowText {\n  min-width: 0;\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n.sk-hooks__rowTitle {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  font-size: 14px;\n  line-height: 20px;\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__groupTitle {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n}\n\n.sk-hooks__rowHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__rowBody {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  padding: 0 0 16px;\n}\n\n.sk-hooks__hooks {\n  margin: 0;\n  padding: 0;\n  list-style: none;\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n/* 一条钩子就是一个参数面板：没有自己的标题栏，五行参数直接摊开。\n   底色不能用 `--dsw-alias-bg-layer-2`：它在浅色主题里就是纯白，面板会跟卡片糊成一片，\n   而这里要的是「卡片里的一块浅灰」。半透明灰在深色主题下同样成立（变亮一点而已）。 */\n.sk-hooks__hook {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  padding: 12px 14px;\n  border-radius: var(--dsw-radius-md, 8px);\n  background-color: rgba(128, 128, 128, 0.1);\n}\n\n/* 参数表：左边一列字段名，右边值；命令行与路径允许换行。 */\n.sk-hooks__fields {\n  margin: 0;\n  display: grid;\n  grid-template-columns: 88px minmax(0, 1fr);\n  gap: 6px 10px;\n}\n\n.sk-hooks__fields dt {\n  min-width: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__fields dd {\n  margin: 0;\n  min-width: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-hooks__code {\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 12px;\n}\n\n.sk-hooks__sourcePath {\n  color: var(--dsw-alias-label-secondary);\n  word-break: break-all;\n}\n\n.sk-hooks__badge {\n  flex: none;\n  font-size: 11px;\n  line-height: 16px;\n  padding: 0 6px;\n  border-radius: 999px;\n  color: var(--dsw-alias-label-secondary);\n  background-color: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.12));\n}\n\n.sk-hooks__badge--project {\n  color: var(--dsw-alias-state-business-primary, #3a6fd8);\n}\n\n.sk-hooks__badge--local {\n  color: var(--dsw-alias-state-warning-primary, #b7791f);\n}\n\n.sk-hooks__link {\n  margin-left: auto;\n  padding: 0;\n  border: 0;\n  background: none;\n  font: inherit;\n  font-size: 12px;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n.sk-hooks__link:hover {\n  color: var(--dsw-alias-label-primary);\n  text-decoration: underline;\n}\n\n/* 最近执行：与上面事件卡组同一套行结构（同一边框卡片、16px 行距、行间 0.5px 分隔线）。 */\n.sk-hooks__run {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-hooks__run + .sk-hooks__run {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-hooks__runText {\n  min-width: 0;\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n.sk-hooks__runCommand {\n  min-width: 0;\n  font-size: 14px;\n  line-height: 20px;\n  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);\n  color: var(--dsw-alias-label-primary);\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-hooks__runHint {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 6px;\n  min-width: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-hooks__runTime,\n.sk-hooks__runMs {\n  flex: none;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-hooks__runNote {\n  min-width: 0;\n  max-width: 100%;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-hooks__runNote.is-error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__runSide {\n  flex: none;\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  font-size: 12px;\n}\n\n.sk-hooks__dot {\n  flex: none;\n  width: 2px;\n  height: 2px;\n  border-radius: 50%;\n  corner-shape: round;\n  background-color: currentColor;\n  opacity: 0.6;\n}\n\n.sk-hooks__decision.is-deny {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-hooks__decision.is-ask {\n  color: var(--dsw-alias-state-warning-primary, #b7791f);\n}\n.sk-hooks__btn {\n  padding: 0 10px;\n  height: 28px;\n  font: inherit;\n  font-size: 12px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background-color: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  cursor: pointer;\n}\n\n.sk-hooks__btn:disabled {\n  opacity: 0.6;\n  cursor: default;\n}\n";
 
     // src/host/paths.ts
     var PLUGIN_API_ROOT = "/api/plugins/toolkit";
@@ -549,24 +647,28 @@ window.__ModuleLoader__.load({
         const t = ctx.locale.bind(HOOKS_NS);
         const [snapshot, setSnapshot] = import_react2.default.useState(() => readSnapshot({}));
         const [loaded, setLoaded] = import_react2.default.useState(false);
-        const [error, setError] = import_react2.default.useState("");
         const [busy, setBusy] = import_react2.default.useState(false);
         const [expanded, setExpanded] = import_react2.default.useState({});
         const [showAllHistory, setShowAllHistory] = import_react2.default.useState(false);
+        const everLoaded = import_react2.default.useRef(false);
+        const report = import_react2.default.useCallback((reason, announce) => {
+          if (!announce && everLoaded.current) return;
+          toast.error(t("error", { reason: String(reason?.message ?? reason) }));
+        }, []);
         const load = import_react2.default.useCallback(async (announce) => {
           if (announce) setBusy(true);
           try {
             const response = await fetchJson(HOOKS_SNAPSHOT_PATH);
             const body = await response.json();
             setSnapshot(readSnapshot(body));
-            setError("");
+            everLoaded.current = true;
           } catch (reason) {
-            setError(String(reason?.message ?? reason));
+            report(reason, announce);
           } finally {
             setLoaded(true);
             if (announce) setBusy(false);
           }
-        }, []);
+        }, [report]);
         import_react2.default.useEffect(() => {
           void load(false);
         }, [load]);
@@ -583,13 +685,13 @@ window.__ModuleLoader__.load({
         }, [load]);
         const refresh = async () => {
           setBusy(true);
-          setError("");
           try {
             await fetchJson(HOOKS_REFRESH_PATH, { json: {} });
             const response = await fetchJson(HOOKS_SNAPSHOT_PATH);
             setSnapshot(readSnapshot(await response.json()));
+            everLoaded.current = true;
           } catch (reason) {
-            setError(String(reason?.message ?? reason));
+            report(reason, true);
           } finally {
             setBusy(false);
           }
@@ -633,7 +735,7 @@ window.__ModuleLoader__.load({
           const eventLabel = HOOK_EVENTS.find((event) => event.id === run.event)?.label ?? run.event;
           return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__run", key: run.id }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__runText" }, /* @__PURE__ */ __dshReact.createElement("code", { className: "sk-hooks__runCommand", title: run.command }, run.command), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__runHint" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__runTime" }, run.at > 0 ? timeFormat.format(new Date(run.at)) : "—"), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__dot", "aria-hidden": "true" }), /* @__PURE__ */ __dshReact.createElement("span", null, eventLabel), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__dot", "aria-hidden": "true" }), /* @__PURE__ */ __dshReact.createElement("span", { className: `sk-hooks__badge sk-hooks__badge--${run.source}` }, sourceLabel(run.source)), problem.text === "" ? null : /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__dot", "aria-hidden": "true" }), /* @__PURE__ */ __dshReact.createElement("span", { className: `sk-hooks__runNote is-${problem.tone}`, title: problem.text }, problem.text)))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__runSide" }, /* @__PURE__ */ __dshReact.createElement("span", { className: `sk-hooks__decision is-${run.decision}` }, t(decisionKeys[run.decision] ?? "decisionAllow")), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__runMs" }, formatDuration(run.durationMs))));
         };
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks" }, /* @__PURE__ */ __dshReact.createElement("style", null, CSS), /* @__PURE__ */ __dshReact.createElement(PageHeader, { title: t("title"), subtitle: t("subtitle") }), error !== "" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__error" }, t("error", { reason: error })) : null, loaded && !snapshot.enabled ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__notice" }, t("disabled")) : null, snapshot.issues.length > 0 ? /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__issues" }, /* @__PURE__ */ __dshReact.createElement("h3", { className: "sk-hooks__sectionTitle" }, t("issuesTitle"), " · ", snapshot.issues.length), /* @__PURE__ */ __dshReact.createElement("ul", null, snapshot.issues.map((issue) => /* @__PURE__ */ __dshReact.createElement("li", { className: `sk-hooks__issue is-${issue.severity}`, key: issue.id }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__issueCode" }, issue.event ? `${issue.event} · ` : ""), issueText(issue.code, issue.message))))) : null, /* @__PURE__ */ __dshReact.createElement(
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks" }, /* @__PURE__ */ __dshReact.createElement("style", null, CSS), /* @__PURE__ */ __dshReact.createElement(PageHeader, { title: t("title"), subtitle: t("subtitle") }), loaded && !snapshot.enabled ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-hooks__notice" }, t("disabled")) : null, snapshot.issues.length > 0 ? /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-hooks__issues" }, /* @__PURE__ */ __dshReact.createElement("h3", { className: "sk-hooks__sectionTitle" }, t("issuesTitle"), " · ", snapshot.issues.length), /* @__PURE__ */ __dshReact.createElement("ul", null, snapshot.issues.map((issue) => /* @__PURE__ */ __dshReact.createElement("li", { className: `sk-hooks__issue is-${issue.severity}`, key: issue.id }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-hooks__issueCode" }, issue.event ? `${issue.event} · ` : ""), issueText(issue.code, issue.message))))) : null, /* @__PURE__ */ __dshReact.createElement(
           CardSection,
           {
             className: "sk-hooks__group",
