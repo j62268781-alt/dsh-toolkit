@@ -41,7 +41,7 @@ test('install：只占 composer 左侧空位，descriptor 带 id/order/locale', 
   assert.equal(typeof dispose, 'function')
 })
 
-test('installHero：新会话顶栏 list 槽，排在宿主 worktree 控件右侧', () => {
+test('installHero：新会话顶栏 list 槽，占住宿主只读分支标签的位置', () => {
   const { ctx, seats } = fakeCtx()
   installHero(ctx)
 
@@ -49,8 +49,9 @@ test('installHero：新会话顶栏 list 槽，排在宿主 worktree 控件右�
   const [{ name, entry }] = seats
   assert.equal(name, 'conversation.hero.options')
   assert.equal(entry.descriptor.order, HERO_ORDER)
-  // forge 的 `forge-panel.worktree` 没有写 order（缺省 0），排到它右边才能紧挨着。
-  assert.ok(entry.descriptor.order > 0)
+  // forge 的 `forge-panel.worktree` 没写 order（缺省 0）；我们排到它前面，用同位置的
+  // 可点按钮接管那颗只读标签（CSS 负责把宿主的隐藏掉）。
+  assert.ok(entry.descriptor.order < 0)
   assert.deepEqual(entry.descriptor.inject(), { placement: 'hero' })
 })
 
@@ -67,6 +68,9 @@ test('模块自述：NAME 与全局注入的样式文本', () => {
   assert.equal(NAME, 'branch-chip')
   assert.match(CSS, /sk-git-branch__trigger/)
   assert.match(CSS, /corner-shape: round/)
+  // 顶栏接管宿主标签 + 长分支名要能在窄屏里缩（不能写死宽度）。
+  assert.match(CSS, /data-forge-current-branch/)
+  assert.match(CSS, /max-width: min\(220px, 38vw\)/)
 })
 
 test('createBranchChip 在缺 configForms 时也能装出组件', () => {

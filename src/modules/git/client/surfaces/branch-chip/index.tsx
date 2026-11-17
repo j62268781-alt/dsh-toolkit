@@ -6,9 +6,10 @@
  * - `conversation.hero.options`：新会话页的顶栏（`[项目] [标准模式] … [基于 main] [新建工作树]`）。
  *   宿主把这一行做成了右对齐的 list 槽，是那排控件旁边唯一能增量挂载的位置 ——
  *   `hero.workspace` / `hero.agentPreset` 都是 single，占位就等于替换宿主的控件。
- *   forge 的 worktree toggle 用默认 order 0，这里取 10 排在它右侧。
- *   那颗 toggle 在没勾选时显示的是**只读**的当前分支标签，所以我们这颗按钮在顶栏里
- *   前面带一个「切换」，免得两个一样的 main 并排时没人看得出哪个能点。
+ *   那颗 toggle 在没勾选「新建工作树」时显示的是**只读**的当前分支标签（`<Tooltip openOnClick>`，
+ *   没有 onClick），所以在顶栏里我们不另起一颗按钮：order 取 -1 排到它前面，同位置接管
+ *   那颗标签（CSS 里把宿主的藏起来，见 style.css 的 hero 段），点它就是开分支菜单。
+ *   勾上「新建工作树」后宿主换成「基于 X ⌄」的基线选择器，那时按宿主默认走，我们让位。
  *
  * 两处不能同时显示：新会话时顶栏那行本来就有 git 信息，再来一个底栏按钮就是「2 个 git」。
  * 互斥判据用宿主自己的口径 —— session 快照的 `blank`（`summaryBlank`）。
@@ -42,8 +43,8 @@ export const CSS = panelCss;
 /** 优先级：排在其它 composer 控件之后，不至于把宿主的左边距挤掉。 */
 export const ORDER = 100;
 
-/** 新会话顶栏：宿主 worktree toggle 的 order 缺省是 0，这里排到它右侧。 */
-export const HERO_ORDER = 10;
+/** 新会话顶栏：宿主 worktree toggle 的 order 缺省是 0，我们要占住它那颗只读分支标签的位置，所以排到它前面。 */
+export const HERO_ORDER = -1;
 
 type Busy = "" | "switch" | "create";
 
@@ -213,7 +214,7 @@ export function createBranchChip(ctx: any) {
     const trigger = (
       <button
         type="button"
-        className="sk-git-branch__trigger"
+        className={hero ? "sk-git-branch__trigger sk-git-branch__trigger--hero" : "sk-git-branch__trigger"}
         aria-haspopup={Menu === undefined ? undefined : "menu"}
         aria-expanded={Menu === undefined ? undefined : open}
         title={t("branchTrigger")}
@@ -226,7 +227,6 @@ export function createBranchChip(ctx: any) {
         }}
       >
         {BranchIcon === undefined ? null : <BranchIcon size={14} />}
-        {hero ? <span className="sk-git-branch__lead">{t("branchSwitchLead")}</span> : null}
         <span className="sk-git-branch__name" data-detached={view.detached || view.branch === "" ? "true" : undefined}>
           {label}
         </span>
