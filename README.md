@@ -110,7 +110,7 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 
 真正执行 `git` 的是 agent 自己，所以这三项配了两条互补的落地方式：
 
-- **两个工具**：`git_push` 按「始终强制推送」自动加 `--force-with-lease`（本分支还没有上游时补 `-u`），`git_branch_create` 自动拼分支前缀并处理重名。参数由宿主拼，agent 只负责调用。
+- **六个工具**：`git_push` 按「始终强制推送」自动加 `--force-with-lease`（本分支还没有上游时补 `-u`，推送前先体检 `origin`、游离 HEAD 与落后的上游），`git_branch_create` 自动拼分支前缀并处理重名；另外 `git_commit`（空暂存区、空说明直接拦下）、`git_sync`（`fetch` / `pull`，默认变基，脏工作区与没有上游各给下一步）、`git_branch_delete`（默认只删已合并的，远端分支仍在会说明）、`git_branch_rename`（改名不动远端）。参数由宿主拼，agent 只负责调用。
 - **一道守卫**：开关打开时，agent 若在 shell 里直接敲裸 `git push --force` / `-f`，调用会被拒绝，并把正确写法写进原因让它重试。
 - **一段提示词**：三项设置仍会以「Git conventions」注入系统提示词，覆盖提交说明这类工具说不清的习惯，也是工具没被调用时的兜底。
 
