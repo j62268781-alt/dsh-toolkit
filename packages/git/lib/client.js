@@ -884,6 +884,8 @@ window.__ModuleLoader__.load({
           void submit(name, false);
         }, [busy, submit, view.branch, view.dirty]);
         function openCreator() {
+          setOpen(false);
+          setQuery("");
           setCreator({ open: true, draft: readPrefix(), error: "" });
         }
         const draft = creator.draft;

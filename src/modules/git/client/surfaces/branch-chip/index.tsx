@@ -202,6 +202,9 @@ export function createBranchChip(ctx: any) {
     }, [busy, submit, view.branch, view.dirty]);
 
     function openCreator() {
+      // 新建分支是独立的确认弹窗，弹层留着会跟它叠在一起、还会盖住遮罩上的点击区域。
+      setOpen(false);
+      setQuery("");
       setCreator({ open: true, draft: readPrefix(), error: "" });
     }
 
