@@ -25,6 +25,7 @@ function fakeGit(overrides = {}) {
     if (key === 'rev-parse --abbrev-ref HEAD') return { code: 0, stdout: 'main\n', stderr: '' }
     if (key === 'status --porcelain --untracked-files=no') return { code: 0, stdout: '', stderr: '' }
     if (args[0] === 'for-each-ref') return { code: 0, stdout: 'main\n', stderr: '' }
+    if (key === 'remote') return { code: 0, stdout: 'origin\n', stderr: '' }
     if (key === 'rev-parse --abbrev-ref --symbolic-full-name @{upstream}') {
       return { code: 128, stdout: '', stderr: 'fatal: no upstream configured' }
     }
@@ -122,6 +123,54 @@ test('git_push：失败时带上真实命令与「远端有你没有的提交」
       return true
     },
   )
+})
+
+test('git_push：没有 origin 时先说是远端的问题，不是直接开推', async () => {
+  const none = build({ remote: { code: 0, stdout: '', stderr: '' } })
+  await assert.rejects(() => none.push.execute({}, EXEC), /还没有配置任何远端/)
+  assert.equal(none.calls.some((call) => call.args[0] === 'push'), false, '没有远端就不该跑 push')
+
+  const other = build({ remote: { code: 0, stdout: 'upstream\n', stderr: '' } })
+  await assert.rejects(() => other.push.execute({}, EXEC), /没有名为 origin 的远端（现有：upstream）/)
+})
+
+test('git_push：落后上游时不开强推就直接拦下，并把两条路写清楚', async () => {
+  const behind = build({
+    'rev-parse --abbrev-ref --symbolic-full-name @{upstream}': { code: 0, stdout: 'origin/main\n', stderr: '' },
+    'rev-list --left-right --count @{upstream}...HEAD': { code: 0, stdout: '3\t1\n', stderr: '' },
+  })
+  await assert.rejects(
+    () => behind.push.execute({}, EXEC),
+    (error) => {
+      assert.match(error.message, /上游比本地多 3 个提交/)
+      assert.match(error.message, /git pull --rebase/)
+      assert.match(error.message, /始终强制推送/)
+      return true
+    },
+  )
+  assert.equal(behind.calls.some((call) => call.args[0] === 'push'), false)
+
+  const forced = build({
+    'rev-parse --abbrev-ref --symbolic-full-name @{upstream}': { code: 0, stdout: 'origin/main\n', stderr: '' },
+    'rev-list --left-right --count @{upstream}...HEAD': { code: 0, stdout: '3\t1\n', stderr: '' },
+  }, { alwaysForcePush: true })
+  const output = await forced.push.execute({}, EXEC)
+  assert.deepEqual(forced.argvOf('push --force-with-lease origin HEAD'), ['push', '--force-with-lease', 'origin', 'HEAD'])
+  assert.match(output, /覆盖了远端历史/)
+})
+
+test('git_push：成功后把「设了上游」「领先几个提交」讲出来', async () => {
+  const auto = build()
+  const created = await auto.push.execute({}, EXEC)
+  assert.match(created, /已用 -u 把 origin\/main 设为上游/)
+
+  const tracked = build({
+    'rev-parse --abbrev-ref --symbolic-full-name @{upstream}': { code: 0, stdout: 'origin/main\n', stderr: '' },
+    'rev-list --left-right --count @{upstream}...HEAD': { code: 0, stdout: '0\t2\n', stderr: '' },
+  })
+  const ahead = await tracked.push.execute({}, EXEC)
+  assert.match(ahead, /领先上游 2 个提交/)
+  assert.doesNotMatch(ahead, /-u/, '已有上游时不该再提 -u')
 })
 
 test('git_branch_create：前缀自动拼上，用户自己写全了就不重复', async () => {
