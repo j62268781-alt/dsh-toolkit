@@ -1,6 +1,6 @@
 # dsh-toolkit
 
-**给 DSH 配上一套工具箱——外观、自动化、设备、通知和桌宠，一次安装，十二个模块分别开关。**
+**给 DSH 配上一套工具箱——外观、设备、通知和桌宠，一次安装，十一个模块分别开关。**
 
 ---
 
@@ -8,7 +8,6 @@ DSH 插件集合：把常用的界面定制与工具管理放进 **设置面板*
 
 - 🎨 **启动动画与外观**：三款启动动画，原始 DSH / Codex / 大海蓝鲸 / 夕阳红 / 赛博朋克2077 五套主题，浅色、深色与跟随系统分别选择；设置页可直接预览。
 - 🗂️ **归档管理**：搜索已归档会话，按工作区查看，恢复或永久删除。
-- 🌐 **浏览器自动化**：浏览器工具、环境自检与可选的自动决策，复用 `agent-browser` 和 Chrome / Chromium。
 - 🧠 **决策服务**：为自动化提供结构化模型判断，集中配置连接与额度。
 - 📱 **移动设备**：设备发现、实时画面和控制面板，在 DSH 右侧栏查看与操作手机。
 - 🔌 **Skills & MCP**：管理技能文件与 MCP 服务，查看连接状态、导入配置，并按服务器筛选工具。
@@ -32,7 +31,7 @@ DSH 插件集合：把常用的界面定制与工具管理放进 **设置面板*
 
 ## 安装
 
-当前支持从本地仓库构建后安装。以下步骤不要求将十二个模块分别安装，也不依赖尚未发布的 npm 包。
+当前支持从本地仓库构建后安装。以下步骤不要求将十一个模块分别安装，也不依赖尚未发布的 npm 包。
 
 ### 从源码准备
 
@@ -45,7 +44,7 @@ pnpm install
 pnpm build
 ```
 
-构建会为聚合包的十二个模块生成 Host、Client 和运行资源。请保留整个仓库目录；本地安装会使用这里的工作区依赖。
+构建会为聚合包的十一个模块生成 Host、Client 和运行资源。请保留整个仓库目录；本地安装会使用这里的工作区依赖。
 
 ### DSH 桌面端
 
@@ -53,7 +52,7 @@ pnpm build
 
 > 请把 `/absolute/path/to/dsh-toolkit` 安装为当前 DSH profile 的插件包，并启用聚合包。
 
-安装完成后，在插件管理中可以看到 **DSH 工具箱**及十二个组件的独立开关。只开启需要的功能即可；桌面宠物与灵动岛还需要在自己的设置页中分别开启，初始均关闭。
+安装完成后，在插件管理中可以看到 **DSH 工具箱**及十一个组件的独立开关。只开启需要的功能即可；桌面宠物与灵动岛还需要在自己的设置页中分别开启，初始均关闭。
 
 Host 代码更新后需重启 DSH，再刷新页面加载 Client。桌面端 profile 由桌面应用管理，不使用 `dsh plugin --profile desktop` 命令修改。
 
@@ -69,9 +68,9 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 
 只需要单个模块时，也可将已构建的 `packages/<module>` 目录作为独立 bundle 安装，包名见下表。
 
-### 已经安装了十二个独立模块？
+### 已经安装了十一个独立模块？
 
-先备份目标 profile 的清单、锁文件和配置，再让 DSH 助手完成切换：**安装暂不启用的聚合包 → 移除十二个独立 bundle 安装项 → 启用聚合包**。聚合包保留相同的模块条目 ID，已有配置与组件开关继续生效。这条本地切换路径已经验证。
+先备份目标 profile 的清单、锁文件和配置，再让 DSH 助手完成切换：**安装暂不启用的聚合包 → 移除十一个独立 bundle 安装项 → 启用聚合包**。聚合包保留相同的模块条目 ID，已有配置与组件开关继续生效。这条本地切换路径已经验证。
 
 避免同时启用聚合包和同名模块的独立 bundle，以免重复声明。若升级来源是更早的 `shell-kit` 单体配置，请使用下文的[旧配置迁移](#旧配置迁移)。
 
@@ -84,7 +83,6 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 | 启动画面 | 设置 → 启动动画 | `dsh-toolkit-boot` |
 | 桌面主题 | 设置 → 外观 | `dsh-toolkit-theme` |
 | 归档管理 | 设置 → 已归档的会话 | `dsh-toolkit-archived` |
-| 浏览器自动化 | 设置 → 浏览器 | `dsh-toolkit-browser` |
 | 结构化判断 | 设置 → 决策 | `dsh-toolkit-judgment` |
 | 移动设备 | 设置 → 移动设备；右侧栏实时画面 | `dsh-toolkit-mobile` |
 | Skills / MCP | 设置 → Skills & MCP | `dsh-toolkit-skills-mcp` |
@@ -99,7 +97,7 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 - **Codex** 有自己的工作区布局；其他四款基于 DSH 原始布局。切换主题会同步回收上一款主题的样式。
 - **Codex 的标题带与工作区外壳要有一列属于自己的侧栏**：只按窗口宽度判断，**宽度 ≥ 1024px 才启用** 52px 轨道、50px 标题带和折叠钮。1024px 正是宿主自己收窄并自动折叠侧栏的断点（`SIDEBAR_AUTO_COLLAPSE`），再窄就交回宿主——800~1023px 是宿主的 56px 图标轨（macOS 上收成全隐藏），768px 以下更直接变成抽屉式侧栏，这两种状态下都没有一列可画的侧栏，主题在那边只保留圆角与配色。桌面窗口和浏览器标签同一套判断（桌面窗口拖窄到 1024px 以下同样回退），拖动窗口跨过 1024px 会实时切换，不需要刷新。两种场景都由 `data-sk-codex-shell` 门禁控制，这也是 Codex 的结构样式必须挂在门禁下的原因：无条件生效时宿主会把默认按钮挤偏。
 - **轨道上的固定项**：rc.2 起宿主允许把面板固定在侧栏，并在条目里放一个 28px 的「取消固定」按钮；52px 轨道容不下它，会把图标挤偏。轨道里隐藏该按钮，改成悬停显示深色提示「双击取消固定」，双击图标即取消固定，取消后该项从轨道消失、回到「更多」里（与宿主原版一致）。单击仍然打开面板，只是要先等一个双击节拍（约 300ms）才能分清单击和双击，所以这类条目点开时会比别的图标略慢一拍。只有宿主确实提供取消固定的条目才有这套行为，普通面板保持原生悬停。
-- **设置导航图标**：九个工具箱设置页的侧边栏图标由各自模块提供，一个模块一个图标（启动=火箭、浏览器=地球、判断=天平、通知=铃铛、桌宠=爪印、外观=调色盘、归档=收纳盒、钩子=钩子、Git=分支），并直接覆盖原生齿轮。图标用 `currentColor` 绘制，跟随侧边栏该行的文字色与高亮，不需要按主题各配一套；想换形状就改对应模块客户端里注册时的那一个图标名。
+- **设置导航图标**：八个工具箱设置页的侧边栏图标由各自模块提供，一个模块一个图标（启动=火箭、判断=天平、通知=铃铛、桌宠=爪印、外观=调色盘、归档=收纳盒、钩子=钩子、Git=分支），并直接覆盖原生齿轮。图标用 `currentColor` 绘制，跟随侧边栏该行的文字色与高亮，不需要按主题各配一套；想换形状就改对应模块客户端里注册时的那一个图标名。
 - **大海蓝鲸、夕阳红与赛博朋克2077** 的动态场景只出现在主工作区的空白新会话中。夕阳红的黄昏光影跟随本地时间变化，已有会话保持阅读界面。
 
 ### Git 约定
@@ -142,22 +140,22 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 
 ## 工作原理
 
-一个仓库提供一个聚合 bundle 和十二个模块包：
+一个仓库提供一个聚合 bundle 和十一个模块包：
 
 ```text
 src/modules/<module>/   模块源码
 src/host/               公共 Host 逻辑
 src/client/             公共 Client 逻辑与样式
 packages/<module>/      各模块包的入口、清单与构建产物
-cordis.patch.yml        聚合包声明十二个模块条目 + 一个外部配对 Host 条目
+cordis.patch.yml        聚合包声明十一个模块条目 + 一个外部配对 Host 条目
 server/                 手机配对的配对服务器（可独立部署，非 DSH 插件）
 ```
 
 **Host** 在 Harness 进程中运行，负责工具、配置与鉴权路由；**Client** 运行在 DSH 页面里，注册设置页、侧栏和交互。组件开关同时管理该模块的 Host 与 Client。
 
-根目录的 `pnpm build` 会把模块所需的 Host 依赖、Client bundle 和资源生成到各包的 `lib` 中。源码集中维护，无需拆成十二个 Git 仓库；不要直接编辑这些构建产物。
+根目录的 `pnpm build` 会把模块所需的 Host 依赖、Client bundle 和资源生成到各包的 `lib` 中。源码集中维护，无需拆成十一个 Git 仓库；不要直接编辑这些构建产物。
 
-**依赖由用途区分**：DSH 核心包以可选 peer 声明，由宿主提供；Skills/MCP 使用运行依赖 `yaml`，桌宠使用 `@electron/get` 与 `extract-zip` 准备 Electron。浏览器与设备控制使用外部 CLI，安装工具箱不会替你安装所有外部工具。
+**依赖由用途区分**：DSH 核心包以可选 peer 声明，由宿主提供；Skills/MCP 使用运行依赖 `yaml`，桌宠使用 `@electron/get` 与 `extract-zip` 准备 Electron。设备控制使用外部 CLI（`mobilecli`），安装工具箱不会替你安装所有外部工具。
 
 **手机配对是「桌面插件 + 配对服务器」两段式**：桌面端的 `remote` 模块只画二维码和确认界面，
 配对会话由外部插件 `ds-harness-remote` 的 host 端创建（聚合包已插入并默认启用），认证走它暴露的
@@ -176,7 +174,6 @@ server/                 手机配对的配对服务器（可独立部署，非 D
 
 | 功能 | 需要的环境 / 当前边界 |
 | --- | --- |
-| 浏览器 | 需要 `agent-browser` CLI 和 Chrome / Chromium；环境自检可用于排查缺失项。 |
 | 移动设备 | 需要 `mobilecli`；Android 还需要 `adb`，iOS 需要设备代理与设备端授权。 |
 | Skills / MCP | 需要目标运行时、技能目录权限及宿主 Loader / MCP 服务；第三方服务器的连接和授权仍受其自身条件影响。 |
 | 系统通知 | 需要系统授权和连接着的 DSH 页面；操作系统可能限制通知弹出、声音和点击后的窗口激活。 |
@@ -199,7 +196,7 @@ pnpm verify
 
 | 命令 | 用途 |
 | --- | --- |
-| `pnpm build` | 构建 Host、Client 与十二个模块包 |
+| `pnpm build` | 构建 Host、Client 与十一个模块包 |
 | `pnpm typecheck` | TypeScript 检查 |
 | `pnpm test` | 运行测试 |
 | `pnpm check` | 检查模块与包的契约 |
@@ -222,9 +219,9 @@ pnpm migrate:config /absolute/path/to/profile/cordis.patch.yml
 pnpm migrate:config /absolute/path/to/profile/cordis.patch.yml --write
 ```
 
-命令不会自动选择当前 profile。写入前会创建带时间戳和 UUID 的备份；已有模块配置优先，旧总开关状态会分别保留到十二个模块。冲突别名或不安全的 YAML 结构会拒绝自动迁移。
+命令不会自动选择当前 profile。写入前会创建带时间戳和 UUID 的备份；已有模块配置优先，旧总开关状态会分别保留到十一个模块。冲突别名或不安全的 YAML 结构会拒绝自动迁移。
 
-旧 root 覆盖会保留并设为禁用；由于新 bundle 不再插入旧 `shell-kit` 行，宿主可能对这条遗留覆盖提示 `entry not found`，不影响新模块行。从十二个独立 bundle 切换到聚合安装不需要运行此迁移。
+旧 root 覆盖会保留并设为禁用；由于新 bundle 不再插入旧 `shell-kit` 行，宿主可能对这条遗留覆盖提示 `entry not found`，不影响新模块行。从十一个独立 bundle 切换到聚合安装不需要运行此迁移。
 
 ## 更多文档
 
@@ -234,7 +231,7 @@ pnpm migrate:config /absolute/path/to/profile/cordis.patch.yml --write
 | [通知模块说明](docs/notification/README.md) | 提醒行为、权限、声音与接口契约 |
 | [桌面宠物说明](docs/pet/README.md) | 配置字段、辅助进程、桌面环境与素材许可 |
 | [自部署配对服务器](server/README.zh.md) | 环境变量、Docker 部署、配对端点与兼容性说明 |
-| [模块包目录](packages/) | 十二个独立包的清单与入口 |
+| [模块包目录](packages/) | 十一个独立包的清单与入口 |
 | [Judgment 类型契约](src/modules/judgment/host/contract/index.ts) | `dsh-toolkit-judgment/contract` 导出的类型与服务契约 |
 
 ## License
