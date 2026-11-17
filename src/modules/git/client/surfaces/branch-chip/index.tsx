@@ -227,7 +227,12 @@ export function createBranchChip(ctx: any) {
           if (next) void load();
         }}
       >
-        {BranchIcon === undefined ? null : <BranchIcon size={hero ? 16 : 14} />}
+        {/* 图标必须包一层 flex:none：标签被 max-width 夹住时，裸 <svg> 会被压扁成 5×14。 */}
+        {BranchIcon === undefined ? null : (
+          <span className="sk-git-branch__icon" aria-hidden={true}>
+            <BranchIcon size={hero ? 16 : 14} />
+          </span>
+        )}
         <span className="sk-git-branch__name" data-detached={view.detached || view.branch === "" ? "true" : undefined}>
           {label}
         </span>

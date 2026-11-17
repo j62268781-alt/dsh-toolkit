@@ -67,6 +67,12 @@
   transform: rotate(180deg);
 }
 
+/* 图标与箭头都不参与压缩：宿主被 max-width 夹住时只该截断分支名，不能把图标挤成细条。 */
+.sk-git-branch__icon {
+  display: inline-flex;
+  flex: none;
+}
+
 .sk-git-branch__name {
   min-width: 0;
   overflow: hidden;
