@@ -1,12 +1,17 @@
 /*
- * 分支按钮挂在 composer 的 `conversation.input.left` 里，所以尺寸要跟宿主的工具行控件
- * 对齐：高度 24–26px、字号 12–13px、圆角 8px，垂直方向不留额外外边距 —— composer 的
- * 行高由宿主决定，这里多一个像素都会把整行撑高。
+ * 分支按钮挂在 composer 的 `conversation.input.left` 里，尺寸必须跟宿主的工具行控件逐像素对齐
+ * （28px 高、radius-sm、13px/500），否则要么把整行撑高、要么比旁边的权限 / 模型按钮矮一截。
  *
  * 弹层被 portal 到 document.body（composer 贴底容器会裁切），因此这份样式必须全局注入，
  * 不能跟着设置面板的 <style> 走。选择器全部带 `.sk-git-branch` 前缀，避免误伤宿主。
  */
 
+/*
+ * 尺寸 / 圆角 / 悬停全部照抄宿主，两处各对齐各的邻居：
+ * - 输入行对齐权限按钮（`.SJRB_q_trigger`：28px、radius-sm、padding 0 4px 0 8px、13px/500）；
+ * - 顶栏对齐工作区 / 标准模式那两颗（28px、padding 0 8px、label-primary 色，见下面的 --hero 段）。
+ * `--dsw-*` 都带 px 兜底：宿主换皮时至少不会退化成不可见。
+ */
 .sk-git-branch__trigger {
   display: inline-flex;
   align-items: center;
@@ -16,32 +21,50 @@
   flex: 0 1 auto;
   min-width: 0;
   max-width: min(220px, 38vw);
-  height: 24px;
-  padding: 0 6px;
-  border: 0.5px solid transparent;
-  border-radius: 8px;
-  corner-shape: round;
+  height: 28px;
+  padding: 0 4px 0 8px;
+  border: none;
+  border-radius: var(--dsw-radius-sm, 6px);
   background: transparent;
   color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
   font: inherit;
-  font-size: 12px;
-  line-height: 1;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
   cursor: pointer;
 }
 
-.sk-git-branch__trigger:hover {
-  background: rgba(128, 128, 128, 0.12);
-  color: var(--dsw-alias-label-primary);
+@media (hover: hover) {
+  .sk-git-branch__trigger:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
+    color: var(--dsw-alias-label-primary, inherit);
+  }
 }
 
 .sk-git-branch__trigger[aria-expanded="true"] {
-  background: rgba(128, 128, 128, 0.16);
-  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
+}
+
+.sk-git-branch__trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary, rgba(80, 140, 255, 0.6)));
 }
 
 .sk-git-branch__trigger:disabled {
+  color: var(--dsw-alias-label-dimmed, rgba(128, 128, 128, 0.6));
   cursor: default;
-  opacity: 0.6;
+}
+
+/* 箭头照权限按钮：caption 色、120ms 过渡，展开时转 180°（`--open` 由组件按 open 状态挂）。 */
+.sk-git-branch__chevron {
+  display: inline-flex;
+  flex: none;
+  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));
+  transition: transform 0.12s;
+}
+
+.sk-git-branch__chevron--open {
+  transform: rotate(180deg);
 }
 
 .sk-git-branch__name {
@@ -71,9 +94,12 @@
   display: none;
 }
 
-/* 顶栏右半边还要放「新建工作树」勾选框，留给分支名的宽度比输入行更紧。 */
+/* 顶栏右半边还要放「新建工作树」勾选框，留给分支名的宽度比输入行更紧；
+   左右邻居是「工作区」和「标准模式」两颗按钮，内边距与文字颜色跟它们对齐（它们用 label-primary）。 */
 .sk-git-branch__trigger--hero {
   max-width: min(200px, 30vw);
+  padding: 0 8px;
+  color: var(--dsw-alias-label-primary, inherit);
 }
 
 /* detached HEAD 没有名字可言：给它斜体，省得跟真分支名混起来。 */

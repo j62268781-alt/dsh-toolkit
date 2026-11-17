@@ -71,6 +71,7 @@ export function createBranchChip(ctx: any) {
   const Input = primitives.Input;
   const MenuItemButton = primitives.MenuItemButton;
   const BranchIcon = primitives.IconBranchOutlineRegular;
+  const ChevronIcon = primitives.IconChevronDownOutlineRegular;
   const SearchIcon = primitives.IconSearchOutlineRegular;
   const PlusIcon = primitives.IconPlusOutlineRegular;
   const CheckIcon = primitives.IconCheckOutlineRegular;
@@ -226,10 +227,19 @@ export function createBranchChip(ctx: any) {
           if (next) void load();
         }}
       >
-        {BranchIcon === undefined ? null : <BranchIcon size={14} />}
+        {BranchIcon === undefined ? null : <BranchIcon size={hero ? 16 : 14} />}
         <span className="sk-git-branch__name" data-detached={view.detached || view.branch === "" ? "true" : undefined}>
           {label}
         </span>
+        {/* 箭头：宿主那颗只读标签没有，用户看不出能点；输入行里则对齐权限按钮的 14px 箭头。 */}
+        {ChevronIcon === undefined ? null : (
+          <span
+            className={open ? "sk-git-branch__chevron sk-git-branch__chevron--open" : "sk-git-branch__chevron"}
+            aria-hidden={true}
+          >
+            <ChevronIcon size={hero ? 12 : 14} />
+          </span>
+        )}
       </button>
     );
 

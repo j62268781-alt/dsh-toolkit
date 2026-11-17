@@ -67,10 +67,15 @@ test('两处注册并存：composer 与 hero 各占一个槽位', () => {
 test('模块自述：NAME 与全局注入的样式文本', () => {
   assert.equal(NAME, 'branch-chip')
   assert.match(CSS, /sk-git-branch__trigger/)
-  assert.match(CSS, /corner-shape: round/)
+  // 尺寸跟宿主的权限按钮 / 工作区按钮对齐：28px 高、radius-sm 圆角、13px/500。
+  assert.match(CSS, /height: 28px/)
+  assert.match(CSS, /border-radius: var\(--dsw-radius-sm/)
   // 顶栏接管宿主标签 + 长分支名要能在窄屏里缩（不能写死宽度）。
   assert.match(CSS, /data-forge-current-branch/)
   assert.match(CSS, /max-width: min\(220px, 38vw\)/)
+  // 右侧箭头展开时翻转，跟权限按钮的过渡一致。
+  assert.match(CSS, /sk-git-branch__chevron--open/)
+  assert.match(CSS, /rotate\(180deg\)/)
 })
 
 test('createBranchChip 在缺 configForms 时也能装出组件', () => {
