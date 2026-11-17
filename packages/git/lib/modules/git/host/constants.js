@@ -19,6 +19,14 @@ export const MAX_BRANCH_LIST = 200;
 export const MAX_BRANCH_NAME_LENGTH = 200;
 /** 单条 git 命令的超时：切分支/列分支都在本地，15s 足够；超时当失败处理，不无限挂住 UI。 */
 export const GIT_TIMEOUT_MS = 15_000;
+/**
+ * 推送的超时：要传对象、可能走慢网，15s 常常不够。超时仍然会终止进程（不是挂住），
+ * 只是给得比本地操作宽一些。
+ */
+export const GIT_PUSH_TIMEOUT_MS = 120_000;
+/** 两个内置工具的名字：宿主把它们和别的工具一起放进模型上下文，前缀保持模块化。 */
+export const PUSH_TOOL_NAME = 'git_push';
+export const BRANCH_TOOL_NAME = 'git_branch_create';
 /** 系统提示词段的注册名；同一段重复注册会被宿主换掉，因此带上模块前缀。 */
 export const PROMPT_SECTION = 'dsh-toolkit:git';
 /**

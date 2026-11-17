@@ -166,7 +166,7 @@ window.__ModuleLoader__.load({
       zh: {
         nav: "Git",
         title: "Git",
-        subtitle: "告诉 agent 在这个仓库里怎么建分支、怎么推送、怎么写提交说明。设置会写进系统提示词。",
+        subtitle: "告诉 agent 在这个仓库里怎么建分支、怎么推送、怎么写提交说明。这些设置会注入系统提示词，并由 git_push / git_branch_create 工具和推送守卫执行。",
         sectionTitle: "分支与推送",
         branchPrefix: "分支前缀",
         branchPrefixDescription: "新建分支时，agent 会用此前缀开头。留空则不添加前缀。",
@@ -207,7 +207,7 @@ window.__ModuleLoader__.load({
       en: {
         nav: "Git",
         title: "Git",
-        subtitle: "Tell the agent how to branch, push and word commit messages in your repositories. These settings go into the system prompt.",
+        subtitle: "Tell the agent how to branch, push and word commit messages in your repositories. They feed the system prompt and are applied by the git_push / git_branch_create tools plus a push guard.",
         sectionTitle: "Branches and pushing",
         branchPrefix: "Branch prefix",
         branchPrefixDescription: "New branches start with this prefix. Leave it empty for no prefix.",

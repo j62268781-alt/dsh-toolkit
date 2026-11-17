@@ -68,12 +68,12 @@ test('提示词：只写用户真的开了的规则', () => {
 
   const prefixOnly = gitPromptText({ ...DEFAULTS, branchPrefix: 'qoder/' })
   assert.match(prefixOnly, /^## Git conventions/)
-  assert.match(prefixOnly, /name starts with `qoder\/`/)
+  assert.match(prefixOnly, /New branches start with `qoder\/`/)
   assert.doesNotMatch(prefixOnly, /--force-with-lease/)
 
   const forceOnly = gitPromptText({ ...DEFAULTS, alwaysForcePush: true })
   assert.match(forceOnly, /--force-with-lease/)
-  assert.match(forceOnly, /never with a bare `--force`/)
+  assert.match(forceOnly, /Never push with a bare `--force`/)
 
   const instructions = gitPromptText({ ...DEFAULTS, commitInstructions: 'Use Conventional Commits\nand Chinese.' })
   assert.match(instructions, /\n {2}Use Conventional Commits\n {2}and Chinese\.$/)
@@ -86,11 +86,17 @@ function fakeCtx() {
   const released = []
   const effects = []
   const injected = []
+  const listeners = new Map()
   return {
     sections,
     released,
     effects,
     injected,
+    listeners,
+    /** `tools/pre-execute` 守卫就挂在这里，测试可以直接拿回调来调。 */
+    on(event, handler) {
+      listeners.set(event, handler)
+    },
     systemPrompt: {
       section(section) {
         sections.push(section)
@@ -123,14 +129,17 @@ test('apply：注册一段提示词，自由文本必须关掉插值', () => {
   assert.deepEqual(ctx.released, [])
 })
 
-test('apply：什么都没配就一个段都不注册，但路由仍然挂上', () => {
+test('apply：什么都没配就一个段都不注册，但路由与工具仍然挂上', () => {
   const ctx = fakeCtx()
   host.apply(ctx, {})
   assert.equal(ctx.sections.length, 0)
   assert.equal(ctx.effects.length, 0)
-  // 提示词的早退不能把分支按钮的路由一起跳过。
-  assert.equal(ctx.injected.length, 1)
+  // 提示词的早退不能把分支按钮的路由、也不能把两个 git 工具一起跳过。
+  assert.equal(ctx.injected.length, 2)
   assert.deepEqual(ctx.injected[0].names, ['webServer', 'connection'])
+  assert.deepEqual(ctx.injected[1].names, ['tools'])
+  // 守卫是常驻的：开关关着时它自己会放行，不需要按配置决定装不装。
+  assert.equal(typeof ctx.listeners.get('tools/pre-execute'), 'function')
 
   const legacy = fakeCtx()
   host.apply(legacy, undefined)
@@ -141,7 +150,7 @@ test('apply：配了提示词时，路由与段落同时在', () => {
   const ctx = fakeCtx()
   host.apply(ctx, { alwaysForcePush: true })
   assert.equal(ctx.sections.length, 1)
-  assert.equal(ctx.injected.length, 1)
+  assert.equal(ctx.injected.length, 2)
 })
 
 test('路由：领域失败按「改输入 / 换状态 / 环境坏了」折成 400 / 409 / 503', async () => {
