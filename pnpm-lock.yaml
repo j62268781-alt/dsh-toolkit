@@ -40,9 +40,6 @@ importers:
       dsh-toolkit-boot:
         specifier: workspace:^
         version: link:packages/boot
-      dsh-toolkit-browser:
-        specifier: workspace:^
-        version: link:packages/browser
       dsh-toolkit-git:
         specifier: workspace:^
         version: link:packages/git
@@ -174,21 +171,6 @@ importers:
   packages/archived: {}
 
   packages/boot: {}
-
-  packages/browser:
-    dependencies:
-      '@deepseek-ai/cordis':
-        specifier: ^4.0.5
-        version: 4.0.5(@deepseek-ai/cordis-plugin-include@1.1.0)(@deepseek-ai/cordis-plugin-loader@1.1.0(@deepseek-ai/cordis@4.0.5)(node-addon-require-builtin@0.1.9))
-      '@deepseek-ai/dsh-tools':
-        specifier: 0.2.1-rc.1
-        version: 0.2.1-rc.1(c3b211c6f014171a83f9423fed3f65af)
-      '@deepseek-ai/dsh-typert-protocol':
-        specifier: 0.2.1-rc.1
-        version: 0.2.1-rc.1(@deepseek-ai/cordis@4.0.5)
-      '@deepseek-ai/schemastery':
-        specifier: ^3.18.5
-        version: 3.18.5
 
   packages/git: {}
 
