@@ -423,15 +423,15 @@ window.__ModuleLoader__.load({
       { id: "SessionStart", label: "会话开始", hint: "会话创建或恢复时触发；输出的 additionalContext 会作为上下文注入第一轮。", matcher: "source", supported: true },
       { id: "UserPromptSubmit", label: "提交提示词", hint: "每次提交提示词后、模型开始前触发；可以拒绝本轮请求或追加上下文。", matcher: "none", supported: true },
       { id: "PreToolUse", label: "工具调用前", hint: "每次调用工具前触发；可以放行、拒绝或要求确认。", matcher: "tool", supported: true },
-      { id: "PostToolUse", label: "工具调用后", hint: "工具返回后触发；可以拦截这次结果（把反馈交还给模型）或追加上下文。", matcher: "tool", supported: true },
+      { id: "PostToolUse", label: "工具调用后", hint: "工具**成功**返回后触发；可以拦截这次结果（把反馈交还给模型）或追加上下文。失败走「工具调用失败」。", matcher: "tool", supported: true },
+      { id: "PostToolUseFailure", label: "工具调用失败", hint: "工具抛错后触发；只能观察，输出的 additionalContext 会注入会话。", matcher: "tool", supported: true },
       { id: "Stop", label: "准备结束回合", hint: "回合并未出错、即将结束时触发；拒绝会让模型继续做一步。", matcher: "none", supported: true },
-      { id: "SessionEnd", label: "会话结束", hint: "会话被关闭时触发。", matcher: "source", supported: false },
-      { id: "SubagentStart", label: "子代理开始", hint: "子代理被创建时触发。", matcher: "none", supported: false },
-      { id: "SubagentStop", label: "子代理结束", hint: "子代理结束时触发。", matcher: "none", supported: false },
-      { id: "PostToolUseFailure", label: "工具调用失败", hint: "工具抛错后触发。", matcher: "tool", supported: false },
-      { id: "PermissionRequest", label: "权限询问", hint: "需要用户批准时触发。", matcher: "tool", supported: false },
-      { id: "PreCompact", label: "压缩上下文前", hint: "上下文压缩前触发。", matcher: "source", supported: false },
-      { id: "Notification", label: "通知", hint: "宿主发出通知时触发。", matcher: "none", supported: false }
+      { id: "SessionEnd", label: "会话结束", hint: "会话被释放时触发；只能观察，reason 固定为 other（子代理的结束看「子代理结束」）。", matcher: "none", supported: true },
+      { id: "SubagentStart", label: "子代理开始", hint: "子代理被创建时触发；载荷带 agent_id 与 agent_type（provider 名）。", matcher: "none", supported: true },
+      { id: "SubagentStop", label: "子代理结束", hint: "子代理结束时触发；载荷带 stop_reason 与它最后一段输出。", matcher: "none", supported: true },
+      { id: "PermissionRequest", label: "权限询问", hint: "当前 DSH 把审批记在会话日志里，没有可监听的 cordis 事件，所以这个事件不会触发。", matcher: "tool", supported: false },
+      { id: "PreCompact", label: "压缩上下文前", hint: "当前 DSH 的压缩只写会话日志，没有可监听的 cordis 事件，所以这个事件不会触发。", matcher: "source", supported: false },
+      { id: "Notification", label: "通知", hint: "宿主没有对外的通知事件，所以这个事件不会触发。", matcher: "none", supported: false }
     ];
     var HOOK_EVENT_IDS = new Set(HOOK_EVENTS.map((event) => event.id));
     var MAX_CONFIG_BYTES = 1024 * 1024;

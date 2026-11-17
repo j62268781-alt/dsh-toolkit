@@ -65,13 +65,13 @@ test('解析：字符串简写与「单条 hook 直挂分组」都收下', () =>
 test('解析：未知事件与未接线事件都记诊断，后者保留配置但标成不支持', () => {
   const result = parse({
     NoSuchEvent: [{ hooks: [{ command: 'echo x' }] }],
-    SessionEnd: [{ hooks: [{ command: 'echo y' }] }],
+    PreCompact: [{ hooks: [{ command: 'echo y' }] }],
   })
   const codes = result.issues.map((issue) => issue.code)
   assert.ok(codes.includes('unknown-event'))
   assert.ok(codes.includes('unsupported-event'))
   assert.equal(result.hooks.length, 1)
-  assert.equal(result.hooks[0].event, 'SessionEnd')
+  assert.equal(result.hooks[0].event, 'PreCompact')
   assert.equal(result.hooks[0].supported, false, '写了但没接线，必须显式标出来')
 })
 
@@ -186,11 +186,11 @@ test('store：hooksFor 只返回命中 matcher 且已接线的条目', async () 
         { matcher: 'bash', hooks: [{ command: 'echo bash' }] },
         { matcher: 'read_file', hooks: [{ command: 'echo read' }] },
       ],
-      SessionEnd: [{ hooks: [{ command: 'echo end' }] }],
+      PreCompact: [{ hooks: [{ command: 'echo compact' }] }],
     }))
     assert.deepEqual((await store.hooksFor('PreToolUse', 'bash')).map((hook) => hook.command), ['echo bash'])
     assert.deepEqual((await store.hooksFor('PreToolUse', 'write_file')), [])
-    assert.deepEqual((await store.hooksFor('SessionEnd', '')), [], '没有触发点的事件不参与运行')
+    assert.deepEqual((await store.hooksFor('PreCompact', '')), [], '没有触发点的事件不参与运行')
     assert.deepEqual((await store.hooksFor('NoSuchEvent', 'x')), [])
 
     const found = await store.find('user:PreToolUse:1')

@@ -29,24 +29,27 @@ test('包导出面：cordis 需要 name / inject / Config / apply 四样俱全',
   assert.ok(pkg.default.Config, '要能在宿主配置表单里出现')
 })
 
-test('apply：没有 webServer 也能装上五个触发点，路由等它出现再注册', () => {
+test('apply：没有 webServer 也能装上九个触发点，路由等它出现再注册', () => {
   const ctx = fakeCtx()
   pkg.default.apply(ctx, {})
   assert.deepEqual(ctx.injected.at(-1), ['webServer', 'connection'], '路由要等 webServer 就绪才注册')
   assert.ok(ctx.injected.some((names) => names.includes('workingDirectory')), '项目级 hooks 必须能拿到会话目录')
   assert.deepEqual(
     [...ctx.listeners].sort(),
-    ['agent/created', 'agent/pre-step', 'agent/turn-stopping', 'tools/post-execute', 'tools/pre-execute'],
-    '五个触发点全部接上',
+    [
+      'agent/created', 'agent/disposed', 'agent/pre-step', 'agent/turn-stopping',
+      'subagent/end', 'subagent/start', 'tools/post-execute', 'tools/pre-execute', 'tools/result',
+    ],
+    '九个触发点全部接上',
   )
 })
 
 test('apply：开关关掉、改成自定义路径都不影响装配本身', () => {
   const disabled = fakeCtx()
   pkg.default.apply(disabled, { enabled: false })
-  assert.equal(disabled.listeners.length, 5, '关掉开关也照样挂监听器，只是里面不执行')
+  assert.equal(disabled.listeners.length, 9, '关掉开关也照样挂监听器，只是里面不执行')
 
   const custom = fakeCtx()
   pkg.default.apply(custom, { projectDir: 'D:/repo', userFile: 'my-hooks.json', includeProject: false })
-  assert.equal(custom.listeners.length, 5)
+  assert.equal(custom.listeners.length, 9)
 })

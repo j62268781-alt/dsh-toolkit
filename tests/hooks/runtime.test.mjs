@@ -1,4 +1,4 @@
-/** hooks 的运行时：五个事件的接线、决策如何回给宿主、Stop 的连击上限。 */
+/** hooks 的运行时：九个事件的接线、决策如何回给宿主、Stop 的连击上限。 */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createHookHistory } from '../../lib/modules/hooks/host/domain/history.js'
@@ -92,10 +92,11 @@ function setup(hooksByEvent, { enabled = () => true, agent = fakeAgent() } = {})
   return { ctx, handlers, store, history, runtime, agent, warnings, requests: executor.requests }
 }
 
-test('接线：五个事件都注册了监听器', () => {
+test('接线：九个事件都注册了监听器', () => {
   const { handlers } = setup({})
   assert.deepEqual([...handlers.keys()].sort(), [
-    'agent/created', 'agent/pre-step', 'agent/turn-stopping', 'tools/post-execute', 'tools/pre-execute',
+    'agent/created', 'agent/disposed', 'agent/pre-step', 'agent/turn-stopping',
+    'subagent/end', 'subagent/start', 'tools/post-execute', 'tools/pre-execute', 'tools/result',
   ])
 })
 
@@ -240,4 +241,70 @@ test('试跑：按给定条目跑一次并写历史，不参与决策', async ()
   assert.equal(history.list().length, 1)
   assert.equal(requests.length, 1)
   assert.equal(requests[0].payload.cwd, 'D:/project')
+})
+
+test('PostToolUse：工具报错时不跑（失败有独立事件）', async () => {
+  const { handlers, requests } = setup({ PostToolUse: [hook({ event: 'PostToolUse', command: 'block' })] })
+  const result = await handlers.get('tools/post-execute')(
+    { name: 'bash', arguments: {}, callId: 'c1' },
+    { isError: true, error: { message: 'boom' }, content: [] },
+    async () => ({ kind: 'enter' }),
+  )
+  assert.deepEqual(result, { kind: 'enter' }, '失败必须原样交给下游')
+  assert.equal(requests.length, 0, '成功才跑 PostToolUse')
+})
+
+test('PostToolUseFailure：只在 tools/result 报错时跑，输出注入上下文', async () => {
+  const agent = fakeAgent()
+  const { handlers, store, requests } = setup(
+    { PostToolUseFailure: [hook({ event: 'PostToolUseFailure', command: 'read AGENTS.md' })] },
+    { agent },
+  )
+  const onResult = handlers.get('tools/result')
+
+  await onResult(
+    { name: 'bash', arguments: { command: 'false' }, callId: 'c1', agent },
+    { isError: false, value: 1, content: [] },
+  )
+  assert.deepEqual(store.calls, [], '成功结果不该触发失败事件')
+
+  await onResult(
+    { name: 'bash', arguments: { command: 'false' }, callId: 'c2', agent },
+    { isError: true, error: { message: 'exit 1' }, content: [] },
+  )
+  assert.deepEqual(store.calls, [['PostToolUseFailure', 'bash']])
+  assert.equal(requests[0].payload.error, 'exit 1')
+  assert.equal(requests[0].payload.tool_use_id, 'c2')
+  assert.equal(agent.injected.length, 1, '只读事件只能把 additionalContext 注入会话')
+})
+
+test('SessionEnd：会话释放时触发，子代理释放不重复报', async () => {
+  const { handlers, store, requests } = setup({ SessionEnd: [hook({ event: 'SessionEnd', command: 'allow' })] })
+  const dispose = handlers.get('agent/disposed')
+
+  await dispose({ agent: { session: { header: { id: 's1' } } } })
+  assert.deepEqual(store.calls, [['SessionEnd', 'other']])
+  assert.equal(requests[0].payload.reason, 'other')
+
+  await dispose({ agent: { session: { header: { id: 's2', parentSession: 's1' } } } })
+  assert.equal(store.calls.length, 1, '子代理有 SubagentStop，SessionEnd 不该再来一遍')
+})
+
+test('SubagentStart / SubagentStop：带 agent_id、provider 与 stop_reason', async () => {
+  const { handlers, requests } = setup({
+    SubagentStart: [hook({ event: 'SubagentStart', command: 'allow' })],
+    SubagentStop: [hook({ event: 'SubagentStop', command: 'allow' })],
+  })
+  const info = { runId: 'r1', provider: 'deepseek', parentSessionId: 's1', id: 's2', local: true }
+
+  await handlers.get('subagent/start')(info)
+  assert.equal(requests[0].payload.hook_event_name, 'SubagentStart')
+  assert.equal(requests[0].payload.agent_id, 's2')
+  assert.equal(requests[0].payload.agent_type, 'deepseek')
+  assert.equal(requests[0].payload.session_id, 's1', '载荷里的会话是父会话')
+
+  await handlers.get('subagent/end')({ ...info, stopReason: 'end_turn', lastAssistantMessage: [{ type: 'text', text: 'done' }] })
+  assert.equal(requests[1].payload.hook_event_name, 'SubagentStop')
+  assert.equal(requests[1].payload.stop_reason, 'end_turn')
+  assert.equal(requests[1].payload.last_assistant_message, 'done')
 })

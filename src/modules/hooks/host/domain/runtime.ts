@@ -1,12 +1,20 @@
 /**
- * 把 hooks.json 接到宿主的五个扩展点上。
+ * 把 hooks.json 接到宿主的九个扩展点上。
  *
  * 事件映射与 Claude Code 桥一致（那套语义已经被大量现成 hooks 依赖）：
  *   agent/created          → SessionStart
  *   agent/pre-step         → UserPromptSubmit
  *   tools/pre-execute      → PreToolUse
- *   tools/post-execute     → PostToolUse
+ *   tools/post-execute     → PostToolUse（仅成功；失败走 PostToolUseFailure）
  *   agent/turn-stopping    → Stop
+ *   agent/disposed         → SessionEnd（子代理会话的释放留给 SubagentStop）
+ *   subagent/start         → SubagentStart
+ *   subagent/end           → SubagentStop
+ *   tools/result           → PostToolUseFailure
+ *
+ * 后四个是**只读**事件：宿主不提供决策通道，钩子的输出只能追加进上下文（或什么都不做）。
+ * `tools/result` 是宿主文档指定的「最终结果观察点」，`tools/post-execute` 只用来改写结果，
+ * 所以失败检测挂在 tools/result 上，不用去猜 post-execute 的返回值。
  *
  * 关键约定：**没有配置就什么都不做**。每个监听器先问 store 要命中的 hook，空数组直接
  * 交给下一个监听器——不解析、不起进程，空配置下零开销。
@@ -64,6 +72,18 @@ function blocksToText(content: readonly unknown[]): string {
     })
     .map((block) => block.text)
     .join('')
+}
+
+/**
+ * 工具失败时载荷里带上错误原文：执行器给的是 `ToolFailure` 对象，
+ * 但钩子是外部进程，只给字符串最省事（对象序列化后会多出一堆没人看的字段）。
+ */
+function failureText(error: unknown): string {
+  if (error === undefined || error === null) return ''
+  if (typeof error === 'string') return error
+  const message = (error as { message?: unknown }).message
+  if (typeof message === 'string') return message
+  return String(error)
 }
 
 export function createHookRuntime(ctx: any, options: HookRuntimeOptions) {
@@ -143,6 +163,11 @@ export function createHookRuntime(ctx: any, options: HookRuntimeOptions) {
     }
   }
 
+  /** 没有 agent 对象的事件（子代理、失败）用会话 id 拼同样的骨架。 */
+  function baseOf(sessionId: unknown, event: string): Record<string, unknown> {
+    return { session_id: typeof sessionId === 'string' ? sessionId : '', transcript_path: '', hook_event_name: event }
+  }
+
   /** 只有在会话来源匹配时才会跑：matcher 的对象是 SessionStart 的 source。 */
   ctx.on('agent/created', async ({ agent, source }: any) => {
     const outcome = await runEvent('SessionStart', String(source ?? ''), { ...base(agent, 'SessionStart'), source }, undefined, directory(agent))
@@ -180,6 +205,9 @@ export function createHookRuntime(ctx: any, options: HookRuntimeOptions) {
   })
 
   ctx.on('tools/post-execute', async (exec: any, result: any, next: () => Promise<any>) => {
+    // 工具报错时不跑 PostToolUse：Claude Code 的 PostToolUse 只对成功结果触发，
+    // 失败有独立事件。混在一起会让「成功了才跑」的格式化钩子对着报错结果乱改。
+    if (result?.isError === true) return next()
     const outcome = await runEvent('PostToolUse', exec.name, {
       ...base(exec.agent, 'PostToolUse'),
       tool_name: exec.name,
@@ -216,6 +244,51 @@ export function createHookRuntime(ctx: any, options: HookRuntimeOptions) {
     }
     const message = contextMessage([outcome.merged.reason || '继续：Stop 钩子要求再走一步'])
     if (message !== undefined) agent.steer(message)
+  })
+
+  /**
+   * 工具失败：宿主文档指定的观察点是 `tools/result`（`tools/post-execute` 只用来改写结果）。
+   * 这里只能观察，所以钩子的 additionalContext 直接注入会话，让模型下一轮看得到。
+   */
+  ctx.on('tools/result', async (exec: any, result: any) => {
+    if (result?.isError !== true) return
+    const outcome = await runEvent('PostToolUseFailure', exec?.name ?? '', {
+      ...base(exec?.agent, 'PostToolUseFailure'),
+      tool_name: exec?.name ?? '',
+      tool_input: exec?.arguments,
+      tool_use_id: exec?.callId,
+      error: failureText(result?.error),
+    }, exec?.signal, directory(exec?.agent))
+    const message = contextMessage(outcome.merged.additionalContext)
+    if (message !== undefined) exec?.agent?.inject?.(message)
+  })
+
+  /**
+   * 会话结束：`agent/disposed` 是宿主释放 agent 的时点。子代理释放也会走这里，
+   * 但它们有自己的 SubagentStop，所以按 session header 的 parentSession 排掉。
+   */
+  ctx.on('agent/disposed', async ({ agent }: any) => {
+    if (agent?.session?.header?.parentSession) return
+    await runEvent('SessionEnd', 'other', { ...base(agent, 'SessionEnd'), reason: 'other' }, undefined, directory(agent))
+  })
+
+  ctx.on('subagent/start', async (info: any) => {
+    await runEvent('SubagentStart', '', {
+      ...baseOf(info?.parentSessionId, 'SubagentStart'),
+      agent_id: String(info?.id ?? ''),
+      agent_type: String(info?.provider ?? ''),
+      local: info?.local === true,
+    })
+  })
+
+  ctx.on('subagent/end', async (info: any) => {
+    await runEvent('SubagentStop', '', {
+      ...baseOf(info?.parentSessionId, 'SubagentStop'),
+      agent_id: String(info?.id ?? ''),
+      agent_type: String(info?.provider ?? ''),
+      stop_reason: String(info?.stopReason ?? ''),
+      last_assistant_message: blocksToText(info?.lastAssistantMessage ?? []),
+    })
   })
 
   return {

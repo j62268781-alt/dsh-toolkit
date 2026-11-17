@@ -11,7 +11,7 @@ export interface HookEventDefinition {
     readonly supported: boolean;
 }
 /**
- * 宿主提供的事件名。前五个已接线；其余是 Claude Code 同名事件——配置里写了就在面板
+ * 宿主提供的事件名。九个已接线；其余是 Claude Code 同名事件——配置里写了就在面板
  * 标成「暂不支持」，而不是静默当作生效（Qoder 的页面也把「可见 ≠ 已执行」写明）。
  */
 export declare const HOOK_EVENTS: readonly HookEventDefinition[];
