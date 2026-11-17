@@ -11,9 +11,10 @@ export interface BranchView {
   readonly detached: boolean;
   readonly dirty: boolean;
   readonly branches: readonly string[];
+  readonly remotes: readonly string[];
 }
 
-export const EMPTY_VIEW: BranchView = { root: "", branch: "", detached: false, dirty: false, branches: [] };
+export const EMPTY_VIEW: BranchView = { root: "", branch: "", detached: false, dirty: false, branches: [], remotes: [] };
 
 function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -30,6 +31,7 @@ export function toBranchView(payload: any): BranchView {
     detached: payload?.detached === true,
     dirty: payload?.dirty === true,
     branches: strings(payload?.branches),
+    remotes: strings(payload?.remotes),
   };
 }
 

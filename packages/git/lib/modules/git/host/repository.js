@@ -67,6 +67,26 @@ async function switchTo(run, cwd, name, create) {
         return undefined;
     return failure(create ? 'create-failed' : 'checkout-failed', firstLine(second.stderr));
 }
+/**
+ * 检出一条远端分支并建立跟踪关系（`--track`）。
+ *
+ * 与 Qoder 的远端分支行为一致：点 `origin/feat/x` 得到的本地分支叫 `feat/x`，而不是叫
+ * `origin/feat/x`。`--create --track` 是 `switch` 的写法，老 git 退回 `checkout -b --track`。
+ */
+async function switchTracking(run, cwd, remoteRef, short) {
+    const first = await run(cwd, ['switch', '--track', '--create', short, remoteRef]);
+    if (first.code === 0)
+        return undefined;
+    if (first.spawnError !== undefined)
+        return failure('git-missing', '找不到 git 可执行文件。');
+    if (!/not a git command|unknown subcommand|is not a git command/i.test(first.stderr)) {
+        return failure('checkout-failed', firstLine(first.stderr));
+    }
+    const second = await run(cwd, ['checkout', '--track', '-b', short, remoteRef]);
+    if (second.code === 0)
+        return undefined;
+    return failure('checkout-failed', firstLine(second.stderr));
+}
 export function createRepository(run = defaultRunner) {
     /** 当前分支：detached HEAD 时 git 回的是字面量 `HEAD`，那是「没有分支」而不是分支名。 */
     async function branchOf(cwd) {
@@ -92,7 +112,15 @@ export function createRepository(run = defaultRunner) {
             .split('\n').map((line) => line.trim()).filter((line) => line !== '');
         // 当前分支永远排第一：弹层里它是勾选项，被 committerdate 排到几十行之后就没用了。
         const ordered = detached ? branches : [name, ...branches.filter((item) => item !== name)];
-        return { ok: true, root, branch: detached ? '' : name, detached, dirty, branches: ordered };
+        const remoteList = await run(cwd, [
+            'for-each-ref', `--count=${MAX_BRANCH_LIST}`, '--sort=-committerdate',
+            '--format=%(refname:short)', 'refs/remotes',
+        ]);
+        const remotes = (remoteList.code === 0 ? remoteList.stdout : '')
+            .split('\n').map((line) => line.trim())
+            // `origin/HEAD` 指向默认分支的符号引用，点它没有意义，混进列表只会让人误以为能检出。
+            .filter((line) => line !== '' && !line.endsWith('/HEAD'));
+        return { ok: true, root, branch: detached ? '' : name, detached, dirty, branches: ordered, remotes };
     }
     return {
         /** 一次拿全：仓库根、当前分支、是否有未提交改动、本地分支列表。 */
@@ -108,6 +136,20 @@ export function createRepository(run = defaultRunner) {
                 return resolved;
             if (typeof name !== 'string' || !isBranchName(name)) {
                 return failure('invalid-branch', SHAPE_DETAIL);
+            }
+            const current = await branchOf(resolved);
+            if (current.ok !== true)
+                return current;
+            // 传进来的是 `origin/feat/x` 这种远端引用：本地没有同名分支时检出并跟踪。
+            if (!current.branches.includes(name) && current.remotes.includes(name)) {
+                const short = name.slice(name.indexOf('/') + 1);
+                // 本地已经有过 `feat/x`（可能是别人的旧检出）：直接切过去，别再建一次跟踪。
+                const failed = current.branches.includes(short)
+                    ? await switchTo(run, resolved, short, false)
+                    : await switchTracking(run, resolved, name, short);
+                if (failed !== undefined)
+                    return failed;
+                return branchOf(resolved);
             }
             const failed = await switchTo(run, resolved, name, false);
             if (failed !== undefined)

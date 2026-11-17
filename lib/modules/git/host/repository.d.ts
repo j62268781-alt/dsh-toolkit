@@ -13,6 +13,8 @@ export interface BranchSnapshot {
     readonly detached: boolean;
     readonly dirty: boolean;
     readonly branches: readonly string[];
+    /** 远端跟踪引用（`origin/main` 这种短名）；`origin/HEAD` 是符号引用，不算分支。 */
+    readonly remotes: readonly string[];
 }
 export interface BranchFailure {
     readonly ok: false;

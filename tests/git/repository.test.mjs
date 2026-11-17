@@ -15,6 +15,7 @@ const REPO = process.platform === 'win32' ? 'D:/repo' : '/repo'
 const PLAIN = process.platform === 'win32' ? 'D:/plain' : '/plain'
 
 const REFS = `for-each-ref --count=${MAX_BRANCH_LIST} --sort=-committerdate --format=%(refname:short) refs/heads`
+const REMOTE_REFS = `for-each-ref --count=${MAX_BRANCH_LIST} --sort=-committerdate --format=%(refname:short) refs/remotes`
 
 /** 一张「命令 → 结果」表；表里没有的命令默认成功且无输出。 */
 function runnerOf(table = {}) {
@@ -52,6 +53,7 @@ test('snapshot：把仓库根、当前分支、脏标记与分支列表一次读
     detached: false,
     dirty: true,
     branches: ['main', 'feat/a', 'fix/b'],
+    remotes: [],
   })
 })
 
@@ -168,4 +170,43 @@ test('createBranch：校验通过后 switch --create，并回读快照', async (
   assert.equal(result.branch, 'feat/x')
   assert.ok(run.calls.includes('check-ref-format --branch feat/x'))
   assert.ok(run.calls.includes('switch --create feat/x'))
+})
+
+
+test('snapshot：远端跟踪引用单独列出，origin/HEAD 不算一个分支', async () => {
+  const repository = createRepository(runnerOf(repoTable({
+    [REMOTE_REFS]: { stdout: 'origin/HEAD\norigin/main\norigin/feat/x\n' },
+  })))
+  const result = await repository.snapshot(REPO)
+  assert.equal(result.ok, true)
+  assert.deepEqual(result.remotes, ['origin/main', 'origin/feat/x'])
+  assert.deepEqual(result.branches, ['main', 'feat/a', 'fix/b'])
+})
+
+test('checkout：点远端分支时用 --track 建出同名本地分支', async () => {
+  const run = runnerOf(repoTable({
+    [REMOTE_REFS]: { stdout: 'origin/main\norigin/feat/x\n' },
+  }))
+  const result = await createRepository(run).checkout(REPO, 'origin/feat/x')
+  assert.equal(result.ok, true)
+  assert.ok(run.calls.includes('switch --track --create feat/x origin/feat/x'))
+})
+
+test('checkout：本地已经有同名分支时直接切过去，不再建跟踪', async () => {
+  const run = runnerOf(repoTable({
+    [REMOTE_REFS]: { stdout: 'origin/feat/a\n' },
+  }))
+  const result = await createRepository(run).checkout(REPO, 'origin/feat/a')
+  assert.equal(result.ok, true)
+  assert.ok(run.calls.includes('switch --quiet feat/a'))
+  assert.ok(!run.calls.some((call) => call.includes('--track')))
+})
+
+test('checkout：远端跟踪检出失败时把 git 的原话带回来', async () => {
+  const run = runnerOf(repoTable({
+    [REMOTE_REFS]: { stdout: 'origin/feat/x\n' },
+    'switch --track --create feat/x origin/feat/x': { code: 128, stderr: 'fatal: a branch named feat/x already exists\n' },
+  }))
+  const result = await createRepository(run).checkout(REPO, 'origin/feat/x')
+  assert.deepEqual(result, { ok: false, reason: 'checkout-failed', detail: 'fatal: a branch named feat/x already exists' })
 })

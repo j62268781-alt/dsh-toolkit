@@ -146,6 +146,22 @@
   line-height: 18px;
 }
 
+/* 第二组（远端分支）跟在列表中间出现，上面补一道线，不然和最后一条本地分支糊成一块。 */
+.sk-git-branch__groupLabel--nested {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
+}
+
+.sk-git-branch__groupHint {
+  color: var(--dsw-alias-label-tertiary, rgba(128, 128, 128, 0.7));
+  font-size: 10px;
+}
+
 .sk-git-branch__list {
   display: flex;
   flex-direction: column;

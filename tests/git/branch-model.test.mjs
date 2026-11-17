@@ -16,6 +16,7 @@ test('toBranchView：正常载荷原样投影，当前分支永远在最前', ()
     detached: false,
     dirty: true,
     branches: ['main', 'feat/a', 'fix/b'],
+    remotes: [],
   })
   assert.deepEqual(view, {
     root: 'D:/repo',
@@ -23,6 +24,7 @@ test('toBranchView：正常载荷原样投影，当前分支永远在最前', ()
     detached: false,
     dirty: true,
     branches: ['main', 'feat/a', 'fix/b'],
+    remotes: [],
   })
 })
 
@@ -35,6 +37,7 @@ test('toBranchView：缺字段与非字符串成员都退回安全默认值，�
     detached: false,
     dirty: false,
     branches: ['ok'],
+    remotes: [],
   })
 })
 
@@ -68,4 +71,11 @@ test('showsAt：新会话只留顶栏，已开始的会话只留 composer', () =
   // 发第一条消息后 hero 行消失，按钮落到 composer。
   assert.equal(showsAt('hero', false), false)
   assert.equal(showsAt('composer', false), true)
+})
+
+
+test('toBranchView：远端跟踪引用单独投影，缺字段时为空数组', () => {
+  const view = toBranchView({ branch: 'main', branches: ['main'], remotes: ['origin/main', 7, null] })
+  assert.deepEqual(view.remotes, ['origin/main'])
+  assert.deepEqual(toBranchView({ branch: 'main' }).remotes, [])
 })

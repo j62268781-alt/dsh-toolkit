@@ -252,26 +252,41 @@ export function createBranchChip(ctx: any) {
     );
 
     const visible = filterBranches(view.branches, query);
-    const list = visible.length === 0
+    const visibleRemotes = filterBranches(view.remotes, query);
+    const branchItem = (name: string, current: boolean) => (
+      <MenuItemButton
+        key={current ? `local:${name}` : `remote:${name}`}
+        icon={BranchIcon === undefined ? undefined : <BranchIcon size={14} />}
+        current={current}
+        disabled={busy !== ""}
+        onSelect={() => pick(name)}
+      >
+        <span className="sk-git-branch__option">
+          <span className="sk-git-branch__optionName">{name}</span>
+          {current && CheckIcon !== undefined ? <CheckIcon size={14} /> : null}
+        </span>
+      </MenuItemButton>
+    );
+    const list = visible.length === 0 && visibleRemotes.length === 0
       ? (
         <p className="sk-git-branch__empty" role="status">
-          {loading ? t("branchLoading") : (view.branches.length === 0 ? t("branchEmpty") : t("branchNoMatch"))}
+          {loading
+            ? t("branchLoading")
+            : (view.branches.length === 0 && view.remotes.length === 0 ? t("branchEmpty") : t("branchNoMatch"))}
         </p>
       )
-      : visible.map((name) => (
-        <MenuItemButton
-          key={name}
-          icon={BranchIcon === undefined ? undefined : <BranchIcon size={14} />}
-          current={name === view.branch}
-          disabled={busy !== ""}
-          onSelect={() => pick(name)}
-        >
-          <span className="sk-git-branch__option">
-            <span className="sk-git-branch__optionName">{name}</span>
-            {name === view.branch && CheckIcon !== undefined ? <CheckIcon size={14} /> : null}
-          </span>
-        </MenuItemButton>
-      ));
+      : (
+        <>
+          {visible.map((name) => branchItem(name, name === view.branch))}
+          {visibleRemotes.length === 0 ? null : (
+            <p className="sk-git-branch__groupLabel sk-git-branch__groupLabel--nested">
+              {t("branchRemotes")}
+              <span className="sk-git-branch__groupHint">{t("branchTrackHint")}</span>
+            </p>
+          )}
+          {visibleRemotes.map((name) => branchItem(name, false))}
+        </>
+      );
 
     return (
       <>
