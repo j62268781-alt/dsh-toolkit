@@ -1,7 +1,8 @@
 /**
  * Host 半边：远程连接。两个子目录各管一件事，本文件只负责装配：
  *   · wechat/ —— 微信扫码登录（ClawBot / iLink）与「微信 ↔ DSH Agent」双向桥；
- *   · mobile/ —— 手机扫码配对的本机支撑：可信设备清单（peers）、解绑后的残留清理。
+ *   · mobile/ —— 手机扫码配对的本机支撑：可信设备清单（peers）、解绑后的残留清理、
+ *     启动期按本地快照把已配对的连接接回来（resume.ts）。
  *
  * 职责边界：
  *   · 登录、通道自检，以及可选的「微信 ↔ DSH Agent」桥接（wechat/bridge.js）。
@@ -31,6 +32,7 @@ import { createMonitor } from './wechat/monitor.js';
 import { maskId, normalizeBaseUrl } from './wechat/ilink.js';
 import { readTrustedPeers } from './mobile/peers.js';
 import { purgePairingState } from './mobile/local-state.js';
+import { createStartupResume } from './mobile/resume.js';
 import { API_PATH } from './constants.js';
 import { defaultPreferences, readPreferences, readPreferencesSync, writePreferences } from './preferences.js';
 import { dshHome } from '../../../host/dsh-home.js';
@@ -581,7 +583,42 @@ function registerPreferencesRoute(ctx, deps) {
         },
     });
 }
+/**
+ * 启动期把已配对的手机连接接回来（细节见 mobile/resume.ts）。
+ *
+ * 为什么不做成路由：手机能不能连上跟「面板有没有开」无关。做成路由等于要求桌面前端
+ * 先发一次请求——那正是现在这个 bug 的形状。这里在宿主启动时直接问上游要连接。
+ *
+ * 为什么不用静态 `inject`：`dshRemote` 是上游插件的运行时服务，跟本模块的 webServer /
+ * connection 没关系；静态声明会把整个 remote 模块卡在 pending，ClawBot 也一起起不来。
+ * 缺服务（例如上游处于 pending 控制模式）时这里静默跳过，面板照旧可用。
+ */
+function installStartupResume(ctx) {
+    if (typeof ctx?.inject !== 'function')
+        return;
+    ctx.inject(['dshRemote'], (remoteCtx) => {
+        const service = remoteCtx?.dshRemote;
+        if (service === undefined || service === null)
+            return;
+        remoteCtx.effect(() => {
+            const logger = typeof remoteCtx.logger === 'function' ? remoteCtx.logger('remote') : undefined;
+            const resume = createStartupResume({
+                service,
+                log: (level, message) => {
+                    if (level === 'warn')
+                        logger?.warn?.(message);
+                    else
+                        logger?.info?.(message);
+                },
+            });
+            resume.begin();
+            return () => resume.dispose();
+        }, 'remote startup resume');
+    });
+}
 export function apply(ctx, config) {
+    // 先于 webServer 守卫：面板/HTTP 都不在时，已配对的手机也该能连上。
+    installStartupResume(ctx);
     if (typeof ctx.webServer?.register !== 'function')
         return;
     if (typeof ctx.connection?.requestRejection !== 'function')
