@@ -1,4 +1,5 @@
 import { stageOverlay } from "../presentation.js";
+import { isComposingEvent } from "../../../../client/ime.js";
 const MIN_SWIPE_DURATION_MS = 80;
 const MAX_SWIPE_DURATION_MS = 600;
 export function createStreamView(React, { api, prefix: PREFIX, useH264Canvas }) {
@@ -186,6 +187,8 @@ export function createStreamView(React, { api, prefix: PREFIX, useH264Canvas }) 
     );
     const keyboardHandlers = interactive ? {
       onKeyDown: (event) => {
+        // 组字期间发出的 keydown 是输入法在处理，别把它当成真机的按键转发出去。
+        if (isComposingEvent(event)) return;
         if (event.metaKey || event.ctrlKey) {
           const probe = translateKey(event);
           const EDIT_KEYS = new Set(["a", "c", "v", "x", "z", "ctrl+a", "ctrl+c", "ctrl+v", "ctrl+x", "ctrl+z", "cmd+a", "cmd+c", "cmd+v", "cmd+x", "cmd+z"]);

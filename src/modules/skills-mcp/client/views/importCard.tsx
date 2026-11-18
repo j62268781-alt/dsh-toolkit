@@ -46,8 +46,22 @@ export function importCardView({
         </span>
       </div>
       <div className="smp-segment" key="segment">
-        <button key="g" data-active={String(scope === "global")} onClick={() => setImportScope("global")}>全局</button>
-        <button key="p" data-active={String(scope === "project")} onClick={() => setImportScope("project")}>项目级</button>
+        {/*
+          Two mutually exclusive choices, so the state goes on `aria-pressed` (panel.css
+          still matches `data-active`, and both are derived from the same expression).
+        */}
+        <button
+          type="button" key="g" aria-pressed={scope === "global"}
+          data-active={String(scope === "global")} onClick={() => setImportScope("global")}
+        >
+          全局
+        </button>
+        <button
+          type="button" key="p" aria-pressed={scope === "project"}
+          data-active={String(scope === "project")} onClick={() => setImportScope("project")}
+        >
+          项目级
+        </button>
       </div>
       <div className="smp-formGrid" key="grid">
         {field("来源", (

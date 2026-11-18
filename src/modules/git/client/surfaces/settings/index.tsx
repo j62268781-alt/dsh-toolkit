@@ -1,5 +1,6 @@
 import React from "react";
 import { findScopedForm } from "../../../../../client/config.js";
+import { isComposingEvent } from "../../../../../client/ime.js";
 import { acceptConfigWrite } from "../../../../../client/config-write.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
@@ -211,6 +212,8 @@ export function createGitSection(ctx) {
                   }}
                   onBlur={() => void savePrefix()}
                   onKeyDown={(event) => {
+                    // 组字确认的 Enter 只用来选候选，不能顺手把前缀存了。
+                    if (isComposingEvent(event)) return;
                     if (event.key !== "Enter") return;
                     event.preventDefault();
                     void savePrefix();

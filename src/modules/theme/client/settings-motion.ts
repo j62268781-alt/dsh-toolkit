@@ -46,7 +46,7 @@ export function createSettingsMotion() {
       });
       copy.style.pointerEvents = 'none';
       document.body.append(copy);
-      const animation = copy.animate([...frames].reverse(), { duration: 180, easing: 'cubic-bezier(.4,0,1,1)' });
+      const animation = copy.animate(frames.toReversed(), { duration: 180, easing: 'cubic-bezier(.4,0,1,1)' });
       const cleanup = () => { window.clearTimeout(timeout); copy.remove(); exits.delete(copy); };
       const timeout = window.setTimeout(cleanup, 220);
       exits.set(copy, { animation, cleanup });

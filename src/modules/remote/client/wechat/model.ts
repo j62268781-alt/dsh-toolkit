@@ -179,7 +179,7 @@ export function createConnection({ onError = () => {} }: { onError?: (error: any
         }),
       })
     } catch (error) {
-      throw new Error(`连不上插件路由：${String(error?.message ?? error)}`)
+      throw new Error(`连不上插件路由：${String(error?.message ?? error)}`, { cause: error })
     }
     // 响应体形状由路由决定（状态快照 / 探测结果），这里按 any 读字段。
     let payload: any = {}

@@ -683,9 +683,14 @@ export function Panel(props) {
         subtitle="结构化判断能力：一次调用 = 一份状态 + 一批命名问题 → 概率答案。它判断，消费者决定。"
       />
 
-      <div className="jdg-tabs">
+      <div className="jdg-tabs" role="tablist">
         {Object.entries(lists).map(([id, list]) => (
-          <button type="button" key={id} className="jdg-tab" data-active={tab === id} onClick={() => selectTab(id)}>
+          <button
+            type="button" key={id} className="jdg-tab" role="tab"
+            aria-selected={tab === id}
+            data-active={tab === id}
+            onClick={() => selectTab(id)}
+          >
             {list.tab}
           </button>
         ))}

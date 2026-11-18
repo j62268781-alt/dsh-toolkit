@@ -1,4 +1,6 @@
-.boot-page { box-sizing: border-box; width: 100%; max-width: 960px; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }
+/* 面板自己当查询容器：行间距与预览高度跟着**面板宽度**收，而不是跟着窗口收 —— 面板
+ * 可以比窗口窄得多（侧栏、分栏）。 */
+.boot-page { box-sizing: border-box; width: 100%; max-width: 960px; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; container-type: inline-size; }
 .boot-preview-section { min-width: 0; }
 .boot-preview-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .boot-preview-title h3 { margin: 0; font-size: 14px; line-height: 20px; font-weight: 500; }
@@ -34,5 +36,5 @@
 .boot-switch:disabled { opacity: .5; cursor: not-allowed; }
 .boot-page button:focus-visible,.boot-page input:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 3px; }
 .boot-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
-@media (max-width: 620px) { .boot-row { gap: 12px; } .boot-preview { height: 240px; } }
+@container (max-width: 620px) { .boot-row { gap: 12px; } .boot-preview { height: 240px; } }
 @media (prefers-reduced-motion: reduce) { .boot-switch > span { transition: none; } }

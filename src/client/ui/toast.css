@@ -4,13 +4,16 @@
  *
  * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），
  * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。
+ *
+ * 两条路径共用同一套类名：
+ * - 原生路径：栈是 `popover="manual"`（top layer），单条靠 `@starting-style` + `transition` 进出场；
+ * - 退化路径（jsdom、没有 popover 的宿主）：就是改造前的固定定位栈 + 两个 `@keyframes`。
  */
 .sk-toast-stack {
   position: fixed;
   top: 40px;
   left: 50%;
   z-index: 1100;
-  display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
@@ -19,6 +22,26 @@
   transform: translateX(-50%);
   /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */
   pointer-events: none;
+}
+
+/* display 只跟着「栈开着」走：popover 关闭时 UA 是 display:none，作者样式不能把它顶回来。 */
+.sk-toast-stack:not([popover]),
+.sk-toast-stack:popover-open {
+  display: flex;
+}
+
+/* popover 在 top layer 里，UA 会给 position:fixed + inset:0 + margin:auto + 边框/背景，
+   这里全部按原布局收回来，只保留 `top:40px / left:50%` 的居中胶囊位置。 */
+.sk-toast-stack[popover] {
+  inset: auto;
+  top: 40px;
+  left: 50%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  overflow: visible;
 }
 
 .sk-toast {
@@ -33,11 +56,47 @@
   box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));
   font-size: 13px;
   line-height: 20px;
-  animation: sk-toast-in 0.16s ease-out;
+}
+
+/* 退化路径：没有 `:popover-open` 的宿主继续用关键帧，行为与改造前一致。 */
+@supports not (selector(:popover-open)) {
+  .sk-toast {
+    animation: sk-toast-in 0.16s ease-out;
+  }
+
+  .sk-toast--leaving {
+    animation: sk-toast-out 0.18s ease-in forwards;
+  }
+}
+
+/* 原生路径：进场由 `@starting-style` 给出起点，退场由 `--leaving` 的目标值给出终点。
+   `transition-behavior: allow-discrete` 必须是独立声明，并进 `transition` 简写会让整条声明失效。 */
+@supports (selector(:popover-open)) {
+  .sk-toast {
+    transition: opacity 0.16s ease-out, transform 0.16s ease-out;
+    transition-behavior: allow-discrete;
+  }
+
+  @starting-style {
+    .sk-toast {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+  }
 }
 
 .sk-toast--leaving {
-  animation: sk-toast-out 0.18s ease-in forwards;
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* 减弱动效：过渡与关键帧都不跑，节点靠 `toast.ts` 的兜底定时器收掉。 */
+@media (prefers-reduced-motion: reduce) {
+  .sk-toast,
+  .sk-toast--leaving {
+    animation: none;
+    transition: none;
+  }
 }
 
 .sk-toast__text {

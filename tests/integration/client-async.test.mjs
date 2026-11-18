@@ -71,7 +71,12 @@ test('JSON transport preserves admission handling and consumes a body once', asy
   const response = await fetchJson('/api', { method: 'POST', json: { value: 1 }, signal: controller.signal })
   assert.equal(response.status, 401)
   assert.equal(calls[0].options.credentials, 'same-origin')
-  assert.equal(calls[0].options.signal, controller.signal)
+  // 传输层现在把调用方的 signal 与截止时间合成为一个新 signal，所以断言行为而不是对象身份：
+  // 取消调用方的 controller 必须让请求一起取消。
+  assert.notEqual(calls[0].options.signal, undefined)
+  assert.equal(calls[0].options.signal.aborted, false)
+  controller.abort()
+  assert.equal(calls[0].options.signal.aborted, true)
   assert.deepEqual(calls[0].options.headers, { 'content-type': 'application/json' })
   assert.equal(calls[0].options.body, '{"value":1}')
   let reads = 0

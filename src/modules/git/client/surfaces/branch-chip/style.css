@@ -224,3 +224,13 @@
   font: inherit;
   font-size: 13px;
 }
+
+/*
+ * 减少动态偏好：箭头仍然转 180°（它是「展开了」的唯一指示），但不再「转过去」——
+ * 只关掉位移动画，颜色/底色那类过渡保留（触发按钮本来也没有过渡）。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .sk-git-branch__chevron {
+    transition: none;
+  }
+}

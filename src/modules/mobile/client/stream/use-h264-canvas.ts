@@ -4,7 +4,7 @@ const TARGET_RENDER_FPS = 60;
 const VSYNC_SLACK_MS = 4;
 export function createUseH264Canvas(React, canvasRuntime) {
   const { useEffect } = React;
-  const { fitCanvasToFrame, getMediaContext, watchStageSize } = canvasRuntime;
+  const { fitCanvasToFrame, getMediaContext, watchStageSize, watchCanvasVisibility } = canvasRuntime;
   function useH264Canvas(streamUrl, canvasRef, onState, frameSizeRef) {
     useEffect(() => {
       if (streamUrl === null) return void 0;
@@ -18,6 +18,7 @@ export function createUseH264Canvas(React, canvasRuntime) {
       };
       let decoder = null;
       let reader = null;
+      let attemptController = null;
       let stallTimer = null;
       let bytesReceived = 0;
       let endedCleanly = false;
@@ -32,6 +33,27 @@ export function createUseH264Canvas(React, canvasRuntime) {
       let pendingFrame = null;
       let rafId = 0;
       let lastDrawAt = 0;
+      // 面板不可见时暂停取流/解码；恢复可见时重新取流并等下一个 IDR。
+      let paused = false;
+      let resumeWaiters = [];
+      const waitForResume = () => paused ? new Promise<void>((resolve) => { resumeWaiters.push(resolve); }) : Promise.resolve();
+      const releaseResumeWaiters = () => {
+        const waiters = resumeWaiters;
+        resumeWaiters = [];
+        for (const resolve of waiters) resolve();
+      };
+      const setVisible = (visible) => {
+        if (cancelled || visible === !paused) return;
+        paused = !visible;
+        if (!paused) {
+          releaseResumeWaiters();
+          return;
+        }
+        needsKeyframe = true;
+        // 掐断当前读流与还没回来的取流：解码循环会退出，重连循环改成等可见再取流。
+        attemptController?.abort();
+        void cancelReader(reader);
+      };
       /** `detail` 只在部分状态出现（"connecting" 无详情），所以是可选的。 */
       const report = (state, detail?) => {
         if (!cancelled) onState(state, detail);
@@ -66,7 +88,8 @@ export function createUseH264Canvas(React, canvasRuntime) {
         }
       };
       const scheduleDraw = () => {
-        if (rafId !== 0 || cancelled) return;
+        // 不可见时不排绘制：解码器吐出来的帧由下一个可见帧替换，避免后台空转 rAF。
+        if (rafId !== 0 || cancelled || paused) return;
         rafId = requestAnimationFrame(drawLatestFrame);
       };
       const buildDecoder = (codec) => {
@@ -109,16 +132,32 @@ export function createUseH264Canvas(React, canvasRuntime) {
         activeCodec = codec;
       };
       const run = async () => {
+        // 退避计时器可能在暂停之后才到点：这一轮直接跳过，别白取一次流。
+        if (paused) return;
         report("connecting");
         endedCleanly = false;
+        // 每次取流一条独立信号：暂停时只掐断这一次，不影响外层取消语义。
+        const attempt = new AbortController();
+        attemptController = attempt;
+        const relayAbort = () => attempt.abort();
+        controller.signal.addEventListener("abort", relayAbort, { once: true });
+        if (controller.signal.aborted) attempt.abort();
         let response;
         try {
-          response = await fetch(streamUrl, { cache: "no-store", signal: controller.signal });
+          response = await fetch(streamUrl, { cache: "no-store", signal: attempt.signal });
         } catch (error) {
+          if (cancelled || paused || attempt.signal.aborted) return;
           report("error", `取流失败：${error?.message ?? error}`);
           return;
+        } finally {
+          controller.signal.removeEventListener("abort", relayAbort);
+          if (attemptController === attempt) attemptController = null;
         }
         if (cancelled) {
+          await cancelReader(response.body);
+          return;
+        }
+        if (paused) {
           await cancelReader(response.body);
           return;
         }
@@ -137,7 +176,7 @@ export function createUseH264Canvas(React, canvasRuntime) {
         const STALL_TIMEOUT_MS = 3e3;
         let lastByteAt = performance.now();
         stallTimer = setInterval(() => {
-          if (cancelled) return;
+          if (cancelled || paused) return;
           if (performance.now() - lastByteAt > STALL_TIMEOUT_MS) {
             report("connecting", "画面卡住了，正在重连…");
             void cancelReader(activeReader);
@@ -145,11 +184,13 @@ export function createUseH264Canvas(React, canvasRuntime) {
         }, 500);
         try {
           for (; ; ) {
+            // 不可见时不读流：既不占带宽，也不 push 进解码器。
+            if (paused) break;
             const { done, value } = await activeReader.read();
             if (done && !cancelled) {
               endedCleanly = true;
             }
-            if (cancelled || done) break;
+            if (cancelled || done || paused) break;
             lastByteAt = performance.now();
             bytesReceived += value?.byteLength ?? 0;
             const { units, rest } = splitAnnexB(carry, value);
@@ -206,7 +247,7 @@ export function createUseH264Canvas(React, canvasRuntime) {
             }
           }
         } catch (error) {
-          if (!cancelled) report("error", `读取流失败：${error?.message ?? error}`);
+          if (!cancelled && !paused && !attempt.signal.aborted) report("error", `读取流失败：${error?.message ?? error}`);
         } finally {
           if (stallTimer !== null) {
             clearInterval(stallTimer);
@@ -223,9 +264,18 @@ export function createUseH264Canvas(React, canvasRuntime) {
       let reconnectDelay = RECONNECT_BASE_MS;
       const runWithReconnect = async () => {
         for (; ; ) {
+          if (cancelled) return;
+          // 不可见时不取流：连重连都不发，等恢复可见再继续。
+          // 可见时不额外等一拍，取流仍然是同步发起的。
+          if (paused) {
+            await waitForResume();
+            if (cancelled) return;
+          }
           const before = bytesReceived;
           await run();
           if (cancelled) return;
+          // 这一轮是因为不可见被掐断的，不算断线，也不走退避节奏。
+          if (paused) continue;
           const healthy = bytesReceived > before;
           if (healthy) reconnectDelay = RECONNECT_BASE_MS;
           // Host 重建流会正常结束旧响应；有过数据时走 150ms 快速重连。
@@ -257,12 +307,21 @@ export function createUseH264Canvas(React, canvasRuntime) {
       const canvasElement = canvasRef.current;
       const unwatchStage = canvasElement === null ? () => {
       } : watchStageSize(canvasElement);
+      // 拿不到可见性 API 时 watchCanvasVisibility 不回调，行为与改造前一致。
+      const unwatchVisibility = typeof watchCanvasVisibility === "function"
+        ? watchCanvasVisibility(canvasElement, setVisible)
+        : () => {
+        };
       void runWithReconnect();
       return () => {
         cancelled = true;
         controller.abort();
+        attemptController?.abort();
         finishReconnect?.();
+        // 卡在 waitForResume 上的循环必须被放出来，否则清理后 Promise 永挂。
+        releaseResumeWaiters();
         unwatchStage();
+        unwatchVisibility();
         if (rafId !== 0) {
           cancelAnimationFrame(rafId);
           rafId = 0;

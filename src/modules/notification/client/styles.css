@@ -1,6 +1,7 @@
 /* 页头 / 卡片 / 行由 src/client/ui/components/settings-parts 统一提供（.sk-ui-*），
  * 这里只留通知自己的控件：开关、下拉、按钮、声音试听。 */
-.ntf-page { box-sizing: border-box; width: 100%; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; }
+/* 面板自己当查询容器：下拉与音量条的收窄跟着**面板宽度**，而不是窗口宽度。 */
+.ntf-page { box-sizing: border-box; width: 100%; color: var(--dsw-alias-label-primary); display: flex; flex-direction: column; gap: 24px; container-type: inline-size; }
 .ntf-page > * { width: 100%; max-width: 960px; }
 .ntf-selectSound { width: 156px; }
 .ntf-button:focus-visible, .ntf-switch:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }
@@ -16,7 +17,12 @@
 .ntf-button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
 .ntf-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .ntf-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
-@media (max-width: 720px) {
+@container (max-width: 720px) {
   .ntf-selectSound { width: 120px; }
   .ntf-range { width: 80px; }
+}
+/* 只关掉开关拇指的位移动画（颜色/底色过渡保留）：减少动态偏好下，状态切换要立刻
+   「到位」，而不是滑过去。 */
+@media (prefers-reduced-motion: reduce) {
+  .ntf-switchKnob { transition: none; }
 }

@@ -81,12 +81,9 @@ html[data-platform="darwin"][data-fullscreen] :is([role="presentation"]:has(> [d
   min-height: 0;
   gap: 2px;
   overscroll-behavior: contain;
+  /* 标准属性已经覆盖两个滚动容器（另一处是下面的 `.sk-setnav__groups`）：Chromium
+     121+ 都认 `scrollbar-width: none`，不需要再各写一条 `::-webkit-scrollbar`。 */
   scrollbar-width: none;
-}
-
-:is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav > [class*="_navList"]::-webkit-scrollbar,
-.sk-setnav__groups::-webkit-scrollbar {
-  display: none;
 }
 
 :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav [class*="_navCell"] {
@@ -497,6 +494,14 @@ html[data-windows-titlebar]:not([data-fullscreen]) .sk-setnav__actions {
   cursor: pointer;
 }
 .sk-setnav__actions > button:hover { background: var(--dsw-alias-interactive-bg-hover); }
+/* 原生 popover 路径：清掉 UA 的 inset:0 + margin:auto（否则菜单被摆到视口正中），
+   并把定位还给下面的 top/right 声明。关闭态由 UA 的 display:none 负责（本规则不声明 display）。 */
+.sk-setnav__actions[popover] {
+  inset: auto;
+  top: calc(var(--sk-settings-band-h) - 4px);
+  right: 12px;
+  margin: 0;
+}
 .sk-setnav__actions > button:disabled { opacity: .5; cursor: default; }
 .sk-setnav__action-error { padding: 6px 10px; font-size: 12px; color: var(--dsw-alias-state-error-primary); }
 .sk-setnav__more[hidden], .sk-setnav__actions[hidden], .sk-setnav__action-error[hidden],

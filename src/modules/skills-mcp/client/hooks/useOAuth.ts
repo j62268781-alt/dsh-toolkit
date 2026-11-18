@@ -8,6 +8,7 @@ export function useOAuth(React, projection) {
   const [oauthResult, setOauthResult] = useState({})
   const [oauthPending, setOauthPending] = useState('')
   const [copiedUrlFor, setCopiedUrlFor] = useState('')
+  const [copyFailedFor, setCopyFailedFor] = useState('')
   const oauthServerState = (serverName) => {
     const entry = oauthServers[serverName]
     return entry !== null && typeof entry === 'object' ? entry : {}
@@ -48,19 +49,23 @@ export function useOAuth(React, projection) {
       setOauthPending('')
     }
   }
-  const copyAuthorizeUrl = (serverName) => {
+  const copyAuthorizeUrl = async (serverName) => {
     const url = authorizeUrlFor(serverName)
     if (url === '') return
     try {
-      void navigator.clipboard?.writeText?.(url)
+      // 必须 await：writeText 的拒绝是异步的，`void` 掉之后下面的 catch 永远进不来，
+      // 于是剪贴板其实没写进去、按钮却已经显示「已复制」，用户把空内容粘进浏览器。
+      await navigator.clipboard.writeText(url)
+      setCopyFailedFor('')
       setCopiedUrlFor(serverName)
     } catch {
-      // The adjacent input remains selectable when the clipboard is unavailable.
+      // 权限被拒 / 文档失焦 / 没有 clipboard API：让用户手动选中相邻的输入框。
       setCopiedUrlFor('')
+      setCopyFailedFor(serverName)
     }
   }
   return {
-    oauthState, oauthPending, copiedUrlFor, oauthServerState, authorizeUrlFor,
+    oauthState, oauthPending, copiedUrlFor, copyFailedFor, oauthServerState, authorizeUrlFor,
     oauthFailureFor, startOAuth, revokeOAuth, copyAuthorizeUrl,
   }
 }

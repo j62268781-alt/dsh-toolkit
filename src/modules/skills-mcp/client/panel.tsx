@@ -10,7 +10,7 @@ import { orderedScopeGroups, scopeKey } from './components/scopeOrder.js'
 import { pendingAdds as pendingAddsOf, pendingLabel, settleInflight } from './crud/inflight.js'
 import type { InflightMap } from './crud/inflight.js'
 import { emptyMcpText, emptySkillText } from './components/sections.js'
-import { anchorStyle, measureMenuAnchor, listenMenuDismiss } from './components/menuAnchor.js'
+import { CAN_POPOVER, anchorStyle, measureMenuAnchor, listenMenuDismiss, menuKeydown, popoverMenuAttrs, showMenu } from './components/menuAnchor.js'
 import { useFormSnapshot, useFormRefresh } from './hooks/useFormRefresh.js'
 import { useInventory } from './hooks/useInventory.js'
 import { useRuntime } from './hooks/useRuntime.js'
@@ -62,6 +62,8 @@ export function createPanel(React, primitives) {
     const [expanded, setExpanded] = useState('')
     const [menuFor, setMenuFor] = useState('')
     const [menuAnchor, setMenuAnchor] = useState(null)
+    /** 当前挂着的菜单元素：原生 popover 要在挂载后 showPopover，弹层关掉时也不能再被渲染出来。 */
+    const menuElement = useRef(null)
     const [editing, setEditing] = useState(null)
     const [draft, setDraft] = useState({})
     const [scopeDraft, setScopeDraft] = useState({ value: '', custom: false })
@@ -194,6 +196,12 @@ export function createPanel(React, primitives) {
     useEffect(() => {
       if (menuFor === '') return undefined
       if (typeof document === 'undefined') return undefined
+      // 原生 popover 自己处理 Esc 与点外关闭，这里只把状态收回；不支持时走原来的监听。
+      if (CAN_POPOVER) {
+        const onKey = (event) => { if (event.key === 'Escape') setMenuFor('') }
+        document.addEventListener('keydown', onKey)
+        return () => document.removeEventListener('keydown', onKey)
+      }
       const onKey = (event) => { if (event.key === 'Escape') setMenuFor('') }
       document.addEventListener('keydown', onKey)
       const removeDismissListeners = listenMenuDismiss(() => setMenuFor(''))
@@ -201,6 +209,17 @@ export function createPanel(React, primitives) {
         document.removeEventListener('keydown', onKey)
         removeDismissListeners()
       }
+    }, [menuFor])
+
+    // 原生 popover：打开后进 top layer，Esc / 点外由浏览器关；这里把状态跟着收回来。
+    useEffect(() => {
+      if (menuFor === '' || !CAN_POPOVER) return undefined
+      const element = menuElement.current
+      if (!element) return undefined
+      showMenu(element)
+      const onToggle = (event) => { if (event?.newState === 'closed') setMenuFor('') }
+      element.addEventListener('toggle', onToggle)
+      return () => element.removeEventListener('toggle', onToggle)
     }, [menuFor])
     const [customProject, setCustomProject] = useState(false)
     const [importOpen, setImportOpen] = useState(false)
@@ -263,7 +282,7 @@ export function createPanel(React, primitives) {
     const serverStatus = runtime.serverStatus
 
     const {
-      oauthState, oauthPending, copiedUrlFor, oauthServerState, authorizeUrlFor,
+      oauthState, oauthPending, copiedUrlFor, copyFailedFor, oauthServerState, authorizeUrlFor,
       oauthFailureFor, startOAuth, revokeOAuth, copyAuthorizeUrl,
     } = useOAuth(React, runtime.oauth)
 
@@ -528,12 +547,16 @@ export function createPanel(React, primitives) {
           </button>
           {open ? (
             <>
-              {/* 点击遮罩关闭：不能让菜单在一次无关的点击后还开着，
-                  否则下一次点击会落在用户没打算打开的菜单项上。 */}
-              <span className="smp-menuScrim" key="scrim" onClick={() => setMenuFor('')} />
+              {/* 原生 popover 用 light dismiss 处理点外关闭，手写遮罩只在兜底路径需要。 */}
+              {CAN_POPOVER ? null : (
+                <span className="smp-menuScrim" key="scrim" onClick={() => setMenuFor('')} />
+              )}
               <span
                 className="smp-menu" key="menu" role="menu"
                 data-placement={menuAnchor?.placement ?? 'down'}
+                {...popoverMenuAttrs()}
+                onKeyDown={(event) => { menuKeydown(event, event.currentTarget) }}
+                ref={menuElement}
                 style={anchorStyle(menuAnchor)}
               >
                 {visible}
@@ -648,8 +671,8 @@ export function createPanel(React, primitives) {
                   value={authorizeUrlFor(serverName)}
                   onFocus={(event) => event.target.select()}
                 />
-                <button className="smp-button" data-variant="outline" type="button" onClick={() => copyAuthorizeUrl(serverName)}>
-                  {copiedUrlFor === serverName ? '已复制' : '复制链接'}
+                <button className="smp-button" data-variant="outline" type="button" onClick={() => void copyAuthorizeUrl(serverName)}>
+                  {copiedUrlFor === serverName ? '已复制' : copyFailedFor === serverName ? '复制失败，请手动选中' : '复制链接'}
                 </button>
               </div>
               <p className="smp-note" style={{ margin: '2px 0 0' }}>

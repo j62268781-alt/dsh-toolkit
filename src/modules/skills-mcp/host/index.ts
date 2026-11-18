@@ -365,7 +365,7 @@ export function apply(ctx: any, config: any) {
    */
   const readRuntime = () => {
     const { rows } = configuredMcpRows(ctx)
-    const plain = JSON.parse(JSON.stringify(rows))
+    const plain: any = structuredClone(rows)
     const names = plain.map((row: any) => row.serverName)
     // Global rows are instantiated by the Loader at the root, so the unscoped view is
     // exactly where their tools are. Everything else lives in an agent's scope and is
@@ -557,7 +557,7 @@ export function apply(ctx: any, config: any) {
       } catch (error: any) {
         routeCtx.logger.warn('dsh-toolkit-skills-mcp: post-command refresh failed: %s', String(error?.message ?? error))
       }
-      return { ok: true, reason: '', servers: JSON.parse(JSON.stringify(configuredMcpRows(routeCtx).rows)) }
+      return { ok: true, reason: '', servers: structuredClone(configuredMcpRows(routeCtx).rows) }
     }),
   }))
 

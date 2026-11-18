@@ -414,7 +414,7 @@ export function rankByGoal<T extends TaskCandidate>(list: readonly T[], goal: st
   for (const candidate of list) {
     const gid = candidate.groupId
     if (gid === undefined || gid === '' || groupOrdinalById.has(gid)) continue
-    const signature = groupSignatures.get(gid) ?? [...(groupRolesList.get(gid) ?? [])].sort().join('+')
+    const signature = groupSignatures.get(gid) ?? [...(groupRolesList.get(gid) ?? [])].toSorted().join('+')
     const ordinal = (groupSignatureCounts.get(signature) ?? 0) + 1
     groupSignatureCounts.set(signature, ordinal)
     groupOrdinalById.set(gid, ordinal)

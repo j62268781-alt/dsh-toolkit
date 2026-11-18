@@ -125,12 +125,31 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+/* 面板内响应式：下面三条断点量的是**面板自己有多宽**，不是窗口有多宽 —— 设置面板在
+ * 侧栏里打开、或被拉窄时，这两件事并不一样；`@media` 只看窗口，于是窄侧栏配宽窗口时
+ * 该收的地方没收。
+ *
+ * 只声明 `inline-size`（不是 `size`）：这些盒子靠内容撑高度，`size` 容器会把高度也锁死，
+ * 行与宫格就会互相裁切。宫格自己也是容器，因为宠物库弹窗是 `createPortal` 渲染的，
+ * 它不在任何 `.sk-ui-card` 里 —— 靠卡片当容器的话，那里的选项卡片会永远量不到宽度。 */
+.sk-ui-cardSection {
+  container-type: inline-size;
+}
+
+.sk-ui-card {
+  container-type: inline-size;
+}
+
+.sk-ui-grid {
+  container-type: inline-size;
+}
+
 /* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */
 .sk-ui-grid[data-columns="6"] {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
-@media (max-width: 720px) {
+@container (max-width: 720px) {
   .sk-ui-row {
     gap: 12px;
   }
@@ -144,7 +163,7 @@
   }
 }
 
-@media (max-width: 520px) {
+@container (max-width: 520px) {
   .sk-ui-grid,
   .sk-ui-grid[data-columns="4"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -241,7 +260,7 @@
   line-height: 16px;
 }
 
-@media (max-width: 620px) {
+@container (max-width: 620px) {
   .sk-ui-option__media {
     height: 82px;
   }
@@ -264,7 +283,13 @@
   }
 }
 
-/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。 */
+/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。
+ *
+ * 这一档**故意留在 `@media`**：它换掉的是卡片的方向（竖排 → 横排），而横排卡片的最小
+ * 宽度比宫格在 420 时仍然保留的 2–3 列大得多 —— 用窗口宽度判断时，窗口真窄到 420 的
+ * 场景里宫格也只剩 2 列，凑合能放；改成按面板宽度判断后，「宽窗口 + 窄面板」（宠物库
+ * 那种可缩放弹窗、被压缩的设置容器）会让 3 列横排卡片互相压住。实测见
+ * `.cache/x/e-a11y-after.png` 与 `.cache/x/n-before.png` 的对比。 */
 @media (max-width: 420px) {
   .sk-ui-option {
     flex-direction: row;

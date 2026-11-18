@@ -21,6 +21,7 @@
  */
 import React from "react";
 import { fetchJson } from "../../../../../client/http.js";
+import { isComposingEvent } from "../../../../../client/ime.js";
 import { findScopedForm } from "../../../../../client/config.js";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
@@ -339,6 +340,13 @@ export function createBranchChip(ctx: any) {
                   maxLength={MAX_BRANCH_NAME_LENGTH}
                   placeholder={t("branchNewPlaceholder")}
                   onChange={(event) => setCreator((state) => ({ ...state, draft: event.target.value }))}
+                  onKeyDown={(event) => {
+                    // 输入法候选窗里的 Enter 是「确认候选」，不是「创建分支」。
+                    if (isComposingEvent(event)) return;
+                    if (event.key !== "Enter" || !draftValid) return;
+                    event.preventDefault();
+                    void submit(draft, true);
+                  }}
                 />
               ) : (
                 <Input
@@ -349,6 +357,8 @@ export function createBranchChip(ctx: any) {
                   aria-label={t("branchNewTitle")}
                   onChange={(event: any) => setCreator((state) => ({ ...state, draft: event?.target?.value ?? "" }))}
                   onKeyDown={(event: any) => {
+                    // 同上：组字中的 Enter 会把拼音当成分支名提交。
+                    if (isComposingEvent(event)) return;
                     if (event?.key === "Enter" && draftValid) {
                       event.preventDefault();
                       void submit(draft, true);

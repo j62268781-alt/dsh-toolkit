@@ -62,10 +62,13 @@ export function toolListNode(inventory, keyPrefix = 'tools', filter = null) {
         <span className="smp-toolTitle">工具</span>
         <span className="smp-toolCount">{`(${tools.length})`}</span>
         {canEdit ? (
+          // `aria-pressed` is the pressed state screen readers can read; `data-active`
+          // stays because panel.css (not this module's file to churn) matches on it.
           <span className="smp-toolModes" key="modes">
             {[['off', '全部保留'], ['allow', '只保留勾选'], ['deny', '只挡勾选']].map(([value, label]) => (
               <button
                 type="button" key={value} className="smp-toolMode"
+                aria-pressed={mode === value}
                 data-active={String(mode === value)}
                 onClick={() => filter.onMode(value)}
               >

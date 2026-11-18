@@ -39,11 +39,11 @@ export function configuredWorkspaces(ctx: any) {
   try {
     const registry = ctx.get?.('workspaceRegistry')
     if (registry === undefined || registry === null || typeof registry.list !== 'function') return []
-    return JSON.parse(JSON.stringify(registry.list().map((workspace: any) => ({
+    return structuredClone(registry.list().map((workspace: any) => ({
       id: String(workspace?.id ?? ''),
       title: String(workspace?.title ?? ''),
       path: String(workspace?.path ?? ''),
-    })).filter((workspace: any) => workspace.path !== '')))
+    })).filter((workspace: any) => workspace.path !== ''))
   } catch (error: any) {
     // Distinguish "no workspaces" from "the registry blew up".
     if (process.env.SMP_DEBUG) console.error('[dsh-toolkit-skills-mcp] workspace registry unavailable', error)

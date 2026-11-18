@@ -4,6 +4,7 @@ import {
   PAIRING_POLL_MS,
   isPairingActive,
 } from './pairing.js'
+import { isComposingEvent } from '../../../../client/ime.js'
 
 /** 指纹按 4 字符分组，方便人眼比对（与 ds-harness-remote 自己的面板一致）。 */
 function shortFingerprint(value) {
@@ -98,6 +99,8 @@ export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
         disabled: busy,
         onChange: (event) => setDraft(event.target.value),
         onKeyDown: (event) => {
+          // 组字确认用的 Enter 不能触发保存，否则存下去的是拼音。
+          if (isComposingEvent(event)) return
           if (event.key === 'Enter') save()
           if (event.key === 'Escape') setEditing(false)
         },

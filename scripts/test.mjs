@@ -22,10 +22,11 @@ for (const group of ['judgment', 'hooks', 'git', 'skills-mcp', 'notification', '
 if (!testFiles.includes('tests/pet/runtime.mjs')) testFiles.push('tests/pet/runtime.mjs')
 
 // node --test 默认按 CPU 数并发：每个测试文件一个进程，jsdom 用例单进程峰值可达 350MB，
-// 11 核机器上同时 12 个进程实测约 2.3GB。默认压到 4 路（峰值约 1GB，全量耗时多 3s 以内），
+// 11 核机器上同时 12 个进程实测约 2.3GB。默认压到 3 路（峰值约 1GB，全量耗时多 5s 以内），
 // 并给每个测试进程加堆上限，让泄漏的用例自己 OOM 退出，而不是把整机拖进 swap。
+// 本机实测：4 路并发再叠上 tsc / esbuild / 多个 IDE，会把 15GB 的机器打到 OOM。
 const cpus = availableParallelism()
-const concurrency = Number.parseInt(process.env.DSH_TEST_CONCURRENCY ?? '', 10) || Math.min(4, cpus)
+const concurrency = Number.parseInt(process.env.DSH_TEST_CONCURRENCY ?? '', 10) || Math.min(3, cpus)
 const heapMb = Number.parseInt(process.env.DSH_TEST_HEAP_MB ?? '', 10) || 1024
 // --test-concurrency 自 Node 21 起才有，且不允许出现在 NODE_OPTIONS 里。
 const concurrencyFlag = Number(process.versions.node.split('.')[0]) >= 21 ? [`--test-concurrency=${concurrency}`] : []

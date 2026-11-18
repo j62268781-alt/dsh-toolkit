@@ -63,6 +63,10 @@
 .jdg-moreTrigger:disabled{opacity:.5;cursor:default}
 .jdg-menuScrim{position:fixed;inset:0;z-index:40}
 .jdg-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:41;min-width:104px;padding:4px;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-1,#fff);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);box-shadow:0 6px 20px rgba(0,0,0,.12)}
+/* 走原生 popover 时：清掉 UA 的居中定位（否则菜单会被摆到视口正中），
+   并让关闭态真的不可见——作者声明的 display:flex 会盖掉 UA 的 display:none。 */
+.jdg-menu[popover]{inset:auto;margin:0}
+.jdg-menu[popover]:not(:popover-open){display:none}
 .jdg-menuItem{box-sizing:border-box;width:100%;text-align:left;border:0;background:0 0;border-radius:var(--dsw-radius-sm);padding:6px 10px;font-size:13px;line-height:18px;color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap}
 .jdg-menuItem:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .jdg-menuItem[data-variant=danger]{color:var(--dsw-alias-state-error-primary,#d92d20)}

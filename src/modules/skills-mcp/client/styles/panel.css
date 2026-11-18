@@ -82,6 +82,9 @@
    这样才能既不被面板滚动容器的 overflow 裁剪，又能在下方放不下时翻转向上。
    `min-width` 保证即使只有「授权」两个字也不会挤成一条。 */
 .smp-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:41;min-width:104px;padding:4px;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-1,#fff);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);box-shadow:0 6px 20px rgba(0,0,0,.12);box-sizing:border-box}
+/* 原生 popover 路径：清掉 UA 的居中定位，并让关闭态真的消失（作者 display:flex 会盖掉 UA 的 none）。 */
+.smp-menu[popover]{inset:auto;margin:0}
+.smp-menu[popover]:not(:popover-open){display:none}
 .smp-menuItem{box-sizing:border-box;width:100%;text-align:left;border:0;background:0 0;border-radius:var(--dsw-radius-sm);padding:6px 10px;font-size:13px;line-height:18px;color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap}
 .smp-menuItem:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .smp-menuItem:disabled{opacity:.5;cursor:default}

@@ -2,13 +2,15 @@ import { startPolling } from "../../../client/poll.js";
 import { toast } from "../../../client/ui/toast.js";
 import { deviceKindLabel } from "./presentation.js";
 import { CHASSIS_INSET } from "./stream/canvas.js";
-import { REGRANT_MIN_INTERVAL_MS, REGRANT_TICK_MS, newRegrantStreak, neededPixelWidth, nextCooldownAfterGrant, tickRegrant } from "./stream/adaptive.js";
+import { REGRANT_MIN_INTERVAL_MS, REGRANT_SETTLE_MS, REGRANT_TICK_MS, newRegrantStreak, neededPixelWidth, nextCooldownAfterGrant, tickRegrant } from "./stream/adaptive.js";
 export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, StreamView, icons, renderDeviceOptions }) {
   const h = React.createElement;
   const { useState, useEffect, useRef, useCallback, useMemo } = React;
   const { Button, Tooltip, IconChevronDownOutlineRegular } = primitives;
   const { IconHome, IconBack, IconRotate, IconRefresh, IconFrame, IconFrameNone } = icons;
-  const { measureStage, maxMediaCssWidth, getPanelCssWidth, setDevicePixelWidth } = canvasRuntime;
+  const { measureStage, maxMediaCssWidth, getPanelCssWidth, setDevicePixelWidth, watchStageResize } = canvasRuntime;
+  // 取流在飞时不判定尺寸；用更慢的节拍等它结束，别在启动设备的几分钟里空转。
+  const BUSY_RECHECK_MS = REGRANT_TICK_MS * 4;
   function nextFrame() {
     return new Promise<void>((resolve) => {
       if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
@@ -41,6 +43,8 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
     const busyRef = useRef(false);
     const fixedScaleRef = useRef(false);
     const lastNeedPxRef = useRef(0);
+    // 尺寸判定由 ResizeObserver / dpr 变化触发，两处都要能叫醒同一条判定链。
+    const checkSizeRef = useRef(null);
     const preferredStreamWidth = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const panelCssWidth = getPanelCssWidth();
@@ -130,10 +134,24 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
     }, [grant]);
     useEffect(() => {
       if (activeId === null) return void 0;
-      const timer = setInterval(() => {
-        if (busyRef.current) return;
-        if (offlineRef.current) return;
+      let stopped = false;
+      let burstTimer = null;
+      // 尺寸变化后还要盯多久：hold 判定与画布缓存的 CSS 宽度都靠「过一会儿再看」。
+      let settleUntil = 0;
+      let eventDriven = false;
+      const check = () => {
+        if (burstTimer !== null) {
+          clearTimeout(burstTimer);
+          burstTimer = null;
+        }
+        if (stopped) return;
         const now = performance.now();
+        if (busyRef.current) {
+          // 取流进行中判不了尺寸，但这次变化不能丢：放慢节奏等它结束。
+          if (eventDriven) burstTimer = setTimeout(check, BUSY_RECHECK_MS);
+          return;
+        }
+        if (offlineRef.current) return;
         const needPx = preferredStreamWidth();
         const prevPx = lastNeedPxRef.current;
         lastNeedPxRef.current = needPx;
@@ -148,13 +166,39 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
           lastAt: lastRegrantAtRef.current,
           cooldown: regrantCooldownRef.current
         })) {
+          // hold 还没满足就继续追；判定已稳定且过了观察窗就彻底停下，不再空转。
+          const pending = regrantStreakRef.current.direction !== "none";
+          if (eventDriven && (pending || now < settleUntil)) burstTimer = setTimeout(check, REGRANT_TICK_MS);
           return;
         }
         regrantStreakRef.current = newRegrantStreak();
         lastRegrantAtRef.current = now;
         void grant(activeId, { regrant: true });
-      }, REGRANT_TICK_MS);
-      return () => clearInterval(timer);
+      };
+      const wake = () => {
+        settleUntil = performance.now() + REGRANT_SETTLE_MS;
+        check();
+      };
+      checkSizeRef.current = wake;
+      // 尺寸变化只靠画布那一个 ResizeObserver 派发；没有它才退回 250ms 定时取尺寸。
+      const unwatch = typeof watchStageResize === "function" ? watchStageResize(wake) : null;
+      if (unwatch === null) {
+        const timer = setInterval(wake, REGRANT_TICK_MS);
+        return () => {
+          stopped = true;
+          checkSizeRef.current = null;
+          clearInterval(timer);
+        };
+      }
+      eventDriven = true;
+      // 订阅前可能已经错过一次尺寸回调，先量一遍。
+      wake();
+      return () => {
+        stopped = true;
+        checkSizeRef.current = null;
+        if (burstTimer !== null) clearTimeout(burstTimer);
+        unwatch();
+      };
     }, [activeId, grant]);
     useEffect(() => {
       if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -169,6 +213,8 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
         onChange = () => {
           regrantStreakRef.current = newRegrantStreak();
           watch();
+          // dppx 变了但尺寸可能不变，只有尺寸观察器不会知道该重新判定一次。
+          checkSizeRef.current?.();
         };
         if (typeof query.addEventListener === "function") query.addEventListener("change", onChange);
         else if (typeof query.addListener === "function") query.addListener(onChange);
@@ -182,6 +228,7 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
       };
     }, []);
     useEffect(() => {
+      // 面板不可见（切 tab / 收侧栏 / 窗口隐藏）时不排下一拍状态查询。
       const poll = startPolling(async (signal) => {
         const status = await api("status", undefined, { signal });
         if (signal.aborted) return;
@@ -190,7 +237,7 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
         if (Array.isArray(status.devices)) rememberDevices(status.devices);
         setAdb(status.adb ?? null);
         setStatusSeen(true);
-      }, { intervalMs: 5_000 });
+      }, { intervalMs: 5_000, pauseWhenHidden: true });
       return () => poll.stop();
     }, []);
     const act = useCallback(

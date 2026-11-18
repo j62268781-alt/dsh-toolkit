@@ -172,13 +172,9 @@ export function parseManifest(value: any): Catalog {
 }
 
 async function requestJson(fetchImpl: typeof globalThis.fetch, url: string, timeoutMs: number): Promise<any> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const response = await fetchImpl(url, { signal: controller.signal, redirect: 'follow', headers: { accept: 'application/json' } })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    return await response.json()
-  } finally { clearTimeout(timer) }
+  const response = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs), redirect: 'follow', headers: { accept: 'application/json' } })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  return await response.json()
 }
 
 interface DownloadOptions {
@@ -190,48 +186,45 @@ interface DownloadOptions {
 async function download(fetchImpl: typeof globalThis.fetch, url: string, { timeoutMs, maxBytes, onProgress }: DownloadOptions): Promise<Buffer> {
   const parsed = new URL(url)
   if (parsed.protocol !== 'https:') throw new Error('Petdex assets must use https')
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const response = await fetchImpl(parsed.href, { signal: controller.signal, redirect: 'follow', headers: { accept: '*/*' } })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    const declared = Number(response.headers.get('content-length'))
-    if (Number.isFinite(declared) && declared > maxBytes) throw new Error('Asset is too large')
-    const total = Number.isFinite(declared) && declared > 0 ? declared : 0
-    // 精灵表约 2.4MB，按块读才能把「下到百分之几」报出去；拿不到 body 的环境（测试的 fetch stub）退回一次性读。
-    const stream = response.body
-    if (stream && typeof stream.getReader === 'function') {
-      const reader = stream.getReader()
-      const chunks: Buffer[] = []
-      let loaded = 0
-      for (;;) {
-        const chunk = await reader.read()
-        if (chunk.done) break
-        const bytes = Buffer.from(chunk.value)
-        loaded += bytes.length
-        if (loaded > maxBytes) { await reader.cancel().catch(() => {}); throw new Error('Asset is too large') }
-        chunks.push(bytes)
-        onProgress?.(loaded, total)
-      }
-      return Buffer.concat(chunks)
+  const signal = AbortSignal.timeout(timeoutMs)
+  const response = await fetchImpl(parsed.href, { signal, redirect: 'follow', headers: { accept: '*/*' } })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  const declared = Number(response.headers.get('content-length'))
+  if (Number.isFinite(declared) && declared > maxBytes) throw new Error('Asset is too large')
+  const total = Number.isFinite(declared) && declared > 0 ? declared : 0
+  // 精灵表约 2.4MB，按块读才能把「下到百分之几」报出去；拿不到 body 的环境（测试的 fetch stub）退回一次性读。
+  const stream = response.body
+  if (stream && typeof stream.getReader === 'function') {
+    const reader = stream.getReader()
+    const chunks: Buffer[] = []
+    let loaded = 0
+    for (;;) {
+      const chunk = await reader.read()
+      if (chunk.done) break
+      const bytes = Buffer.from(chunk.value)
+      loaded += bytes.length
+      if (loaded > maxBytes) { await reader.cancel().catch(() => {}); throw new Error('Asset is too large') }
+      chunks.push(bytes)
+      onProgress?.(loaded, total)
     }
-    if (stream && typeof (stream as any)[Symbol.asyncIterator] === 'function') {
-      const chunks: Buffer[] = []
-      let loaded = 0
-      for await (const chunk of stream) {
-        const bytes = Buffer.from(chunk)
-        loaded += bytes.length
-        if (loaded > maxBytes) throw new Error('Asset is too large')
-        chunks.push(bytes)
-        onProgress?.(loaded, total)
-      }
-      return Buffer.concat(chunks)
+    return Buffer.concat(chunks)
+  }
+  if (stream && typeof (stream as any)[Symbol.asyncIterator] === 'function') {
+    const chunks: Buffer[] = []
+    let loaded = 0
+    for await (const chunk of stream) {
+      const bytes = Buffer.from(chunk)
+      loaded += bytes.length
+      if (loaded > maxBytes) throw new Error('Asset is too large')
+      chunks.push(bytes)
+      onProgress?.(loaded, total)
     }
-    const bytes = Buffer.from(await response.arrayBuffer())
-    if (bytes.length > maxBytes) throw new Error('Asset is too large')
-    onProgress?.(bytes.length, total || bytes.length)
-    return bytes
-  } finally { clearTimeout(timer) }
+    return Buffer.concat(chunks)
+  }
+  const bytes = Buffer.from(await response.arrayBuffer())
+  if (bytes.length > maxBytes) throw new Error('Asset is too large')
+  onProgress?.(bytes.length, total || bytes.length)
+  return bytes
 }
 
 export interface CatalogOptions {

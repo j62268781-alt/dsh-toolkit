@@ -51,6 +51,8 @@ function mount(t) {
 }
 
 const mouse = (dom, type, x, y) => new dom.window.MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 })
+// 把手走 Pointer Events（触屏/手写笔）；jsdom 有 PointerEvent，但没有 setPointerCapture。
+const pointer = (dom, type, x, y) => new dom.window.PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerId: 1, pointerType: 'mouse' })
 
 test('the dialog keeps its own size inside the viewport instead of filling it', async (t) => {
   const { ResizableDialog } = await dialogModule('size')
@@ -86,18 +88,18 @@ test('dragging the handle resizes within the minimum and maximum bounds', async 
   const card = () => document.querySelector('.tk-dialogCard')
   const handle = document.querySelector('.tk-dialogResize')
 
-  await act(async () => { handle.dispatchEvent(mouse(dom, 'mousedown', 100, 100)); await flush() })
-  await act(async () => { document.dispatchEvent(mouse(dom, 'mousemove', 300, 200)); await flush() })
+  await act(async () => { handle.dispatchEvent(pointer(dom, 'pointerdown', 100, 100)); await flush() })
+  await act(async () => { document.dispatchEvent(pointer(dom, 'pointermove', 300, 200)); await flush() })
   assert.equal(card().style.width, '976px', 'widened by the drag, capped by the 1024px viewport')
   assert.equal(card().style.height, '720px', 'clamped to viewport height minus padding')
 
-  await act(async () => { document.dispatchEvent(mouse(dom, 'mousemove', -4000, -4000)); await flush() })
+  await act(async () => { document.dispatchEvent(pointer(dom, 'pointermove', -4000, -4000)); await flush() })
   assert.equal(card().style.width, '640px', 'clamped at the minimum width')
   assert.equal(card().style.height, '420px', 'clamped at the minimum height')
 
-  await act(async () => { document.dispatchEvent(mouse(dom, 'mouseup', 0, 0)); await flush() })
-  await act(async () => { document.dispatchEvent(mouse(dom, 'mousemove', 400, 400)); await flush() })
-  assert.equal(card().style.width, '640px', 'moving after mouseup no longer resizes')
+  await act(async () => { document.dispatchEvent(pointer(dom, 'pointerup', 0, 0)); await flush() })
+  await act(async () => { document.dispatchEvent(pointer(dom, 'pointermove', 400, 400)); await flush() })
+  assert.equal(card().style.width, '640px', 'moving after pointerup no longer resizes')
 })
 
 test('the handle resizes from the keyboard and Escape closes the dialog', async (t) => {

@@ -30,14 +30,14 @@ export default function createClient(require) {
       });
     } catch (error) {
       if (signal?.aborted) throw error;
-      throw new Error(`连不上插件路由（${route}）：${error?.message ?? error}`);
+      throw new Error(`连不上插件路由（${route}）：${error?.message ?? error}`, { cause: error });
     }
     let payload;
     try {
       payload = await response.json();
     } catch (error) {
       if (signal?.aborted) throw error;
-      throw new Error(`路由 ${route} 返回了非 JSON：${error?.bodyPreview ?? error?.message ?? error}`);
+      throw new Error(`路由 ${route} 返回了非 JSON：${error?.bodyPreview ?? error?.message ?? error}`, { cause: error });
     }
     if (!response.ok || payload.ok === false) {
       throw new Error(payload.error ?? `路由 ${route} 失败（HTTP ${response.status}）`);

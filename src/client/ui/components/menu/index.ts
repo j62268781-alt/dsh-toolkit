@@ -84,3 +84,61 @@ export function listenMenuDismiss(close: () => void): () => void {
     view?.removeEventListener?.('resize', close)
   }
 }
+
+/**
+ * 原生 popover 是否可用。
+ *
+ * 可用时菜单进 top layer：层叠顺序、Esc、点外关闭（light dismiss）都不必自己实现，
+ * 遮罩那一层也可以删掉。jsdom 没有这个属性，所以测试跑的是手写兜底路径。
+ */
+export const CAN_POPOVER = typeof HTMLElement !== 'undefined' && Object.hasOwn(HTMLElement.prototype, 'popover')
+
+/** 菜单容器要摊开的属性；不支持时返回空对象，调用方保持手写实现。 */
+export function popoverMenuAttrs(): Record<string, string> {
+  return CAN_POPOVER ? { popover: 'auto' } : {}
+}
+
+export function showMenu(element: any): void {
+  if (!CAN_POPOVER || !element) return
+  try {
+    if (!element.matches(':popover-open')) element.showPopover()
+  } catch {
+    /* 还没挂载或已经关掉：状态由 React 兜着 */
+  }
+}
+
+export function hideMenu(element: any): void {
+  if (!CAN_POPOVER || !element) return
+  try {
+    if (element.matches(':popover-open')) element.hidePopover()
+  } catch {
+    /* 同上 */
+  }
+}
+
+/**
+ * 方向键 / Home / End 的菜单键盘契约。
+ *
+ * `role="menu"` 只有在真的实现这套移动时才合法；原生 `focusgroup` 目前只有
+ * Chromium 150+，所以三个菜单共用这一份兜底，而不是各自写一遍。
+ */
+export function menuKeydown(event: any, container: any): boolean {
+  const key = event?.key
+  if (key !== 'ArrowDown' && key !== 'ArrowUp' && key !== 'Home' && key !== 'End') return false
+  if (!container) return false
+  const seen = new Set()
+  const items = [...container.querySelectorAll('[role="menuitem"], button')].filter((node: any) => {
+    if (seen.has(node)) return false
+    seen.add(node)
+    return node.disabled !== true && node.getAttribute?.('aria-disabled') !== 'true' && node.hidden !== true
+  })
+  if (items.length === 0) return false
+  event.preventDefault()
+  const index = items.indexOf(event.target)
+  const next = key === 'Home' ? 0
+    : key === 'End' ? items.length - 1
+      : index < 0 ? (key === 'ArrowUp' ? items.length - 1 : 0)
+        : (index + (key === 'ArrowUp' ? -1 : 1) + items.length) % items.length
+  items[next].focus?.()
+  return true
+}

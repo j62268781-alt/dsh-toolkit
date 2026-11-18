@@ -5,6 +5,8 @@
  * （壳负责 busy 包装与错误提示）。依赖用参数传入而不是 import：这些组件要在
  * createPanel 闭包里拿到同一个 React 实例、同一个翻译函数与同一个二维码渲染器。
  */
+import { isComposingEvent } from "../../../../client/ime.js";
+
 export function createWechatViews({ React, t, useCountdown, QrCode }) {
   const { useEffect, useRef, useState } = React
   const h = React.createElement
@@ -94,6 +96,8 @@ export function createWechatViews({ React, t, useCountdown, QrCode }) {
           disabled: busy,
           onChange: (event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 8)),
           onKeyDown: (event) => {
+            // 验证码框也是中文输入法会进来的地方：组字中的 Enter 只确认候选。
+            if (isComposingEvent(event)) return
             if (event.key === 'Enter') submit()
           },
         }),

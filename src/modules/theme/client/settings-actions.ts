@@ -1,4 +1,6 @@
 /** Keep configuration and the public desktop update flow in the settings menu. */
+import { CAN_POPOVER, hideMenu, menuKeydown, showMenu } from '../../../client/ui/components/menu/index.js'
+
 export function installSettingsActions(panel) {
   const more = document.createElement('button');
   more.type = 'button';
@@ -11,7 +13,13 @@ export function installSettingsActions(panel) {
   menu.className = 'sk-setnav__actions';
   menu.setAttribute('role', 'menu');
   menu.setAttribute('aria-label', '设置操作');
-  menu.hidden = true;
+  // 原生 popover：进 top layer，Esc 与点外关闭交给浏览器；兜底路径仍用 hidden。
+  if (CAN_POPOVER) menu.setAttribute('popover', 'auto');
+  else menu.hidden = true;
+  menu.addEventListener('keydown', (event) => { menuKeydown(event, menu); });
+  menu.addEventListener('toggle', (event) => {
+    if (event.newState === 'closed') more.setAttribute('aria-expanded', 'false');
+  });
   const action = document.createElement('button');
   action.type = 'button';
   action.setAttribute('role', 'menuitem');
@@ -65,13 +73,15 @@ export function installSettingsActions(panel) {
     update.title = available ? '' : '请在 DeepSeek Harness 桌面应用中检查更新';
   };
   const close = (focus = false) => {
-    menu.hidden = true;
+    if (CAN_POPOVER) hideMenu(menu);
+    else menu.hidden = true;
     more.setAttribute('aria-expanded', 'false');
     if (focus) more.focus();
   };
   const enabledActions = (): HTMLButtonElement[] => [...menu.querySelectorAll('button')].filter((button) => !button.hidden && !button.disabled);
   const open = () => {
-    menu.hidden = false;
+    if (CAN_POPOVER) showMenu(menu);
+    else menu.hidden = false;
     more.setAttribute('aria-expanded', 'true');
     (enabledActions()[0] ?? more).focus();
   };

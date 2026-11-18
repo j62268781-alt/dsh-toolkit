@@ -320,6 +320,9 @@ export function installSettingsNav(ctx: any = {}) {
     actions.sync();
   };
   const observer = new MutationObserver((records) => {
+    // 设置面板只在模态打开时存在。面板既不在状态里也不在 DOM 里时，这一批记录
+    // 一条都不用看 —— 绝大多数时间（正常聊天）就是这个分支，连 closest 都不做。
+    if (panel === null && document.querySelector(PANEL) === null) return;
     // 聊天区流式输出每批 token 都会产生记录；设置面板不可能在里面，
     // 直接跳过，别为每个 token 做一次全文档 querySelector。
     const chatOnly = (record) => {

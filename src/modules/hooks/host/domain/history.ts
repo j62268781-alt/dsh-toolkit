@@ -39,7 +39,7 @@ export function createHookHistory(limit: number): HookHistory {
     },
     list() {
       // 新的在前：面板从上往下读，最近一次应该在第一行。
-      return [...records].reverse()
+      return records.toReversed()
     },
     clear() {
       records.length = 0

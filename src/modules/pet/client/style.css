@@ -1,4 +1,5 @@
-.pet-page { box-sizing: border-box; color: var(--dsw-alias-label-primary); font-size: 13px; padding-bottom: 24px; max-width: 960px; }
+/* 面板自己当查询容器：滑杆与预览图是否收窄，取决于**面板有多宽**，而不是窗口有多宽。 */
+.pet-page { box-sizing: border-box; color: var(--dsw-alias-label-primary); font-size: 13px; padding-bottom: 24px; max-width: 960px; container-type: inline-size; }
 .pet-section { margin-top: 24px; }
 .pet-sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
 .pet-sectionHeader h3 { margin: 0; }
@@ -38,7 +39,7 @@
 .pet-runtimeActions { display: flex; gap: 8px; }
 .pet-notice, .pet-error { font-size: 12px; line-height: 1.5; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 10px 12px; }
 .pet-error { color: var(--dsw-alias-state-error-primary); }
-@media (max-width: 620px) {
+@container (max-width: 620px) {
   .pet-slider { width: 160px; }
   .pet-slider input { width: 100px; }
   .pet-previews { gap: 16px; }

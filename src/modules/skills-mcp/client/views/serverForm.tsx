@@ -1,7 +1,13 @@
 import { CONNECTION_DRAFT_DEFAULTS } from '../../host/mcp/connection.js'
 import { field } from '../components/field.jsx'
-import { HINTS } from '../components/form.js'
+import {
+  HINTS, fieldControlId, fieldEdited, fieldErrorId, serverDraftIssues, showFieldIssues,
+  syncAriaInvalid, validateServerDraft,
+} from '../components/form.js'
 import { hasInjectedPath } from '../components/card.jsx'
+
+/** DOM-id namespace for this form's controls and their error slots. */
+const PREFIX = 'smp-server'
 
 export function serverFormView({
   tier, editing, draft, setDraft, scopeDraft, setScopeDraft, projectChoices,
@@ -15,12 +21,21 @@ export function serverFormView({
       <div className="smp-cardDetails" key="body">
         <div className="smp-formGrid" key="grid">
           {field("名称（serverName）", (
-            <input
-              className="smp-input"
-              placeholder="例如 test，最多 32 字符"
-              value={draft.serverName ?? ""}
-              onChange={(e) => setDraft({ ...draft, serverName: e.target.value })}
-            />
+            <>
+              <input
+                className="smp-input"
+                id={fieldControlId(PREFIX, "serverName")}
+                placeholder="例如 test，最多 32 字符"
+                value={draft.serverName ?? ""}
+                // The Host enforces the same shape; say it natively too, so the browser can
+                // flag it while typing instead of only after a blocked save.
+                required maxLength={32} pattern="[A-Za-z0-9_-]{1,32}"
+                aria-invalid="false" aria-describedby={fieldErrorId(PREFIX, "serverName")}
+                onChange={(e) => { fieldEdited(PREFIX, "serverName", e.currentTarget); setDraft({ ...draft, serverName: e.target.value }) }}
+                onBlur={(e) => syncAriaInvalid(e.currentTarget)}
+              />
+              <span className="smp-fieldError" id={fieldErrorId(PREFIX, "serverName")} hidden />
+            </>
           ))}
           {field("传输", (
             <select
@@ -100,18 +115,32 @@ export function serverFormView({
           ), true)}
           {stdio
             ? field("命令", (
-                <input
-                  className="smp-input" placeholder={HINTS.command}
-                  value={draft.command ?? ""}
-                  onChange={(e) => setDraft({ ...draft, command: e.target.value })}
-                />
+                <>
+                  <input
+                    className="smp-input" placeholder={HINTS.command}
+                    id={fieldControlId(PREFIX, "command")}
+                    value={draft.command ?? ""}
+                    required
+                    aria-invalid="false" aria-describedby={fieldErrorId(PREFIX, "command")}
+                    onChange={(e) => { fieldEdited(PREFIX, "command", e.currentTarget); setDraft({ ...draft, command: e.target.value }) }}
+                    onBlur={(e) => syncAriaInvalid(e.currentTarget)}
+                  />
+                  <span className="smp-fieldError" id={fieldErrorId(PREFIX, "command")} hidden />
+                </>
               ))
             : field("URL", (
-                <input
-                  className="smp-input" placeholder={HINTS.url}
-                  value={draft.url ?? ""}
-                  onChange={(e) => setDraft({ ...draft, url: e.target.value })}
-                />
+                <>
+                  <input
+                    className="smp-input" placeholder={HINTS.url}
+                    id={fieldControlId(PREFIX, "url")}
+                    value={draft.url ?? ""}
+                    required
+                    aria-invalid="false" aria-describedby={fieldErrorId(PREFIX, "url")}
+                    onChange={(e) => { fieldEdited(PREFIX, "url", e.currentTarget); setDraft({ ...draft, url: e.target.value }) }}
+                    onBlur={(e) => syncAriaInvalid(e.currentTarget)}
+                  />
+                  <span className="smp-fieldError" id={fieldErrorId(PREFIX, "url")} hidden />
+                </>
               ))}
           {/* http 的鉴权头：host 端按 KEY=VALUE 解析（parseEnv），所以提示也用等号。
               此前这个字段只在 form.js 里声明、从未渲染，等于没有写入入口。 */}
@@ -271,7 +300,15 @@ export function serverFormView({
           <button
             className="smp-button" data-variant="primary" key="save"
             disabled={busy || !draft.serverName}
-            onClick={onSave}
+            onClick={() => {
+              // Block the write here rather than letting the Host reject it: the message then
+              // lands under the offending field instead of in the card's single error line.
+              if (validateServerDraft(draft) !== null) {
+                showFieldIssues(PREFIX, serverDraftIssues(draft))
+                return
+              }
+              onSave()
+            }}
           >
             {profileEntry !== null ? "保存到配置行" : "保存"}
           </button>

@@ -35,15 +35,12 @@ export function useRuntime(React, tab, expanded) {
     const poll = startPolling(async (signal) => {
       const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden'
       if (hidden && Date.now() - lastLoadedAt < 15000) return
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 10000)
-      const abort = () => controller.abort()
-      signal.addEventListener('abort', abort, { once: true })
+      // 截止时间统一由 fetchJson 负责（这里要比默认值更短），轮询自己的取消信号直接带下去。
       try {
-        const response = await fetchJson(`${NS}/runtime`, { signal: controller.signal })
+        const response = await fetchJson(`${NS}/runtime`, { signal, timeoutMs: 10000 })
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const payload = await response.json()
-        if (signal.aborted || controller.signal.aborted) return
+        if (signal.aborted) return
         if (!Array.isArray(payload?.serverTools) || !Array.isArray(payload?.serverStatus)
           || typeof payload?.serverToolsError?.reason !== 'string') throw new Error('响应格式无效')
         lastLoadedAt = Date.now()
@@ -55,9 +52,6 @@ export function useRuntime(React, tab, expanded) {
           serverTools: [], serverStatus: [],
           serverToolsError: { reason: 'runtime-unavailable', detail: String(error?.message ?? error) },
         }))
-      } finally {
-        signal.removeEventListener('abort', abort)
-        clearTimeout(timeout)
       }
     }, { intervalMs: 5000, onError: () => {} })
     const onVisible = () => { void poll.refresh() }

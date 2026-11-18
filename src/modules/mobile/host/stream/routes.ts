@@ -217,7 +217,7 @@ async function readJsonBody(req: any): Promise<any> {
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
       } catch (error) {
-        reject(new Error(`请求体不是合法 JSON：${(error as any)?.message ?? error}`));
+        reject(new Error(`请求体不是合法 JSON：${(error as any)?.message ?? error}`, { cause: error }));
       }
     });
     req.on("error", reject);

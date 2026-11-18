@@ -6,6 +6,9 @@ export const REGRANT_DOWNSCALE_HOLD_MS = 3000;
 export const REGRANT_MIN_INTERVAL_MS = 5000;
 export const REGRANT_COOLDOWN_MAX_MS = 60000;
 export const REGRANT_TICK_MS = 250;
+// 尺寸变化只由 ResizeObserver 驱动，但 hold 判定需要「过后再看一眼」：
+// 一次变化后最多追这么多毫秒的 tick，覆盖降档 3s + 缓存宽度滞后的一两帧。
+export const REGRANT_SETTLE_MS = REGRANT_DOWNSCALE_HOLD_MS + REGRANT_TICK_MS * 4;
 export const REGRANT_STABLE_PX = 1;
 export const DEVICE_WIDTH_FALLBACK = 1080;
 export function newRegrantStreak() {

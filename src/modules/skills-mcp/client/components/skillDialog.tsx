@@ -1,4 +1,11 @@
 import { field } from './field.jsx'
+import {
+  fieldControlId, fieldEdited, fieldErrorId, showFieldIssues, skillDraftIssues, syncAriaInvalid,
+  validateSkillDraft,
+} from './form.js'
+
+/** DOM-id namespace for this dialog's controls and their error slots. */
+const PREFIX = 'smp-skill'
 
 /**
  * Add / edit a skill, using DSH's own Modal so it matches the built-in dialogs.
@@ -47,7 +54,18 @@ export function skillDialogView({
       footer={
         <>
           <Button variant="outline" key="cancel" onClick={onCancel}>取消</Button>
-          <Button variant="primary" key="save" disabled={pending} onClick={onSave}>
+          <Button
+            variant="primary" key="save" disabled={pending}
+            onClick={() => {
+              // Validate *before* the caller writes: an invalid name used to travel all the
+              // way to the Host and come back as a write failure, after the dialog scrolled.
+              if (validateSkillDraft(draft) !== null) {
+                showFieldIssues(PREFIX, skillDraftIssues(draft))
+                return
+              }
+              onSave()
+            }}
+          >
             {pending ? '保存中…' : (isEdit ? '保存' : '创建')}
           </Button>
         </>
@@ -112,16 +130,35 @@ export function skillDialogView({
           </p>
         )}
         {field('名称（会成为目录名）', (
-          <input className="smp-input" value={draft.name ?? ''} placeholder="例如 my-skill"
-                 onChange={(event) => onName(event.target.value)} />
+          <>
+            <input
+              className="smp-input" id={fieldControlId(PREFIX, 'name')}
+              value={draft.name ?? ''} placeholder="例如 my-skill"
+              // The Host accepts the same shape, so the constraint can be stated natively
+              // instead of only being explained in a hint text.
+              required maxLength={64} pattern="[A-Za-z0-9_-]{1,64}"
+              aria-invalid="false" aria-describedby={fieldErrorId(PREFIX, 'name')}
+              onChange={(event) => { fieldEdited(PREFIX, 'name', event.currentTarget); onName(event.target.value) }}
+              onBlur={(event) => syncAriaInvalid(event.currentTarget)}
+            />
+            <span className="smp-fieldError" id={fieldErrorId(PREFIX, 'name')} hidden />
+          </>
         ))}
         {field('描述', (
           <input className="smp-input" value={draft.description ?? ''} placeholder="一句话说明何时使用它"
                  onChange={(event) => onDescription(event.target.value)} />
         ))}
         {field('正文（SKILL.md 的内容）', (
-          <textarea className="smp-textarea" rows={8} value={draft.body ?? ''}
-                    onChange={(event) => onBody(event.target.value)} />
+          <>
+            <textarea
+              className="smp-textarea" rows={8} id={fieldControlId(PREFIX, 'body')}
+              value={draft.body ?? ''} required
+              aria-invalid="false" aria-describedby={fieldErrorId(PREFIX, 'body')}
+              onChange={(event) => { fieldEdited(PREFIX, 'body', event.currentTarget); onBody(event.target.value) }}
+              onBlur={(event) => syncAriaInvalid(event.currentTarget)}
+            />
+            <span className="smp-fieldError" id={fieldErrorId(PREFIX, 'body')} hidden />
+          </>
         ), true)}
       </div>
       {pending ? (

@@ -1,7 +1,7 @@
 /** 页面用到的小组件。写法与 skills-mcp 面板一致：卡片 + 表单网格 + 「…」菜单。 */
 import './react.js'
 import { useEffect, useRef, useState } from 'react'
-import { anchorStyle, listenMenuDismiss, measureMenuAnchor } from '../../../client/ui/components/menu/index.js'
+import { CAN_POPOVER, anchorStyle, listenMenuDismiss, measureMenuAnchor, menuKeydown, popoverMenuAttrs, showMenu } from '../../../client/ui/components/menu/index.js'
 
 /** Form field props: label above, control below; `wide` spans both columns. */
 export interface FieldProps {
@@ -30,8 +30,19 @@ export function MoreMenu({ items, disabled }) {
   const [open, setOpen] = useState(false)
   const [anchor, setAnchor] = useState(null)
   const trigger = useRef(null)
+  const menuRef = useRef(null)
   useEffect(() => {
-    if (open) return listenMenuDismiss(() => setOpen(false))
+    if (!open) return undefined
+    const element: any = menuRef.current
+    // 原生 popover 自己会处理 Esc 与点外关闭，这里只把状态同步回来；
+    // 不支持时仍旧靠 listenMenuDismiss（Esc + 滚动 + resize）。
+    if (CAN_POPOVER && element) {
+      showMenu(element)
+      const onToggle = (event: any) => { if (event?.newState === 'closed') setOpen(false) }
+      element.addEventListener('toggle', onToggle)
+      return () => element.removeEventListener('toggle', onToggle)
+    }
+    return listenMenuDismiss(() => setOpen(false))
   }, [open])
   useEffect(() => { if (disabled === true) setOpen(false) }, [disabled])
   function toggle() {
@@ -57,8 +68,15 @@ export function MoreMenu({ items, disabled }) {
       </button>
       {open ? (
         <>
-          <span className="jdg-menuScrim" onClick={() => setOpen(false)} />
-          <span className="jdg-menu" role="menu" style={anchorStyle(anchor)}>
+          {CAN_POPOVER ? null : <span className="jdg-menuScrim" onClick={() => setOpen(false)} />}
+          <span
+            className="jdg-menu"
+            role="menu"
+            ref={menuRef}
+            {...popoverMenuAttrs()}
+            onKeyDown={(event) => { menuKeydown(event, menuRef.current) }}
+            style={anchorStyle(anchor)}
+          >
             {items.map(([label, run, variant, itemDisabled]) => (
               <button
                 type="button"
