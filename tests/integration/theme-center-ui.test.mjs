@@ -4,6 +4,16 @@ import React from 'react'
 import { JSDOM } from 'jsdom'
 import { ThemeCenterPanel } from '../../src/modules/theme/client/settings-theme.tsx'
 
+// 宿主快照的真实形状：解析后的明暗只出现在 active.colorScheme，顶层没有 colorScheme。
+const hostSnapshot = (preference, colorScheme = preference === 'dark' ? 'dark' : 'light') => ({
+  preference,
+  fontSizes: {},
+  fontFamilies: {},
+  active: { id: colorScheme, colorScheme, tokens: {} },
+  themes: [{ id: 'light', colorScheme: 'light', tokens: {} }, { id: 'dark', colorScheme: 'dark', tokens: {} }],
+  revision: 1,
+})
+
 async function renderPanel(t, { palette = 'ocean', preference = 'light', writable = true, save } = {}) {
   const dom = new JSDOM('<html><body><div id="root"></div></body></html>')
   const saved = new Map()
@@ -17,7 +27,7 @@ async function renderPanel(t, { palette = 'ocean', preference = 'light', writabl
   const modeWrites = []
   const paletteListeners = new Set()
   const themeListeners = new Set()
-  let themeSnapshot = { preference, colorScheme: preference === 'dark' ? 'dark' : 'light' }
+  let themeSnapshot = hostSnapshot(preference)
   const form = {
     writable,
     getSnapshot: () => ({ value: { palette } }),
@@ -35,7 +45,7 @@ async function renderPanel(t, { palette = 'ocean', preference = 'light', writabl
     getTheme: () => themeSnapshot,
     async setTheme(value) {
       modeWrites.push(value)
-      themeSnapshot = { preference: value, colorScheme: value === 'dark' ? 'dark' : 'light' }
+      themeSnapshot = hostSnapshot(value)
       for (const listener of themeListeners) listener()
     },
   }
@@ -52,12 +62,15 @@ async function renderPanel(t, { palette = 'ocean', preference = 'light', writabl
   })
   const radio = label => document.querySelector(`[role="radio"][aria-label="${label}"]`)
   const selected = group => [...document.querySelectorAll(`[role="radiogroup"][aria-label="${group}"] [aria-checked="true"]`)].map(node => node.getAttribute('aria-label'))
+  // 页面顶部的大预览 + 五张风格卡片的缩略图，都带 data-preview-palette。
+  const previewModes = () => [...document.querySelectorAll('[data-preview-palette]')].map(node => node.dataset.previewMode)
+  const windowMode = () => document.querySelector('.sk-theme-preview-window').dataset.previewMode
   return {
-    writes, modeWrites, radio, selected,
+    writes, modeWrites, radio, selected, previewModes, windowMode,
     click: async label => { assert.ok(radio(label)); await React.act(async () => radio(label).click()) },
     systemColor: async colorScheme => {
       await React.act(async () => {
-        themeSnapshot = { ...themeSnapshot, colorScheme }
+        themeSnapshot = { ...themeSnapshot, active: { ...themeSnapshot.active, id: colorScheme, colorScheme } }
         for (const listener of themeListeners) listener()
       })
     },
@@ -86,9 +99,19 @@ test('color mode and style stay independently selected across all fifteen combin
   await panel.systemColor('dark')
   assert.deepEqual(panel.selected('颜色模式'), ['跟随系统'])
   assert.deepEqual(panel.selected('主题风格'), ['赛博朋克2077'])
-  for (const preview of document.querySelectorAll('[data-preview-palette]')) {
-    assert.equal(preview.dataset.previewMode, 'dark', 'system changes refresh every style preview')
+  assert.equal(panel.windowMode(), 'dark', 'the page preview follows the scheme the host resolved')
+  for (const mode of panel.previewModes()) {
+    assert.equal(mode, 'dark', 'system changes refresh every style preview')
   }
+})
+
+test('a dark preference renders the page preview dark from the first frame', async t => {
+  const panel = await renderPanel(t, { preference: 'dark' })
+  assert.equal(panel.windowMode(), 'dark')
+  assert.deepEqual(panel.previewModes(), ['dark', 'dark', 'dark', 'dark', 'dark', 'dark'])
+  await panel.click('浅色')
+  assert.equal(panel.windowMode(), 'light')
+  assert.deepEqual(panel.previewModes(), ['light', 'light', 'light', 'light', 'light', 'light'])
 })
 
 test('rejected async palette writes keep the selected style and report through the toast channel', async t => {

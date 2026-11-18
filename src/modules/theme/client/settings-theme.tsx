@@ -22,6 +22,16 @@ const PALETTE_CARDS = [
   { id: 'cyberpunk', label: '赛博朋克2077', hint: '霓虹街头，未来都市' },
 ]
 
+/**
+ * 宿主把「当前解析出的明暗」放在快照的 `active.colorScheme`（`system` 也已在
+ * 那里解析成 light/dark），快照顶层只有 `preference`。早期实现按顶层字段读过，
+ * 结果 `undefined` 一路退化成 `light` —— 页面变深色、预览图却始终是浅色。
+ */
+function schemeOf(snapshot) {
+  const active = snapshot?.active ?? snapshot
+  return active?.colorScheme === 'dark' ? 'dark' : 'light'
+}
+
 const isWritable = (form) => {
   let writable = form?.writable
   if (typeof writable === 'function') {
@@ -204,7 +214,7 @@ export function ThemeCenterPanel({ form, theme, subscribeTheme }) {
 
   const writable = isWritable(form) && typeof form?.set === 'function'
   const preference = modeDraft || snapshot.preference || 'system'
-  const colorScheme = modeDraft === 'light' || modeDraft === 'dark' ? modeDraft : snapshot.colorScheme ?? 'light'
+  const colorScheme = modeDraft === 'light' || modeDraft === 'dark' ? modeDraft : schemeOf(snapshot)
 
   const pickMode = (id) => {
     if (typeof theme?.setTheme !== 'function' || preference === id) return

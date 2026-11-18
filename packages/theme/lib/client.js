@@ -4661,6 +4661,10 @@ window.__ModuleLoader__.load({
       { id: "sunset", label: "夕阳红", hint: "悬崖远眺，落日归舟" },
       { id: "cyberpunk", label: "赛博朋克2077", hint: "霓虹街头，未来都市" }
     ];
+    function schemeOf(snapshot) {
+      const active = snapshot?.active ?? snapshot;
+      return active?.colorScheme === "dark" ? "dark" : "light";
+    }
     var isWritable = (form) => {
       let writable = form?.writable;
       if (typeof writable === "function") {
@@ -4740,7 +4744,7 @@ window.__ModuleLoader__.load({
       }, [form]);
       const writable = isWritable(form) && typeof form?.set === "function";
       const preference = modeDraft || snapshot.preference || "system";
-      const colorScheme = modeDraft === "light" || modeDraft === "dark" ? modeDraft : snapshot.colorScheme ?? "light";
+      const colorScheme = modeDraft === "light" || modeDraft === "dark" ? modeDraft : schemeOf(snapshot);
       const pickMode = (id) => {
         if (typeof theme?.setTheme !== "function" || preference === id) return;
         setModeDraft(id);
