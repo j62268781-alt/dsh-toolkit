@@ -166,8 +166,23 @@ ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet
             if (typeof observable?.subscribe === 'function') offs.push(observable.subscribe(sync))
           }
         } catch {}
-        const timer = setInterval(() => { sync(); settle() }, 1000)
-        timer.unref?.()
+        // 1s 轮询只为「岛 / 桌宠正在用」服务：两个功能都关掉时它没有任何消费者，
+        // 却会每秒唤醒一次渲染进程、并让整棵会话快照一直可达（桌面端常驻内存的代价）。
+        // 所以按设置快照开合：开启才安装，关闭时立刻清掉，而不是始终挂着一个定时器。
+        const surfaceEnabled = () => value.petEnabled === true || value.islandEnabled === true;
+        let timer: ReturnType<typeof setInterval> | undefined;
+        const syncTimer = () => {
+          if (surfaceEnabled() && timer === undefined) {
+            timer = setInterval(() => { sync(); settle(); }, 1000);
+            timer.unref?.();
+          } else if (!surfaceEnabled() && timer !== undefined) {
+            clearInterval(timer);
+            timer = undefined;
+          }
+        };
+        syncTimer();
+        // refresh() 先更新 value 再通知 listeners，挂在这里就能随设置变化即时开合。
+        listeners.add(syncTimer);
         // 一次性的能力自报：只进 host 私有 /state，用来确认客户端到底读到了什么。
         const submitDiag = () => {
           try {
@@ -209,8 +224,9 @@ ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet
         globalThis.addEventListener?.('visibilitychange', wake)
         return () => {
           for (const off of offs) { try { off?.() } catch {} }
-          clearInterval(timer)
-          clearTimeout(reportTimer)
+          listeners.delete(syncTimer);
+          if (timer !== undefined) clearInterval(timer);
+          clearTimeout(reportTimer);
           globalThis.removeEventListener?.('focus', wake)
           globalThis.removeEventListener?.('visibilitychange', wake)
         }

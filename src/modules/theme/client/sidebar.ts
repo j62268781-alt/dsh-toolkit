@@ -1,4 +1,5 @@
 import { isCodexShell } from "./platform.js";
+import { watchElement, watchSidebar } from "./watch.js";
 
 // Keep the workspace width independent of the rail → hidden collapse cycle.
 const RAIL_WIDTH = 52;
@@ -211,20 +212,14 @@ export function installSidebarWidth(ctx: any, options: { native?: boolean } = {}
 
   widthPass = pass;
 
-  // Correct host grid rewrites before paint; debounce other mutations with rAF.
-  const observer = new MutationObserver((mutations) => {
-    const frameRewritten = mutations.some(
-      (m) => m.type === "attributes" && m.attributeName === "style" && m.target === frameEl,
-    );
-    if (frameRewritten) pass();
-    else schedule();
+  // 宿主每次布局都会重写 frame 的 inline grid；只盯这一个元素的属性，
+  // 不再把聊天区里每一批 token 的 style 变化也算进来。侧栏子树的结构变化
+  // 单独观察，用来重新判断 rail-only。
+  const stopFrame = watchElement(pass, {
+    find: findFrame,
+    observe: { attributes: true, attributeFilter: ["style", "data-sidebar-collapsed"] },
   });
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["style", "data-sidebar-collapsed"],
-  });
+  const stopSidebar = watchSidebar(pass);
 
   const platformObserver = new MutationObserver(schedule);
   platformObserver.observe(document.documentElement, {
@@ -239,7 +234,8 @@ export function installSidebarWidth(ctx: any, options: { native?: boolean } = {}
   pass();
 
   return () => {
-    observer.disconnect();
+    stopFrame();
+    stopSidebar();
     platformObserver.disconnect();
     finishDrag();
     document.removeEventListener("pointerdown", onPointerDown, true);
@@ -305,7 +301,7 @@ export function installWorkspaceCollapse(ctx) {
   collapseSync = sync;
 
   let wasCollapsed = false;
-  const stateObserver = new MutationObserver(() => {
+  const syncCollapsed = () => {
     const frame = findFrame();
     const collapsed = !!frame && frame.hasAttribute("data-sidebar-collapsed");
     if (wasCollapsed && !collapsed && workspaceCollapsed) {
@@ -313,11 +309,12 @@ export function installWorkspaceCollapse(ctx) {
       widthPass?.();
     }
     wasCollapsed = collapsed;
-  });
-  stateObserver.observe(document.body, {
-    attributes: true,
-    attributeFilter: ["data-sidebar-collapsed"],
-    subtree: true,
+  };
+  // 折叠状态写在 frame 上，只观察这一个元素；body 上的同名字段来自宿主
+  // 内部重渲染，与这里的语义无关。
+  const stopState = watchElement(syncCollapsed, {
+    find: findFrame,
+    observe: { attributes: true, attributeFilter: ["data-sidebar-collapsed"] },
   });
 
   const onClick = (event) => {
@@ -357,7 +354,7 @@ export function installWorkspaceCollapse(ctx) {
   sync();
   return () => {
     document.removeEventListener("click", onClick, true);
-    stateObserver.disconnect();
+    stopState();
     collapseSync = null;
     hit.remove();
   };

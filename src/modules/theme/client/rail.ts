@@ -1,15 +1,16 @@
 import HOUSE_SVG from "./assets/house.svg";
+import { watchSidebar } from "./watch.js";
 
 // Keep the home entry at activePanelId === null and restore it after host DOM updates.
-const RAIL_ROW = '[data-slot="sidebar"] > [class*="_root"] [class*="_panelRow"]';
+// 选择器相对侧栏根节点：真正的观察器挂在 `[data-slot="sidebar"]` 上，
+// 不再因为聊天区流式输出而扫描整篇文档。
+const RAIL_ROW = '[class*="_root"] [class*="_panelRow"]';
 
 export function installRailTitles() {
-  let queued = 0;
   const titles = new Map();
 
-  const pass = () => {
-    queued = 0;
-    for (const row of document.querySelectorAll(RAIL_ROW)) {
+  const pass = (root: Element) => {
+    for (const row of root.querySelectorAll(RAIL_ROW)) {
       // A pinnable entry owns its hint (see rail-unpin): the native bubble would
       // pop up underneath the dark one, so leave those rows without a `title`.
       if (row.closest("[data-sk-unpinnable]")) {
@@ -25,18 +26,10 @@ export function installRailTitles() {
     }
   };
 
-  const schedule = () => {
-    if (queued) return;
-    queued = requestAnimationFrame(pass);
-  };
-
-  const observer = new MutationObserver(schedule);
-  observer.observe(document.body, { childList: true, subtree: true });
-  pass();
+  const stop = watchSidebar(pass);
 
   return () => {
-    observer.disconnect();
-    if (queued) cancelAnimationFrame(queued);
+    stop();
     for (const [row, title] of titles) {
       if (title === null) row.removeAttribute("title");
       else row.setAttribute("title", title);
@@ -46,10 +39,9 @@ export function installRailTitles() {
 }
 
 
-const RAIL_LIST = '[data-slot="sidebar"] > [class*="_root"] [class*="_panelList"]';
+const RAIL_LIST = '[class*="_root"] [class*="_panelList"]';
 
 export function installHomeRail(ctx) {
-  let queued = 0;
   let home = null;
   let offPanel = null;
 
@@ -80,8 +72,8 @@ export function installHomeRail(ctx) {
     sync();
   };
 
-  const ensure = () => {
-    const list = document.querySelector(RAIL_LIST);
+  const ensure = (root: Element) => {
+    const list = root.querySelector(RAIL_LIST);
     if (!list) return;
     if (home?.isConnected) return;
     if (!home) {
@@ -98,25 +90,13 @@ export function installHomeRail(ctx) {
     sync();
   };
 
-  const schedule = () => {
-    if (queued) return;
-    queued = requestAnimationFrame(() => {
-      queued = 0;
-      ensure();
-    });
-  };
-
-  const observer = new MutationObserver(schedule);
-  observer.observe(document.body, { childList: true, subtree: true });
-
   const info = ctx.layout?.panelInfo;
   if (info && typeof info.subscribe === "function") offPanel = info.subscribe(sync);
 
-  ensure();
+  const stop = watchSidebar(ensure);
 
   return () => {
-    observer.disconnect();
-    if (queued) cancelAnimationFrame(queued);
+    stop();
     if (typeof offPanel === "function") offPanel();
     if (home) {
       home.removeEventListener("click", onClick);

@@ -10,7 +10,9 @@
 //
 // Entries that cannot be unpinned are left alone, exactly like the native host.
 
-const ENTRY = '[data-slot="sidebar"] > [class*="_root"] [class*="_panelEntry"]';
+import { watchSidebar } from "./watch.js";
+
+const ENTRY = '[class*="_root"] [class*="_panelEntry"]';
 const UNPIN = '[class*="_panelUnpin"]';
 const TITLE = '[class*="_panelTitle"]';
 const ROW = '[class*="_panelRow"]';
@@ -18,6 +20,15 @@ const ROW = '[class*="_panelRow"]';
 // the browser tooltip would otherwise pop up underneath the dark hint.
 const MARK = "data-sk-unpinnable";
 const HINT = "双击取消固定";
+
+/**
+ * 气泡是否走原生 popover。
+ *
+ * 走原生时它能进 top layer：Esc 与「点外面」由浏览器关闭，层叠顺序不再靠 z-index，
+ * 也不会被宿主面板的 overflow 裁掉。不支持时仍用 hidden 属性，行为与从前逐字一致
+ * （jsdom 没有 popover，测试走的就是这条兜底路径）。
+ */
+const POPOVER = typeof HTMLElement !== "undefined" && Object.hasOwn(HTMLElement.prototype, "popover");
 const TIP_DELAY_MS = 450;
 // Opening a panel is a single click; unpinning it is a double click. Both start with
 // the same press, so a click on a pinnable entry is held for one double-click beat:
@@ -33,7 +44,9 @@ function createTip() {
   const tip = document.createElement("div");
   tip.className = "sk-tip";
   tip.setAttribute("role", "tooltip");
-  tip.hidden = true;
+  // `hint` 而不是 `auto`：气泡打开时不该把用户已打开的菜单关掉。
+  if (POPOVER) tip.setAttribute("popover", "hint");
+  else tip.hidden = true;
   return tip;
 }
 
@@ -66,7 +79,6 @@ function placeTip(tip, entry) {
 }
 
 export function installRailUnpin() {
-  let queued = 0;
   let tip = null;
   let tipTimer: ReturnType<typeof setTimeout> | 0 = 0;
   let tipEntry = null;
@@ -75,25 +87,31 @@ export function installRailUnpin() {
   let lastDoubleClick = 0;
 
   /** Mark entries that own an unpin button; the host renders that button last. */
-  const pass = () => {
-    queued = 0;
-    for (const entry of document.querySelectorAll(ENTRY)) {
+  const pass = (root: Element) => {
+    for (const entry of root.querySelectorAll(ENTRY)) {
       const pinnable = entry.querySelector(UNPIN) !== null;
       if (pinnable === entry.hasAttribute(MARK)) continue;
       if (pinnable) entry.setAttribute(MARK, "");
       else entry.removeAttribute(MARK);
     }
   };
-  const schedule = () => {
-    if (queued) return;
-    queued = requestAnimationFrame(pass);
-  };
 
   const hide = () => {
     if (tipTimer) clearTimeout(tipTimer);
     tipTimer = 0;
     tipEntry = null;
-    if (tip) tip.hidden = true;
+    if (!tip) return;
+    if (POPOVER) {
+      if (tip.matches(":popover-open")) tip.hidePopover();
+    } else tip.hidden = true;
+  };
+
+  /** 先让它上屏（top layer 或 hidden=false），量到尺寸之后才谈定位。 */
+  const reveal = (element, entry) => {
+    if (POPOVER) {
+      if (!element.matches(":popover-open")) element.showPopover();
+    } else element.hidden = false;
+    placeTip(element, entry);
   };
 
   const show = (entry) => {
@@ -104,9 +122,17 @@ export function installRailUnpin() {
       if (tipEntry !== entry || !entry.isConnected) return;
       tip = tip ?? createTip();
       fillTip(tip, entry);
-      if (!tip.isConnected) document.body.append(tip);
-      tip.hidden = false;
-      placeTip(tip, entry);
+      if (!tip.isConnected) {
+        document.body.append(tip);
+        // Esc 与「点外面」现在是浏览器关的：把 hover 状态跟着复位，
+        // 否则下一次复用这个气泡时会以为它还在展示。
+        if (POPOVER) {
+          tip.addEventListener("toggle", (event: any) => {
+            if (event?.newState === "closed") tipEntry = null;
+          });
+        }
+      }
+      reveal(tip, entry);
     }, TIP_DELAY_MS);
   };
 
@@ -170,9 +196,7 @@ export function installRailUnpin() {
     event.stopPropagation();
   };
 
-  const Observer = MutationObserver;
-  const observer = new Observer(schedule);
-  observer.observe(document.body, { childList: true, subtree: true });
+  const stop = watchSidebar(pass);
   document.addEventListener("pointerover", onOver, true);
   document.addEventListener("pointerout", onOut, true);
   document.addEventListener("pointerdown", onPress, true);
@@ -180,11 +204,9 @@ export function installRailUnpin() {
   document.addEventListener("dblclick", onDoubleClick, true);
   window.addEventListener("scroll", hide, true);
   window.addEventListener("resize", hide);
-  pass();
 
   return () => {
-    observer.disconnect();
-    if (queued) cancelAnimationFrame(queued);
+    stop();
     document.removeEventListener("pointerover", onOver, true);
     document.removeEventListener("pointerout", onOut, true);
     document.removeEventListener("pointerdown", onPress, true);

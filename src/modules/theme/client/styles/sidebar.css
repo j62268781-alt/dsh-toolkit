@@ -670,6 +670,12 @@ html[data-sk-palette="codex"][data-sk-codex-shell] .sk-tip {
   position: fixed;
   z-index: 1100;
   pointer-events: none;
+  /* popover 的 UA 默认值必须显式清掉，否则气泡会被摆到视口正中（inset:0 + margin:auto），
+     并多出一圈实线边框与一条滚动条。不支持 popover 时这几条也与默认值等价。 */
+  inset: auto;
+  margin: 0;
+  border: 0;
+  overflow: visible;
   max-width: 220px;
   padding: 3px 7px;
   border-radius: 6px;

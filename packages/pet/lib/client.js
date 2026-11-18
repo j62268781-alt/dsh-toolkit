@@ -1266,11 +1266,22 @@ window.__ModuleLoader__.load({
               }
             } catch {
             }
-            const timer = setInterval(() => {
-              sync();
-              settle();
-            }, 1e3);
-            timer.unref?.();
+            const surfaceEnabled = () => value.petEnabled === true || value.islandEnabled === true;
+            let timer;
+            const syncTimer = () => {
+              if (surfaceEnabled() && timer === void 0) {
+                timer = setInterval(() => {
+                  sync();
+                  settle();
+                }, 1e3);
+                timer.unref?.();
+              } else if (!surfaceEnabled() && timer !== void 0) {
+                clearInterval(timer);
+                timer = void 0;
+              }
+            };
+            syncTimer();
+            listeners.add(syncTimer);
             const submitDiag = () => {
               try {
                 const snap = list?.getSnapshot?.();
@@ -1316,7 +1327,8 @@ window.__ModuleLoader__.load({
                 } catch {
                 }
               }
-              clearInterval(timer);
+              listeners.delete(syncTimer);
+              if (timer !== void 0) clearInterval(timer);
               clearTimeout(reportTimer);
               globalThis.removeEventListener?.("focus", wake);
               globalThis.removeEventListener?.("visibilitychange", wake);

@@ -1165,6 +1165,7 @@ window.__ModuleLoader__.load({
 
     // src/modules/notification/client/sounds.ts
     var SOUND_IDS = ["chime", "fault", "pop", "alert"];
+    var IDLE_CLOSE_MS = 10 * 60 * 1e3;
     var SOUND_RECIPES = Object.freeze({
       chime: [
         { freq: 880, at: 0, dur: 0.12, type: "sine", gain: 0.7 },
@@ -1199,18 +1200,25 @@ window.__ModuleLoader__.load({
       volumeOf;
       /** 共享的音频上下文，首次播放时懒创建。 */
       context;
-      /** 卸载标记：置位后不再创建上下文。 */
+      /** 卸载标记：置位后不再创建上下文，空闲关闭也不再排程。 */
       disposed;
       /** 播放结束后挂起上下文的定时器。 */
       suspendTimer;
+      /** 空闲多久彻底关闭上下文；可被测试注入更短的值，缺省 `IDLE_CLOSE_MS`。 */
+      idleMs;
+      /** 挂起之后排下的空闲关闭定时器（到期 close 上下文并清缓存）。 */
+      idleTimer;
       /**
        * @param {() => number} volumeOf 读取当前音量（0..1）。
+       * @param {number} [idleMs] 挂起后空闲多久彻底关闭上下文，缺省 `IDLE_CLOSE_MS`。
        */
-      constructor(volumeOf) {
+      constructor(volumeOf, idleMs = IDLE_CLOSE_MS) {
         this.volumeOf = typeof volumeOf === "function" ? volumeOf : () => 0.6;
         this.context = null;
         this.disposed = false;
         this.suspendTimer = null;
+        this.idleMs = Number.isFinite(idleMs) && idleMs > 0 ? idleMs : IDLE_CLOSE_MS;
+        this.idleTimer = null;
       }
       /** 懒创建 AudioContext；失败返回 null（静默降级）。 */
       contextOf() {
@@ -1233,6 +1241,7 @@ window.__ModuleLoader__.load({
        */
       play(id, volume) {
         if (id === "none" || !SOUND_IDS.includes(id)) return false;
+        this.cancelIdleClose();
         const context = this.contextOf();
         if (context === null) return false;
         try {
@@ -1240,7 +1249,10 @@ window.__ModuleLoader__.load({
         } catch {
         }
         const level = clampVolume(volume === void 0 ? this.volumeOf() : volume);
-        if (level <= 0) return false;
+        if (level <= 0) {
+          this.armIdleClose();
+          return false;
+        }
         const recipe = SOUND_RECIPES[id];
         try {
           const start = context.currentTime + 0.01;
@@ -1268,6 +1280,7 @@ window.__ModuleLoader__.load({
           this.scheduleSuspend(recipeDuration(recipe) + 0.35);
           return true;
         } catch {
+          this.armIdleClose();
           return false;
         }
       }
@@ -1275,6 +1288,7 @@ window.__ModuleLoader__.load({
       scheduleSuspend(delaySeconds) {
         if (typeof setTimeout !== "function") return;
         if (this.suspendTimer !== null) clearTimeout(this.suspendTimer);
+        this.cancelIdleClose();
         const delay = Math.max(50, Math.round(delaySeconds * 1e3));
         this.suspendTimer = setTimeout(() => {
           this.suspendTimer = null;
@@ -1282,9 +1296,53 @@ window.__ModuleLoader__.load({
             if (this.context !== null && this.context.state === "running") void this.context.suspend();
           } catch {
           }
+          this.armIdleClose();
         }, delay);
       }
-      /** 插件卸载：挂起并丢弃上下文，释放系统音频流。 */
+      /**
+       * 挂起之后排一个空闲关闭定时器。
+       * 上下文已经没了的（空闲关闭过 / 卸载过）不需要，也不会再建。
+       */
+      armIdleClose() {
+        if (this.disposed || this.context === null || typeof setTimeout !== "function") return;
+        this.cancelIdleClose();
+        this.idleTimer = setTimeout(() => {
+          this.idleTimer = null;
+          this.closeIdle();
+        }, this.idleMs);
+        this.idleTimer.unref?.();
+      }
+      /** 取消空闲关闭；新播放、dispose 都要先走这一步。 */
+      cancelIdleClose() {
+        if (this.idleTimer === null) return;
+        try {
+          clearTimeout(this.idleTimer);
+        } catch {
+        }
+        this.idleTimer = null;
+      }
+      /**
+       * 空闲到期：关闭上下文并让子类丢掉缓存。
+       * 已经关闭过的、非 running 状态的、close 抛错的都按正常路径处理 ——
+       * 这里只是回收一次内存，失败不该冒泡到任何调用方。
+       */
+      closeIdle() {
+        if (this.disposed) return;
+        const context = this.context;
+        this.context = null;
+        try {
+          this.releaseCachedAudio();
+        } catch {
+        }
+        closeQuietly(context);
+      }
+      /**
+       * 丢弃解码后的音频缓存。基类没有缓存（内置音是实时合成的），子类覆盖。
+       * 在空闲关闭时由基类调用，必须能在播放中途/请求在途时安全失败。
+       */
+      releaseCachedAudio() {
+      }
+      /** 插件卸载：停掉所有定时器并丢弃上下文，释放系统音频流。 */
       dispose() {
         this.disposed = true;
         if (this.suspendTimer !== null) {
@@ -1294,14 +1352,22 @@ window.__ModuleLoader__.load({
           }
           this.suspendTimer = null;
         }
+        this.cancelIdleClose();
         const context = this.context;
         this.context = null;
-        try {
-          if (context !== null && typeof context.close === "function") void context.close();
-        } catch {
-        }
+        closeQuietly(context);
       }
     };
+    function closeQuietly(context) {
+      if (context === null || typeof context.close !== "function") return;
+      try {
+        if (context.state === "closed") return;
+        const closing = context.close();
+        if (closing && typeof closing.catch === "function") closing.catch(() => {
+        });
+      } catch {
+      }
+    }
     function clampVolume(value) {
       const number = Number(value);
       if (!Number.isFinite(number)) return 0;
@@ -1328,11 +1394,17 @@ window.__ModuleLoader__.load({
       sources;
       /** 在途的下载请求，卸载时要 abort。 */
       requests;
-      constructor(volumeOf) {
-        super(volumeOf);
+      /**
+       * 缓存代数：空闲关闭时自增。在途的 fetch/decode 回来后代数对不上，
+       * 就不会把「旧上下文解码出来的 PCM」又塞回已经清空的缓存里。
+       */
+      cacheGeneration;
+      constructor(volumeOf, idleMs) {
+        super(volumeOf, idleMs);
         this.buffers = /* @__PURE__ */ new Map();
         this.sources = /* @__PURE__ */ new Set();
         this.requests = /* @__PURE__ */ new Set();
+        this.cacheGeneration = 0;
       }
       play(id, volume) {
         if (SOUND_IDS.includes(id)) return super.play(id, volume);
@@ -1351,6 +1423,7 @@ window.__ModuleLoader__.load({
       }
       async playFile(id, level) {
         if (this.disposed || level <= 0 || !/^[a-zA-Z0-9:_-]{1,128}$/.test(id)) return false;
+        const generation = this.cacheGeneration;
         const context = this.contextOf();
         if (context === null) return false;
         if (context.state === "suspended") await context.resume();
@@ -1364,7 +1437,7 @@ window.__ModuleLoader__.load({
             const bytes = await response.arrayBuffer();
             if (this.disposed || bytes.byteLength > MAX_AUDIO_BYTES || bytes.byteLength === 0) return false;
             buffer = await context.decodeAudioData(bytes);
-            if (!buffer || buffer.duration > 30 || this.disposed) return false;
+            if (!buffer || buffer.duration > 30 || this.disposed || generation !== this.cacheGeneration) return false;
             if (id !== "system") {
               if (this.buffers.size >= 8) this.buffers.delete(this.buffers.keys().next().value);
               this.buffers.set(id, buffer);
@@ -1373,13 +1446,14 @@ window.__ModuleLoader__.load({
             this.requests.delete(controller);
           }
         }
-        if (this.disposed) return false;
+        if (this.disposed || generation !== this.cacheGeneration) return false;
         if (context.state === "suspended") await context.resume();
         if (this.disposed || context.state === "suspended") return false;
         if (this.suspendTimer !== null) {
           clearTimeout(this.suspendTimer);
           this.suspendTimer = null;
         }
+        this.cancelIdleClose();
         const source = context.createBufferSource();
         const gain = context.createGain();
         gain.gain.value = level;
@@ -1396,8 +1470,19 @@ window.__ModuleLoader__.load({
         source.start();
         return true;
       }
-      dispose() {
-        for (const request of this.requests) request.abort();
+      /**
+       * 空闲关闭时由基类调用：丢掉解码后的 PCM（这是最大的一块常驻内存），
+       * 并终止在途请求与播放。之后再次播放会重新 fetch + decode。
+       */
+      releaseCachedAudio() {
+        this.cacheGeneration += 1;
+        this.buffers.clear();
+        for (const request of this.requests) {
+          try {
+            request.abort();
+          } catch {
+          }
+        }
         this.requests.clear();
         for (const source of this.sources) {
           try {
@@ -1406,7 +1491,9 @@ window.__ModuleLoader__.load({
           }
         }
         this.sources.clear();
-        this.buffers.clear();
+      }
+      dispose() {
+        this.releaseCachedAudio();
         super.dispose();
       }
     };
@@ -2247,6 +2334,7 @@ window.__ModuleLoader__.load({
               try {
                 const context = player.contextOf();
                 if (context.state === "suspended") void context.resume();
+                player.armIdleClose();
               } catch (error) {
                 warn2("audio unlock failed", error);
               }
@@ -2284,7 +2372,13 @@ window.__ModuleLoader__.load({
             worker.addEventListener("message", onMessage);
             return () => worker.removeEventListener("message", onMessage);
           }, "dsh-toolkit-notification:sw-clicks");
-          install(() => () => player.dispose(), "dsh-toolkit-notification:sounds");
+          const offSound = settingsSource.subscribe(() => {
+            if (settingsSource.getSnapshot().soundEnabled === false) player.closeIdle();
+          });
+          install(() => () => {
+            offSound();
+            return player.dispose();
+          }, "dsh-toolkit-notification:sounds");
           install(() => {
             if (typeof window === "undefined" || typeof document === "undefined") return void 0;
             const currentSessionId = () => {

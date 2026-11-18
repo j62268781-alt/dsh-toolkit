@@ -320,6 +320,16 @@ export function installSettingsNav(ctx: any = {}) {
     actions.sync();
   };
   const observer = new MutationObserver((records) => {
+    // 聊天区流式输出每批 token 都会产生记录；设置面板不可能在里面，
+    // 直接跳过，别为每个 token 做一次全文档 querySelector。
+    const chatOnly = (record) => {
+      // 不用 `instanceof Element`：宿主/测试环境不一定会挂这个全局，
+      // throw 一次就足以让整个 MutationObserver 静默失效。
+      const target = record.target;
+      const element = target.nodeType === 1 ? target : target.parentElement;
+      return element?.closest?.('[data-slot="main.conversation"]') != null;
+    };
+    if (records.every(chatOnly)) return;
     // Ignore our own menu updates; watch the original rows for React/locale changes.
     if (records.some(({ target }) => !target.parentElement?.closest(".sk-setnav__groups,.sk-setnav__empty") &&
       !(target as Element).closest?.(".sk-setnav__groups,.sk-setnav__empty"))) scan();

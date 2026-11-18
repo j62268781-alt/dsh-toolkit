@@ -601,6 +601,9 @@ export default function createNotification(require) {
           try {
             const context = player.contextOf()
             if (context.state === 'suspended') void context.resume()
+            // 解锁本身也会留下一个常驻的 AudioContext：若此后一直没有提示音要播，
+            // 10 分钟后同样回收，别让「为了解锁而建」的上下文活到进程结束。
+            player.armIdleClose()
           } catch (error) {
             warn('audio unlock failed', error)
           }
@@ -645,7 +648,13 @@ export default function createNotification(require) {
         return () => worker.removeEventListener('message', onMessage)
       }, 'dsh-toolkit-notification:sw-clicks')
 
-      install(() => () => player.dispose(), 'dsh-toolkit-notification:sounds')
+      // 关掉提示音时立刻释放上下文与解码缓存，而不是等 10 分钟空闲窗口。
+      // 这里用 closeIdle 而不是 dispose：dispose 是插件卸载路径且置位后不可复活，
+      // 用户重新打开提示音时还要能靠 play() 懒重建。
+      const offSound = settingsSource.subscribe(() => {
+        if (settingsSource.getSnapshot().soundEnabled === false) player.closeIdle()
+      })
+      install(() => () => { offSound(); return player.dispose() }, 'dsh-toolkit-notification:sounds')
 
       // 回到前台就收回提醒：系统横幅原本是用来「叫人回来」的，人已经在看了还挂着只会挡视线。
       // 只关「用户此刻确实看得到」的那条——主视图持有的会话，或者窗口整体回到前台时的全部。

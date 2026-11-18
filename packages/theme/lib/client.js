@@ -971,6 +971,12 @@ window.__ModuleLoader__.load({
       position: fixed;
       z-index: 1100;
       pointer-events: none;
+      /* popover 的 UA 默认值必须显式清掉，否则气泡会被摆到视口正中（inset:0 + margin:auto），
+         并多出一圈实线边框与一条滚动条。不支持 popover 时这几条也与默认值等价。 */
+      inset: auto;
+      margin: 0;
+      border: 0;
+      overflow: visible;
       max-width: 220px;
       padding: 3px 7px;
       border-radius: 6px;
@@ -2898,14 +2904,82 @@ window.__ModuleLoader__.load({
     // src/modules/theme/client/assets/house.svg
     var house_default = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.8 8 2.2l6 4.6V13a.9.9 0 0 1-.9.9H2.9A.9.9 0 0 1 2 13V6.8Z"/><path d="M6.2 13.9V9.2h3.6v4.7"/></svg>';
 
+    // src/modules/theme/client/watch.ts
+    var SIDEBAR_SELECTOR = '[data-slot="sidebar"]';
+    var CONVERSATION_SELECTOR = '[data-slot="main.conversation"]';
+    function watchSidebar(pass) {
+      return watchElement(pass, {
+        selector: SIDEBAR_SELECTOR,
+        observe: { childList: true, subtree: true, characterData: true }
+      });
+    }
+    function watchConversation(pass, enabled) {
+      return watchElement(pass, {
+        selector: CONVERSATION_SELECTOR,
+        observe: { childList: true, subtree: true, characterData: true },
+        ...enabled === void 0 ? {} : { enabled }
+      });
+    }
+    function watchElement(pass, options) {
+      const find = options.find ?? (() => document.querySelector(options.selector ?? ""));
+      const observeOptions = options.observe ?? { childList: true, subtree: true };
+      const enabled = options.enabled ?? (() => true);
+      let root = null;
+      let inner = null;
+      let frameHandle = 0;
+      let probeHandle = 0;
+      let active = true;
+      const schedule = () => {
+        if (!active || frameHandle !== 0 || !enabled()) return;
+        frameHandle = requestAnimationFrame(() => {
+          frameHandle = 0;
+          if (!active) return;
+          const node2 = ensure();
+          if (node2 !== null) pass(node2);
+        });
+      };
+      const ensure = () => {
+        if (root !== null && root.isConnected) return root;
+        const next = find();
+        if (next === null) {
+          root = null;
+          return null;
+        }
+        root = next;
+        inner?.disconnect();
+        inner = new MutationObserver(schedule);
+        inner.observe(next, observeOptions);
+        return next;
+      };
+      const outer = new MutationObserver(() => {
+        if (!active || root !== null && root.isConnected) return;
+        if (probeHandle !== 0) return;
+        probeHandle = requestAnimationFrame(() => {
+          probeHandle = 0;
+          if (active && ensure() !== null) schedule();
+        });
+      });
+      outer.observe(document.body, { childList: true, subtree: true });
+      const node = ensure();
+      if (node !== null && enabled()) pass(node);
+      return () => {
+        active = false;
+        outer.disconnect();
+        inner?.disconnect();
+        inner = null;
+        if (frameHandle !== 0) cancelAnimationFrame(frameHandle);
+        if (probeHandle !== 0) cancelAnimationFrame(probeHandle);
+        frameHandle = 0;
+        probeHandle = 0;
+      };
+    }
+
     // src/modules/theme/client/rail.ts
-    var RAIL_ROW = '[data-slot="sidebar"] > [class*="_root"] [class*="_panelRow"]';
+    var RAIL_ROW = '[class*="_root"] [class*="_panelRow"]';
     function installRailTitles() {
-      let queued = 0;
       const titles = /* @__PURE__ */ new Map();
-      const pass = () => {
-        queued = 0;
-        for (const row of document.querySelectorAll(RAIL_ROW)) {
+      const pass = (root) => {
+        for (const row of root.querySelectorAll(RAIL_ROW)) {
           if (row.closest("[data-sk-unpinnable]")) {
             if (row.hasAttribute("title")) row.removeAttribute("title");
             continue;
@@ -2918,16 +2992,9 @@ window.__ModuleLoader__.load({
           }
         }
       };
-      const schedule = () => {
-        if (queued) return;
-        queued = requestAnimationFrame(pass);
-      };
-      const observer = new MutationObserver(schedule);
-      observer.observe(document.body, { childList: true, subtree: true });
-      pass();
+      const stop = watchSidebar(pass);
       return () => {
-        observer.disconnect();
-        if (queued) cancelAnimationFrame(queued);
+        stop();
         for (const [row, title] of titles) {
           if (title === null) row.removeAttribute("title");
           else row.setAttribute("title", title);
@@ -2935,9 +3002,8 @@ window.__ModuleLoader__.load({
         titles.clear();
       };
     }
-    var RAIL_LIST = '[data-slot="sidebar"] > [class*="_root"] [class*="_panelList"]';
+    var RAIL_LIST = '[class*="_root"] [class*="_panelList"]';
     function installHomeRail(ctx) {
-      let queued = 0;
       let home = null;
       let offPanel = null;
       const label = () => (document.documentElement.lang || "").toLowerCase().startsWith("zh") ? "工作区" : "Workspace";
@@ -2961,8 +3027,8 @@ window.__ModuleLoader__.load({
         }
         sync();
       };
-      const ensure = () => {
-        const list = document.querySelector(RAIL_LIST);
+      const ensure = (root) => {
+        const list = root.querySelector(RAIL_LIST);
         if (!list) return;
         if (home?.isConnected) return;
         if (!home) {
@@ -2978,21 +3044,11 @@ window.__ModuleLoader__.load({
         list.prepend(home);
         sync();
       };
-      const schedule = () => {
-        if (queued) return;
-        queued = requestAnimationFrame(() => {
-          queued = 0;
-          ensure();
-        });
-      };
-      const observer = new MutationObserver(schedule);
-      observer.observe(document.body, { childList: true, subtree: true });
       const info = ctx.layout?.panelInfo;
       if (info && typeof info.subscribe === "function") offPanel = info.subscribe(sync);
-      ensure();
+      const stop = watchSidebar(ensure);
       return () => {
-        observer.disconnect();
-        if (queued) cancelAnimationFrame(queued);
+        stop();
         if (typeof offPanel === "function") offPanel();
         if (home) {
           home.removeEventListener("click", onClick);
@@ -3003,12 +3059,13 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/theme/client/rail-unpin.ts
-    var ENTRY = '[data-slot="sidebar"] > [class*="_root"] [class*="_panelEntry"]';
+    var ENTRY = '[class*="_root"] [class*="_panelEntry"]';
     var UNPIN = '[class*="_panelUnpin"]';
     var TITLE = '[class*="_panelTitle"]';
     var ROW = '[class*="_panelRow"]';
     var MARK = "data-sk-unpinnable";
     var HINT = "双击取消固定";
+    var POPOVER = typeof HTMLElement !== "undefined" && Object.hasOwn(HTMLElement.prototype, "popover");
     var TIP_DELAY_MS = 450;
     var CLICK_DELAY_MS = 300;
     var entryOf = (node) => node instanceof Element ? node.closest(`[${MARK}]`) : null;
@@ -3016,7 +3073,8 @@ window.__ModuleLoader__.load({
       const tip = document.createElement("div");
       tip.className = "sk-tip";
       tip.setAttribute("role", "tooltip");
-      tip.hidden = true;
+      if (POPOVER) tip.setAttribute("popover", "hint");
+      else tip.hidden = true;
       return tip;
     }
     function fillTip(tip, entry) {
@@ -3045,31 +3103,34 @@ window.__ModuleLoader__.load({
       tip.style.top = `${Math.round(top)}px`;
     }
     function installRailUnpin() {
-      let queued = 0;
       let tip = null;
       let tipTimer = 0;
       let tipEntry = null;
       let heldClick = 0;
       let replaying = false;
       let lastDoubleClick = 0;
-      const pass = () => {
-        queued = 0;
-        for (const entry of document.querySelectorAll(ENTRY)) {
+      const pass = (root) => {
+        for (const entry of root.querySelectorAll(ENTRY)) {
           const pinnable = entry.querySelector(UNPIN) !== null;
           if (pinnable === entry.hasAttribute(MARK)) continue;
           if (pinnable) entry.setAttribute(MARK, "");
           else entry.removeAttribute(MARK);
         }
       };
-      const schedule = () => {
-        if (queued) return;
-        queued = requestAnimationFrame(pass);
-      };
       const hide = () => {
         if (tipTimer) clearTimeout(tipTimer);
         tipTimer = 0;
         tipEntry = null;
-        if (tip) tip.hidden = true;
+        if (!tip) return;
+        if (POPOVER) {
+          if (tip.matches(":popover-open")) tip.hidePopover();
+        } else tip.hidden = true;
+      };
+      const reveal = (element4, entry) => {
+        if (POPOVER) {
+          if (!element4.matches(":popover-open")) element4.showPopover();
+        } else element4.hidden = false;
+        placeTip(element4, entry);
       };
       const show = (entry) => {
         hide();
@@ -3079,9 +3140,15 @@ window.__ModuleLoader__.load({
           if (tipEntry !== entry || !entry.isConnected) return;
           tip = tip ?? createTip();
           fillTip(tip, entry);
-          if (!tip.isConnected) document.body.append(tip);
-          tip.hidden = false;
-          placeTip(tip, entry);
+          if (!tip.isConnected) {
+            document.body.append(tip);
+            if (POPOVER) {
+              tip.addEventListener("toggle", (event) => {
+                if (event?.newState === "closed") tipEntry = null;
+              });
+            }
+          }
+          reveal(tip, entry);
         }, TIP_DELAY_MS);
       };
       const onOver = (event) => {
@@ -3138,9 +3205,7 @@ window.__ModuleLoader__.load({
         event.preventDefault();
         event.stopPropagation();
       };
-      const Observer = MutationObserver;
-      const observer = new Observer(schedule);
-      observer.observe(document.body, { childList: true, subtree: true });
+      const stop = watchSidebar(pass);
       document.addEventListener("pointerover", onOver, true);
       document.addEventListener("pointerout", onOut, true);
       document.addEventListener("pointerdown", onPress, true);
@@ -3148,10 +3213,8 @@ window.__ModuleLoader__.load({
       document.addEventListener("dblclick", onDoubleClick, true);
       window.addEventListener("scroll", hide, true);
       window.addEventListener("resize", hide);
-      pass();
       return () => {
-        observer.disconnect();
-        if (queued) cancelAnimationFrame(queued);
+        stop();
         document.removeEventListener("pointerover", onOver, true);
         document.removeEventListener("pointerout", onOut, true);
         document.removeEventListener("pointerdown", onPress, true);
@@ -3168,15 +3231,14 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/theme/client/band.ts
-    var TITLE_ROW = '[data-slot="main.conversation"] [class*="_titleRow"]';
+    var TITLE_ROW = '[class*="_titleRow"]';
+    var HEADER_ROW = '[class*="_header"] [class*="_titleRow"]';
     function installBandHeight() {
-      let queued = 0;
       const previous = document.body.style.getPropertyValue("--cx-band-h");
       const priority = document.body.style.getPropertyPriority("--cx-band-h");
-      const pass = () => {
-        queued = 0;
+      const pass = (root) => {
         if (!isDarwinDesktop()) return;
-        const row = document.querySelector(TITLE_ROW) ?? document.querySelector('[class*="_header"] [class*="_titleRow"]');
+        const row = root.querySelector(TITLE_ROW) ?? root.querySelector(HEADER_ROW);
         if (!row) return;
         const bottom = Math.round(row.getBoundingClientRect().bottom);
         if (bottom <= 0) return;
@@ -3185,18 +3247,15 @@ window.__ModuleLoader__.load({
           document.body.style.setProperty("--cx-band-h", next);
         }
       };
-      const schedule = () => {
-        if (queued) return;
-        queued = requestAnimationFrame(pass);
+      const measure = () => {
+        const root = document.querySelector('[data-slot="main.conversation"]');
+        if (root !== null) pass(root);
       };
-      const observer = new MutationObserver(schedule);
-      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-      window.addEventListener("resize", schedule);
-      pass();
+      const stop = watchConversation(pass, isDarwinDesktop);
+      window.addEventListener("resize", measure);
       return () => {
-        observer.disconnect();
-        window.removeEventListener("resize", schedule);
-        if (queued) cancelAnimationFrame(queued);
+        stop();
+        window.removeEventListener("resize", measure);
         if (previous) document.body.style.setProperty("--cx-band-h", previous, priority);
         else document.body.style.removeProperty("--cx-band-h");
       };
@@ -3376,19 +3435,11 @@ window.__ModuleLoader__.load({
       document.addEventListener("keydown", onKeyDown, true);
       window.addEventListener("blur", finishDrag);
       widthPass = pass;
-      const observer = new MutationObserver((mutations) => {
-        const frameRewritten = mutations.some(
-          (m) => m.type === "attributes" && m.attributeName === "style" && m.target === frameEl
-        );
-        if (frameRewritten) pass();
-        else schedule();
+      const stopFrame = watchElement(pass, {
+        find: findFrame,
+        observe: { attributes: true, attributeFilter: ["style", "data-sidebar-collapsed"] }
       });
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ["style", "data-sidebar-collapsed"]
-      });
+      const stopSidebar = watchSidebar(pass);
       const platformObserver = new MutationObserver(schedule);
       platformObserver.observe(document.documentElement, {
         attributes: true,
@@ -3399,7 +3450,8 @@ window.__ModuleLoader__.load({
       if (info && typeof info.subscribe === "function") offPanel = info.subscribe(schedule);
       pass();
       return () => {
-        observer.disconnect();
+        stopFrame();
+        stopSidebar();
         platformObserver.disconnect();
         finishDrag();
         document.removeEventListener("pointerdown", onPointerDown, true);
@@ -3458,7 +3510,7 @@ window.__ModuleLoader__.load({
       };
       collapseSync = sync;
       let wasCollapsed = false;
-      const stateObserver = new MutationObserver(() => {
+      const syncCollapsed = () => {
         const frame = findFrame();
         const collapsed = !!frame && frame.hasAttribute("data-sidebar-collapsed");
         if (wasCollapsed && !collapsed && workspaceCollapsed) {
@@ -3466,11 +3518,10 @@ window.__ModuleLoader__.load({
           widthPass?.();
         }
         wasCollapsed = collapsed;
-      });
-      stateObserver.observe(document.body, {
-        attributes: true,
-        attributeFilter: ["data-sidebar-collapsed"],
-        subtree: true
+      };
+      const stopState = watchElement(syncCollapsed, {
+        find: findFrame,
+        observe: { attributes: true, attributeFilter: ["data-sidebar-collapsed"] }
       });
       const onClick = (event) => {
         const el = event.target;
@@ -3504,14 +3555,14 @@ window.__ModuleLoader__.load({
       sync();
       return () => {
         document.removeEventListener("click", onClick, true);
-        stateObserver.disconnect();
+        stopState();
         collapseSync = null;
         hit.remove();
       };
     }
 
     // src/modules/theme/client/update-tile.ts
-    var TILE = '[data-slot="sidebar"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]';
+    var TILE = '[class*="_triggerRow"] > [class*="_indicator"][aria-disabled]';
     var PERCENT = /(\d{1,3})\s*%/;
     var PROGRESS_PHASES = /* @__PURE__ */ new Set(["downloading"]);
     var clampPercent = (value) => {
@@ -3556,13 +3607,18 @@ window.__ModuleLoader__.load({
           tile.style.setProperty("--cx-update-pct", `${state.percent}%`);
         }
       };
-      const pass = () => {
-        queued = 0;
+      const pass = (root) => {
         if (!active) return;
-        for (const tile of document.querySelectorAll(TILE)) paint(tile);
+        for (const tile of root.querySelectorAll(TILE)) paint(tile);
       };
       const schedule = () => {
-        if (!queued && active) queued = requestAnimationFrame(pass);
+        if (!active) return;
+        if (queued) return;
+        queued = requestAnimationFrame(() => {
+          queued = 0;
+          const root = document.querySelector('[data-slot="sidebar"]');
+          if (root !== null) pass(root);
+        });
       };
       const carrier = globalThis.dshDesktop;
       const bridge = carrier?.protocolVersion === 1 ? carrier.updates : void 0;
@@ -3585,12 +3641,10 @@ window.__ModuleLoader__.load({
           bridged = false;
         }
       }
-      const observer = new MutationObserver(schedule);
-      observer.observe(document.body, { childList: true, subtree: true });
-      pass();
+      const stop = watchSidebar(pass);
       return () => {
         active = false;
-        observer.disconnect();
+        stop();
         if (queued) cancelAnimationFrame(queued);
         if (typeof unsubscribe === "function") unsubscribe();
         for (const tile of document.querySelectorAll(TILE)) {
@@ -4172,6 +4226,12 @@ window.__ModuleLoader__.load({
         actions.sync();
       };
       const observer = new MutationObserver((records) => {
+        const chatOnly = (record) => {
+          const target = record.target;
+          const element4 = target.nodeType === 1 ? target : target.parentElement;
+          return element4?.closest?.('[data-slot="main.conversation"]') != null;
+        };
+        if (records.every(chatOnly)) return;
         if (records.some(({ target }) => !target.parentElement?.closest(".sk-setnav__groups,.sk-setnav__empty") && !target.closest?.(".sk-setnav__groups,.sk-setnav__empty"))) scan();
       });
       observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["aria-current", "class", "disabled"] });

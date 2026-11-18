@@ -1,3 +1,5 @@
+import { watchSidebar } from "./watch.js";
+
 // Codex-only surface for the native desktop update button.
 //
 // DSH 0.2.1-rc.5 appends a 28×72 update pill to the account row at the bottom of the
@@ -9,7 +11,7 @@
 // the click handler: nothing here intercepts events or replaces the button.
 
 const TILE =
-  '[data-slot="sidebar"] [class*="_triggerRow"] > [class*="_indicator"][aria-disabled]';
+  '[class*="_triggerRow"] > [class*="_indicator"][aria-disabled]';
 const PERCENT = /(\d{1,3})\s*%/;
 // Only the download phase reports progress; verifying keeps percent pinned at 100
 // and ready/error carry none, so a percentage there would just draw a bogus ring.
@@ -68,14 +70,19 @@ export function installUpdateTile() {
     }
   };
 
-  const pass = () => {
-    queued = 0;
+  const pass = (root: Element) => {
     if (!active) return;
-    for (const tile of document.querySelectorAll(TILE)) paint(tile);
+    for (const tile of root.querySelectorAll(TILE)) paint(tile);
   };
 
   const schedule = () => {
-    if (!queued && active) queued = requestAnimationFrame(pass);
+    if (!active) return;
+    if (queued) return;
+    queued = requestAnimationFrame(() => {
+      queued = 0;
+      const root = document.querySelector('[data-slot="sidebar"]');
+      if (root !== null) pass(root);
+    });
   };
 
   const carrier = globalThis.dshDesktop;
@@ -102,14 +109,11 @@ export function installUpdateTile() {
     }
   }
 
-  const observer = new MutationObserver(schedule);
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  pass();
+  const stop = watchSidebar(pass);
 
   return () => {
     active = false;
-    observer.disconnect();
+    stop();
     if (queued) cancelAnimationFrame(queued);
     if (typeof unsubscribe === "function") unsubscribe();
     for (const tile of document.querySelectorAll<HTMLElement>(TILE)) {
