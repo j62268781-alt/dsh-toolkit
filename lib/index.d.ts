@@ -145,6 +145,7 @@ declare const _default: {
                 mode: import("@deepseek-ai/schemastery").default<string, string, "defined">;
                 tools: import("@deepseek-ai/schemastery").default<string[], string[], "defined">;
             }>>, string>>, "volatile-defined">;
+            lazyIdleMinutes: import("@deepseek-ai/schemastery").default<number, number, "defined">;
         }>>, Schemastery.ObjectT<NoInfer<{
             toolFilters: import("@deepseek-ai/schemastery").default<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
                 mode: import("@deepseek-ai/schemastery").default<string, string, "defined">;
@@ -153,6 +154,7 @@ declare const _default: {
                 mode: import("@deepseek-ai/schemastery").default<string, string, "defined">;
                 tools: import("@deepseek-ai/schemastery").default<string[], string[], "defined">;
             }>>, string>>, "volatile-defined">;
+            lazyIdleMinutes: import("@deepseek-ai/schemastery").default<number, number, "defined">;
         }>>, "defined">;
         notification: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
             enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
@@ -398,6 +400,7 @@ declare const _default: {
                 mode: import("@deepseek-ai/schemastery").default<string, string, "defined">;
                 tools: import("@deepseek-ai/schemastery").default<string[], string[], "defined">;
             }>>, string>>, "volatile-defined">;
+            lazyIdleMinutes: import("@deepseek-ai/schemastery").default<number, number, "defined">;
         }>>, Schemastery.ObjectT<NoInfer<{
             toolFilters: import("@deepseek-ai/schemastery").default<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
                 mode: import("@deepseek-ai/schemastery").default<string, string, "defined">;
@@ -406,6 +409,7 @@ declare const _default: {
                 mode: import("@deepseek-ai/schemastery").default<string, string, "defined">;
                 tools: import("@deepseek-ai/schemastery").default<string[], string[], "defined">;
             }>>, string>>, "volatile-defined">;
+            lazyIdleMinutes: import("@deepseek-ai/schemastery").default<number, number, "defined">;
         }>>, "defined">;
         notification: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
             enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;

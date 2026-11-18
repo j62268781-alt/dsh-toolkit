@@ -324,6 +324,8 @@ export function createServerObserver(ctx: any, { agents: readAgents, servers: re
          * 查服务器侧；而重新授权的入口一直在 `…` 菜单里，并没有因此消失。
          */
         hasCredentials: oauthStatusCache.get(target.serverName)?.present === true,
+        // 懒行：没连接是正常的，别拿「该有实例却没有」那套判据去报故障。
+        lazy: target.source?.lazy === true,
       })
       const cached = probeCache.get(target.serverName)
       reported.push({

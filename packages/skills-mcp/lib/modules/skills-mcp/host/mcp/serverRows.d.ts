@@ -67,6 +67,7 @@ export declare function serverFromRow(entry: any): {
     reconnect: any;
     toolCallTimeoutMs: any;
     allowInsecureTokenEndpoint: boolean;
+    lazy: boolean;
     enabled: boolean;
     /**
      * stdio 用哪个 npm 家族。
@@ -80,7 +81,7 @@ export declare function serverFromRow(entry: any): {
      */
     runtime: string;
     phase: string;
-    /** True for rows the Loader connects itself (global scope). */
+    /** True for rows the Loader connects itself (global, eager). Lazy rows are ours. */
     loaderManaged: boolean;
 };
 /**
@@ -123,6 +124,7 @@ export declare function serverRows(ctxLoaderEntries: any): {
     reconnect: any;
     toolCallTimeoutMs: any;
     allowInsecureTokenEndpoint: boolean;
+    lazy: boolean;
     enabled: boolean;
     /**
      * stdio 用哪个 npm 家族。
@@ -136,7 +138,7 @@ export declare function serverRows(ctxLoaderEntries: any): {
      */
     runtime: string;
     phase: string;
-    /** True for rows the Loader connects itself (global scope). */
+    /** True for rows the Loader connects itself (global, eager). Lazy rows are ours. */
     loaderManaged: boolean;
 }[];
 /** Whether a project scope covers a working directory (a scope is a directory prefix). */
@@ -148,6 +150,13 @@ export declare function scopeCovers(scope: any, cwd: any): boolean;
  * moved from a plugin field to the rows — because the matching rule was never the problem.
  */
 export declare function projectServersFor(servers: any, cwd: any): any[];
+/**
+ * 一个工作目录下**懒加载**的项目级服务器。
+ *
+ * 与 `projectServersFor` 分开，是因为两者的生命周期不同：急切行在会话出现时立刻挂载，
+ * 懒行只登记代理、等第一次调用。混在一个列表里会让 `mountForAgent` 把懒行也一起连上。
+ */
+export declare function lazyProjectServersFor(servers: any, cwd: any): any[];
 /**
  * The servers the Loader connects on its own: global scope and enabled.
  *

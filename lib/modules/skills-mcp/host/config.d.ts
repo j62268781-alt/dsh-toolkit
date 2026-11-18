@@ -57,6 +57,16 @@ export declare const RowOp: z<Schemastery.ObjectS<NoInfer<{
     /** toggle: the desired enabled state of the row. */
     enabled: z<boolean, boolean, "defined">;
     /**
+     * add/lazy: 这台服务器是否**按需启动**（懒加载）。
+     *
+     * 开启后 Loader 不再实例化这一行（行上会写 `disabled: true`），改由本插件在第一次调用它的
+     * 工具时才挂载 `mcp-client`；工具清单来自 `~/.dsh` 下的缓存，所以启动时既不起进程、也能让
+     * 模型看到工具。见 `src/mcp/lazy.js`。
+     */
+    lazy: z<boolean, boolean, "defined">;
+    /** update: whether the user actually changed the launch mode (blank = leave it alone). */
+    lazyChanged: z<boolean, boolean, "defined">;
+    /**
      * add/update: the row's tier. `global` (or empty) leaves the key off, which is what a
      * row without a `scope` already means — so existing rows stay valid untouched.
      */
@@ -119,6 +129,16 @@ export declare const RowOp: z<Schemastery.ObjectS<NoInfer<{
     connectionChanged: z<boolean, boolean, "defined">;
     /** toggle: the desired enabled state of the row. */
     enabled: z<boolean, boolean, "defined">;
+    /**
+     * add/lazy: 这台服务器是否**按需启动**（懒加载）。
+     *
+     * 开启后 Loader 不再实例化这一行（行上会写 `disabled: true`），改由本插件在第一次调用它的
+     * 工具时才挂载 `mcp-client`；工具清单来自 `~/.dsh` 下的缓存，所以启动时既不起进程、也能让
+     * 模型看到工具。见 `src/mcp/lazy.js`。
+     */
+    lazy: z<boolean, boolean, "defined">;
+    /** update: whether the user actually changed the launch mode (blank = leave it alone). */
+    lazyChanged: z<boolean, boolean, "defined">;
     /**
      * add/update: the row's tier. `global` (or empty) leaves the key off, which is what a
      * row without a `scope` already means — so existing rows stay valid untouched.
@@ -234,6 +254,13 @@ export declare const Config: z<Schemastery.ObjectS<NoInfer<{
         mode: z<string, string, "defined">;
         tools: z<string[], string[], "defined">;
     }>>, string>>, "volatile-defined">;
+    /**
+     * 懒加载的连接空闲多久后自动断开（分钟，默认 10）。
+     *
+     * 断开的只是**连接**：工具清单还在缓存里，下一次调用会自动重连 —— 这样「按需启动」才真的
+     * 把内存还回去，而不是连接一次就常驻到退出。设为 0 关闭自动断开。
+     */
+    lazyIdleMinutes: z<number, number, "defined">;
 }>>, Schemastery.ObjectT<NoInfer<{
     /**
      * 每个服务器的工具过滤规则：`{ [serverName]: { mode, tools } }`。
@@ -255,5 +282,12 @@ export declare const Config: z<Schemastery.ObjectS<NoInfer<{
         mode: z<string, string, "defined">;
         tools: z<string[], string[], "defined">;
     }>>, string>>, "volatile-defined">;
+    /**
+     * 懒加载的连接空闲多久后自动断开（分钟，默认 10）。
+     *
+     * 断开的只是**连接**：工具清单还在缓存里，下一次调用会自动重连 —— 这样「按需启动」才真的
+     * 把内存还回去，而不是连接一次就常驻到退出。设为 0 关闭自动断开。
+     */
+    lazyIdleMinutes: z<number, number, "defined">;
 }>>, "plain">;
 //# sourceMappingURL=config.d.ts.map

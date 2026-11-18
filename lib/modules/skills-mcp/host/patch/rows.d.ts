@@ -18,6 +18,22 @@ export declare function setRowConfigField(document: any, entryId: any, field: an
  * can compare against {@link GLOBAL_SCOPE} without special-casing the empty string.
  */
 export declare function rowScopeOf(document: any, entryId: any): string;
+/**
+ * Whether the row is **lazy**（按需启动）。
+ *
+ * 懒行由本插件挂载 —— 与项目级行同一个理由，所以 Loader 里也必须 `disabled: true`，
+ * 否则启动时就被连上一次，懒加载等于没做。
+ */
+export declare function rowLazyOf(document: any, entryId: any): boolean;
+/**
+ * 一行由**本插件**挂载，Loader 必须跳过它。
+ *
+ * 两个来源：项目级作用域（按工作区挂载）与懒加载（按需挂载）。其余全局行仍然交给 Loader，
+ * 这是现状，也避免同一个服务器被两个所有者各连一次。
+ */
+export declare function rowOwnedByPlugin(document: any, entryId: any): boolean;
+/** 行 config 里的一个值（不存在时 `undefined`）。 */
+export declare function rowConfigValue(document: any, entryId: any, field: any): unknown;
 /** Enable/disable a whole row (the Loader's own `disabled` flag). */
 export declare function setRowDisabled(document: any, entryId: any, disabled: any): boolean;
 /**

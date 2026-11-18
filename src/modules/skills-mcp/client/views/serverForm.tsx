@@ -76,6 +76,28 @@ export function serverFormView({
               ) : null}
             </div>
           ))}
+          {/*
+            启动方式。这是**挂载归属**的开关，不是连接参数：开启后这一行的 Loader 会被停用，
+            改由插件在第一次调用它的工具时挂载 `mcp-client`，工具清单来自本地缓存 —— 于是
+            「服务器开着、但启动时不连、不吃进程内存」成为可能。默认关闭（= 启动即连）。
+          */}
+          {field("启动方式", (
+            <div className="smp-switchRow" key="lazy">
+              <span className="smp-switchRowText">
+                {"按需启动（懒加载）"}
+                <span className="smp-switchRowHint">
+                  开启后 DSH 启动时不会连接这台服务器，第一次调用它的工具时才连；工具清单会缓存到本地，所以模型照旧看得到工具
+                </span>
+              </span>
+              <span className="smp-switchSlot" key="slot">
+                {switchControl(
+                  draft.lazy === true,
+                  (next) => setDraft({ ...draft, lazy: next }),
+                  "按需启动（懒加载）",
+                )}
+              </span>
+            </div>
+          ), true)}
           {stdio
             ? field("命令", (
                 <input

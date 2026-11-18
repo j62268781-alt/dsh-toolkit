@@ -7,6 +7,7 @@ export function profileCardView({
   row, tier, rowKey, rowOpen, rowStatusScope, setExpanded, scopeTagLabel, statusDot,
   pending, pendingText, rowOpsReady, enabledSwitch, moreMenu, menuItems,
   serverTools, serverToolsError, filterFor, leafOf, writeFilter, filterState, needsAuthNote,
+  lazyInfo,
 }) {
   return (
     <li className="smp-card" key={`profile:${row.entryId}`}>
@@ -62,7 +63,7 @@ export function profileCardView({
     </div>
       {rowOpen ? (
         <div className="smp-cardDetails" key="details">
-          <div className="smp-details" key="grid">{detailNodes(rowDetailPairs(row))}</div>
+          <div className="smp-details" key="grid">{detailNodes(rowDetailPairs(row, lazyInfo))}</div>
           {toolListNode(toolsForServer(serverTools, row.serverName, serverToolsError), `tools-${row.entryId}`, {
             ...filterFor(row.serverName),
             leafOf: leafOf(row.serverName),

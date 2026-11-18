@@ -54,7 +54,7 @@ export function backupPath() {
  * needs to show.
  */
 export const YAML_JS_TAG = { tag: 'tag:yaml.org,2002:js', resolve: (value: any) => value }
-import { MCP_MODULE, insertRow, locateRow, removeRow, rowScopeOf, setRowConfigField, setRowDisabled } from './rows.js'
+import { MCP_MODULE, insertRow, locateRow, removeRow, rowConfigValue, rowOwnedByPlugin, rowScopeOf, setRowConfigField, setRowDisabled } from './rows.js'
 import { dshHome, parseEnv, splitArgs } from '../runtime/env.js'
 import { connectionFields } from '../mcp/connection.js'
 import { NAME, LEGACY_NAME } from '../identity.js'
@@ -375,6 +375,15 @@ export async function applyRowOp(ctx: any, op: any) {
       const projectScoped = typeof op.scope === 'string' && op.scope !== '' && op.scope !== 'global'
       if (projectScoped) config.scope = op.scope
       /**
+       * 懒加载标记。写在行 config 里（和 `scope` 同一个位置），因为这是「这台服务器怎么被挂载」
+       * 的描述，不是连接参数 —— 客户端 schema 同样不列它，但也不拒绝它。
+       *
+       * 关键副作用：懒行的 Loader 必须 `disabled: true`。否则启动时 Loader 会照常实例化它，
+       * 进程起来了、「按需启动」就只是个说法。真正的挂载交给本插件（见 `mcp/lazy.ts`）。
+       */
+      const lazy = op.lazy === true
+      if (lazy) config.lazy = true
+      /**
        * An add of an id that is already there rewrites that row instead of appending a second.
        *
        * `insertRow` appends unconditionally, so a repeated command would leave two rows with
@@ -395,7 +404,8 @@ export async function applyRowOp(ctx: any, op: any) {
         existing.item.set('config', config)
         // Keep the row's own enablement in step with the scope rule below; `locateRow`
         // returns the node, and `disabled` lives beside `config`, not inside it.
-        if (projectScoped) existing.item.set('disabled', true)
+        // A lazy row is owned by this plugin too, so the Loader must skip it as well.
+        if (projectScoped || lazy) existing.item.set('disabled', true)
         else existing.item.delete('disabled')
         changed = true
       } else {
@@ -403,7 +413,7 @@ export async function applyRowOp(ctx: any, op: any) {
         // the agent whose cwd the scope covers, and an enabled row would connect the same
         // server a second time. `disabled` skips instantiation while leaving the config
         // readable in `loader.entries()` — which is where the mount path finds it.
-        changed = insertRow(document, rowId, config, { disabled: projectScoped })
+        changed = insertRow(document, rowId, config, { disabled: projectScoped || lazy })
       }
     } else if (op.op === 'toggle') {
       /**
@@ -420,13 +430,31 @@ export async function applyRowOp(ctx: any, op: any) {
        *   · turning it **on** cleared `disabled`, so the Loader connected a row this plugin
        *     was also mounting → two clients, two tool generations, one namespace.
        */
-      const scope = rowScopeOf(document, op.entryId)
-      if (scope !== null && scope !== 'global') {
+      if (rowOwnedByPlugin(document, op.entryId)) {
         // `null` clears the key: an absent `enabled` means enabled, which keeps a config
         // that was never toggled byte-identical to one that was toggled back on.
         changed = setRowConfigField(document, op.entryId, 'enabled', op.enabled === false ? false : null)
       } else {
         changed = setRowDisabled(document, op.entryId, op.enabled === false)
+      }
+    } else if (op.op === 'lazy') {
+      /**
+       * 切换「按需启动」。
+       *
+       * 打开：行标记为懒，并且 Loader 立刻停用该行（它会卸载已连接的实例，进程随之退出），
+       * 之后由本插件按需挂载。
+       *
+       * 关闭：全局行交还 Loader —— 用户的启停意图从 `config.enabled` 搬到 entry 的
+       * `disabled` 上再清掉旧键，否则「懒模式下停用的服务器」切回急切后会意外地连着。
+       */
+      const lazy = op.lazy === true
+      changed = setRowConfigField(document, op.entryId, 'lazy', lazy ? true : null) || changed
+      if (lazy) {
+        changed = setRowDisabled(document, op.entryId, true) || changed
+      } else if (rowScopeOf(document, op.entryId) === 'global') {
+        const wanted = rowConfigValue(document, op.entryId, 'enabled') !== false
+        changed = setRowDisabled(document, op.entryId, !wanted) || changed
+        changed = setRowConfigField(document, op.entryId, 'enabled', null) || changed
       }
     } else if (op.op === 'delete') {
       /**
@@ -495,6 +523,13 @@ export async function applyRowOp(ctx: any, op: any) {
         // 是为了让「关掉它」等于「回到出厂状态」——一份配置里不该留下一个 `: false` 让人
         // 以为曾经开过。
         changed = setRowConfigField(document, op.entryId, 'allowInsecureTokenEndpoint', op.allowInsecureTokenEndpoint === true ? true : null) || changed
+      }
+      // 「按需启动」和 `scope` 一样，描述的是「这行由谁挂载」，不是连接参数。
+      if (op.lazyChanged === true) {
+        const lazy = op.lazy === true
+        changed = setRowConfigField(document, op.entryId, 'lazy', lazy ? true : null) || changed
+        if (lazy) changed = setRowDisabled(document, op.entryId, true) || changed
+        else if (rowScopeOf(document, op.entryId) === 'global') changed = setRowDisabled(document, op.entryId, false) || changed
       }
     }
     if (!changed) throw new Error(`row "${op.entryId}" not found in the profile patch`)

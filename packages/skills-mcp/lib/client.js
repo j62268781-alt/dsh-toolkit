@@ -1161,10 +1161,16 @@ window.__ModuleLoader__.load({
       const scope = typeof draft.scope === "string" ? draft.scope : "";
       return { scope, scopeChanged: draft.scopeChanged === true };
     }
+    function lazyChanged(draft, original) {
+      if (original === void 0 || original === null) return false;
+      return draft?.lazy === true !== (original?.lazy === true);
+    }
     function commonFields(draft) {
       return {
         serverName: draft.serverName,
         transport: draft.transport ?? "streamable-http",
+        // 按需启动：开启后 Host 会把这一行标记为懒（Loader 不再实例化），第一次调用工具时才连接。
+        lazy: draft.lazy === true,
         command: draft.command ?? "",
         args: typeof draft.args === "string" ? draft.args : "",
         env: typeof draft.env === "string" ? draft.env : "",
@@ -1202,12 +1208,16 @@ window.__ModuleLoader__.load({
         ...commonFields(draft),
         ...scopeFields(draft),
         connectionChanged: connectionChanged(draft, original),
+        lazyChanged: lazyChanged(draft, original),
         envChanged: envChanged(draft, original),
         headersChanged: headersChanged(draft, original)
       };
     }
     function toggleServerOp(entryId, enabled) {
       return { op: "toggle", entryId, enabled };
+    }
+    function lazyServerOp(entryId, lazy) {
+      return { op: "lazy", entryId, lazy: lazy === true };
     }
     function deleteServerOp(entryId) {
       return { op: "delete", entryId };
@@ -1238,6 +1248,8 @@ window.__ModuleLoader__.load({
          * 系统」—— 这是最坏的一类回归，因为改动发生在用户没碰过的控件上。
          */
         runtime: row.runtime === "auto" ? "auto" : "system",
+        // 回填启动方式：见 `lazyChanged` —— 不回填就等于「保存一次就关掉懒加载」。
+        lazy: row.lazy === true,
         ...connectionDraft(row)
       };
     }
@@ -1340,9 +1352,9 @@ window.__ModuleLoader__.load({
       if (values.headers !== "") pairs.push(["请求头", maskHeaders(values.headers)]);
       return pairs;
     }
-    function rowDetailPairs(row = {}) {
+    function rowDetailPairs(row = {}, lazyInfo) {
       const transport = row.transport || "streamable-http";
-      return [
+      const pairs = [
         ["行 id", String(row.entryId ?? "").replace(/^include:/, "")],
         ["传输", transport],
         ...transportPairs(transport, {
@@ -1356,10 +1368,22 @@ window.__ModuleLoader__.load({
         // The scope *is* the tier now: `global` means the Loader connects this row and every
         // agent sees it; an absolute path means this plugin mounts it for the agent whose
         // working directory falls under it. One row, one list — so the card states which.
-        ["作用域", scopeLabelOf(row.scope)]
+        ["作用域", scopeLabelOf(row.scope)],
+        ["启动方式", row.lazy === true ? "按需（懒加载）" : "随 DSH 启动"]
         // 没有「状态」行：卡片右侧的开关就是启用状态的唯一真源。再写一行字等于同一件事有
         // 两个出处，而它们会漂移（开关是乐观更新的，文字来自投影，中间必然有一段时间不一致）。
       ];
+      if (row.lazy === true) pairs.push(["工具缓存", lazyCacheText(lazyInfo)]);
+      return pairs;
+    }
+    function lazyCacheText(lazyInfo) {
+      if (lazyInfo === void 0 || lazyInfo === null) return "尚未建立（第一次会先连一次，之后按需启动）";
+      const tools = Number(lazyInfo.cachedTools ?? 0);
+      if (!Number.isFinite(tools) || tools <= 0) return "尚未建立（第一次会先连一次，之后按需启动）";
+      const state = String(lazyInfo.state ?? "");
+      const status = state === "connected" ? "已连接" : state === "starting" ? "正在连接" : "已缓存（未连接，调用时再连）";
+      const stale = lazyInfo.stale === true ? " · 配置已变，下次调用会重连刷新" : "";
+      return `${tools} 个工具 · ${status}${stale}`;
     }
     function scopeLabelOf(scope) {
       const value = typeof scope === "string" ? scope : "";
@@ -1486,7 +1510,11 @@ window.__ModuleLoader__.load({
           value: scopeDraft.value,
           onChange: (e) => setScopeDraft({ ...scopeDraft, value: e.target.value })
         }
-      ) : null)), stdio ? field("命令", /* @__PURE__ */ __dshReact.createElement(
+      ) : null)), field("启动方式", /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-switchRow", key: "lazy" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchRowText" }, "按需启动（懒加载）", /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchRowHint" }, "开启后 DSH 启动时不会连接这台服务器，第一次调用它的工具时才连；工具清单会缓存到本地，所以模型照旧看得到工具")), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchSlot", key: "slot" }, switchControl(
+        draft.lazy === true,
+        (next) => setDraft({ ...draft, lazy: next }),
+        "按需启动（懒加载）"
+      ))), true), stdio ? field("命令", /* @__PURE__ */ __dshReact.createElement(
         "input",
         {
           className: "smp-input",
@@ -1872,7 +1900,8 @@ window.__ModuleLoader__.load({
       leafOf,
       writeFilter,
       filterState,
-      needsAuthNote
+      needsAuthNote,
+      lazyInfo
     }) {
       return /* @__PURE__ */ __dshReact.createElement("li", { className: "smp-card", key: `profile:${row.entryId}` }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardRow", key: "row" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardMain", key: "main" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardHead", key: "head" }, /* @__PURE__ */ __dshReact.createElement(
         "button",
@@ -1884,7 +1913,7 @@ window.__ModuleLoader__.load({
         },
         /* @__PURE__ */ __dshReact.createElement(Chevron, { key: "c", open: rowOpen }),
         /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardIdentity", key: "name" }, row.serverName || row.entryId, /* @__PURE__ */ __dshReact.createElement(Tag, { key: "scope" }, scopeTagLabel(row.scope)))
-      ), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardEnd", key: "end" }, row.enabled === false ? null : statusDot(row.serverName, tier, rowStatusScope))), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDescription", key: "desc" }, row.target ? `${row.transport || "streamable-http"} · ${row.target}` : `${String(row.entryId).replace(/^include:/, "")}${row.phase ? ` · ${row.phase}` : ""}`)), pending ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "pending" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-pending", key: "p" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-spinner", key: "s" }), pendingText)) : rowOpsReady ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "actions" }, enabledSwitch(row), moreMenu(row, menuItems)) : null), rowOpen ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDetails", key: "details" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-details", key: "grid" }, detailNodes(rowDetailPairs(row))), toolListNode(toolsForServer(serverTools, row.serverName, serverToolsError), `tools-${row.entryId}`, {
+      ), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardEnd", key: "end" }, row.enabled === false ? null : statusDot(row.serverName, tier, rowStatusScope))), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDescription", key: "desc" }, row.target ? `${row.transport || "streamable-http"} · ${row.target}` : `${String(row.entryId).replace(/^include:/, "")}${row.phase ? ` · ${row.phase}` : ""}`)), pending ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "pending" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-pending", key: "p" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-spinner", key: "s" }), pendingText)) : rowOpsReady ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "actions" }, enabledSwitch(row), moreMenu(row, menuItems)) : null), rowOpen ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDetails", key: "details" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-details", key: "grid" }, detailNodes(rowDetailPairs(row, lazyInfo))), toolListNode(toolsForServer(serverTools, row.serverName, serverToolsError), `tools-${row.entryId}`, {
         ...filterFor(row.serverName),
         leafOf: leafOf(row.serverName),
         onMode: (mode) => {
@@ -2333,6 +2362,7 @@ window.__ModuleLoader__.load({
           failed: { dot: "danger", text: "异常" },
           "needs-auth": { dot: "warn", text: "需要授权" },
           unmounted: { dot: "neutral", text: "未挂载" },
+          "lazy-idle": { dot: "neutral", text: "按需启动" },
           disabled: { dot: "neutral", text: "已关闭" },
           unknown: { dot: "neutral", text: "状态未知" }
         };
@@ -2600,6 +2630,22 @@ window.__ModuleLoader__.load({
           const menuItems = [
             reconnect === null ? null : reconnect.node,
             oauthMenuItem,
+            // 「按需启动」是行级开关，和启用/停用同属「这台服务器怎么跑」。放进菜单而不是做成
+            // 卡片上的第二个开关：卡片右侧只有一个位置，两个开关并排会让「停用」和「懒加载」
+            // 读起来像同一件事的两种说法。
+            /* @__PURE__ */ __dshReact.createElement(
+              "button",
+              {
+                className: "smp-menuItem",
+                key: "lazy",
+                disabled: busy,
+                onClick: () => {
+                  setMenuFor("");
+                  commandRowOp(lazyServerOp(row.entryId, row.lazy !== true), row.entryId);
+                }
+              },
+              row.lazy === true ? "改为随 DSH 启动（连接常驻）" : "改为按需启动（懒加载）"
+            ),
             /* @__PURE__ */ __dshReact.createElement(
               "button",
               {
@@ -2669,7 +2715,8 @@ window.__ModuleLoader__.load({
             leafOf,
             writeFilter,
             filterState,
-            needsAuthNote
+            needsAuthNote,
+            lazyInfo: (runtime.lazy ?? {})[row.serverName]
           });
         }
         const importCard = (scope) => importCardView({

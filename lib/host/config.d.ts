@@ -138,6 +138,7 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
             mode: s<string, string, "defined">;
             tools: s<string[], string[], "defined">;
         }>>, string>>, "volatile-defined">;
+        lazyIdleMinutes: s<number, number, "defined">;
     }>>, Schemastery.ObjectT<NoInfer<{
         toolFilters: s<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
             mode: s<string, string, "defined">;
@@ -146,6 +147,7 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
             mode: s<string, string, "defined">;
             tools: s<string[], string[], "defined">;
         }>>, string>>, "volatile-defined">;
+        lazyIdleMinutes: s<number, number, "defined">;
     }>>, "defined">;
     notification: s<Schemastery.ObjectS<NoInfer<{
         enabled: s<boolean, boolean, "volatile-defined">;
@@ -391,6 +393,7 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
             mode: s<string, string, "defined">;
             tools: s<string[], string[], "defined">;
         }>>, string>>, "volatile-defined">;
+        lazyIdleMinutes: s<number, number, "defined">;
     }>>, Schemastery.ObjectT<NoInfer<{
         toolFilters: s<NoInfer<import("@deepseek-ai/cosmokit").Dict<Schemastery.ObjectS<NoInfer<{
             mode: s<string, string, "defined">;
@@ -399,6 +402,7 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
             mode: s<string, string, "defined">;
             tools: s<string[], string[], "defined">;
         }>>, string>>, "volatile-defined">;
+        lazyIdleMinutes: s<number, number, "defined">;
     }>>, "defined">;
     notification: s<Schemastery.ObjectS<NoInfer<{
         enabled: s<boolean, boolean, "volatile-defined">;

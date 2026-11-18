@@ -110,6 +110,8 @@ export interface RowShape {
   env?: string
   headersText?: string
   scope?: string
+  /** 按需启动（懒加载）：Loader 不实例化这一行，第一次调用工具时才挂载。 */
+  lazy?: boolean
 }
 
 /** The fields a card renders from one `config.servers[]` entry. */
@@ -125,9 +127,9 @@ export interface ServerEntryShape {
 }
 
 /** Detail pairs for a global MCP row (a profile patch entry). */
-export function rowDetailPairs(row: RowShape = {}) {
+export function rowDetailPairs(row: RowShape = {}, lazyInfo?: any) {
   const transport = row.transport || 'streamable-http'
-  return [
+  const pairs: any[] = [
     ['行 id', String(row.entryId ?? '').replace(/^include:/, '')],
     ['传输', transport],
     ...transportPairs(transport, {
@@ -142,9 +144,33 @@ export function rowDetailPairs(row: RowShape = {}) {
     // agent sees it; an absolute path means this plugin mounts it for the agent whose
     // working directory falls under it. One row, one list — so the card states which.
     ['作用域', scopeLabelOf(row.scope)],
+    ['启动方式', row.lazy === true ? '按需（懒加载）' : '随 DSH 启动'],
     // 没有「状态」行：卡片右侧的开关就是启用状态的唯一真源。再写一行字等于同一件事有
     // 两个出处，而它们会漂移（开关是乐观更新的，文字来自投影，中间必然有一段时间不一致）。
   ]
+  // 懒行才有缓存可言：缓存是「模型仍能看到工具」的唯一依据，所以它必须写在卡片上 ——
+  // 「没有缓存」= 这台服务器现在对模型不可见，而那是用户唯一能立刻修的信息。
+  if (row.lazy === true) pairs.push(['工具缓存', lazyCacheText(lazyInfo)])
+  return pairs
+}
+
+/**
+ * 懒加载的缓存/连接状态，一句话说清。
+ *
+ * 四种情况都要能分辨，否则用户会把「还没缓存」当成「服务器坏了」：
+ *   · 有清单 + 已连接   → `N 个工具 · 已连接`
+ *   · 有清单 + 未连接   → `N 个工具 · 已缓存（未连接，调用时再连）`
+ *   · 没清单            → 首次会先连一次把清单建起来
+ *   · 配置变了（stale） → 清单是旧配置的，下次调用会重连刷新
+ */
+export function lazyCacheText(lazyInfo) {
+  if (lazyInfo === undefined || lazyInfo === null) return '尚未建立（第一次会先连一次，之后按需启动）'
+  const tools = Number(lazyInfo.cachedTools ?? 0)
+  if (!Number.isFinite(tools) || tools <= 0) return '尚未建立（第一次会先连一次，之后按需启动）'
+  const state = String(lazyInfo.state ?? '')
+  const status = state === 'connected' ? '已连接' : state === 'starting' ? '正在连接' : '已缓存（未连接，调用时再连）'
+  const stale = lazyInfo.stale === true ? ' · 配置已变，下次调用会重连刷新' : ''
+  return `${tools} 个工具 · ${status}${stale}`
 }
 
 /**

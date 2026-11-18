@@ -47,18 +47,18 @@
 /**
  * Whether the **user** wants this server on.
  *
- * `disabled` means two different things depending on the tier, and conflating them makes a
- * project server either unreachable or connected twice:
+ * `disabled` means two different things depending on who mounts the row, and conflating them
+ * makes a server either unreachable or connected twice:
  *
- *   disabled + global scope   →  the user switched this server off   →  off
- *   disabled + project scope  →  "Loader, do not instantiate this row"  →  still on
+ *   disabled + global + eager      →  the user switched this server off        →  off
+ *   disabled + project / lazy      →  "Loader, do not instantiate this row"    →  still on
  *
- * A project row *must* carry `disabled` for the Loader, because this plugin mounts it into
- * the matching agent instead — so `disabled` cannot also be the user's switch there. A
- * project row keeps its own `enabled` flag inside the config for that.
+ * A row this plugin mounts (a project scope, or a lazy row) **must** carry `disabled` for the
+ * Loader, because the plugin owns the mount — so `disabled` cannot also be the user's switch
+ * there. Those rows keep their own `enabled` flag inside the config instead.
  */
-function userEnabled(row: any, entry: any, scope: any) {
-  return scope === GLOBAL_SCOPE ? entry?.disabled !== true : row.enabled !== false
+function userEnabled(row: any, entry: any, scope: any, lazy: boolean) {
+  return scope === GLOBAL_SCOPE && !lazy ? entry?.disabled !== true : row.enabled !== false
 }
 
 /** The scope value that means "every agent". */
@@ -79,6 +79,8 @@ export function serverFromRow(entry: any) {
   const transport = typeof row.transport === 'string' && row.transport !== '' ? row.transport : 'streamable-http'
   const url = typeof row.url === 'string' ? row.url : ''
   const command = typeof row.command === 'string' ? row.command : ''
+  /** 按需启动：Loader 不实例化这一行，本插件在第一次调用它的工具时才挂载。 */
+  const lazy = row.lazy === true
   return {
     entryId: String(entry?.id ?? ''),
     id: String(entry?.id ?? ''),
@@ -101,7 +103,8 @@ export function serverFromRow(entry: any) {
     // 明文 token 端点的例外。**只从行里读**，默认 false —— 一份没有这个键的旧配置
     // 绝对不能意外地打开它。
     allowInsecureTokenEndpoint: row.allowInsecureTokenEndpoint === true,
-    enabled: userEnabled(row, entry, scope),
+    lazy,
+    enabled: userEnabled(row, entry, scope, lazy),
     /**
      * stdio 用哪个 npm 家族。
      *
@@ -114,8 +117,8 @@ export function serverFromRow(entry: any) {
      */
     runtime: row.runtime === 'auto' ? 'auto' : 'system',
     phase: phaseOf(entry),
-    /** True for rows the Loader connects itself (global scope). */
-    loaderManaged: scope === GLOBAL_SCOPE,
+    /** True for rows the Loader connects itself (global, eager). Lazy rows are ours. */
+    loaderManaged: scope === GLOBAL_SCOPE && !lazy,
   }
 }
 
@@ -182,7 +185,19 @@ export function scopeCovers(scope: any, cwd: any) {
  */
 export function projectServersFor(servers: any, cwd: any) {
   return (Array.isArray(servers) ? servers : []).filter((server) => (
-    server.enabled !== false && scopeCovers(server.scope, cwd)
+    server.enabled !== false && server.lazy !== true && scopeCovers(server.scope, cwd)
+  ))
+}
+
+/**
+ * 一个工作目录下**懒加载**的项目级服务器。
+ *
+ * 与 `projectServersFor` 分开，是因为两者的生命周期不同：急切行在会话出现时立刻挂载，
+ * 懒行只登记代理、等第一次调用。混在一个列表里会让 `mountForAgent` 把懒行也一起连上。
+ */
+export function lazyProjectServersFor(servers: any, cwd: any) {
+  return (Array.isArray(servers) ? servers : []).filter((server) => (
+    server.enabled !== false && server.lazy === true && scopeCovers(server.scope, cwd)
   ))
 }
 
@@ -218,6 +233,7 @@ export function serverSetKey(servers: any) {
     reconnect: server.reconnect,
     toolCallTimeoutMs: server.toolCallTimeoutMs,
     allowInsecureTokenEndpoint: server.allowInsecureTokenEndpoint === true,
+    lazy: server.lazy === true,
     enabled: server.enabled,
   })))
 }

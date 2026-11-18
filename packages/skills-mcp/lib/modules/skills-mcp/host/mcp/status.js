@@ -40,6 +40,14 @@ export const SERVER_STATUS = Object.freeze({
     /** 用户停用了它。 */
     disabled: 'disabled',
     /**
+     * 懒加载（按需启动）：配置是开着的，但此刻没有连接 —— 第一次调用它的工具时才会连。
+     *
+     * 与 `unmounted`（项目级、当前没有对应会话）分开：两者都「没实例」，但前者是用户的
+     * 选择且随时可用，后者取决于有没有开对应工作区的会话。混用会让一台懒服务器看起来像
+     * 配置有问题。
+     */
+    lazyIdle: 'lazy-idle',
+    /**
      * 服务器要求先授权（OAuth）才能连接。
      *
      * **这不是故障**：受保护的服务器在未授权时拒绝连接是协议规定的正常行为，
@@ -59,6 +67,7 @@ export const SERVER_STATUS_TEXT = Object.freeze({
     [SERVER_STATUS.pending]: '连接中',
     [SERVER_STATUS.unmounted]: '未挂载',
     [SERVER_STATUS.disabled]: '已停用',
+    [SERVER_STATUS.lazyIdle]: '按需启动（未连接）',
     [SERVER_STATUS.needsAuth]: '需要授权',
     [SERVER_STATUS.unknown]: '状态未知',
 });
@@ -150,11 +159,16 @@ export function reconnectBudgetMs(raw) {
  * @returns 状态取值之一。
  */
 export function deriveStatus(input) {
-    const { enabled = true, expected = true, observed = true, phase = '', hasInstance = false, connected = null, elapsedMs = 0, budgetMs = 0, graceMs = 15000, authChallenge = null, hasCredentials = false, } = input ?? {};
+    const { enabled = true, expected = true, observed = true, phase = '', hasInstance = false, connected = null, elapsedMs = 0, budgetMs = 0, graceMs = 15000, authChallenge = null, hasCredentials = false, lazy = false, } = input ?? {};
     if (!enabled)
         return SERVER_STATUS.disabled;
     if (observed !== true)
         return SERVER_STATUS.unknown;
+    // 懒加载只在「没连上」时说话：已经连上就照常报「已连接」，其余情况一律是「按需启动」。
+    // 放在鉴权/重试判定之前，是因为那两条都描述「一台本该连着的服务器没连上」，而懒服务器
+    // 本来就不该连着 —— 让它显示「已放弃重试」会把正常状态说成故障。
+    if (lazy === true)
+        return connected === true ? SERVER_STATUS.connected : SERVER_STATUS.lazyIdle;
     if (connected === true)
         return SERVER_STATUS.connected;
     // 鉴权挑战排在「未连接」之后、失败判定之前。

@@ -21,7 +21,7 @@ export declare function createServerObserver(ctx: any, { agents: readAgents, ser
         serverName: any;
         tier: any;
         scope: any;
-        status: "unknown" | "pending" | "failed" | "disabled" | "connected" | "retrying" | "gave-up" | "unmounted" | "needs-auth";
+        status: "unknown" | "pending" | "failed" | "disabled" | "connected" | "retrying" | "gave-up" | "unmounted" | "lazy-idle" | "needs-auth";
         toolCount: any;
         elapsedMs: number;
         budgetMs: number;

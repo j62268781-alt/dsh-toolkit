@@ -40,6 +40,14 @@ export declare const SERVER_STATUS: Readonly<{
     /** 用户停用了它。 */
     disabled: "disabled";
     /**
+     * 懒加载（按需启动）：配置是开着的，但此刻没有连接 —— 第一次调用它的工具时才会连。
+     *
+     * 与 `unmounted`（项目级、当前没有对应会话）分开：两者都「没实例」，但前者是用户的
+     * 选择且随时可用，后者取决于有没有开对应工作区的会话。混用会让一台懒服务器看起来像
+     * 配置有问题。
+     */
+    lazyIdle: "lazy-idle";
+    /**
      * 服务器要求先授权（OAuth）才能连接。
      *
      * **这不是故障**：受保护的服务器在未授权时拒绝连接是协议规定的正常行为，
@@ -59,6 +67,7 @@ export declare const SERVER_STATUS_TEXT: Readonly<{
     pending: "连接中";
     unmounted: "未挂载";
     disabled: "已停用";
+    "lazy-idle": "按需启动（未连接）";
     "needs-auth": "需要授权";
     unknown: "状态未知";
 }>;
@@ -111,7 +120,7 @@ export declare function reconnectBudgetMs(raw: any): number;
  *   用户的「需要授权」。
  * @returns 状态取值之一。
  */
-export declare function deriveStatus(input: any): "unknown" | "pending" | "failed" | "disabled" | "connected" | "retrying" | "gave-up" | "unmounted" | "needs-auth";
+export declare function deriveStatus(input: any): "unknown" | "pending" | "failed" | "disabled" | "connected" | "retrying" | "gave-up" | "unmounted" | "lazy-idle" | "needs-auth";
 /** 供界面展示的剩余时间（秒），推导值。 */
 export declare function remainingSeconds(elapsedMs: any, budgetMs: any): number;
 //# sourceMappingURL=status.d.ts.map

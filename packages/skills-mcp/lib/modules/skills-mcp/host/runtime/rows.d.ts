@@ -39,6 +39,7 @@ export declare function configuredServers(ctx: any): {
     reconnect: any;
     toolCallTimeoutMs: any;
     allowInsecureTokenEndpoint: boolean;
+    lazy: boolean;
     enabled: boolean;
     runtime: string;
     phase: string;

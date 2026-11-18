@@ -262,7 +262,7 @@ test('项目级编辑：回填连接字段，并作为**行操作**写入（不�
   }
 })
 
-test('MCP 表单：两个布尔设置是开关，不是勾选框', { skip: skipWithoutBundle() }, async () => {
+test('MCP 表单：三个布尔设置是开关，不是勾选框', { skip: skipWithoutBundle() }, async () => {
   /**
    * 用户反馈：布尔设置用勾选框，且说明文字换行成两行时行距被挤在一起。
    *
@@ -277,7 +277,8 @@ test('MCP 表单：两个布尔设置是开关，不是勾选框', { skip: skipW
   try {
     openAddForm(panel)
     const rows = panel.findAll((node) => String(node.props.className ?? '') === 'smp-switchRow')
-    assert.equal(rows.length, 2, `应有两个开关行，实际 ${rows.length}`)
+    // 三个开关：启动方式（按需启动）、连接失败处理、明文 token 端点。
+    assert.equal(rows.length, 3, `应有三条开关行，实际 ${rows.length}`)
     for (const row of rows) {
       const classes = (row.children ?? []).flat(3).filter((child) => child?.props).map((child) => String(child.props.className ?? ''))
       assert.ok(classes.some((name) => name === 'smp-switchSlot'), '开关行缺少开关槽位（决定了 flex 布局的是包装器，不是控件本身）')
@@ -285,8 +286,8 @@ test('MCP 表单：两个布尔设置是开关，不是勾选框', { skip: skipW
     }
     // 说明文字必须是**独立**的一行：拼进标题里会被当成名称的一部分而跳读。
     const hints = panel.findAll((node) => String(node.props.className ?? '') === 'smp-switchRowHint')
-    assert.equal(hints.length, 2, '两条说明应各自是独立元素')
-    assert.match(textOf(hints[1]), /明文/, '安全降级的后果说明必须写出来')
+    assert.equal(hints.length, 3, '三条说明应各自是独立元素')
+    assert.match(textOf(hints[2]), /明文/, '安全降级的后果说明必须写出来')
 
     /**
      * 两个开关分属不同概念（连接策略 / OAuth 安全），中间必须有一条分隔线。
@@ -308,8 +309,8 @@ test('MCP 表单：两个布尔设置是开关，不是勾选框', { skip: skipW
     walk(panel.runtime.tree)
     assert.deepEqual(
       sequence,
-      ['row', 'divider', 'row'],
-      `分隔线必须恰好落在两个开关之间，实际顺序 ${JSON.stringify(sequence)}`,
+      ['row', 'row', 'divider', 'row'],
+      `分隔线必须恰好落在连接策略与 OAuth 安全两个开关之间，实际顺序 ${JSON.stringify(sequence)}`,
     )
   } finally {
     panel.restore()

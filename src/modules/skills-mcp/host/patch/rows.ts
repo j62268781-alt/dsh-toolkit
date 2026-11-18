@@ -69,6 +69,41 @@ export function rowScopeOf(document: any, entryId: any) {
   return typeof scope === 'string' && scope !== '' ? scope : 'global'
 }
 
+/**
+ * Whether the row is **lazy**（按需启动）。
+ *
+ * 懒行由本插件挂载 —— 与项目级行同一个理由，所以 Loader 里也必须 `disabled: true`，
+ * 否则启动时就被连上一次，懒加载等于没做。
+ */
+export function rowLazyOf(document: any, entryId: any) {
+  const found = locateRow(document, entryId)
+  if (found === null) return false
+  const config = found.item.get('config')
+  if (!isMap(config)) return false
+  return config.get('lazy') === true
+}
+
+/**
+ * 一行由**本插件**挂载，Loader 必须跳过它。
+ *
+ * 两个来源：项目级作用域（按工作区挂载）与懒加载（按需挂载）。其余全局行仍然交给 Loader，
+ * 这是现状，也避免同一个服务器被两个所有者各连一次。
+ */
+export function rowOwnedByPlugin(document: any, entryId: any) {
+  const scope = rowScopeOf(document, entryId)
+  if (scope === null) return false
+  return scope !== 'global' || rowLazyOf(document, entryId)
+}
+
+/** 行 config 里的一个值（不存在时 `undefined`）。 */
+export function rowConfigValue(document: any, entryId: any, field: any) {
+  const found = locateRow(document, entryId)
+  if (found === null) return undefined
+  const config = found.item.get('config')
+  if (!isMap(config)) return undefined
+  return config.get(field)
+}
+
 /** Enable/disable a whole row (the Loader's own `disabled` flag). */
 export function setRowDisabled(document: any, entryId: any, disabled: any) {
   const found = locateRow(document, entryId)

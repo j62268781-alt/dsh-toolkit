@@ -84,10 +84,25 @@ function scopeFields(draft) {
   return { scope, scopeChanged: draft.scopeChanged === true }
 }
 
+/**
+ * 这一行是不是「按需启动」变了。
+ *
+ * 懒加载描述的是「谁挂载这一行」：懒行的 Loader 被停用（`disabled: true`），由插件在第一次调用
+ * 它的工具时才挂。面板必须**显式回填并回传**，否则一次「改 URL」的保存会把行上的 `lazy` 清掉，
+ * 服务器就悄悄变回启动即连 —— 这类「控件没碰、值却变了」的回归最难发现。
+ */
+export function lazyChanged(draft, original) {
+  if (original === undefined || original === null) return false
+  return (draft?.lazy === true) !== (original?.lazy === true)
+}
+
+/** Fields shared by add/update, from the form draft. */
 function commonFields(draft) {
   return {
     serverName: draft.serverName,
     transport: draft.transport ?? 'streamable-http',
+    // 按需启动：开启后 Host 会把这一行标记为懒（Loader 不再实例化），第一次调用工具时才连接。
+    lazy: draft.lazy === true,
     command: draft.command ?? '',
     args: typeof draft.args === 'string' ? draft.args : '',
     env: typeof draft.env === 'string' ? draft.env : '',
@@ -146,6 +161,7 @@ export function updateServerOp(entryId, draft, original) {
     ...commonFields(draft),
     ...scopeFields(draft),
     connectionChanged: connectionChanged(draft, original),
+    lazyChanged: lazyChanged(draft, original),
     envChanged: envChanged(draft, original),
     headersChanged: headersChanged(draft, original),
   }
@@ -154,6 +170,16 @@ export function updateServerOp(entryId, draft, original) {
 /** Op that enables/disables a row (Loader-level `disabled`). */
 export function toggleServerOp(entryId, enabled) {
   return { op: 'toggle', entryId, enabled }
+}
+
+/**
+ * Op that flips one row between 按需启动 and 随 DSH 启动.
+ *
+ * A dedicated op instead of an `update`: the card's one-click switch must not have to
+ * restate every connection field (a form-shaped update would rewrite the config wholesale).
+ */
+export function lazyServerOp(entryId, lazy) {
+  return { op: 'lazy', entryId, lazy: lazy === true }
 }
 
 /** Op that removes a row. */
@@ -199,6 +225,8 @@ export function draftFromRow(row) {
      * 系统」—— 这是最坏的一类回归，因为改动发生在用户没碰过的控件上。
      */
     runtime: row.runtime === 'auto' ? 'auto' : 'system',
+    // 回填启动方式：见 `lazyChanged` —— 不回填就等于「保存一次就关掉懒加载」。
+    lazy: row.lazy === true,
     ...connectionDraft(row),
   }
 }

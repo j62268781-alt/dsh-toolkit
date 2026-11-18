@@ -29,7 +29,8 @@ import { beat } from './diagnostics/heartbeat.js';
 import { agentsHome } from './skills/reconcile.js';
 import { createSkillsController } from './skills/controller.js';
 import { serverMountConfig, setMountClient, workingDirectoryOf } from './project/mount.js';
-import { GLOBAL_SCOPE, projectServersFor, serverRows, serverSetKey } from './mcp/serverRows.js';
+import { GLOBAL_SCOPE, lazyProjectServersFor, projectServersFor, serverRows, serverSetKey } from './mcp/serverRows.js';
+import { createLazyRuntime, createToolCache } from './mcp/lazy.js';
 import { toolsByServer } from './mcp/tools.js';
 import { registerRuntimeRoute } from './mcp/runtime.js';
 import { registerRowRoute } from './mcp/rows.js';
@@ -170,6 +171,38 @@ export function apply(ctx, config) {
             return false;
         }
     };
+    /**
+     * 按需启动（懒加载）。
+     *
+     * 懒行在 profile patch 里是 `disabled: true` + `config.lazy: true`，所以 Loader 从不实例化它们；
+     * 这一层负责三件事：把缓存里的工具清单注册成**同名代理**、第一次调用时代理里真的挂
+     * `mcp-client` 并转发、空闲超时后断开回到代理态。见 `mcp/lazy.ts`。
+     *
+     * 缓存文件先读一次再开始对账：顺序反了的话，第一轮 tick 会以为「所有服务器都没有缓存」，
+     * 于是把每一台都预热一遍 —— 那正好是懒加载要避免的事。
+     */
+    const toolCache = createToolCache({ warn: (message) => ctx.logger.warn('dsh-toolkit-skills-mcp: %s', message) });
+    let cacheLoaded = false;
+    const cacheReady = toolCache.load().then(() => { cacheLoaded = true; }, () => { cacheLoaded = true; });
+    const idleMinutes = Number(config?.lazyIdleMinutes ?? 10);
+    const lazy = createLazyRuntime({
+        ctx,
+        cache: toolCache,
+        createToolDefinition: mcpClient.createMcpToolDefinition,
+        warn: (message) => ctx.logger.warn('dsh-toolkit-skills-mcp: %s', message),
+        info: (message) => ctx.logger.info('dsh-toolkit-skills-mcp: %s', message),
+        idleMs: Number.isFinite(idleMinutes) && idleMinutes > 0 ? idleMinutes * 60_000 : Number.POSITIVE_INFINITY,
+        mount: (server, agent) => {
+            const mountConfig = serverMountConfig(server);
+            if (mountConfig === null)
+                throw new Error(`server ${server.id} has no name/${server.transport === 'stdio' ? 'command' : 'url'}`);
+            const host = agent ?? ctx;
+            const fiber = host.plugin(mcpPlugin, mountConfig);
+            recordMount(server.serverName, fiber);
+            ctx.logger.info('dsh-toolkit-skills-mcp: mounted lazy mcp server %s (%s) on demand', server.serverName, mountConfig.transport);
+            return { fiber, stop: typeof fiber === 'function' ? fiber : () => fiber?.dispose?.() };
+        },
+    });
     const unmount = (sink) => {
         for (const stop of sink.reverse()) {
             try {
@@ -222,6 +255,9 @@ export function apply(ctx, config) {
             unmount(mounted.stops);
             entry.mounted.delete(key);
         }
+        // 懒行不进上面的急切挂载：它们只登记代理，第一次调用才连。
+        if (cacheLoaded)
+            lazy.attach(agent, lazyProjectServersFor(committedServers, entry.cwd));
     };
     /** Every disposer one agent currently owns (heartbeat + cleanup). */
     const stopsOf = (entry) => [...entry.mounted.values()].flatMap((mounted) => mounted.stops);
@@ -238,6 +274,8 @@ export function apply(ctx, config) {
             return;
         for (const mounted of entry.mounted.values())
             unmount(mounted.stops);
+        // 会话结束时懒连接也一起放掉：代理是挂在 agent scope 上的，留着就是泄漏。
+        lazy.detach(agent);
         agents.delete(agent);
     };
     ctx.on('agent/created', ({ agent }) => attachAgent(agent));
@@ -418,6 +456,9 @@ export function apply(ctx, config) {
                 servers: oauthServers,
             },
             discovery: skills.discoveryInfo,
+            // 懒加载的每台服务器状态：已连接 / 连接中 / 只有缓存（idle），以及缓存工具数与抓取时间。
+            lazy: lazy.snapshot(),
+            lazyIdleMinutes: Number.isFinite(idleMinutes) ? idleMinutes : 0,
         };
     };
     // Optional injection keeps non-web profiles usable; never fall back to writing tools.
@@ -678,6 +719,13 @@ export function apply(ctx, config) {
         else {
             pendingServersKey = observedServersKey;
         }
+        // 懒行只说「谁挂载」，不参与上面那套「服务器集合变了就重挂」的逻辑：代理的注册与
+        // 撤销由 attach 自己按服务器对账，重复调用是幂等的。
+        if (cacheLoaded) {
+            lazy.attach(null, committedServers.filter((server) => (server.lazy === true && String(server.scope) === GLOBAL_SCOPE && server.enabled !== false)));
+        }
+        // 空闲回收：断开的只是连接，代理与缓存都还在。
+        lazy.sweep();
         if (firstTick || serversChanged) {
             firstTick = false;
             const mountedCount = [...agents.values()].reduce((total, entry) => total + stopsOf(entry).length, 0);
@@ -701,6 +749,13 @@ export function apply(ctx, config) {
     };
     ctx.effect(() => {
         tick();
+        // 缓存读完之后再对账一次：第一轮 tick 时 `cacheLoaded` 还是 false，懒服务器被跳过了。
+        void cacheReady.then(() => {
+            try {
+                tick({ force: true });
+            }
+            catch { /* 下一次 tick 会再试 */ }
+        });
         const timer = setInterval(tick, 2000);
         return () => {
             clearInterval(timer);
@@ -709,6 +764,7 @@ export function apply(ctx, config) {
                     unmount(mounted.stops);
             }
             agents.clear();
+            lazy.dispose();
         };
     });
 }
