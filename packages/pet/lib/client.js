@@ -140,6 +140,10 @@ window.__ModuleLoader__.load({
     var OVERLAY_PADDING = 24;
     var DIALOG_DEFAULTS = { width: 920, height: 640, minWidth: 640, minHeight: 420, maxWidth: 1120, maxHeight: 860 };
     var STEP = 16;
+    function supportsModalDialog() {
+      const ctor = globalThis.HTMLDialogElement;
+      return typeof ctor === "function" && typeof ctor.prototype?.showModal === "function";
+    }
     function limitsOf(base, viewport) {
       const width = Number.isFinite(viewport?.width) && viewport?.width > 0 ? viewport?.width : base.maxWidth + OVERLAY_PADDING * 2;
       const height = Number.isFinite(viewport?.height) && viewport?.height > 0 ? viewport?.height : base.maxHeight + OVERLAY_PADDING * 2;
@@ -200,6 +204,7 @@ window.__ModuleLoader__.load({
       maxHeight = DIALOG_DEFAULTS.maxHeight
     }) {
       const base = { minWidth, minHeight, maxWidth, maxHeight };
+      const native = supportsModalDialog();
       const [size, setSize] = (0, import_react.useState)(() => {
         const viewport = typeof window === "undefined" ? void 0 : { width: window.innerWidth, height: window.innerHeight };
         const limits = limitsOf(base, viewport);
@@ -207,6 +212,56 @@ window.__ModuleLoader__.load({
         return clampTo(stored ?? { width: width ?? DIALOG_DEFAULTS.width, height: height ?? DIALOG_DEFAULTS.height }, limits);
       });
       const drag = (0, import_react.useRef)(null);
+      const pending = (0, import_react.useRef)(null);
+      const stopDrag = (0, import_react.useRef)(null);
+      const dialogRef = (0, import_react.useRef)(null);
+      const cardRef = (0, import_react.useRef)(null);
+      const closeRequested = (0, import_react.useRef)(false);
+      const opener = (0, import_react.useRef)(null);
+      (0, import_react.useEffect)(() => {
+        if (open) closeRequested.current = false;
+      }, [open]);
+      const requestClose = (0, import_react.useCallback)(() => {
+        if (closeRequested.current) return;
+        closeRequested.current = true;
+        if (typeof onClose === "function") onClose();
+      }, [onClose]);
+      (0, import_react.useLayoutEffect)(() => {
+        if (!native || !open) return void 0;
+        const dialog = dialogRef.current;
+        if (dialog === null || typeof dialog.showModal !== "function") return void 0;
+        const previous = document.activeElement;
+        if (previous !== null && previous !== document.body) opener.current = previous;
+        try {
+          if (!dialog.open) dialog.showModal();
+        } catch {
+        }
+        return () => {
+          closeRequested.current = true;
+          try {
+            if (dialog.open) dialog.close();
+          } catch {
+          }
+          const back = opener.current;
+          opener.current = null;
+          if (back !== null && back.isConnected && typeof back.focus === "function") {
+            try {
+              back.focus();
+            } catch {
+            }
+          }
+        };
+      }, [native, open]);
+      (0, import_react.useEffect)(() => {
+        if (!open || native) return void 0;
+        const onKey = (event) => {
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          requestClose();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+      }, [open, native, requestClose]);
       (0, import_react.useEffect)(() => {
         if (!open) return void 0;
         const reflow = () => setSize((prev) => clampTo(prev, limitsOf(base, { width: window.innerWidth, height: window.innerHeight })));
@@ -216,40 +271,54 @@ window.__ModuleLoader__.load({
       }, [open, minWidth, minHeight, maxWidth, maxHeight]);
       (0, import_react.useEffect)(() => {
         if (!open) return void 0;
-        const onKey = (event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            if (typeof onClose === "function") onClose();
-          }
-        };
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-      }, [open, onClose]);
-      (0, import_react.useEffect)(() => {
-        if (!open) return void 0;
         storeSize(storageKey, size);
         return void 0;
       }, [open, size, storageKey]);
+      (0, import_react.useEffect)(() => () => stopDrag.current?.(), []);
       if (!open) return null;
       const dragStart = (event) => {
         if (event.button !== 0) return;
         event.preventDefault();
         const limits = limitsOf(base, { width: window.innerWidth, height: window.innerHeight });
         drag.current = { x: event.clientX, y: event.clientY, width: size.width, height: size.height, limits };
+        pending.current = { width: size.width, height: size.height };
+        const handle = event.currentTarget;
+        if (typeof handle.setPointerCapture === "function" && typeof event.pointerId === "number") {
+          try {
+            handle.setPointerCapture(event.pointerId);
+          } catch {
+          }
+        }
         if (typeof document !== "undefined" && document.body) document.body.classList.add("tk-dialogDragging");
-        const onMove = (move) => {
+        function onMove(move) {
           const start = drag.current;
           if (!start) return;
-          setSize(clampTo({ width: start.width + (move.clientX - start.x), height: start.height + (move.clientY - start.y) }, start.limits));
-        };
-        const onUp = () => {
+          const next = clampTo({ width: start.width + (move.clientX - start.x), height: start.height + (move.clientY - start.y) }, start.limits);
+          pending.current = next;
+          const card2 = cardRef.current;
+          if (card2 !== null) {
+            card2.style.width = `${next.width}px`;
+            card2.style.height = `${next.height}px`;
+          }
+        }
+        function onEnd() {
+          const committed = pending.current;
           drag.current = null;
+          pending.current = null;
+          teardown();
+          if (committed !== null) setSize((prev) => prev.width === committed.width && prev.height === committed.height ? prev : committed);
+        }
+        function teardown() {
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onEnd);
+          window.removeEventListener("pointercancel", onEnd);
           if (typeof document !== "undefined" && document.body) document.body.classList.remove("tk-dialogDragging");
-          document.removeEventListener("mousemove", onMove);
-          document.removeEventListener("mouseup", onUp);
-        };
-        document.addEventListener("mousemove", onMove);
-        document.addEventListener("mouseup", onUp);
+          stopDrag.current = null;
+        }
+        stopDrag.current = teardown;
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onEnd);
+        window.addEventListener("pointercancel", onEnd);
       };
       const resizeKeys = (event) => {
         const step = event.shiftKey ? STEP * 4 : STEP;
@@ -263,6 +332,37 @@ window.__ModuleLoader__.load({
         event.preventDefault();
         setSize(clampTo(next, limits));
       };
+      const card = /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogCard", ref: cardRef, style: { width: `${size.width}px`, height: `${size.height}px` } }, /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogHead" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogHeading" }, /* @__PURE__ */ __dshReact.createElement("h3", { className: "tk-dialogTitle" }, title), description && /* @__PURE__ */ __dshReact.createElement("p", { className: "tk-dialogDesc" }, description)), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "tk-dialogClose", "aria-label": closeLabel, onClick: requestClose }, /* @__PURE__ */ __dshReact.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.5 2.5L13.5 13.5" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M13.5 2.5L2.5 13.5" })))), toolbar && /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogToolbar" }, toolbar), /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogBody" }, children), footer && /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogFoot" }, footer), /* @__PURE__ */ __dshReact.createElement(
+        "button",
+        {
+          type: "button",
+          className: "tk-dialogResize",
+          "aria-label": resizeLabel,
+          title: resizeLabel,
+          onPointerDown: dragStart,
+          onKeyDown: resizeKeys
+        }
+      ));
+      if (native) {
+        return /* @__PURE__ */ __dshReact.createElement(
+          "dialog",
+          {
+            ref: dialogRef,
+            className: "tk-dialog",
+            closedby: "any",
+            "aria-label": title,
+            onCancel: (event) => {
+              event.preventDefault();
+              requestClose();
+            },
+            onClose: requestClose,
+            onClick: (event) => {
+              if (event.target === event.currentTarget) requestClose();
+            }
+          },
+          card
+        );
+      }
       return /* @__PURE__ */ __dshReact.createElement(
         "div",
         {
@@ -271,24 +371,24 @@ window.__ModuleLoader__.load({
           "aria-modal": "true",
           "aria-label": title,
           onMouseDown: (event) => {
-            if (event.target === event.currentTarget && typeof onClose === "function") onClose();
+            if (event.target === event.currentTarget) requestClose();
           }
         },
-        /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogCard", style: { width: `${size.width}px`, height: `${size.height}px` } }, /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogHead" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogHeading" }, /* @__PURE__ */ __dshReact.createElement("h3", { className: "tk-dialogTitle" }, title), description && /* @__PURE__ */ __dshReact.createElement("p", { className: "tk-dialogDesc" }, description)), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "tk-dialogClose", "aria-label": closeLabel, onClick: onClose }, /* @__PURE__ */ __dshReact.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.5 2.5L13.5 13.5" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M13.5 2.5L2.5 13.5" })))), toolbar && /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogToolbar" }, toolbar), /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogBody" }, children), footer && /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogFoot" }, footer), /* @__PURE__ */ __dshReact.createElement(
-          "button",
-          {
-            type: "button",
-            className: "tk-dialogResize",
-            "aria-label": resizeLabel,
-            title: resizeLabel,
-            onMouseDown: dragStart,
-            onKeyDown: resizeKeys
-          }
-        ))
+        card
       );
     }
     var resizableDialogCss = `
-    .tk-dialog { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: ${OVERLAY_PADDING}px; background: rgba(0, 0, 0, .42); }
+    /* 布局共用；display 不在这里声明，只在下面跟着「正在显示」声明一条。 */
+    .tk-dialog { position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center; padding: ${OVERLAY_PADDING}px; }
+    /* display 只跟着「这一层正在显示」走：原生 dialog 只有 [open] 时可见，退化分支是 div
+       （组件只在 open=true 时渲染它），用 :not(dialog) 认。绝不能在裸 .tk-dialog 上写 display，
+       否则关闭态的原生 dialog 会被作者样式顶出来。 */
+    .tk-dialog[open], .tk-dialog:not(dialog) { display: flex; }
+    /* 退化分支（div）仍然自绘遮罩；原生分支的遮罩是 ::backdrop。 */
+    .tk-dialog:not(dialog) { background: rgba(0, 0, 0, .42); }
+    /* 收回 <dialog> 的 UA 默认（边框、margin:auto、1em 内边距、Canvas 背景、fit-content 宽高）。 */
+    dialog.tk-dialog { box-sizing: border-box; width: auto; height: auto; max-width: none; max-height: none; margin: 0; border: 0; background: transparent; color: inherit; overflow: visible; }
+    dialog.tk-dialog::backdrop { background: rgba(0, 0, 0, .42); }
     .tk-dialogCard { position: relative; box-sizing: border-box; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--dsw-alias-bg-base, #fff); color: var(--dsw-alias-label-primary); border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 14px; box-shadow: 0 18px 48px rgba(0, 0, 0, .24); }
     .tk-dialogHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 18px 10px; }
     .tk-dialogHeading { min-width: 0; }
@@ -301,7 +401,8 @@ window.__ModuleLoader__.load({
     .tk-dialogToolbar { flex: none; padding: 0 18px 10px; }
     .tk-dialogBody { flex: 1; min-height: 0; overflow: auto; padding: 2px 18px 16px; }
     .tk-dialogFoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 18px 14px; border-top: 0.5px solid var(--dsw-alias-border-l2); }
-    .tk-dialogResize { position: absolute; right: 3px; bottom: 3px; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 5px; background: transparent; cursor: nwse-resize; }
+    /* touch-action: none 让触屏/手写笔的 pointermove 不被浏览器的滚动接管。 */
+    .tk-dialogResize { position: absolute; right: 3px; bottom: 3px; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 5px; background: transparent; cursor: nwse-resize; touch-action: none; }
     .tk-dialogResize::after { content: ''; position: absolute; inset: 3px; background-image: repeating-linear-gradient(135deg, var(--dsw-alias-border-l3) 0 1px, transparent 1px 4px); pointer-events: none; }
     .tk-dialogResize:hover::after, .tk-dialogResize:focus-visible::after { background-image: repeating-linear-gradient(135deg, var(--dsw-alias-label-secondary) 0 1px, transparent 1px 4px); }
     .tk-dialogResize:focus-visible { outline: 2px solid var(--dsw-alias-state-focus-primary, var(--dsw-alias-label-secondary)); outline-offset: 1px; }
@@ -678,7 +779,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/ui/toast.css
-    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+    var toast_default = '/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n *\n * 两条路径共用同一套类名：\n * - 原生路径：栈是 `popover="manual"`（top layer），单条靠 `@starting-style` + `transition` 进出场；\n * - 退化路径（jsdom、没有 popover 的宿主）：就是改造前的固定定位栈 + 两个 `@keyframes`。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n/* display 只跟着「栈开着」走：popover 关闭时 UA 是 display:none，作者样式不能把它顶回来。 */\n.sk-toast-stack:not([popover]),\n.sk-toast-stack:popover-open {\n  display: flex;\n}\n\n/* popover 在 top layer 里，UA 会给 position:fixed + inset:0 + margin:auto + 边框/背景，\n   这里全部按原布局收回来，只保留 `top:40px / left:50%` 的居中胶囊位置。 */\n.sk-toast-stack[popover] {\n  inset: auto;\n  top: 40px;\n  left: 50%;\n  margin: 0;\n  padding: 0;\n  border: 0;\n  background: transparent;\n  color: inherit;\n  overflow: visible;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* 退化路径：没有 `:popover-open` 的宿主继续用关键帧，行为与改造前一致。 */\n@supports not (selector(:popover-open)) {\n  .sk-toast {\n    animation: sk-toast-in 0.16s ease-out;\n  }\n\n  .sk-toast--leaving {\n    animation: sk-toast-out 0.18s ease-in forwards;\n  }\n}\n\n/* 原生路径：进场由 `@starting-style` 给出起点，退场由 `--leaving` 的目标值给出终点。\n   `transition-behavior: allow-discrete` 必须是独立声明，并进 `transition` 简写会让整条声明失效。 */\n@supports (selector(:popover-open)) {\n  .sk-toast {\n    transition: opacity 0.16s ease-out, transform 0.16s ease-out;\n    transition-behavior: allow-discrete;\n  }\n\n  @starting-style {\n    .sk-toast {\n      opacity: 0;\n      transform: translateY(-6px);\n    }\n  }\n}\n\n.sk-toast--leaving {\n  opacity: 0;\n  transform: translateY(-4px);\n}\n\n/* 减弱动效：过渡与关键帧都不跑，节点靠 `toast.ts` 的兜底定时器收掉。 */\n@media (prefers-reduced-motion: reduce) {\n  .sk-toast,\n  .sk-toast--leaving {\n    animation: none;\n    transition: none;\n  }\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n';
 
     // src/client/ui/toast.ts
     var HOST_KEY = "__dshToolkitToast__";
@@ -694,9 +795,12 @@ window.__ModuleLoader__.load({
       if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
       const root = document.createElement("div");
       root.className = "sk-toast-stack";
-      root.setAttribute("aria-live", "polite");
+      root.setAttribute("role", "region");
+      root.setAttribute("aria-label", "通知");
+      const popover = typeof root.showPopover === "function";
+      if (popover) root.setAttribute("popover", "manual");
       document.body.appendChild(root);
-      const created = { root, entries: [] };
+      const created = { root, entries: [], popover, shown: false };
       scope[HOST_KEY] = created;
       return created;
     }
@@ -714,17 +818,50 @@ window.__ModuleLoader__.load({
     function clamp(text) {
       return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
     }
+    function openStack(host) {
+      if (!host.popover || host.shown) return;
+      try {
+        host.root.showPopover();
+        host.shown = true;
+      } catch {
+      }
+    }
+    function closeStack(host) {
+      if (!host.popover || !host.shown) return;
+      host.shown = false;
+      try {
+        host.root.hidePopover();
+      } catch {
+      }
+    }
     function dismiss(host, entry) {
       if (host.entries.indexOf(entry) === -1) return;
       host.entries = host.entries.filter((item) => item !== entry);
       if (entry.timer !== void 0) clearTimeout(entry.timer);
       entry.el.classList.add("sk-toast--leaving");
-      const remove = () => entry.el.remove();
-      const timeout = setTimeout(remove, EXIT_MS);
-      entry.el.addEventListener("animationend", () => {
+      let done = false;
+      function finish() {
+        if (done) return;
+        done = true;
         clearTimeout(timeout);
-        remove();
-      }, { once: true });
+        entry.el.removeEventListener("transitionend", onEnd);
+        entry.el.removeEventListener("animationend", onEnd);
+        entry.el.remove();
+        if (host.root.childElementCount === 0) closeStack(host);
+      }
+      function onEnd(event) {
+        if (event.target !== entry.el) return;
+        finish();
+      }
+      entry.el.addEventListener("transitionend", onEnd);
+      entry.el.addEventListener("animationend", onEnd);
+      const timeout = setTimeout(finish, EXIT_MS);
+      if (typeof entry.el.getAnimations === "function") {
+        try {
+          if (entry.el.getAnimations().length === 0) finish();
+        } catch {
+        }
+      }
     }
     function arm(host, entry, holdMs) {
       if (entry.timer !== void 0) clearTimeout(entry.timer);
@@ -763,6 +900,7 @@ window.__ModuleLoader__.load({
       body.textContent = message;
       el.appendChild(body);
       host.root.appendChild(el);
+      openStack(host);
       const entry = { tone, text: message, el, timer: void 0 };
       host.entries.push(entry);
       while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
@@ -979,7 +1117,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/ui/components/settings-parts/style.css
-    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@media (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@media (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}\n/* 宫格里的可点选卡片 ------------------------------------------------------ */\n\n.sk-ui-option {\n  box-sizing: border-box;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  padding: 5px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 12px;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n  transition: border-color 0.14s ease, background-color 0.14s ease;\n}\n\n.sk-ui-option:hover:not(:disabled) {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n.sk-ui-option[data-selected="true"] {\n  border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n}\n\n.sk-ui-option:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  outline-offset: 3px;\n}\n\n.sk-ui-option:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n.sk-ui-option__media {\n  position: relative;\n  box-sizing: border-box;\n  display: grid;\n  place-items: center;\n  width: 100%;\n  height: 100px;\n  overflow: hidden;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-ui-option__caption {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding: 10px 7px 8px;\n}\n\n.sk-ui-option__name {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 5px;\n  font-size: 13px;\n  line-height: 18px;\n  font-weight: 500;\n  color: inherit;\n}\n\n.sk-ui-option__badge {\n  flex: none;\n  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  font-size: 10px;\n  line-height: 16px;\n  font-weight: 400;\n  white-space: nowrap;\n}\n\n.sk-ui-option__hint {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 16px;\n}\n\n@media (max-width: 620px) {\n  .sk-ui-option__media {\n    height: 82px;\n  }\n\n  .sk-ui-option__caption {\n    padding: 8px 3px;\n  }\n\n  .sk-ui-option__name {\n    align-items: flex-start;\n    flex-direction: column;\n  }\n\n  .sk-ui-option__badge {\n    font-size: 9px;\n  }\n\n  .sk-ui-option__hint {\n    font-size: 10px;\n  }\n}\n\n/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。 */\n@media (max-width: 420px) {\n  .sk-ui-option {\n    flex-direction: row;\n    align-items: center;\n    gap: 8px;\n  }\n\n  .sk-ui-option__media {\n    flex: none;\n    width: 96px;\n    height: 72px;\n  }\n\n  .sk-ui-option__name {\n    flex-direction: row;\n    gap: 8px;\n  }\n\n  .sk-ui-option__caption {\n    flex: 1;\n    padding: 8px 0;\n  }\n}\n@media (prefers-reduced-motion: reduce) {\n  .sk-ui-option {\n    transition: none;\n  }\n\n  .sk-ui-chevron {\n    transition: none;\n  }\n}\n\n/* 展开/收起的箭头 ---------------------------------------------------------\n * 与 skills & mcp 卡片上的那枚完全同款：16px、1.4 描边、收起时转 -90° 指向右。\n * 各面板只负责 `open`，方向与配色留在这里，避免九处各写一套。 */\n.sk-ui-chevron {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  transition: transform 0.14s ease-in-out;\n}\n\n.sk-ui-chevron[data-open="false"] {\n  transform: rotate(-90deg);\n}\n\n/* 行内计数/来源小标签 -----------------------------------------------------\n * 样式照 skills & mcp 的「全局 / 项目」标签：999px 药丸、11px、浅底、\n * 文字用二级灰——它是佐证，不该和标题抢视觉重量。 */\n.sk-ui-tag {\n  display: inline-flex;\n  align-items: center;\n  border-radius: 999px;\n  padding: 1px 8px;\n  font-size: 11px;\n  line-height: 17px;\n  font-weight: 500;\n  white-space: nowrap;\n}\n\n.sk-ui-tag[data-tone="neutral"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-tag[data-tone="ok"] {\n  background: var(--dsw-alias-state-success-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-success-primary, #067647);\n}\n\n.sk-ui-tag[data-tone="warn"] {\n  background: var(--dsw-alias-state-warn-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-warn-primary, #b54708);\n}\n\n/* danger 无 tertiary 底色可用，改用描边拉开对比（与 skills & mcp 原来的处理一致）。 */\n.sk-ui-tag[data-tone="danger"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-state-error-primary, #d92d20);\n  box-shadow: inset 0 0 0 1px var(--dsw-alias-state-error-primary, #d92d20);\n}\n';
+    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 面板内响应式：下面三条断点量的是**面板自己有多宽**，不是窗口有多宽 —— 设置面板在\n * 侧栏里打开、或被拉窄时，这两件事并不一样；`@media` 只看窗口，于是窄侧栏配宽窗口时\n * 该收的地方没收。\n *\n * 只声明 `inline-size`（不是 `size`）：这些盒子靠内容撑高度，`size` 容器会把高度也锁死，\n * 行与宫格就会互相裁切。宫格自己也是容器，因为宠物库弹窗是 `createPortal` 渲染的，\n * 它不在任何 `.sk-ui-card` 里 —— 靠卡片当容器的话，那里的选项卡片会永远量不到宽度。 */\n.sk-ui-cardSection {\n  container-type: inline-size;\n}\n\n.sk-ui-card {\n  container-type: inline-size;\n}\n\n.sk-ui-grid {\n  container-type: inline-size;\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@container (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@container (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}\n/* 宫格里的可点选卡片 ------------------------------------------------------ */\n\n.sk-ui-option {\n  box-sizing: border-box;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  padding: 5px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 12px;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n  transition: border-color 0.14s ease, background-color 0.14s ease;\n}\n\n.sk-ui-option:hover:not(:disabled) {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n.sk-ui-option[data-selected="true"] {\n  border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n}\n\n.sk-ui-option:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  outline-offset: 3px;\n}\n\n.sk-ui-option:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n.sk-ui-option__media {\n  position: relative;\n  box-sizing: border-box;\n  display: grid;\n  place-items: center;\n  width: 100%;\n  height: 100px;\n  overflow: hidden;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-ui-option__caption {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding: 10px 7px 8px;\n}\n\n.sk-ui-option__name {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 5px;\n  font-size: 13px;\n  line-height: 18px;\n  font-weight: 500;\n  color: inherit;\n}\n\n.sk-ui-option__badge {\n  flex: none;\n  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  font-size: 10px;\n  line-height: 16px;\n  font-weight: 400;\n  white-space: nowrap;\n}\n\n.sk-ui-option__hint {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 16px;\n}\n\n@container (max-width: 620px) {\n  .sk-ui-option__media {\n    height: 82px;\n  }\n\n  .sk-ui-option__caption {\n    padding: 8px 3px;\n  }\n\n  .sk-ui-option__name {\n    align-items: flex-start;\n    flex-direction: column;\n  }\n\n  .sk-ui-option__badge {\n    font-size: 9px;\n  }\n\n  .sk-ui-option__hint {\n    font-size: 10px;\n  }\n}\n\n/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。\n *\n * 这一档**故意留在 `@media`**：它换掉的是卡片的方向（竖排 → 横排），而横排卡片的最小\n * 宽度比宫格在 420 时仍然保留的 2–3 列大得多 —— 用窗口宽度判断时，窗口真窄到 420 的\n * 场景里宫格也只剩 2 列，凑合能放；改成按面板宽度判断后，「宽窗口 + 窄面板」（宠物库\n * 那种可缩放弹窗、被压缩的设置容器）会让 3 列横排卡片互相压住。实测见\n * `.cache/x/e-a11y-after.png` 与 `.cache/x/n-before.png` 的对比。 */\n@media (max-width: 420px) {\n  .sk-ui-option {\n    flex-direction: row;\n    align-items: center;\n    gap: 8px;\n  }\n\n  .sk-ui-option__media {\n    flex: none;\n    width: 96px;\n    height: 72px;\n  }\n\n  .sk-ui-option__name {\n    flex-direction: row;\n    gap: 8px;\n  }\n\n  .sk-ui-option__caption {\n    flex: 1;\n    padding: 8px 0;\n  }\n}\n@media (prefers-reduced-motion: reduce) {\n  .sk-ui-option {\n    transition: none;\n  }\n\n  .sk-ui-chevron {\n    transition: none;\n  }\n}\n\n/* 展开/收起的箭头 ---------------------------------------------------------\n * 与 skills & mcp 卡片上的那枚完全同款：16px、1.4 描边、收起时转 -90° 指向右。\n * 各面板只负责 `open`，方向与配色留在这里，避免九处各写一套。 */\n.sk-ui-chevron {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  transition: transform 0.14s ease-in-out;\n}\n\n.sk-ui-chevron[data-open="false"] {\n  transform: rotate(-90deg);\n}\n\n/* 行内计数/来源小标签 -----------------------------------------------------\n * 样式照 skills & mcp 的「全局 / 项目」标签：999px 药丸、11px、浅底、\n * 文字用二级灰——它是佐证，不该和标题抢视觉重量。 */\n.sk-ui-tag {\n  display: inline-flex;\n  align-items: center;\n  border-radius: 999px;\n  padding: 1px 8px;\n  font-size: 11px;\n  line-height: 17px;\n  font-weight: 500;\n  white-space: nowrap;\n}\n\n.sk-ui-tag[data-tone="neutral"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-tag[data-tone="ok"] {\n  background: var(--dsw-alias-state-success-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-success-primary, #067647);\n}\n\n.sk-ui-tag[data-tone="warn"] {\n  background: var(--dsw-alias-state-warn-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-warn-primary, #b54708);\n}\n\n/* danger 无 tertiary 底色可用，改用描边拉开对比（与 skills & mcp 原来的处理一致）。 */\n.sk-ui-tag[data-tone="danger"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-state-error-primary, #d92d20);\n  box-shadow: inset 0 0 0 1px var(--dsw-alias-state-error-primary, #d92d20);\n}\n';
 
     // src/client/ui/components/settings-parts/install.ts
     var SETTINGS_PARTS_ID = "dsh-toolkit-settings-parts";
@@ -1021,7 +1159,8 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/pet/client/style.css
-    var style_default2 = `.pet-page { box-sizing: border-box; color: var(--dsw-alias-label-primary); font-size: 13px; padding-bottom: 24px; max-width: 960px; }
+    var style_default2 = `/* 面板自己当查询容器：滑杆与预览图是否收窄，取决于**面板有多宽**，而不是窗口有多宽。 */
+    .pet-page { box-sizing: border-box; color: var(--dsw-alias-label-primary); font-size: 13px; padding-bottom: 24px; max-width: 960px; container-type: inline-size; }
     .pet-section { margin-top: 24px; }
     .pet-sectionHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
     .pet-sectionHeader h3 { margin: 0; }
@@ -1061,7 +1200,7 @@ window.__ModuleLoader__.load({
     .pet-runtimeActions { display: flex; gap: 8px; }
     .pet-notice, .pet-error { font-size: 12px; line-height: 1.5; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 10px 12px; }
     .pet-error { color: var(--dsw-alias-state-error-primary); }
-    @media (max-width: 620px) {
+    @container (max-width: 620px) {
       .pet-slider { width: 160px; }
       .pet-slider input { width: 100px; }
       .pet-previews { gap: 16px; }

@@ -8,6 +8,7 @@ import { Config as ThemeConfig } from '../modules/theme/host/config.js'
 import { Config as HooksConfig } from '../modules/hooks/host/config.js'
 import { Config as GitConfig } from '../modules/git/host/config.js'
 import { Config as RemoteConfig } from '../modules/remote/host/wechat/config.js'
+import { Config as MonitorConfig } from '../modules/monitor/host/config.js'
 
 // Compatibility schema for legacy composition tests and configuration migration.
 // Module packages use these same module-owned definitions directly.
@@ -24,4 +25,5 @@ export const Config = s.object({
   hooks: HooksConfig.default({}),
   remote: RemoteConfig.default({}),
   git: GitConfig.default({}),
+  monitor: MonitorConfig.default({}),
 })

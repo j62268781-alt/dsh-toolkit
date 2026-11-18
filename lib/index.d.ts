@@ -261,6 +261,11 @@ declare const _default: {
             alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
             commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
         }>>, "defined">;
+        monitor: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+        }>>, "defined">;
     }>>, Schemastery.ObjectT<NoInfer<{
         shell: import("@deepseek-ai/schemastery").default<any, any, "defined">;
         boot: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
@@ -515,6 +520,11 @@ declare const _default: {
             branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "defined">;
             alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
             commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+        }>>, "defined">;
+        monitor: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
         }>>, "defined">;
     }>>, "plain">;
     apply: typeof apply;

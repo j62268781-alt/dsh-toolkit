@@ -12,7 +12,7 @@ function readEnvironment(env) {
 
 function orderedSessions(sessions = []) {
   const rank = { waiting: 0, running: 1, failed: 2, completed: 3 }
-  return sessions.filter(s => s && typeof s.id === 'string').slice().sort((a, b) => (rank[a.status] ?? 4) - (rank[b.status] ?? 4) || (b.updatedAt || 0) - (a.updatedAt || 0))
+  return sessions.filter(s => s && typeof s.id === 'string').toSorted((a, b) => (rank[a.status] ?? 4) - (rank[b.status] ?? 4) || (b.updatedAt || 0) - (a.updatedAt || 0))
 }
 
 // 内置形象额外带 60 fps 的动画 WebP（每个动作一个文件），宠物包在 manifest.animations

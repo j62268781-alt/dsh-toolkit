@@ -254,6 +254,11 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         alwaysForcePush: s<boolean, boolean, "defined">;
         commitInstructions: s<string, string, "defined">;
     }>>, "defined">;
+    monitor: s<Schemastery.ObjectS<NoInfer<{
+        enabled: s<boolean, boolean, "defined">;
+    }>>, Schemastery.ObjectT<NoInfer<{
+        enabled: s<boolean, boolean, "defined">;
+    }>>, "defined">;
 }>>, Schemastery.ObjectT<NoInfer<{
     shell: s<any, any, "defined">;
     boot: s<Schemastery.ObjectS<NoInfer<{
@@ -508,6 +513,11 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         branchPrefix: s<string, string, "defined">;
         alwaysForcePush: s<boolean, boolean, "defined">;
         commitInstructions: s<string, string, "defined">;
+    }>>, "defined">;
+    monitor: s<Schemastery.ObjectS<NoInfer<{
+        enabled: s<boolean, boolean, "defined">;
+    }>>, Schemastery.ObjectT<NoInfer<{
+        enabled: s<boolean, boolean, "defined">;
     }>>, "defined">;
 }>>, "plain">;
 //# sourceMappingURL=config.d.ts.map

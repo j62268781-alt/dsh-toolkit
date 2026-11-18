@@ -1,0 +1,88 @@
+const WRITE_TOOLS = new Set(['write', 'edit', 'multi_edit', 'multiedit', 'notebook_edit']);
+const READ_TOOLS = new Set(['read', 'read_image']);
+const KNOWLEDGE_TOOLS = new Set(['search_knowledge', 'searchknowledge', 'search_workspace', 'searchworkspace']);
+const KNOWLEDGE_SERVER = /repowiki|qmind|knowledge/i;
+const BROWSER_NAVIGATE = /navigate|fetch|open|goto|new_page/i;
+function text(value) {
+    return typeof value === 'string' ? value.trim() : '';
+}
+function record(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+export function baseName(path) {
+    const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+    return path.slice(cut + 1) || path;
+}
+export function dirName(path) {
+    const normalized = path.replace(/\\/g, '/');
+    const cut = normalized.lastIndexOf('/');
+    return cut <= 0 ? '' : normalized.slice(0, cut);
+}
+export function hostOf(url) {
+    try {
+        return new URL(url).hostname;
+    }
+    catch {
+        return url;
+    }
+}
+function fileSeed(kind, prefix, path) {
+    return { kind, id: `${prefix}:${path}`, label: baseName(path), detail: dirName(path), target: path };
+}
+/** 一次调用可能产出多条种子（present 的 files 数组）；归不了类的调用返回空数组。 */
+export function classifyCall(name, args) {
+    if (typeof name !== 'string' || name === '')
+        return [];
+    const lower = name.toLowerCase();
+    const input = record(args);
+    if (lower === 'skill') {
+        const label = text(input.skill) || text(input.name) || 'Skill';
+        return [{ kind: 'capability', id: `skill:${label}`, label, detail: 'Skill' }];
+    }
+    if (name.startsWith('mcp__')) {
+        const parts = name.split('__');
+        const server = parts[1] ?? '';
+        const tool = parts.slice(2).join('__') || server;
+        if (KNOWLEDGE_SERVER.test(server)) {
+            const label = text(input.query) || text(input.title) || tool;
+            return [{ kind: 'knowledge', id: `mcp:${name}`, label, detail: `${server} · ${tool}` }];
+        }
+        const url = text(input.url);
+        if (/browser/i.test(server) && BROWSER_NAVIGATE.test(tool) && url !== '') {
+            return [{ kind: 'web', id: `url:${url}`, label: hostOf(url), detail: url, target: url }];
+        }
+        return [{ kind: 'capability', id: `mcp:${server}:${tool}`, label: server, detail: tool }];
+    }
+    if (WRITE_TOOLS.has(lower)) {
+        const path = text(input.file_path) || text(input.path);
+        return path === '' ? [] : [fileSeed('artifact', 'artifact', path)];
+    }
+    if (lower === 'present') {
+        const files = Array.isArray(input.files) ? input.files : [];
+        const seeds = [];
+        for (const file of files) {
+            const path = text(record(file).path);
+            if (path !== '')
+                seeds.push(fileSeed('artifact', 'artifact', path));
+        }
+        return seeds;
+    }
+    if (lower === 'web_fetch') {
+        const url = text(input.url);
+        return url === '' ? [] : [{ kind: 'web', id: `url:${url}`, label: hostOf(url), detail: url, target: url }];
+    }
+    if (lower === 'web_search') {
+        const query = text(input.query);
+        return query === '' ? [] : [{ kind: 'web', id: `search:${query}`, label: query, detail: 'web_search' }];
+    }
+    if (READ_TOOLS.has(lower)) {
+        const path = text(input.file_path) || text(input.path);
+        return path === '' ? [] : [fileSeed('source', 'source', path)];
+    }
+    if (KNOWLEDGE_TOOLS.has(lower)) {
+        const query = text(input.query) || text(input.requirements);
+        return [{ kind: 'knowledge', id: `knowledge:${lower}:${query}`, label: query || lower, detail: lower }];
+    }
+    return [];
+}
+//# sourceMappingURL=classify.js.map

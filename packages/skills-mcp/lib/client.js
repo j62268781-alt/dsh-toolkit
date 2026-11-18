@@ -164,7 +164,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/ui/components/settings-parts/style.css
-    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@media (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@media (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}\n/* 宫格里的可点选卡片 ------------------------------------------------------ */\n\n.sk-ui-option {\n  box-sizing: border-box;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  padding: 5px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 12px;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n  transition: border-color 0.14s ease, background-color 0.14s ease;\n}\n\n.sk-ui-option:hover:not(:disabled) {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n.sk-ui-option[data-selected="true"] {\n  border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n}\n\n.sk-ui-option:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  outline-offset: 3px;\n}\n\n.sk-ui-option:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n.sk-ui-option__media {\n  position: relative;\n  box-sizing: border-box;\n  display: grid;\n  place-items: center;\n  width: 100%;\n  height: 100px;\n  overflow: hidden;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-ui-option__caption {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding: 10px 7px 8px;\n}\n\n.sk-ui-option__name {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 5px;\n  font-size: 13px;\n  line-height: 18px;\n  font-weight: 500;\n  color: inherit;\n}\n\n.sk-ui-option__badge {\n  flex: none;\n  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  font-size: 10px;\n  line-height: 16px;\n  font-weight: 400;\n  white-space: nowrap;\n}\n\n.sk-ui-option__hint {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 16px;\n}\n\n@media (max-width: 620px) {\n  .sk-ui-option__media {\n    height: 82px;\n  }\n\n  .sk-ui-option__caption {\n    padding: 8px 3px;\n  }\n\n  .sk-ui-option__name {\n    align-items: flex-start;\n    flex-direction: column;\n  }\n\n  .sk-ui-option__badge {\n    font-size: 9px;\n  }\n\n  .sk-ui-option__hint {\n    font-size: 10px;\n  }\n}\n\n/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。 */\n@media (max-width: 420px) {\n  .sk-ui-option {\n    flex-direction: row;\n    align-items: center;\n    gap: 8px;\n  }\n\n  .sk-ui-option__media {\n    flex: none;\n    width: 96px;\n    height: 72px;\n  }\n\n  .sk-ui-option__name {\n    flex-direction: row;\n    gap: 8px;\n  }\n\n  .sk-ui-option__caption {\n    flex: 1;\n    padding: 8px 0;\n  }\n}\n@media (prefers-reduced-motion: reduce) {\n  .sk-ui-option {\n    transition: none;\n  }\n\n  .sk-ui-chevron {\n    transition: none;\n  }\n}\n\n/* 展开/收起的箭头 ---------------------------------------------------------\n * 与 skills & mcp 卡片上的那枚完全同款：16px、1.4 描边、收起时转 -90° 指向右。\n * 各面板只负责 `open`，方向与配色留在这里，避免九处各写一套。 */\n.sk-ui-chevron {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  transition: transform 0.14s ease-in-out;\n}\n\n.sk-ui-chevron[data-open="false"] {\n  transform: rotate(-90deg);\n}\n\n/* 行内计数/来源小标签 -----------------------------------------------------\n * 样式照 skills & mcp 的「全局 / 项目」标签：999px 药丸、11px、浅底、\n * 文字用二级灰——它是佐证，不该和标题抢视觉重量。 */\n.sk-ui-tag {\n  display: inline-flex;\n  align-items: center;\n  border-radius: 999px;\n  padding: 1px 8px;\n  font-size: 11px;\n  line-height: 17px;\n  font-weight: 500;\n  white-space: nowrap;\n}\n\n.sk-ui-tag[data-tone="neutral"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-tag[data-tone="ok"] {\n  background: var(--dsw-alias-state-success-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-success-primary, #067647);\n}\n\n.sk-ui-tag[data-tone="warn"] {\n  background: var(--dsw-alias-state-warn-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-warn-primary, #b54708);\n}\n\n/* danger 无 tertiary 底色可用，改用描边拉开对比（与 skills & mcp 原来的处理一致）。 */\n.sk-ui-tag[data-tone="danger"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-state-error-primary, #d92d20);\n  box-shadow: inset 0 0 0 1px var(--dsw-alias-state-error-primary, #d92d20);\n}\n';
+    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 面板内响应式：下面三条断点量的是**面板自己有多宽**，不是窗口有多宽 —— 设置面板在\n * 侧栏里打开、或被拉窄时，这两件事并不一样；`@media` 只看窗口，于是窄侧栏配宽窗口时\n * 该收的地方没收。\n *\n * 只声明 `inline-size`（不是 `size`）：这些盒子靠内容撑高度，`size` 容器会把高度也锁死，\n * 行与宫格就会互相裁切。宫格自己也是容器，因为宠物库弹窗是 `createPortal` 渲染的，\n * 它不在任何 `.sk-ui-card` 里 —— 靠卡片当容器的话，那里的选项卡片会永远量不到宽度。 */\n.sk-ui-cardSection {\n  container-type: inline-size;\n}\n\n.sk-ui-card {\n  container-type: inline-size;\n}\n\n.sk-ui-grid {\n  container-type: inline-size;\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@container (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@container (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}\n/* 宫格里的可点选卡片 ------------------------------------------------------ */\n\n.sk-ui-option {\n  box-sizing: border-box;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  padding: 5px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 12px;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n  transition: border-color 0.14s ease, background-color 0.14s ease;\n}\n\n.sk-ui-option:hover:not(:disabled) {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n.sk-ui-option[data-selected="true"] {\n  border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n}\n\n.sk-ui-option:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  outline-offset: 3px;\n}\n\n.sk-ui-option:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n.sk-ui-option__media {\n  position: relative;\n  box-sizing: border-box;\n  display: grid;\n  place-items: center;\n  width: 100%;\n  height: 100px;\n  overflow: hidden;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-ui-option__caption {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding: 10px 7px 8px;\n}\n\n.sk-ui-option__name {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 5px;\n  font-size: 13px;\n  line-height: 18px;\n  font-weight: 500;\n  color: inherit;\n}\n\n.sk-ui-option__badge {\n  flex: none;\n  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  font-size: 10px;\n  line-height: 16px;\n  font-weight: 400;\n  white-space: nowrap;\n}\n\n.sk-ui-option__hint {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 16px;\n}\n\n@container (max-width: 620px) {\n  .sk-ui-option__media {\n    height: 82px;\n  }\n\n  .sk-ui-option__caption {\n    padding: 8px 3px;\n  }\n\n  .sk-ui-option__name {\n    align-items: flex-start;\n    flex-direction: column;\n  }\n\n  .sk-ui-option__badge {\n    font-size: 9px;\n  }\n\n  .sk-ui-option__hint {\n    font-size: 10px;\n  }\n}\n\n/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。\n *\n * 这一档**故意留在 `@media`**：它换掉的是卡片的方向（竖排 → 横排），而横排卡片的最小\n * 宽度比宫格在 420 时仍然保留的 2–3 列大得多 —— 用窗口宽度判断时，窗口真窄到 420 的\n * 场景里宫格也只剩 2 列，凑合能放；改成按面板宽度判断后，「宽窗口 + 窄面板」（宠物库\n * 那种可缩放弹窗、被压缩的设置容器）会让 3 列横排卡片互相压住。实测见\n * `.cache/x/e-a11y-after.png` 与 `.cache/x/n-before.png` 的对比。 */\n@media (max-width: 420px) {\n  .sk-ui-option {\n    flex-direction: row;\n    align-items: center;\n    gap: 8px;\n  }\n\n  .sk-ui-option__media {\n    flex: none;\n    width: 96px;\n    height: 72px;\n  }\n\n  .sk-ui-option__name {\n    flex-direction: row;\n    gap: 8px;\n  }\n\n  .sk-ui-option__caption {\n    flex: 1;\n    padding: 8px 0;\n  }\n}\n@media (prefers-reduced-motion: reduce) {\n  .sk-ui-option {\n    transition: none;\n  }\n\n  .sk-ui-chevron {\n    transition: none;\n  }\n}\n\n/* 展开/收起的箭头 ---------------------------------------------------------\n * 与 skills & mcp 卡片上的那枚完全同款：16px、1.4 描边、收起时转 -90° 指向右。\n * 各面板只负责 `open`，方向与配色留在这里，避免九处各写一套。 */\n.sk-ui-chevron {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  transition: transform 0.14s ease-in-out;\n}\n\n.sk-ui-chevron[data-open="false"] {\n  transform: rotate(-90deg);\n}\n\n/* 行内计数/来源小标签 -----------------------------------------------------\n * 样式照 skills & mcp 的「全局 / 项目」标签：999px 药丸、11px、浅底、\n * 文字用二级灰——它是佐证，不该和标题抢视觉重量。 */\n.sk-ui-tag {\n  display: inline-flex;\n  align-items: center;\n  border-radius: 999px;\n  padding: 1px 8px;\n  font-size: 11px;\n  line-height: 17px;\n  font-weight: 500;\n  white-space: nowrap;\n}\n\n.sk-ui-tag[data-tone="neutral"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-tag[data-tone="ok"] {\n  background: var(--dsw-alias-state-success-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-success-primary, #067647);\n}\n\n.sk-ui-tag[data-tone="warn"] {\n  background: var(--dsw-alias-state-warn-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-warn-primary, #b54708);\n}\n\n/* danger 无 tertiary 底色可用，改用描边拉开对比（与 skills & mcp 原来的处理一致）。 */\n.sk-ui-tag[data-tone="danger"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-state-error-primary, #d92d20);\n  box-shadow: inset 0 0 0 1px var(--dsw-alias-state-error-primary, #d92d20);\n}\n';
 
     // src/client/ui/components/settings-parts/install.ts
     var SETTINGS_PARTS_ID = "dsh-toolkit-settings-parts";
@@ -206,7 +206,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/ui/toast.css
-    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+    var toast_default = '/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n *\n * 两条路径共用同一套类名：\n * - 原生路径：栈是 `popover="manual"`（top layer），单条靠 `@starting-style` + `transition` 进出场；\n * - 退化路径（jsdom、没有 popover 的宿主）：就是改造前的固定定位栈 + 两个 `@keyframes`。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n/* display 只跟着「栈开着」走：popover 关闭时 UA 是 display:none，作者样式不能把它顶回来。 */\n.sk-toast-stack:not([popover]),\n.sk-toast-stack:popover-open {\n  display: flex;\n}\n\n/* popover 在 top layer 里，UA 会给 position:fixed + inset:0 + margin:auto + 边框/背景，\n   这里全部按原布局收回来，只保留 `top:40px / left:50%` 的居中胶囊位置。 */\n.sk-toast-stack[popover] {\n  inset: auto;\n  top: 40px;\n  left: 50%;\n  margin: 0;\n  padding: 0;\n  border: 0;\n  background: transparent;\n  color: inherit;\n  overflow: visible;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* 退化路径：没有 `:popover-open` 的宿主继续用关键帧，行为与改造前一致。 */\n@supports not (selector(:popover-open)) {\n  .sk-toast {\n    animation: sk-toast-in 0.16s ease-out;\n  }\n\n  .sk-toast--leaving {\n    animation: sk-toast-out 0.18s ease-in forwards;\n  }\n}\n\n/* 原生路径：进场由 `@starting-style` 给出起点，退场由 `--leaving` 的目标值给出终点。\n   `transition-behavior: allow-discrete` 必须是独立声明，并进 `transition` 简写会让整条声明失效。 */\n@supports (selector(:popover-open)) {\n  .sk-toast {\n    transition: opacity 0.16s ease-out, transform 0.16s ease-out;\n    transition-behavior: allow-discrete;\n  }\n\n  @starting-style {\n    .sk-toast {\n      opacity: 0;\n      transform: translateY(-6px);\n    }\n  }\n}\n\n.sk-toast--leaving {\n  opacity: 0;\n  transform: translateY(-4px);\n}\n\n/* 减弱动效：过渡与关键帧都不跑，节点靠 `toast.ts` 的兜底定时器收掉。 */\n@media (prefers-reduced-motion: reduce) {\n  .sk-toast,\n  .sk-toast--leaving {\n    animation: none;\n    transition: none;\n  }\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n';
 
     // src/client/ui/toast.ts
     var HOST_KEY = "__dshToolkitToast__";
@@ -222,9 +222,12 @@ window.__ModuleLoader__.load({
       if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
       const root = document.createElement("div");
       root.className = "sk-toast-stack";
-      root.setAttribute("aria-live", "polite");
+      root.setAttribute("role", "region");
+      root.setAttribute("aria-label", "通知");
+      const popover = typeof root.showPopover === "function";
+      if (popover) root.setAttribute("popover", "manual");
       document.body.appendChild(root);
-      const created = { root, entries: [] };
+      const created = { root, entries: [], popover, shown: false };
       scope[HOST_KEY] = created;
       return created;
     }
@@ -242,17 +245,50 @@ window.__ModuleLoader__.load({
     function clamp(text2) {
       return text2.length > MAX_TEXT ? `${text2.slice(0, MAX_TEXT)}…` : text2;
     }
+    function openStack(host) {
+      if (!host.popover || host.shown) return;
+      try {
+        host.root.showPopover();
+        host.shown = true;
+      } catch {
+      }
+    }
+    function closeStack(host) {
+      if (!host.popover || !host.shown) return;
+      host.shown = false;
+      try {
+        host.root.hidePopover();
+      } catch {
+      }
+    }
     function dismiss(host, entry) {
       if (host.entries.indexOf(entry) === -1) return;
       host.entries = host.entries.filter((item) => item !== entry);
       if (entry.timer !== void 0) clearTimeout(entry.timer);
       entry.el.classList.add("sk-toast--leaving");
-      const remove = () => entry.el.remove();
-      const timeout = setTimeout(remove, EXIT_MS);
-      entry.el.addEventListener("animationend", () => {
+      let done = false;
+      function finish() {
+        if (done) return;
+        done = true;
         clearTimeout(timeout);
-        remove();
-      }, { once: true });
+        entry.el.removeEventListener("transitionend", onEnd);
+        entry.el.removeEventListener("animationend", onEnd);
+        entry.el.remove();
+        if (host.root.childElementCount === 0) closeStack(host);
+      }
+      function onEnd(event) {
+        if (event.target !== entry.el) return;
+        finish();
+      }
+      entry.el.addEventListener("transitionend", onEnd);
+      entry.el.addEventListener("animationend", onEnd);
+      const timeout = setTimeout(finish, EXIT_MS);
+      if (typeof entry.el.getAnimations === "function") {
+        try {
+          if (entry.el.getAnimations().length === 0) finish();
+        } catch {
+        }
+      }
     }
     function arm(host, entry, holdMs) {
       if (entry.timer !== void 0) clearTimeout(entry.timer);
@@ -291,6 +327,7 @@ window.__ModuleLoader__.load({
       body.textContent = message;
       el.appendChild(body);
       host.root.appendChild(el);
+      openStack(host);
       const entry = { tone, text: message, el, timer: void 0 };
       host.entries.push(entry);
       while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
@@ -351,12 +388,19 @@ window.__ModuleLoader__.load({
       { id: "mcp", title: "MCP" },
       { id: "skills", title: "Skills" }
     ];
+    function tabButtonId(id) {
+      return `smp-tab-${id}`;
+    }
     function tabStrip({ active, counts = {}, onSelect }) {
-      return /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-tabs", key: "tabs" }, TAB_ITEMS.map((item) => /* @__PURE__ */ __dshReact.createElement(
+      return /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-tabs", key: "tabs", role: "tablist" }, TAB_ITEMS.map((item) => /* @__PURE__ */ __dshReact.createElement(
         "button",
         {
           key: item.id,
+          type: "button",
+          id: tabButtonId(item.id),
           className: "smp-tab",
+          role: "tab",
+          "aria-selected": active === item.id,
           "data-active": active === item.id,
           onClick: () => onSelect(item.id)
         },
@@ -532,14 +576,49 @@ window.__ModuleLoader__.load({
         view?.removeEventListener?.("resize", close);
       };
     }
+    var CAN_POPOVER = typeof HTMLElement !== "undefined" && Object.hasOwn(HTMLElement.prototype, "popover");
+    function popoverMenuAttrs() {
+      return CAN_POPOVER ? { popover: "auto" } : {};
+    }
+    function showMenu(element) {
+      if (!CAN_POPOVER || !element) return;
+      try {
+        if (!element.matches(":popover-open")) element.showPopover();
+      } catch {
+      }
+    }
+    function menuKeydown(event, container) {
+      const key = event?.key;
+      if (key !== "ArrowDown" && key !== "ArrowUp" && key !== "Home" && key !== "End") return false;
+      if (!container) return false;
+      const seen = /* @__PURE__ */ new Set();
+      const items = [...container.querySelectorAll('[role="menuitem"], button')].filter((node) => {
+        if (seen.has(node)) return false;
+        seen.add(node);
+        return node.disabled !== true && node.getAttribute?.("aria-disabled") !== "true" && node.hidden !== true;
+      });
+      if (items.length === 0) return false;
+      event.preventDefault();
+      const index = items.indexOf(event.target);
+      const next = key === "Home" ? 0 : key === "End" ? items.length - 1 : index < 0 ? key === "ArrowUp" ? items.length - 1 : 0 : (index + (key === "ArrowUp" ? -1 : 1) + items.length) % items.length;
+      items[next].focus?.();
+      return true;
+    }
 
     // src/client/poll.ts
-    function startPolling(task, { intervalMs, onError = () => {
+    function hasDocument() {
+      return typeof document !== "undefined" && typeof document.addEventListener === "function";
+    }
+    function pageHidden() {
+      return typeof document !== "undefined" && document.visibilityState === "hidden";
+    }
+    function startPolling(task, { intervalMs, pauseWhenHidden = false, onError = () => {
     } }) {
       let stopped = false;
       let timer;
       let pending;
       let controller;
+      const pauses = pauseWhenHidden && hasDocument();
       const delay = () => typeof intervalMs === "function" ? intervalMs() : intervalMs;
       function refresh() {
         if (stopped) return Promise.resolve();
@@ -551,10 +630,20 @@ window.__ModuleLoader__.load({
           if (!stopped && !active.signal.aborted) onError(error);
         }).finally(() => {
           pending = void 0;
-          if (!stopped) timer = setTimeout(refresh, delay());
+          if (!stopped && !(pauses && pageHidden())) timer = setTimeout(refresh, delay());
         });
         return pending;
       }
+      const onVisibilityChange = () => {
+        if (stopped) return;
+        if (pageHidden()) {
+          clearTimeout(timer);
+          timer = void 0;
+          return;
+        }
+        void refresh();
+      };
+      if (pauses) document.addEventListener("visibilitychange", onVisibilityChange);
       void refresh();
       return {
         refresh,
@@ -562,6 +651,7 @@ window.__ModuleLoader__.load({
           stopped = true;
           clearTimeout(timer);
           controller?.abort();
+          if (pauses) document.removeEventListener("visibilitychange", onVisibilityChange);
         }
       };
     }
@@ -583,7 +673,7 @@ window.__ModuleLoader__.load({
     function useFormRefresh(React2, form, refresh) {
       const { useEffect } = React2;
       useEffect(() => {
-        const poll = startPolling(() => refresh(), { intervalMs: 700 });
+        const poll = startPolling(() => refresh(), { intervalMs: 700, pauseWhenHidden: true });
         return () => poll.stop();
       }, [form]);
     }
@@ -617,13 +707,22 @@ window.__ModuleLoader__.load({
     var AUTH_DONE = "authorized";
 
     // src/client/http.ts
-    async function fetchJson(url, { json, ...options } = {}) {
+    var DEFAULT_TIMEOUT_MS = 15e3;
+    function withDeadline(timeoutMs, signal) {
+      if (!(timeoutMs > 0) || typeof AbortSignal.timeout !== "function") return signal;
+      const deadline = AbortSignal.timeout(timeoutMs);
+      if (signal === void 0) return deadline;
+      if (typeof AbortSignal.any !== "function") return signal;
+      return AbortSignal.any([signal, deadline]);
+    }
+    async function fetchJson(url, { json, timeoutMs = DEFAULT_TIMEOUT_MS, ...options } = {}) {
       const headers = new Headers(options.headers);
       if (json !== void 0) headers.set("content-type", "application/json");
       const response = await fetch(url, {
         credentials: "same-origin",
         cache: "no-store",
         ...options,
+        signal: withDeadline(timeoutMs, options.signal),
         headers: Object.fromEntries(headers),
         // `json` 意味着有请求体，而 fetch 默认 GET —— 浏览器在发请求前就抛
         // "Request with GET/HEAD method cannot have body"。调用方没写 method 时按 POST 补齐，
@@ -695,15 +794,11 @@ window.__ModuleLoader__.load({
         const poll = startPolling(async (signal) => {
           const hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
           if (hidden && Date.now() - lastLoadedAt < 15e3) return;
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 1e4);
-          const abort = () => controller.abort();
-          signal.addEventListener("abort", abort, { once: true });
           try {
-            const response = await fetchJson(`${API_PREFIX}/runtime`, { signal: controller.signal });
+            const response = await fetchJson(`${API_PREFIX}/runtime`, { signal, timeoutMs: 1e4 });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const payload = await response.json();
-            if (signal.aborted || controller.signal.aborted) return;
+            if (signal.aborted) return;
             if (!Array.isArray(payload?.serverTools) || !Array.isArray(payload?.serverStatus) || typeof payload?.serverToolsError?.reason !== "string") throw new Error("响应格式无效");
             lastLoadedAt = Date.now();
             setRuntime(payload);
@@ -715,9 +810,6 @@ window.__ModuleLoader__.load({
               serverStatus: [],
               serverToolsError: { reason: "runtime-unavailable", detail: String(error?.message ?? error) }
             }));
-          } finally {
-            signal.removeEventListener("abort", abort);
-            clearTimeout(timeout);
           }
         }, { intervalMs: 5e3, onError: () => {
         } });
@@ -867,6 +959,7 @@ window.__ModuleLoader__.load({
       const [oauthResult, setOauthResult] = useState({});
       const [oauthPending, setOauthPending] = useState("");
       const [copiedUrlFor, setCopiedUrlFor] = useState("");
+      const [copyFailedFor, setCopyFailedFor] = useState("");
       const oauthServerState = (serverName) => {
         const entry = oauthServers[serverName];
         return entry !== null && typeof entry === "object" ? entry : {};
@@ -906,20 +999,23 @@ window.__ModuleLoader__.load({
           setOauthPending("");
         }
       };
-      const copyAuthorizeUrl = (serverName) => {
+      const copyAuthorizeUrl = async (serverName) => {
         const url = authorizeUrlFor(serverName);
         if (url === "") return;
         try {
-          void navigator.clipboard?.writeText?.(url);
+          await navigator.clipboard.writeText(url);
+          setCopyFailedFor("");
           setCopiedUrlFor(serverName);
         } catch {
           setCopiedUrlFor("");
+          setCopyFailedFor(serverName);
         }
       };
       return {
         oauthState,
         oauthPending,
         copiedUrlFor,
+        copyFailedFor,
         oauthServerState,
         authorizeUrlFor,
         oauthFailureFor,
@@ -999,7 +1095,91 @@ window.__ModuleLoader__.load({
       return /* @__PURE__ */ __dshReact.createElement("label", { className: "smp-field", key: label, "data-wide": Boolean(wide) }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-label", key: "l" }, label), control);
     }
 
+    // src/modules/skills-mcp/client/components/form.ts
+    var HINTS = {
+      serverName: "例如 context7，最多 32 字符",
+      command: "npx",
+      args: "-y @scope/pkg@latest",
+      env: "TEST_TOKEN=sk-xxxxxxx\n多个变量一行一个，例如：\nAPI_KEY=sk-abc\nREGION=cn",
+      url: "https://…/mcp",
+      headers: "Authorization=Bearer sk-xxxxxxx\n多个请求头一行一个，用等号连接（与 Host 的解析一致）",
+      project: "请选择项目"
+    };
+    function isValidName(name, max = 32) {
+      return new RegExp(`^[A-Za-z0-9_-]{1,${max}}$`).test((name ?? "").trim());
+    }
+    function fieldErrorId(prefix, key) {
+      return `${prefix}-${key}-error`;
+    }
+    function fieldControlId(prefix, key) {
+      return `${prefix}-${key}`;
+    }
+    function skillDraftIssues(draft = {}) {
+      const issues = [];
+      if (!isValidName(draft.name, 64)) {
+        issues.push({ key: "name", message: "名称只能用字母、数字、- 和 _，且不超过 64 个字符" });
+      }
+      if ((draft.body ?? "").trim() === "") issues.push({ key: "body", message: "请填写技能正文" });
+      return issues;
+    }
+    function serverDraftIssues(draft = {}) {
+      const issues = [];
+      if (!isValidName(draft.serverName, 32)) {
+        issues.push({ key: "serverName", message: "名称只能用字母、数字、- 和 _，且不超过 32 个字符" });
+      }
+      const transport = draft.transport ?? "streamable-http";
+      if (transport === "stdio") {
+        if ((draft.command ?? "").trim() === "") issues.push({ key: "command", message: "stdio 传输需要填写命令" });
+        return issues;
+      }
+      if ((draft.url ?? "").trim() === "") issues.push({ key: "url", message: "http 传输需要填写 URL" });
+      return issues;
+    }
+    function validateServerDraft(draft = {}) {
+      return serverDraftIssues(draft)[0]?.message ?? null;
+    }
+    function validateSkillDraft(draft = {}) {
+      return skillDraftIssues(draft)[0]?.message ?? null;
+    }
+    function formDocument() {
+      return typeof document === "undefined" ? null : document;
+    }
+    function byId(doc, id) {
+      if (doc === null || typeof doc.getElementById !== "function") return null;
+      return doc.getElementById(id) ?? null;
+    }
+    function showFieldIssues(prefix, issues, doc = formDocument()) {
+      for (const issue of issues) {
+        const error = byId(doc, fieldErrorId(prefix, issue.key));
+        if (error !== null) {
+          error.textContent = issue.message;
+          error.hidden = false;
+        }
+        byId(doc, fieldControlId(prefix, issue.key))?.setAttribute("aria-invalid", "true");
+      }
+      const first = issues[0];
+      if (first !== void 0) byId(doc, fieldControlId(prefix, first.key))?.focus();
+    }
+    function clearFieldIssue(prefix, key, doc = formDocument()) {
+      const error = byId(doc, fieldErrorId(prefix, key));
+      if (error !== null) {
+        error.textContent = "";
+        error.hidden = true;
+      }
+      byId(doc, fieldControlId(prefix, key))?.setAttribute("aria-invalid", "false");
+    }
+    function syncAriaInvalid(control) {
+      if (control === null || control === void 0) return;
+      const valid = control.validity === void 0 || control.validity.valid !== false;
+      control.setAttribute("aria-invalid", valid ? "false" : "true");
+    }
+    function fieldEdited(prefix, key, control, doc = formDocument()) {
+      clearFieldIssue(prefix, key, doc);
+      syncAriaInvalid(control);
+    }
+
     // src/modules/skills-mcp/client/components/skillDialog.tsx
+    var PREFIX = "smp-skill";
     function skillDialogView({
       dialog,
       draft,
@@ -1033,7 +1213,22 @@ window.__ModuleLoader__.load({
           closeLabel: "关闭",
           title: isEdit ? `编辑技能「${dialog.prevName}」` : "添加技能",
           description: isEdit ? "层级、工作区与目录都不可修改。改名会同时移动目录并重写 SKILL.md 里的 name（原目录会先备份）。" : "选择层级与目录后写入 <目标目录>/<名字>/SKILL.md；目录不存在会自动创建。",
-          footer: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(Button, { variant: "outline", key: "cancel", onClick: onCancel }, "取消"), /* @__PURE__ */ __dshReact.createElement(Button, { variant: "primary", key: "save", disabled: pending, onClick: onSave }, pending ? "保存中…" : isEdit ? "保存" : "创建"))
+          footer: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(Button, { variant: "outline", key: "cancel", onClick: onCancel }, "取消"), /* @__PURE__ */ __dshReact.createElement(
+            Button,
+            {
+              variant: "primary",
+              key: "save",
+              disabled: pending,
+              onClick: () => {
+                if (validateSkillDraft(draft) !== null) {
+                  showFieldIssues(PREFIX, skillDraftIssues(draft));
+                  return;
+                }
+                onSave();
+              }
+            },
+            pending ? "保存中…" : isEdit ? "保存" : "创建"
+          ))
         },
         /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-skillDialogBody", key: "body" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-formGrid", key: "grid" }, field("层级", /* @__PURE__ */ __dshReact.createElement(
           "select",
@@ -1081,15 +1276,25 @@ window.__ModuleLoader__.load({
           // `.smp-skillPath` spans both grid columns (it is not a `.smp-field`, so the
           // `data-wide` convention does not apply to it).
           /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-note smp-skillPath", key: "resolved" }, `将写入 ${resolvedPath}/<名字>/SKILL.md`)
-        ), field("名称（会成为目录名）", /* @__PURE__ */ __dshReact.createElement(
+        ), field("名称（会成为目录名）", /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(
           "input",
           {
             className: "smp-input",
+            id: fieldControlId(PREFIX, "name"),
             value: draft.name ?? "",
             placeholder: "例如 my-skill",
-            onChange: (event) => onName(event.target.value)
+            required: true,
+            maxLength: 64,
+            pattern: "[A-Za-z0-9_-]{1,64}",
+            "aria-invalid": "false",
+            "aria-describedby": fieldErrorId(PREFIX, "name"),
+            onChange: (event) => {
+              fieldEdited(PREFIX, "name", event.currentTarget);
+              onName(event.target.value);
+            },
+            onBlur: (event) => syncAriaInvalid(event.currentTarget)
           }
-        )), field("描述", /* @__PURE__ */ __dshReact.createElement(
+        ), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-fieldError", id: fieldErrorId(PREFIX, "name"), hidden: true }))), field("描述", /* @__PURE__ */ __dshReact.createElement(
           "input",
           {
             className: "smp-input",
@@ -1097,15 +1302,23 @@ window.__ModuleLoader__.load({
             placeholder: "一句话说明何时使用它",
             onChange: (event) => onDescription(event.target.value)
           }
-        )), field("正文（SKILL.md 的内容）", /* @__PURE__ */ __dshReact.createElement(
+        )), field("正文（SKILL.md 的内容）", /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(
           "textarea",
           {
             className: "smp-textarea",
             rows: 8,
+            id: fieldControlId(PREFIX, "body"),
             value: draft.body ?? "",
-            onChange: (event) => onBody(event.target.value)
+            required: true,
+            "aria-invalid": "false",
+            "aria-describedby": fieldErrorId(PREFIX, "body"),
+            onChange: (event) => {
+              fieldEdited(PREFIX, "body", event.currentTarget);
+              onBody(event.target.value);
+            },
+            onBlur: (event) => syncAriaInvalid(event.currentTarget)
           }
-        ), true)), pending ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-pendingHint", key: "pending" }, "正在与磁盘同步…") : null, error !== "" ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-error", key: "err", style: { marginTop: 8 } }, error) : null)
+        ), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-fieldError", id: fieldErrorId(PREFIX, "body"), hidden: true })), true)), pending ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-pendingHint", key: "pending" }, "正在与磁盘同步…") : null, error !== "" ? /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-error", key: "err", style: { marginTop: 8 } }, error) : null)
       );
     }
 
@@ -1261,18 +1474,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/skills-mcp/client/styles/panel.css
-    var panel_default = "/*\n * Panel styles. Kept in its own file and inlined into lib/client.js by\n * esbuild (`loader: { \".css\": \"text\" }`), because DSH's ModuleLoader evaluates\n * exactly one file per client bundle.\n */\n.smp-page{box-sizing:border-box;width:100%;color:var(--dsw-alias-label-primary);flex-direction:column;align-items:center;gap:14px;display:flex}\n.smp-pageHead{box-sizing:border-box;justify-content:space-between;align-items:flex-start;gap:16px;display:flex}\n.smp-toolbar{justify-content:flex-end;align-items:center;gap:8px;display:flex;flex:none}\n.smp-input,.smp-select,.smp-textarea{box-sizing:border-box;font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);padding:0 10px;height:32px;font-size:13px}\n.smp-textarea{height:auto;min-height:84px;padding:8px 10px;line-height:1.55;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}\n.smp-input:focus-visible,.smp-select:focus-visible,.smp-textarea:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}\n/* 作用域选择器（表单内）：下拉 + 自定义路径输入并排，跟随表单字段宽度。 */\n.smp-scopePick{display:flex;flex-direction:column;gap:6px;min-width:0}\n.smp-scopePick .smp-select{width:100%}\n.smp-scopePick .smp-input{width:100%}\n.smp-group{flex-direction:column;gap:10px;display:flex;border-top:.5px solid var(--dsw-alias-border-l2);padding-top:0}\n.smp-group:first-of-type{border-top:0;padding-top:0}\n.smp-groupTitleRow{align-items:center;gap:8px;min-height:36px;display:flex}\n.smp-groupToggle{color:inherit;font:inherit;text-align:left;cursor:pointer;background:none;border:0;flex:none;align-items:center;gap:8px;padding:0;display:flex}\n.smp-groupTitle{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:400;line-height:22px}\n.smp-groupSub{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;flex-wrap:wrap;row-gap:4px;margin:-6px 0 0 20px;font-size:12px;line-height:18px;display:flex}\n.smp-summaryAbove{margin:0}\n/* Rows follow the Models settings page: one column list, head row with the\n   actions pinned right, and an open body that can hold arbitrarily long text. */\n/* 卡片分两列：左列是「标题行 + 描述」，右列是操作区。整行垂直居中对齐，\n   这样开关/菜单与两行内容居中，而不是只跟标题那一行居中（那会偏上）。\n   展开的详情在 cardRow 之外，占满整行宽度。 */\n.smp-cardMain{flex:1 1 auto;min-width:0;flex-direction:column;gap:4px;display:flex}\n.smp-cardHead+.smp-cardDescription{margin-top:0}\n.smp-cardHead{align-items:center;gap:10px;min-width:0;display:flex}\n.smp-cardToggle{box-sizing:border-box;color:inherit;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;align-items:center;gap:8px;min-width:0;padding:0;display:inline-flex}\n.smp-cardActions{align-items:center;gap:4px;margin-left:auto;flex:none;display:inline-flex}\n.smp-cardActions .smp-actionsRow{margin:0;gap:4px}\n.smp-cardActions .smp-button{box-sizing:border-box;height:28px;padding:0 10px;font-size:12px;line-height:18px;border-radius:var(--dsw-radius-sm)}\n.smp-cardDescription{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}\n.smp-formGrid:first-child{margin-top:0}\n.smp-cardDetails .smp-details{margin:0}\n.smp-details{grid-template-columns:76px minmax(0,1fr);gap:6px 10px;margin:8px 0 0;display:grid;font-size:12px;line-height:18px}\n.smp-detailsKey{color:var(--dsw-alias-label-tertiary)}\n/* 值是**数据**，键才是说明。两者都用灰时整块读起来是一片低对比文字，\n   分不清哪个是标签、哪个是内容 —— 值用主色（正文黑），键保留三级灰。 */\n.smp-detailsValue{color:var(--dsw-alias-label-primary);word-break:break-all;font-weight:400}\n/* 连接状态：小圆点 + 小号文字（照 Chrome 扩展列表那种形态）。\n   取代了原来的药丸标签：药丸的视觉重量与卡片自己的标签一样重，\n   于是「一切正常」看起来也像个警告，而真正的警告反而混进了装饰里。\n   圆点承担颜色，文字承担含义，权重让开 —— 所以文字取 10px，比正文小一档。 */\n.smp-status{display:inline-flex;align-items:center;gap:5px;font-size:10px;line-height:16px;white-space:nowrap}\n.smp-dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-label-tertiary,currentColor)}\n.smp-dot[data-dot=ok]{background:var(--dsw-alias-state-success-primary,#067647)}\n.smp-dot[data-dot=warn]{background:var(--dsw-alias-state-warn-primary,#b54708)}\n.smp-dot[data-dot=danger]{background:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-dot[data-dot=neutral]{background:var(--dsw-alias-label-tertiary,#9aa4b2)}\n.smp-statusText{color:var(--dsw-alias-label-secondary)}\n/* 数字（工具数 / 剩余时间）退到第三层：它们是佐证，不是状态本身。 */\n.smp-statusMeta{color:var(--dsw-alias-label-tertiary,var(--dsw-alias-label-secondary))}\n/* danger 一档的文字要跟上圆点：它出现的场景正是「这个 MCP 已经永久失效、要用户动手」，\n   而这个问题以前在界面上完全不可见（工具凭空消失，没有任何说明）。\n   黄一档不上色：「连接中」是常态，「需要授权」也不是故障，加重它们只会制造噪音。 */\n.smp-status:has(.smp-dot[data-dot=danger]) .smp-statusText{color:var(--dsw-alias-state-error-primary,#d92d20)}\n/* 小号开关：替代「启用 / 停用」两个按钮。\n   按钮只说「点了我做什么」，开关同时说「现在是哪一档」—— 一列卡片扫下来能直接看出\n   哪些是开着的。竖直居中，与它所在行的文字基线对齐。 */\n.smp-switch{box-sizing:border-box;flex:none;width:26px;height:15px;border-radius:999px;border:0;padding:0;cursor:pointer;position:relative;background:var(--dsw-alias-border-l3,#cbd2d9);transition:background .12s ease}\n.smp-switch[data-on=true]{background:var(--dsw-alias-state-success-primary,#067647)}\n.smp-switch:disabled{opacity:.5;cursor:default}\n.smp-switchKnob{position:absolute;top:1.5px;left:1.5px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .12s ease}\n.smp-switch[data-on=true] .smp-switchKnob{transform:translateX(11px)}\n.smp-switch:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}\n/* 「…」+ 竖向菜单：把 重连/编辑/删除 收进一个 popup。\n   三个按钮并排时操作区比它所属的名字还宽，两列网格下会把服务器名挤出视野。\n   菜单让这一行保持安静，而「删除」这种很少用的动作本来就该多一次点击。 */\n.smp-more{position:relative;display:inline-flex;flex:none}\n.smp-moreTrigger{box-sizing:border-box;width:22px;height:22px;border:0;border-radius:var(--dsw-radius-sm);background:0 0;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center;padding:0}\n.smp-moreTrigger:hover{background:var(--dsw-alias-interactive-bg-hover)}\n.smp-moreTrigger:disabled{opacity:.5;cursor:default}\n/* 遮罩挡住页面其余部分的点击：菜单不该在一次无关点击后还开着，\n   否则下一次点击会落在用户没打算打开的菜单项上。 */\n.smp-menuScrim{position:fixed;inset:0;z-index:40}\n/* 弹出菜单。\n   默认这一套是**兜底**：量不到触发按钮位置时（离线渲染、没有布局）就向下展开。\n   真实运行时会由 menuAnchor.js 算出视口坐标，用内联样式改成 `position:fixed` ——\n   这样才能既不被面板滚动容器的 overflow 裁剪，又能在下方放不下时翻转向上。\n   `min-width` 保证即使只有「授权」两个字也不会挤成一条。 */\n.smp-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:41;min-width:104px;padding:4px;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-1,#fff);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);box-shadow:0 6px 20px rgba(0,0,0,.12);box-sizing:border-box}\n.smp-menuItem{box-sizing:border-box;width:100%;text-align:left;border:0;background:0 0;border-radius:var(--dsw-radius-sm);padding:6px 10px;font-size:13px;line-height:18px;color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap}\n.smp-menuItem:hover{background:var(--dsw-alias-interactive-bg-hover)}\n.smp-menuItem:disabled{opacity:.5;cursor:default}\n.smp-menuItem[data-variant=danger]{color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-menuError{display:block;padding:4px 10px;font-size:11px;line-height:16px;color:var(--dsw-alias-state-error-primary,#d92d20);white-space:normal;max-width:220px}\n.smp-reconnect{display:inline-flex;align-items:center;gap:6px}\n.smp-reconnect .smp-error{max-width:280px;white-space:normal}\n/* 展开区里的工具清单：数据来自 harness 工具注册表，只读展示。\n   分隔线与间距挂在标题上而不是包裹层：空清单与「不可读」两种状态只渲染标题，\n   挂在包裹层会让它们紧贴字段表，看起来像表格的一部分。 */\n.smp-tools{margin:0}\n.smp-toolHead{display:flex;align-items:center;gap:6px;font-size:12px;line-height:18px;\n  margin-top:10px;border-top:.5px solid var(--dsw-alias-border-l3);padding-top:8px}\n.smp-toolTitle{color:var(--dsw-alias-label-tertiary)}\n.smp-toolCount{color:var(--dsw-alias-label-secondary)}\n.smp-toolCount[data-tone=muted]{color:var(--dsw-alias-label-caption)}\n/* 工具过滤：标题行的模式选择器，与每行的勾选框。 */\n.smp-toolModes{margin-left:auto;display:inline-flex;gap:2px}\n.smp-toolMode{appearance:none;background:none;border:.5px solid transparent;border-radius:var(--dsw-radius-sm);padding:1px 7px;font:inherit;font-size:11px;line-height:17px;color:var(--dsw-alias-label-tertiary);cursor:pointer}\n.smp-toolMode:hover{background:var(--dsw-alias-interactive-bg-hover)}\n.smp-toolMode[data-active=true]{background:var(--dsw-alias-bg-module-platform);border-color:var(--dsw-alias-border-l3);color:var(--dsw-alias-label-primary)}\n.smp-toolPick{display:flex;align-items:center;gap:6px;min-width:0;cursor:pointer}\n.smp-toolPick input{margin:0;flex:none;accent-color:var(--dsw-alias-state-business-primary,#4176e6)}\n/* 开启过滤后，不会被注册的行淡化——一眼看出「这个工具模型看不到」。\n   判据是「是否保留」而非「是否勾选」：deny 模式下两者恰好相反。 */\n.smp-tool[data-kept=false] .smp-toolName{color:var(--dsw-alias-label-tertiary);font-weight:400}\n.smp-tool[data-kept=false] .smp-toolDesc{opacity:.7}\n.smp-toolList{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:2px}\n.smp-tool{display:flex;flex-direction:column;gap:1px;padding:3px 0;min-width:0}\n/* 工具名是这一行的「标题」，描述是「副标题」，所以两者要有层级差：\n   名字 13px + 500 字重 + 主色，描述 11px + 三级色。\n   行高走面板已有的阶梯（13px→20px，与 .smp-empty 一致；11px→16px）。 */\n.smp-toolName{font-family:var(--dsw-font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:13px;line-height:20px;font-weight:500;color:var(--dsw-alias-label-primary);word-break:break-all}\n/* 描述完整展示，只在极端长的少数情况下折行封顶。\n   实测 35 个真实 MCP 工具：中位 74 字符、p75 151、p90 318、最长 2006——\n   绝大多数只占一两行，所以不按字符数截断（那会白白砍掉大多数），\n   只给长尾一个上限，完整文本仍通过 title 属性可查。 */\n.smp-toolDesc{font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;line-clamp:4;overflow:hidden}\n.smp-empty{color:var(--dsw-alias-label-tertiary);margin:0;font-size:13px;line-height:20px;list-style:none}\n.smp-note{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;margin:0;list-style:none}\n/* 环境变量字段：文本框 + 自动注入说明。说明里的 code 用等宽字体点出关键名。 */\n.smp-envField{display:flex;flex-direction:column;gap:6px;min-width:0}\n.smp-envField code{font-family:var(--dsw-font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:11px;background:var(--dsw-alias-bg-module-platform);border-radius:var(--dsw-radius-xs,4px);padding:0 4px}\n.smp-field{display:flex;flex-direction:column;gap:6px;min-width:0}\n.smp-field[data-wide=true]{grid-column:1 / -1}\n/* 技能对话框里「将写入 <路径>」那一行：它不属于任何字段，但要跨满两列。 */\n.smp-skillPath{grid-column:1 / -1}\n/* MCP「需要授权」块：一枚主操作 + 可选的次要操作，下面是授权链接。 */\n.smp-oauthRow{display:flex;align-items:center;gap:8px;margin-top:6px}\n/* 授权链接是只读输入框而不是纯文本：链接很长，纯文本选中会把相邻文字一起带上，\n   而它必须能被完整复制（用户要粘到浏览器里）。 */\n.smp-oauthUrl{box-sizing:border-box;flex:1 1 auto;min-width:0;height:32px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-l1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.smp-oauthLinkRow{display:flex;align-items:center;gap:8px;margin-top:2px}\n/* 失败文案用错误色，但**不加粗、不放大**：它不是故障警报，只是这次操作没成功。 */\n.smp-oauthError{color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-label{font-size:12px;line-height:19px;color:var(--dsw-alias-label-secondary)}\n.smp-button[data-variant=danger]{color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-cardActions .smp-button[data-variant=danger]{border-color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-spinner{display:inline-block;width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--dsw-alias-border-l3);border-top-color:var(--dsw-alias-label-secondary);border-radius:50%;animation:smp-spin .72s linear infinite;flex:none}\n@keyframes smp-spin{to{transform:rotate(360deg)}}\n.smp-pending{display:inline-flex;align-items:center;gap:6px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}\n.smp-segment{align-self:flex-start;display:inline-flex;align-items:center;gap:2px;padding:2px;background:var(--dsw-alias-bg-module-platform);border-radius:var(--dsw-radius-md);width:fit-content}\n.smp-segment>button{box-sizing:border-box;height:28px;padding:0 12px;font:inherit;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);background:0 0;border:0;border-radius:var(--dsw-radius-sm);cursor:pointer}\n.smp-segment>button[data-active=true]{background:var(--dsw-alias-settings-card-fill);color:var(--dsw-alias-label-primary);font-weight:500}\n.smp-cardDetails .smp-input{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);padding:0 10px}\n.smp-cardDetails .smp-select,.smp-select{box-sizing:border-box;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);appearance:none;-webkit-appearance:none;padding:0 30px 0 10px;background-image:url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;background-size:14px}\n.smp-cardDetails .smp-input[readonly]{color:var(--dsw-alias-label-secondary)}\n.smp-actionsRow{display:flex;align-items:center;gap:8px;margin-top:10px}\n.smp-error{color:var(--dsw-alias-state-error-primary,var(--dsw-alias-label-primary));font-size:12px;line-height:18px}\n\n/* Card description (the subtitle under a title): always exactly two lines at\n   most, with an ellipsis — long skill descriptions used to push the layout. */\n.smp-cardDescription {\n  display: -webkit-box;\n  -webkit-line-clamp: 2;\n  -webkit-box-orient: vertical;\n  overflow: hidden;\n  overflow-wrap: anywhere;\n  text-overflow: ellipsis;\n}\n\n/* Visible progress while a save is in flight (the button also reads 保存中…). */\n.smp-pendingHint {\n  margin-top: 8px;\n  font-size: 12px;\n  opacity: 0.75;\n}\n\n/* The skill dialog body already lands on the description's box (274→1166) once\n   the dialog is widened, so it needs no side padding — adding one only squeezed\n   the form fields 48px narrower than the header text. */\n.smp-skillDialogBody {\n  width: auto;\n  max-width: 100%;\n  min-width: 0;\n  padding: 6px 0 10px;\n  box-sizing: border-box;\n}\n\n/* Skill preview.\n   The official modal must be widened itself — forcing a min-width on the inner\n   wrapper just clipped the text against the modal's own overflow. `:has()` lets\n   us reach the dialog that contains the preview. */\ndiv:has(> .smp-previewWrap),\ndiv[role='dialog']:has(.smp-previewWrap),\n[class*='modal']:has(.smp-previewWrap),\n[class*='Modal']:has(.smp-previewWrap),\n/* Add/edit skill dialog: same width as the preview. */\ndiv[role='dialog']:has(.smp-skillDialogBody),\n[class*='modal']:has(.smp-skillDialogBody),\n[class*='Modal']:has(.smp-skillDialogBody) {\n  width: min(940px, 92vw) !important;\n  max-width: 92vw !important;\n}\n\n.smp-previewWrap {\n  /* Measured geometry inside the official modal (dialog 250→1190):\n       description slot  274 → 1166  (892 wide, padded 24 on both sides)\n       children slot     274 → 1214  (940 wide, no right gutter)\n     The preview lives in the children slot, so it only needs the difference\n     trimmed on the right: 940 − 892 = 48px. No left padding. */\n  width: auto;\n  max-width: 100%;\n  min-width: 0;\n  padding: 6px 48px 10px 0;\n  box-sizing: border-box;\n}\n\n/* Description + file path: the path is long, so it gets its own wrapped line. */\n.smp-previewMeta { display: block; }\n.smp-previewDesc { margin-bottom: 6px; overflow-wrap: anywhere; }\n.smp-previewPath {\n  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;\n  font-size: 12px;\n  opacity: 0.75;\n  overflow-wrap: anywhere;\n  word-break: break-all;\n}\n\n.smp-preview {\n  margin: 0;\n  padding: 14px 16px;\n  background: var(--dsh-bg-secondary, rgba(127, 127, 127, 0.07));\n  border-radius: 10px;\n  /* The cap must leave room for the modal's own chrome (title + description +\n     footer) or a long body pushes the dialog past the window. Measured chrome is\n     ~180-210px, so subtract it from the viewport rather than using a bare vh. */\n  min-height: min(46vh, calc(100vh - 260px));\n  max-height: min(70vh, calc(100vh - 210px));\n  width: auto;\n  max-width: 100%;\n  box-sizing: border-box;\n  /* Wrap at the padding edge; vertical scroll only, never silently clipped. */\n  overflow-y: auto;\n  white-space: pre-wrap;\n  overflow-wrap: anywhere;\n  word-break: break-word;\n  min-width: 0;\n  /* Equal gutters on both sides for every wrapped line. */\n  text-align: left;\n  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;\n  font-size: 13px;\n  line-height: 1.65;\n  color: var(--dsh-text-secondary, inherit);\n}\n\n/* Skill source tag sits next to the name: give it the same breathing room the\n   MCP rows' \"配置文件\" tag has in smp-cardEnd. */\n.smp-cardIdentity .sk-ui-tag {\n  margin-left: 6px;\n}\n\n/* Horizontal rule between two independent settings in the form grid.\n\n   The grid is two columns, so the rule has to span both. Zero height plus the grid's own\n   `gap` gives the separation — no margins, which would add to the gap and make the two\n   sides look like different sections rather than siblings. */\n.smp-divider {\n  grid-column: 1 / -1;\n  /* `1px` rather than the `.5px` used for card borders: a hairline that disappears on a\n     non-retina display is worse than a slightly heavier rule here, and this one is the only\n     thing separating two settings that would otherwise read as one group. */\n  border-top: 1px solid var(--dsw-alias-border-l2);\n  height: 0;\n}\n\n/* Boolean setting inside a form field: a switch plus its explanatory text.\n\n   The old checkbox row had a **fixed `height: 32px`**, which was fine for a one-line label and\n   wrong the moment the text wrapped: two lines of 13px/18px need 36px, so the second line was\n   squeezed against the first and the row looked clipped. Almost every one of these labels is a\n   full sentence, so wrapping is the normal case, not the exception — the fixed height was the\n   bug, not the text.\n\n   So: no fixed height (let it grow), `flex-start` so the switch lines up with the **first** line\n   of text instead of floating in the middle of a two-line block, and a line-height that matches\n   the switch's own height so the first line and the thumb share a baseline. */\n.smp-switchRow {\n  display: flex;\n  /* 文字在左、开关固定贴右：整张表单的布尔设置都读成「这一项叫什么 → 它是哪一档」，\n     开关位置不再随文字长度左右浮动。 */\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  padding: 2px 0;\n  color: var(--dsw-alias-label-primary);\n}\n\n/* The control slot.\n\n   A wrapper rather than a rule on the control itself, because the control is either the Host's\n   `primitives.Switch` **or** our own `.smp-switch` fallback button — different elements with\n   different class names. Targeting a slot keeps `flex: none` applying to both, instead of\n   silently working only on whichever one the current Host happens to render. */\n.smp-switchRow > .smp-switchSlot {\n  flex: none;\n  display: flex;\n  align-items: center;\n  /* `min-content` keeps the pill from being squeezed when the text column grows; the row's\n     `space-between` then does the positioning, so no magic left/right value is needed. */\n  min-width: min-content;\n}\n\n/* Wrapping text column. `min-width: 0` is what actually allows it to wrap inside a flex row —\n   without it the column takes its max-content width and overflows the dialog. */\n.smp-switchRowText {\n  display: flex;\n  flex-direction: column;\n  flex: 1 1 auto;\n  gap: 3px;\n  min-width: 0;\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* The consequence sentence. Deliberately a separate line from the title: a warning that is\n   appended to the label reads as part of the name and gets skimmed past. */\n.smp-switchRowHint {\n  font-size: 12px;\n  line-height: 17px;\n  color: var(--dsw-alias-label-secondary);\n}\n";
-
-    // src/modules/skills-mcp/client/components/form.ts
-    var HINTS = {
-      serverName: "例如 context7，最多 32 字符",
-      command: "npx",
-      args: "-y @scope/pkg@latest",
-      env: "TEST_TOKEN=sk-xxxxxxx\n多个变量一行一个，例如：\nAPI_KEY=sk-abc\nREGION=cn",
-      url: "https://…/mcp",
-      headers: "Authorization=Bearer sk-xxxxxxx\n多个请求头一行一个，用等号连接（与 Host 的解析一致）",
-      project: "请选择项目"
-    };
+    var panel_default = "/*\n * Panel styles. Kept in its own file and inlined into lib/client.js by\n * esbuild (`loader: { \".css\": \"text\" }`), because DSH's ModuleLoader evaluates\n * exactly one file per client bundle.\n */\n.smp-page{box-sizing:border-box;width:100%;color:var(--dsw-alias-label-primary);flex-direction:column;align-items:center;gap:14px;display:flex}\n.smp-pageHead{box-sizing:border-box;justify-content:space-between;align-items:flex-start;gap:16px;display:flex}\n.smp-toolbar{justify-content:flex-end;align-items:center;gap:8px;display:flex;flex:none}\n.smp-input,.smp-select,.smp-textarea{box-sizing:border-box;font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);padding:0 10px;height:32px;font-size:13px}\n.smp-textarea{height:auto;min-height:84px;padding:8px 10px;line-height:1.55;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}\n.smp-input:focus-visible,.smp-select:focus-visible,.smp-textarea:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}\n/* 作用域选择器（表单内）：下拉 + 自定义路径输入并排，跟随表单字段宽度。 */\n.smp-scopePick{display:flex;flex-direction:column;gap:6px;min-width:0}\n.smp-scopePick .smp-select{width:100%}\n.smp-scopePick .smp-input{width:100%}\n.smp-group{flex-direction:column;gap:10px;display:flex;border-top:.5px solid var(--dsw-alias-border-l2);padding-top:0}\n.smp-group:first-of-type{border-top:0;padding-top:0}\n.smp-groupTitleRow{align-items:center;gap:8px;min-height:36px;display:flex}\n.smp-groupToggle{color:inherit;font:inherit;text-align:left;cursor:pointer;background:none;border:0;flex:none;align-items:center;gap:8px;padding:0;display:flex}\n.smp-groupTitle{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:400;line-height:22px}\n.smp-groupSub{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;flex-wrap:wrap;row-gap:4px;margin:-6px 0 0 20px;font-size:12px;line-height:18px;display:flex}\n.smp-summaryAbove{margin:0}\n/* Rows follow the Models settings page: one column list, head row with the\n   actions pinned right, and an open body that can hold arbitrarily long text. */\n/* 卡片分两列：左列是「标题行 + 描述」，右列是操作区。整行垂直居中对齐，\n   这样开关/菜单与两行内容居中，而不是只跟标题那一行居中（那会偏上）。\n   展开的详情在 cardRow 之外，占满整行宽度。 */\n.smp-cardMain{flex:1 1 auto;min-width:0;flex-direction:column;gap:4px;display:flex}\n.smp-cardHead+.smp-cardDescription{margin-top:0}\n.smp-cardHead{align-items:center;gap:10px;min-width:0;display:flex}\n.smp-cardToggle{box-sizing:border-box;color:inherit;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;align-items:center;gap:8px;min-width:0;padding:0;display:inline-flex}\n.smp-cardActions{align-items:center;gap:4px;margin-left:auto;flex:none;display:inline-flex}\n.smp-cardActions .smp-actionsRow{margin:0;gap:4px}\n.smp-cardActions .smp-button{box-sizing:border-box;height:28px;padding:0 10px;font-size:12px;line-height:18px;border-radius:var(--dsw-radius-sm)}\n.smp-cardDescription{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}\n.smp-formGrid:first-child{margin-top:0}\n.smp-cardDetails .smp-details{margin:0}\n.smp-details{grid-template-columns:76px minmax(0,1fr);gap:6px 10px;margin:8px 0 0;display:grid;font-size:12px;line-height:18px}\n.smp-detailsKey{color:var(--dsw-alias-label-tertiary)}\n/* 值是**数据**，键才是说明。两者都用灰时整块读起来是一片低对比文字，\n   分不清哪个是标签、哪个是内容 —— 值用主色（正文黑），键保留三级灰。 */\n.smp-detailsValue{color:var(--dsw-alias-label-primary);word-break:break-all;font-weight:400}\n/* 连接状态：小圆点 + 小号文字（照 Chrome 扩展列表那种形态）。\n   取代了原来的药丸标签：药丸的视觉重量与卡片自己的标签一样重，\n   于是「一切正常」看起来也像个警告，而真正的警告反而混进了装饰里。\n   圆点承担颜色，文字承担含义，权重让开 —— 所以文字取 10px，比正文小一档。 */\n.smp-status{display:inline-flex;align-items:center;gap:5px;font-size:10px;line-height:16px;white-space:nowrap}\n.smp-dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-label-tertiary,currentColor)}\n.smp-dot[data-dot=ok]{background:var(--dsw-alias-state-success-primary,#067647)}\n.smp-dot[data-dot=warn]{background:var(--dsw-alias-state-warn-primary,#b54708)}\n.smp-dot[data-dot=danger]{background:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-dot[data-dot=neutral]{background:var(--dsw-alias-label-tertiary,#9aa4b2)}\n.smp-statusText{color:var(--dsw-alias-label-secondary)}\n/* 数字（工具数 / 剩余时间）退到第三层：它们是佐证，不是状态本身。 */\n.smp-statusMeta{color:var(--dsw-alias-label-tertiary,var(--dsw-alias-label-secondary))}\n/* danger 一档的文字要跟上圆点：它出现的场景正是「这个 MCP 已经永久失效、要用户动手」，\n   而这个问题以前在界面上完全不可见（工具凭空消失，没有任何说明）。\n   黄一档不上色：「连接中」是常态，「需要授权」也不是故障，加重它们只会制造噪音。 */\n.smp-status:has(.smp-dot[data-dot=danger]) .smp-statusText{color:var(--dsw-alias-state-error-primary,#d92d20)}\n/* 小号开关：替代「启用 / 停用」两个按钮。\n   按钮只说「点了我做什么」，开关同时说「现在是哪一档」—— 一列卡片扫下来能直接看出\n   哪些是开着的。竖直居中，与它所在行的文字基线对齐。 */\n.smp-switch{box-sizing:border-box;flex:none;width:26px;height:15px;border-radius:999px;border:0;padding:0;cursor:pointer;position:relative;background:var(--dsw-alias-border-l3,#cbd2d9);transition:background .12s ease}\n.smp-switch[data-on=true]{background:var(--dsw-alias-state-success-primary,#067647)}\n.smp-switch:disabled{opacity:.5;cursor:default}\n.smp-switchKnob{position:absolute;top:1.5px;left:1.5px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .12s ease}\n.smp-switch[data-on=true] .smp-switchKnob{transform:translateX(11px)}\n.smp-switch:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}\n/* 「…」+ 竖向菜单：把 重连/编辑/删除 收进一个 popup。\n   三个按钮并排时操作区比它所属的名字还宽，两列网格下会把服务器名挤出视野。\n   菜单让这一行保持安静，而「删除」这种很少用的动作本来就该多一次点击。 */\n.smp-more{position:relative;display:inline-flex;flex:none}\n.smp-moreTrigger{box-sizing:border-box;width:22px;height:22px;border:0;border-radius:var(--dsw-radius-sm);background:0 0;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center;padding:0}\n.smp-moreTrigger:hover{background:var(--dsw-alias-interactive-bg-hover)}\n.smp-moreTrigger:disabled{opacity:.5;cursor:default}\n/* 遮罩挡住页面其余部分的点击：菜单不该在一次无关点击后还开着，\n   否则下一次点击会落在用户没打算打开的菜单项上。 */\n.smp-menuScrim{position:fixed;inset:0;z-index:40}\n/* 弹出菜单。\n   默认这一套是**兜底**：量不到触发按钮位置时（离线渲染、没有布局）就向下展开。\n   真实运行时会由 menuAnchor.js 算出视口坐标，用内联样式改成 `position:fixed` ——\n   这样才能既不被面板滚动容器的 overflow 裁剪，又能在下方放不下时翻转向上。\n   `min-width` 保证即使只有「授权」两个字也不会挤成一条。 */\n.smp-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:41;min-width:104px;padding:4px;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-1,#fff);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);box-shadow:0 6px 20px rgba(0,0,0,.12);box-sizing:border-box}\n/* 原生 popover 路径：清掉 UA 的居中定位，并让关闭态真的消失（作者 display:flex 会盖掉 UA 的 none）。 */\n.smp-menu[popover]{inset:auto;margin:0}\n.smp-menu[popover]:not(:popover-open){display:none}\n.smp-menuItem{box-sizing:border-box;width:100%;text-align:left;border:0;background:0 0;border-radius:var(--dsw-radius-sm);padding:6px 10px;font-size:13px;line-height:18px;color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap}\n.smp-menuItem:hover{background:var(--dsw-alias-interactive-bg-hover)}\n.smp-menuItem:disabled{opacity:.5;cursor:default}\n.smp-menuItem[data-variant=danger]{color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-menuError{display:block;padding:4px 10px;font-size:11px;line-height:16px;color:var(--dsw-alias-state-error-primary,#d92d20);white-space:normal;max-width:220px}\n.smp-reconnect{display:inline-flex;align-items:center;gap:6px}\n.smp-reconnect .smp-error{max-width:280px;white-space:normal}\n/* 展开区里的工具清单：数据来自 harness 工具注册表，只读展示。\n   分隔线与间距挂在标题上而不是包裹层：空清单与「不可读」两种状态只渲染标题，\n   挂在包裹层会让它们紧贴字段表，看起来像表格的一部分。 */\n.smp-tools{margin:0}\n.smp-toolHead{display:flex;align-items:center;gap:6px;font-size:12px;line-height:18px;\n  margin-top:10px;border-top:.5px solid var(--dsw-alias-border-l3);padding-top:8px}\n.smp-toolTitle{color:var(--dsw-alias-label-tertiary)}\n.smp-toolCount{color:var(--dsw-alias-label-secondary)}\n.smp-toolCount[data-tone=muted]{color:var(--dsw-alias-label-caption)}\n/* 工具过滤：标题行的模式选择器，与每行的勾选框。 */\n.smp-toolModes{margin-left:auto;display:inline-flex;gap:2px}\n.smp-toolMode{appearance:none;background:none;border:.5px solid transparent;border-radius:var(--dsw-radius-sm);padding:1px 7px;font:inherit;font-size:11px;line-height:17px;color:var(--dsw-alias-label-tertiary);cursor:pointer}\n.smp-toolMode:hover{background:var(--dsw-alias-interactive-bg-hover)}\n.smp-toolMode[data-active=true]{background:var(--dsw-alias-bg-module-platform);border-color:var(--dsw-alias-border-l3);color:var(--dsw-alias-label-primary)}\n.smp-toolPick{display:flex;align-items:center;gap:6px;min-width:0;cursor:pointer}\n.smp-toolPick input{margin:0;flex:none;accent-color:var(--dsw-alias-state-business-primary,#4176e6)}\n/* 开启过滤后，不会被注册的行淡化——一眼看出「这个工具模型看不到」。\n   判据是「是否保留」而非「是否勾选」：deny 模式下两者恰好相反。 */\n.smp-tool[data-kept=false] .smp-toolName{color:var(--dsw-alias-label-tertiary);font-weight:400}\n.smp-tool[data-kept=false] .smp-toolDesc{opacity:.7}\n.smp-toolList{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:2px}\n.smp-tool{display:flex;flex-direction:column;gap:1px;padding:3px 0;min-width:0}\n/* 工具名是这一行的「标题」，描述是「副标题」，所以两者要有层级差：\n   名字 13px + 500 字重 + 主色，描述 11px + 三级色。\n   行高走面板已有的阶梯（13px→20px，与 .smp-empty 一致；11px→16px）。 */\n.smp-toolName{font-family:var(--dsw-font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:13px;line-height:20px;font-weight:500;color:var(--dsw-alias-label-primary);word-break:break-all}\n/* 描述完整展示，只在极端长的少数情况下折行封顶。\n   实测 35 个真实 MCP 工具：中位 74 字符、p75 151、p90 318、最长 2006——\n   绝大多数只占一两行，所以不按字符数截断（那会白白砍掉大多数），\n   只给长尾一个上限，完整文本仍通过 title 属性可查。 */\n.smp-toolDesc{font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;line-clamp:4;overflow:hidden}\n.smp-empty{color:var(--dsw-alias-label-tertiary);margin:0;font-size:13px;line-height:20px;list-style:none}\n.smp-note{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;margin:0;list-style:none}\n/* 环境变量字段：文本框 + 自动注入说明。说明里的 code 用等宽字体点出关键名。 */\n.smp-envField{display:flex;flex-direction:column;gap:6px;min-width:0}\n.smp-envField code{font-family:var(--dsw-font-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:11px;background:var(--dsw-alias-bg-module-platform);border-radius:var(--dsw-radius-xs,4px);padding:0 4px}\n.smp-field{display:flex;flex-direction:column;gap:6px;min-width:0}\n.smp-field[data-wide=true]{grid-column:1 / -1}\n/* 技能对话框里「将写入 <路径>」那一行：它不属于任何字段，但要跨满两列。 */\n.smp-skillPath{grid-column:1 / -1}\n/* MCP「需要授权」块：一枚主操作 + 可选的次要操作，下面是授权链接。 */\n.smp-oauthRow{display:flex;align-items:center;gap:8px;margin-top:6px}\n/* 授权链接是只读输入框而不是纯文本：链接很长，纯文本选中会把相邻文字一起带上，\n   而它必须能被完整复制（用户要粘到浏览器里）。 */\n.smp-oauthUrl{box-sizing:border-box;flex:1 1 auto;min-width:0;height:32px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-l1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.smp-oauthLinkRow{display:flex;align-items:center;gap:8px;margin-top:2px}\n/* 失败文案用错误色，但**不加粗、不放大**：它不是故障警报，只是这次操作没成功。 */\n.smp-oauthError{color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-label{font-size:12px;line-height:19px;color:var(--dsw-alias-label-secondary)}\n.smp-button[data-variant=danger]{color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-cardActions .smp-button[data-variant=danger]{border-color:var(--dsw-alias-state-error-primary,#d92d20)}\n.smp-spinner{display:inline-block;width:12px;height:12px;box-sizing:border-box;border:1.5px solid var(--dsw-alias-border-l3);border-top-color:var(--dsw-alias-label-secondary);border-radius:50%;animation:smp-spin .72s linear infinite;flex:none}\n@keyframes smp-spin{to{transform:rotate(360deg)}}\n.smp-pending{display:inline-flex;align-items:center;gap:6px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}\n.smp-segment{align-self:flex-start;display:inline-flex;align-items:center;gap:2px;padding:2px;background:var(--dsw-alias-bg-module-platform);border-radius:var(--dsw-radius-md);width:fit-content}\n.smp-segment>button{box-sizing:border-box;height:28px;padding:0 12px;font:inherit;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);background:0 0;border:0;border-radius:var(--dsw-radius-sm);cursor:pointer}\n.smp-segment>button[data-active=true]{background:var(--dsw-alias-settings-card-fill);color:var(--dsw-alias-label-primary);font-weight:500}\n.smp-cardDetails .smp-input{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);padding:0 10px}\n.smp-cardDetails .smp-select,.smp-select{box-sizing:border-box;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);appearance:none;-webkit-appearance:none;padding:0 30px 0 10px;background-image:url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;background-size:14px}\n.smp-cardDetails .smp-input[readonly]{color:var(--dsw-alias-label-secondary)}\n.smp-actionsRow{display:flex;align-items:center;gap:8px;margin-top:10px}\n.smp-error{color:var(--dsw-alias-state-error-primary,var(--dsw-alias-label-primary));font-size:12px;line-height:18px}\n\n/* Card description (the subtitle under a title): always exactly two lines at\n   most, with an ellipsis — long skill descriptions used to push the layout. */\n.smp-cardDescription {\n  display: -webkit-box;\n  -webkit-line-clamp: 2;\n  -webkit-box-orient: vertical;\n  overflow: hidden;\n  overflow-wrap: anywhere;\n  text-overflow: ellipsis;\n}\n\n/* Visible progress while a save is in flight (the button also reads 保存中…). */\n.smp-pendingHint {\n  margin-top: 8px;\n  font-size: 12px;\n  opacity: 0.75;\n}\n\n/* The skill dialog body already lands on the description's box (274→1166) once\n   the dialog is widened, so it needs no side padding — adding one only squeezed\n   the form fields 48px narrower than the header text. */\n.smp-skillDialogBody {\n  width: auto;\n  max-width: 100%;\n  min-width: 0;\n  padding: 6px 0 10px;\n  box-sizing: border-box;\n}\n\n/* Skill preview.\n   The official modal must be widened itself — forcing a min-width on the inner\n   wrapper just clipped the text against the modal's own overflow. `:has()` lets\n   us reach the dialog that contains the preview. */\ndiv:has(> .smp-previewWrap),\ndiv[role='dialog']:has(.smp-previewWrap),\n[class*='modal']:has(.smp-previewWrap),\n[class*='Modal']:has(.smp-previewWrap),\n/* Add/edit skill dialog: same width as the preview. */\ndiv[role='dialog']:has(.smp-skillDialogBody),\n[class*='modal']:has(.smp-skillDialogBody),\n[class*='Modal']:has(.smp-skillDialogBody) {\n  width: min(940px, 92vw) !important;\n  max-width: 92vw !important;\n}\n\n.smp-previewWrap {\n  /* Measured geometry inside the official modal (dialog 250→1190):\n       description slot  274 → 1166  (892 wide, padded 24 on both sides)\n       children slot     274 → 1214  (940 wide, no right gutter)\n     The preview lives in the children slot, so it only needs the difference\n     trimmed on the right: 940 − 892 = 48px. No left padding. */\n  width: auto;\n  max-width: 100%;\n  min-width: 0;\n  padding: 6px 48px 10px 0;\n  box-sizing: border-box;\n}\n\n/* Description + file path: the path is long, so it gets its own wrapped line. */\n.smp-previewMeta { display: block; }\n.smp-previewDesc { margin-bottom: 6px; overflow-wrap: anywhere; }\n.smp-previewPath {\n  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;\n  font-size: 12px;\n  opacity: 0.75;\n  overflow-wrap: anywhere;\n  word-break: break-all;\n}\n\n.smp-preview {\n  margin: 0;\n  padding: 14px 16px;\n  background: var(--dsh-bg-secondary, rgba(127, 127, 127, 0.07));\n  border-radius: 10px;\n  /* The cap must leave room for the modal's own chrome (title + description +\n     footer) or a long body pushes the dialog past the window. Measured chrome is\n     ~180-210px, so subtract it from the viewport rather than using a bare vh. */\n  min-height: min(46vh, calc(100vh - 260px));\n  max-height: min(70vh, calc(100vh - 210px));\n  width: auto;\n  max-width: 100%;\n  box-sizing: border-box;\n  /* Wrap at the padding edge; vertical scroll only, never silently clipped. */\n  overflow-y: auto;\n  white-space: pre-wrap;\n  overflow-wrap: anywhere;\n  word-break: break-word;\n  min-width: 0;\n  /* Equal gutters on both sides for every wrapped line. */\n  text-align: left;\n  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;\n  font-size: 13px;\n  line-height: 1.65;\n  color: var(--dsh-text-secondary, inherit);\n}\n\n/* Skill source tag sits next to the name: give it the same breathing room the\n   MCP rows' \"配置文件\" tag has in smp-cardEnd. */\n.smp-cardIdentity .sk-ui-tag {\n  margin-left: 6px;\n}\n\n/* Horizontal rule between two independent settings in the form grid.\n\n   The grid is two columns, so the rule has to span both. Zero height plus the grid's own\n   `gap` gives the separation — no margins, which would add to the gap and make the two\n   sides look like different sections rather than siblings. */\n.smp-divider {\n  grid-column: 1 / -1;\n  /* `1px` rather than the `.5px` used for card borders: a hairline that disappears on a\n     non-retina display is worse than a slightly heavier rule here, and this one is the only\n     thing separating two settings that would otherwise read as one group. */\n  border-top: 1px solid var(--dsw-alias-border-l2);\n  height: 0;\n}\n\n/* Boolean setting inside a form field: a switch plus its explanatory text.\n\n   The old checkbox row had a **fixed `height: 32px`**, which was fine for a one-line label and\n   wrong the moment the text wrapped: two lines of 13px/18px need 36px, so the second line was\n   squeezed against the first and the row looked clipped. Almost every one of these labels is a\n   full sentence, so wrapping is the normal case, not the exception — the fixed height was the\n   bug, not the text.\n\n   So: no fixed height (let it grow), `flex-start` so the switch lines up with the **first** line\n   of text instead of floating in the middle of a two-line block, and a line-height that matches\n   the switch's own height so the first line and the thumb share a baseline. */\n.smp-switchRow {\n  display: flex;\n  /* 文字在左、开关固定贴右：整张表单的布尔设置都读成「这一项叫什么 → 它是哪一档」，\n     开关位置不再随文字长度左右浮动。 */\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  padding: 2px 0;\n  color: var(--dsw-alias-label-primary);\n}\n\n/* The control slot.\n\n   A wrapper rather than a rule on the control itself, because the control is either the Host's\n   `primitives.Switch` **or** our own `.smp-switch` fallback button — different elements with\n   different class names. Targeting a slot keeps `flex: none` applying to both, instead of\n   silently working only on whichever one the current Host happens to render. */\n.smp-switchRow > .smp-switchSlot {\n  flex: none;\n  display: flex;\n  align-items: center;\n  /* `min-content` keeps the pill from being squeezed when the text column grows; the row's\n     `space-between` then does the positioning, so no magic left/right value is needed. */\n  min-width: min-content;\n}\n\n/* Wrapping text column. `min-width: 0` is what actually allows it to wrap inside a flex row —\n   without it the column takes its max-content width and overflows the dialog. */\n.smp-switchRowText {\n  display: flex;\n  flex-direction: column;\n  flex: 1 1 auto;\n  gap: 3px;\n  min-width: 0;\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* The consequence sentence. Deliberately a separate line from the title: a warning that is\n   appended to the label reads as part of the name and gets skimmed past. */\n.smp-switchRowHint {\n  font-size: 12px;\n  line-height: 17px;\n  color: var(--dsw-alias-label-secondary);\n}\n";
 
     // src/modules/skills-mcp/host/mcp/connection.ts
     var CONNECTION_BOUNDS = Object.freeze({
@@ -1441,6 +1643,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/skills-mcp/client/views/serverForm.tsx
+    var PREFIX2 = "smp-server";
     function serverFormView({
       tier,
       editing,
@@ -1458,15 +1661,25 @@ window.__ModuleLoader__.load({
       if (!editing || editing.kind !== "mcp" || editing.tier !== tier.tier) return null;
       const profileEntry = typeof editing.profile === "string" && editing.profile !== "" ? editing.profile : null;
       const stdio = (draft.transport ?? "streamable-http") === "stdio";
-      return /* @__PURE__ */ __dshReact.createElement("li", { className: "smp-card", key: "form", "data-wide": "true" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDetails", key: "body" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-formGrid", key: "grid" }, field("名称（serverName）", /* @__PURE__ */ __dshReact.createElement(
+      return /* @__PURE__ */ __dshReact.createElement("li", { className: "smp-card", key: "form", "data-wide": "true" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDetails", key: "body" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-formGrid", key: "grid" }, field("名称（serverName）", /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(
         "input",
         {
           className: "smp-input",
+          id: fieldControlId(PREFIX2, "serverName"),
           placeholder: "例如 test，最多 32 字符",
           value: draft.serverName ?? "",
-          onChange: (e) => setDraft({ ...draft, serverName: e.target.value })
+          required: true,
+          maxLength: 32,
+          pattern: "[A-Za-z0-9_-]{1,32}",
+          "aria-invalid": "false",
+          "aria-describedby": fieldErrorId(PREFIX2, "serverName"),
+          onChange: (e) => {
+            fieldEdited(PREFIX2, "serverName", e.currentTarget);
+            setDraft({ ...draft, serverName: e.target.value });
+          },
+          onBlur: (e) => syncAriaInvalid(e.currentTarget)
         }
-      )), field("传输", /* @__PURE__ */ __dshReact.createElement(
+      ), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-fieldError", id: fieldErrorId(PREFIX2, "serverName"), hidden: true }))), field("传输", /* @__PURE__ */ __dshReact.createElement(
         "select",
         {
           className: "smp-select",
@@ -1514,23 +1727,39 @@ window.__ModuleLoader__.load({
         draft.lazy === true,
         (next) => setDraft({ ...draft, lazy: next }),
         "按需启动（懒加载）"
-      ))), true), stdio ? field("命令", /* @__PURE__ */ __dshReact.createElement(
+      ))), true), stdio ? field("命令", /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(
         "input",
         {
           className: "smp-input",
           placeholder: HINTS.command,
+          id: fieldControlId(PREFIX2, "command"),
           value: draft.command ?? "",
-          onChange: (e) => setDraft({ ...draft, command: e.target.value })
+          required: true,
+          "aria-invalid": "false",
+          "aria-describedby": fieldErrorId(PREFIX2, "command"),
+          onChange: (e) => {
+            fieldEdited(PREFIX2, "command", e.currentTarget);
+            setDraft({ ...draft, command: e.target.value });
+          },
+          onBlur: (e) => syncAriaInvalid(e.currentTarget)
         }
-      )) : field("URL", /* @__PURE__ */ __dshReact.createElement(
+      ), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-fieldError", id: fieldErrorId(PREFIX2, "command"), hidden: true }))) : field("URL", /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(
         "input",
         {
           className: "smp-input",
           placeholder: HINTS.url,
+          id: fieldControlId(PREFIX2, "url"),
           value: draft.url ?? "",
-          onChange: (e) => setDraft({ ...draft, url: e.target.value })
+          required: true,
+          "aria-invalid": "false",
+          "aria-describedby": fieldErrorId(PREFIX2, "url"),
+          onChange: (e) => {
+            fieldEdited(PREFIX2, "url", e.currentTarget);
+            setDraft({ ...draft, url: e.target.value });
+          },
+          onBlur: (e) => syncAriaInvalid(e.currentTarget)
         }
-      )), stdio ? null : field("请求头（KEY=VALUE，每行一个）", /* @__PURE__ */ __dshReact.createElement(
+      ), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-fieldError", id: fieldErrorId(PREFIX2, "url"), hidden: true }))), stdio ? null : field("请求头（KEY=VALUE，每行一个）", /* @__PURE__ */ __dshReact.createElement(
         "textarea",
         {
           className: "smp-textarea",
@@ -1645,7 +1874,13 @@ window.__ModuleLoader__.load({
           "data-variant": "primary",
           key: "save",
           disabled: busy || !draft.serverName,
-          onClick: onSave
+          onClick: () => {
+            if (validateServerDraft(draft) !== null) {
+              showFieldIssues(PREFIX2, serverDraftIssues(draft));
+              return;
+            }
+            onSave();
+          }
         },
         profileEntry !== null ? "保存到配置行" : "保存"
       ), /* @__PURE__ */ __dshReact.createElement("button", { className: "smp-button", "data-variant": "outline", key: "cancel", onClick: onCancel }, "取消"))));
@@ -1739,7 +1974,27 @@ window.__ModuleLoader__.load({
           "选择来源"
         ))), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardDescription", key: "d" }, scope === "global" ? "从其他编辑器/CLI 的用户级配置文件导入（写成配置文件行）。" : "从其他编辑器/CLI 的项目级文件导入到面板的项目条目。"));
       }
-      return /* @__PURE__ */ __dshReact.createElement("li", { className: "smp-card", key: "import" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardHead", key: "head" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardIdentity", key: "t" }, scope === "global" ? "导入全局 MCP" : "导入项目 MCP"), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "a" }, /* @__PURE__ */ __dshReact.createElement("button", { className: "smp-button", "data-variant": "outline", key: "close", onClick: () => setImportOpen(false) }, "收起"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-segment", key: "segment" }, /* @__PURE__ */ __dshReact.createElement("button", { key: "g", "data-active": String(scope === "global"), onClick: () => setImportScope("global") }, "全局"), /* @__PURE__ */ __dshReact.createElement("button", { key: "p", "data-active": String(scope === "project"), onClick: () => setImportScope("project") }, "项目级")), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-formGrid", key: "grid" }, field("来源", /* @__PURE__ */ __dshReact.createElement("select", { className: "smp-select", value: importSource, onChange: (event) => setImportSource(event.target.value) }, IMPORT_CHOICES.map(([id, label]) => /* @__PURE__ */ __dshReact.createElement("option", { value: id, key: id }, label)))), scope === "global" ? null : importCustomProject ? field("项目路径", /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-actionsRow", style: { marginTop: 0 } }, /* @__PURE__ */ __dshReact.createElement(
+      return /* @__PURE__ */ __dshReact.createElement("li", { className: "smp-card", key: "import" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-cardHead", key: "head" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardIdentity", key: "t" }, scope === "global" ? "导入全局 MCP" : "导入项目 MCP"), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-cardActions", key: "a" }, /* @__PURE__ */ __dshReact.createElement("button", { className: "smp-button", "data-variant": "outline", key: "close", onClick: () => setImportOpen(false) }, "收起"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-segment", key: "segment" }, /* @__PURE__ */ __dshReact.createElement(
+        "button",
+        {
+          type: "button",
+          key: "g",
+          "aria-pressed": scope === "global",
+          "data-active": String(scope === "global"),
+          onClick: () => setImportScope("global")
+        },
+        "全局"
+      ), /* @__PURE__ */ __dshReact.createElement(
+        "button",
+        {
+          type: "button",
+          key: "p",
+          "aria-pressed": scope === "project",
+          "data-active": String(scope === "project"),
+          onClick: () => setImportScope("project")
+        },
+        "项目级"
+      )), /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-formGrid", key: "grid" }, field("来源", /* @__PURE__ */ __dshReact.createElement("select", { className: "smp-select", value: importSource, onChange: (event) => setImportSource(event.target.value) }, IMPORT_CHOICES.map(([id, label]) => /* @__PURE__ */ __dshReact.createElement("option", { value: id, key: id }, label)))), scope === "global" ? null : importCustomProject ? field("项目路径", /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-actionsRow", style: { marginTop: 0 } }, /* @__PURE__ */ __dshReact.createElement(
         "input",
         {
           className: "smp-input",
@@ -1842,17 +2097,22 @@ window.__ModuleLoader__.load({
       const editMode = filter !== null && filter !== void 0;
       const canEdit = editMode && filter.onMode !== void 0;
       const picking = canEdit && mode !== "off";
-      return /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-tools", key: keyPrefix }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-toolHead", key: "head" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-toolTitle" }, "工具"), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-toolCount" }, `(${tools.length})`), canEdit ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-toolModes", key: "modes" }, [["off", "全部保留"], ["allow", "只保留勾选"], ["deny", "只挡勾选"]].map(([value, label]) => /* @__PURE__ */ __dshReact.createElement(
-        "button",
-        {
-          type: "button",
-          key: value,
-          className: "smp-toolMode",
-          "data-active": String(mode === value),
-          onClick: () => filter.onMode(value)
-        },
-        label
-      ))) : null), picking ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-note", key: "hint" }, mode === "allow" ? `勾选要保留的工具（${selected.size}/${tools.length}）——没勾的不会注册给模型。` : `勾选要挡掉的工具（${selected.size}/${tools.length}）——其余照常注册。`) : null, /* @__PURE__ */ __dshReact.createElement("ul", { className: "smp-toolList" }, tools.map((tool) => {
+      return /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-tools", key: keyPrefix }, /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-toolHead", key: "head" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-toolTitle" }, "工具"), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-toolCount" }, `(${tools.length})`), canEdit ? (
+        // `aria-pressed` is the pressed state screen readers can read; `data-active`
+        // stays because panel.css (not this module's file to churn) matches on it.
+        /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-toolModes", key: "modes" }, [["off", "全部保留"], ["allow", "只保留勾选"], ["deny", "只挡勾选"]].map(([value, label]) => /* @__PURE__ */ __dshReact.createElement(
+          "button",
+          {
+            type: "button",
+            key: value,
+            className: "smp-toolMode",
+            "aria-pressed": mode === value,
+            "data-active": String(mode === value),
+            onClick: () => filter.onMode(value)
+          },
+          label
+        )))
+      ) : null), picking ? /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-note", key: "hint" }, mode === "allow" ? `勾选要保留的工具（${selected.size}/${tools.length}）——没勾的不会注册给模型。` : `勾选要挡掉的工具（${selected.size}/${tools.length}）——其余照常注册。`) : null, /* @__PURE__ */ __dshReact.createElement("ul", { className: "smp-toolList" }, tools.map((tool) => {
         const description = normalizeDescription(tool.description);
         const shown = picking && filter.leafOf !== void 0 ? filter.leafOf(tool.name) : tool.name;
         const checked = selected.has(shown);
@@ -1929,41 +2189,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/styles/settings.css
-    var settings_default = `/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */
-    .ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}
-    /* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */
-    .ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}
-    .ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
-    .ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}
-    .ab-button[data-variant=outline],.jdg-button[data-variant=outline],.smp-button[data-variant=outline]{border-color:var(--dsw-alias-border-l3)}
-    .ab-button[data-variant=primary],.jdg-button[data-variant=primary],.smp-button[data-variant=primary]{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}
-    .ab-button[data-variant=primary]:hover:not(:disabled),.jdg-button[data-variant=primary]:hover:not(:disabled),.smp-button[data-variant=primary]:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}
-    .ab-button:disabled,.jdg-button:disabled,.smp-button:disabled{opacity:.4;cursor:not-allowed}
-    .jdg-filterRow,.smp-filterRow,.sk-filterRow{display:flex;align-items:center;gap:8px}
-    /* Search matches the built-in plugin inventory (36px, l4 stroke, icon at 12px, 34px right inset, focus ring). */
-    .jdg-search,.smp-search,.sk-search{flex:1 1 auto;min-width:140px;color:var(--dsw-alias-label-tertiary);align-items:center;display:flex;position:relative}
-    .jdg-searchIcon,.smp-searchIcon,.sk-searchIcon{position:absolute;left:12px;display:inline-flex;pointer-events:none}
-    .jdg-searchInput,.smp-searchInput,.sk-searchInput{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);padding:0 34px 0 36px;outline:none}
-    .jdg-searchInput::placeholder,.smp-searchInput::placeholder,.sk-searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}
-    .jdg-searchInput:focus-visible,.smp-searchInput:focus-visible,.sk-searchInput:focus-visible{border-color:var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)) 18%,transparent)}
-    .jdg-tabs,.smp-tabs{display:flex;gap:24px;border-bottom:.5px solid var(--dsw-alias-border-l2)}
-    .jdg-tab,.smp-tab{appearance:none;background:none;border:0;padding:0 2px 10px;font:inherit;font-size:14px;line-height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
-    .jdg-tab[data-active=true],.smp-tab[data-active=true]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-label-primary)}
-    .jdg-cards,.smp-cards{flex-direction:column;gap:14px;margin:0;padding:0;list-style:none;display:flex}
-    .jdg-card,.smp-card{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:4px;padding:12px 14px;min-width:0;display:flex}
-    .jdg-cardRow,.smp-cardRow{align-items:center;gap:10px;min-width:0;display:flex}
-    .jdg-cardIdentity,.smp-cardIdentity{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;min-width:0;overflow-wrap:anywhere}
-    .jdg-cardEnd,.smp-cardEnd{flex:none;align-items:center;gap:8px;display:inline-flex}
-    .jdg-cardDetails,.smp-cardDetails{border-top:.5px solid var(--dsw-alias-border-l2);padding:12px 0 0}
-    .jdg-card>.jdg-cardDetails:first-child,.smp-card>.smp-cardDetails:first-child{border-top:0;padding-top:0}
-    .jdg-formGrid,.smp-formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
-    /* 原生下拉在这套设置页里只有一种外观：启动动画与通知两个面板共用同一条规则，由
-     * settingsStyles() 按面板前缀各自裁剪。appearance:none 去掉平台自带箭头（macOS 会把它
-     * 紧贴右边框），改由 data-URI 自绘 14px chevron，距右边缘 10px。 */
-    .boot-select,.ntf-select{box-sizing:border-box;height:30px;max-width:100%;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md,8px);appearance:none;-webkit-appearance:none;padding:0 30px 0 10px;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:14px;text-overflow:ellipsis;cursor:pointer}
-    .boot-select:focus-visible,.ntf-select:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}
-    .boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}
-    `;
+    var settings_default = "/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */\n.ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}\n/* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */\n.ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}\n.ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}\n.ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}\n.ab-button[data-variant=outline],.jdg-button[data-variant=outline],.smp-button[data-variant=outline]{border-color:var(--dsw-alias-border-l3)}\n.ab-button[data-variant=primary],.jdg-button[data-variant=primary],.smp-button[data-variant=primary]{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}\n.ab-button[data-variant=primary]:hover:not(:disabled),.jdg-button[data-variant=primary]:hover:not(:disabled),.smp-button[data-variant=primary]:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}\n.ab-button:disabled,.jdg-button:disabled,.smp-button:disabled{opacity:.4;cursor:not-allowed}\n.jdg-filterRow,.smp-filterRow,.sk-filterRow{display:flex;align-items:center;gap:8px}\n/* Search matches the built-in plugin inventory (36px, l4 stroke, icon at 12px, 34px right inset, focus ring). */\n.jdg-search,.smp-search,.sk-search{flex:1 1 auto;min-width:140px;color:var(--dsw-alias-label-tertiary);align-items:center;display:flex;position:relative}\n.jdg-searchIcon,.smp-searchIcon,.sk-searchIcon{position:absolute;left:12px;display:inline-flex;pointer-events:none}\n.jdg-searchInput,.smp-searchInput,.sk-searchInput{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);padding:0 34px 0 36px;outline:none}\n.jdg-searchInput::placeholder,.smp-searchInput::placeholder,.sk-searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}\n.jdg-searchInput:focus-visible,.smp-searchInput:focus-visible,.sk-searchInput:focus-visible{border-color:var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)) 18%,transparent)}\n.jdg-tabs,.smp-tabs{display:flex;gap:24px;border-bottom:.5px solid var(--dsw-alias-border-l2)}\n.jdg-tab,.smp-tab{appearance:none;background:none;border:0;padding:0 2px 10px;font:inherit;font-size:14px;line-height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}\n/* Active tab: derived from `aria-selected` (what the a11y tree exposes); `[data-active]`\n * stays because older markup and pinned tests still write it. A selector list rather\n * than `:is()` on purpose — `tests/judgment/panel.test.mjs` pins the literal\n * `.jdg-tab[data-active=true]` selector. */\n.jdg-tab[data-active=true],.jdg-tab[aria-selected=true],.smp-tab[data-active=true],.smp-tab[aria-selected=true]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-label-primary)}\n.jdg-cards,.smp-cards{flex-direction:column;gap:14px;margin:0;padding:0;list-style:none;display:flex}\n.jdg-card,.smp-card{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:4px;padding:12px 14px;min-width:0;display:flex}\n.jdg-cardRow,.smp-cardRow{align-items:center;gap:10px;min-width:0;display:flex}\n.jdg-cardIdentity,.smp-cardIdentity{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;min-width:0;overflow-wrap:anywhere}\n.jdg-cardEnd,.smp-cardEnd{flex:none;align-items:center;gap:8px;display:inline-flex}\n.jdg-cardDetails,.smp-cardDetails{border-top:.5px solid var(--dsw-alias-border-l2);padding:12px 0 0}\n.jdg-card>.jdg-cardDetails:first-child,.smp-card>.smp-cardDetails:first-child{border-top:0;padding-top:0}\n.jdg-formGrid,.smp-formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}\n/* 原生下拉在这套设置页里只有一种外观：启动动画与通知两个面板共用同一条规则，由\n * settingsStyles() 按面板前缀各自裁剪。appearance:none 去掉平台自带箭头（macOS 会把它\n * 紧贴右边框），改由 data-URI 自绘 14px chevron，距右边缘 10px。 */\n.boot-select,.ntf-select{box-sizing:border-box;height:30px;max-width:100%;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md,8px);appearance:none;-webkit-appearance:none;padding:0 30px 0 10px;background-image:url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;background-size:14px;text-overflow:ellipsis;cursor:pointer}\n.boot-select:focus-visible,.ntf-select:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}\n.boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}\n/* 表单字段级校验（skills-mcp 的 serverForm / skillDialog）。\n * `:user-invalid` 是主力：浏览器自己知道「用户交互过、且 `required`/`pattern` 不满足」，\n * 所以不需要额外状态类。`[aria-invalid=true]` 是提交被拦下那一刻由 form.ts 的\n * syncAriaInvalid / showFieldIssues 写上的同一事实 —— 两条都留着，读屏读到的与眼睛\n * 看到的不会各说各话。选择器带 `.smp-field`，因为 panel.css 里的\n * `.smp-cardDetails .smp-input` 与单类选择器同权重、且在本文之后注入。 */\n.smp-fieldError{color:var(--dsw-alias-state-error-primary,#d92d20);font-size:12px;line-height:18px}\n.smp-field .smp-input:user-invalid,.smp-field .smp-textarea:user-invalid,\n.smp-field .smp-input[aria-invalid=true],.smp-field .smp-textarea[aria-invalid=true]{border-color:var(--dsw-alias-state-error-primary,#d92d20)}\n/* 文本框随内容长高、到上限再滚（`field-sizing` 在 Chromium 123+ 才有；不支持的宿主\n * 退回 `rows` 的固定高度，所以 `min-block-size` 与原来的 `min-height:84px` 一致）。\n * 正文这类字段以前写死 `rows={8}`：十行内容一开场就带滚动条，三行的请求头又占半屏。 */\n.smp-formGrid .smp-textarea{field-sizing:content;width:100%;height:auto;min-block-size:84px;max-block-size:260px}\n";
 
     // src/client/styles/settings.ts
     function settingsStyles(namespace) {
@@ -2025,6 +2251,7 @@ window.__ModuleLoader__.load({
         const [expanded, setExpanded] = useState("");
         const [menuFor, setMenuFor] = useState("");
         const [menuAnchor, setMenuAnchor] = useState(null);
+        const menuElement = useRef(null);
         const [editing, setEditing] = useState(null);
         const [draft, setDraft] = useState({});
         const [scopeDraft, setScopeDraft] = useState({ value: "", custom: false });
@@ -2150,6 +2377,13 @@ window.__ModuleLoader__.load({
         useEffect(() => {
           if (menuFor === "") return void 0;
           if (typeof document === "undefined") return void 0;
+          if (CAN_POPOVER) {
+            const onKey2 = (event) => {
+              if (event.key === "Escape") setMenuFor("");
+            };
+            document.addEventListener("keydown", onKey2);
+            return () => document.removeEventListener("keydown", onKey2);
+          }
           const onKey = (event) => {
             if (event.key === "Escape") setMenuFor("");
           };
@@ -2159,6 +2393,17 @@ window.__ModuleLoader__.load({
             document.removeEventListener("keydown", onKey);
             removeDismissListeners();
           };
+        }, [menuFor]);
+        useEffect(() => {
+          if (menuFor === "" || !CAN_POPOVER) return void 0;
+          const element = menuElement.current;
+          if (!element) return void 0;
+          showMenu(element);
+          const onToggle = (event) => {
+            if (event?.newState === "closed") setMenuFor("");
+          };
+          element.addEventListener("toggle", onToggle);
+          return () => element.removeEventListener("toggle", onToggle);
         }, [menuFor]);
         const [customProject, setCustomProject] = useState(false);
         const [importOpen, setImportOpen] = useState(false);
@@ -2235,6 +2480,7 @@ window.__ModuleLoader__.load({
           oauthState,
           oauthPending,
           copiedUrlFor,
+          copyFailedFor,
           oauthServerState,
           authorizeUrlFor,
           oauthFailureFor,
@@ -2469,13 +2715,18 @@ window.__ModuleLoader__.load({
               }
             },
             "⋯"
-          ), open ? /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-menuScrim", key: "scrim", onClick: () => setMenuFor("") }), /* @__PURE__ */ __dshReact.createElement(
+          ), open ? /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, CAN_POPOVER ? null : /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-menuScrim", key: "scrim", onClick: () => setMenuFor("") }), /* @__PURE__ */ __dshReact.createElement(
             "span",
             {
               className: "smp-menu",
               key: "menu",
               role: "menu",
               "data-placement": menuAnchor?.placement ?? "down",
+              ...popoverMenuAttrs(),
+              onKeyDown: (event) => {
+                menuKeydown(event, event.currentTarget);
+              },
+              ref: menuElement,
               style: anchorStyle(menuAnchor)
             },
             visible
@@ -2581,7 +2832,7 @@ window.__ModuleLoader__.load({
               value: authorizeUrlFor(serverName),
               onFocus: (event) => event.target.select()
             }
-          ), /* @__PURE__ */ __dshReact.createElement("button", { className: "smp-button", "data-variant": "outline", type: "button", onClick: () => copyAuthorizeUrl(serverName) }, copiedUrlFor === serverName ? "已复制" : "复制链接")), /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-note", style: { margin: "2px 0 0" } }, "授权完成后如果状态没变，点一次「重连」让它重新建立连接。")));
+          ), /* @__PURE__ */ __dshReact.createElement("button", { className: "smp-button", "data-variant": "outline", type: "button", onClick: () => void copyAuthorizeUrl(serverName) }, copiedUrlFor === serverName ? "已复制" : copyFailedFor === serverName ? "复制失败，请手动选中" : "复制链接")), /* @__PURE__ */ __dshReact.createElement("p", { className: "smp-note", style: { margin: "2px 0 0" } }, "授权完成后如果状态没变，点一次「重连」让它重新建立连接。")));
         }
         function card(key, identity, description, enabled, details, menuItems, pending, statusNode, authNote) {
           return listCardView({

@@ -166,7 +166,7 @@ export function callDaemon(method, params, { socketPath, timeoutMs = DEFAULT_TIM
         socket.on("error", (error) => {
             // 连接建立后已不能确定指令是否执行，不能再把同名 code 当作安全重试。
             if (connected && SAFE_CLI_FALLBACK_CODES.has(error?.code ?? "")) {
-                error = Object.assign(new Error(error.message), { cause: error });
+                error = new Error(error.message, { cause: error });
             }
             finish(reject, error);
         });

@@ -191,15 +191,14 @@ export function createMonitor({ getCredential, onMessage, logger, onStateChange 
             }
             if (credential === undefined)
                 throw new Error('未找到微信凭据，请先连接微信');
-            const controllerOnce = new AbortController();
-            const timer = setTimeout(() => controllerOnce.abort(), timeoutMs);
+            const signal = AbortSignal.timeout(timeoutMs);
             try {
                 const response = await getUpdates({
                     baseUrl: credential.baseUrl,
                     token: credential.token,
                     cursor: '',
                     timeoutMs,
-                    signal: controllerOnce.signal,
+                    signal,
                 });
                 const code = Number(response?.errcode ?? response?.ret ?? 0);
                 if (code === STALE_TOKEN_CODE) {
@@ -222,12 +221,9 @@ export function createMonitor({ getCredential, onMessage, logger, onStateChange 
             }
             catch (error) {
                 // 长轮询超时视为「通道空闲但可用」。
-                if (controllerOnce.signal.aborted)
+                if (signal.aborted)
                     return { ok: true, messages: 0, idle: true };
                 throw error;
-            }
-            finally {
-                clearTimeout(timer);
             }
         },
         dispose() {

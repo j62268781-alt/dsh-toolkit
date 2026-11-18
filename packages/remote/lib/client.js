@@ -195,7 +195,7 @@ window.__ModuleLoader__.load({
             }
           });
         } catch (error) {
-          throw new Error(`连不上插件路由：${String(error?.message ?? error)}`);
+          throw new Error(`连不上插件路由：${String(error?.message ?? error)}`, { cause: error });
         }
         let payload = {};
         try {
@@ -1459,6 +1459,12 @@ window.__ModuleLoader__.load({
       };
     }
 
+    // src/client/ime.ts
+    function isComposingEvent(event) {
+      const native = event?.nativeEvent ?? event;
+      return native?.isComposing === true || native?.keyCode === 229;
+    }
+
     // src/modules/remote/client/mobile/tab.tsx
     function shortFingerprint(value) {
       if (typeof value !== "string") return "—";
@@ -1532,6 +1538,7 @@ window.__ModuleLoader__.load({
             disabled: busy,
             onChange: (event) => setDraft(event.target.value),
             onKeyDown: (event) => {
+              if (isComposingEvent(event)) return;
               if (event.key === "Enter") save();
               if (event.key === "Escape") setEditing(false);
             }
@@ -2000,6 +2007,7 @@ window.__ModuleLoader__.load({
               disabled: busy,
               onChange: (event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 8)),
               onKeyDown: (event) => {
+                if (isComposingEvent(event)) return;
                 if (event.key === "Enter") submit();
               }
             }),
@@ -2489,13 +2497,22 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/http.ts
-    async function fetchJson(url, { json, ...options } = {}) {
+    var DEFAULT_TIMEOUT_MS = 15e3;
+    function withDeadline(timeoutMs, signal) {
+      if (!(timeoutMs > 0) || typeof AbortSignal.timeout !== "function") return signal;
+      const deadline = AbortSignal.timeout(timeoutMs);
+      if (signal === void 0) return deadline;
+      if (typeof AbortSignal.any !== "function") return signal;
+      return AbortSignal.any([signal, deadline]);
+    }
+    async function fetchJson(url, { json, timeoutMs = DEFAULT_TIMEOUT_MS, ...options } = {}) {
       const headers = new Headers(options.headers);
       if (json !== void 0) headers.set("content-type", "application/json");
       const response = await fetch(url, {
         credentials: "same-origin",
         cache: "no-store",
         ...options,
+        signal: withDeadline(timeoutMs, options.signal),
         headers: Object.fromEntries(headers),
         // `json` 意味着有请求体，而 fetch 默认 GET —— 浏览器在发请求前就抛
         // "Request with GET/HEAD method cannot have body"。调用方没写 method 时按 POST 补齐，

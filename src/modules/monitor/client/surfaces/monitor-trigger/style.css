@@ -1,0 +1,49 @@
+/*
+ * composer 右座触发按钮。挂在 conversation.input.right（面板 React 子树之外），
+ * 由 client/index.ts 全局注入；尺寸照 git 分支按钮：28px、radius-sm、13px/500。
+ */
+
+.sk-monitor-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(160px, 30vw);
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .sk-monitor-trigger:hover {
+    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
+    color: var(--dsw-alias-label-primary, inherit);
+  }
+}
+
+.sk-monitor-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, rgba(80, 140, 255, 0.6));
+}
+
+.sk-monitor-trigger__icon {
+  display: inline-flex;
+  flex: none;
+  color: #8f7bf9;
+}
+
+.sk-monitor-trigger__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

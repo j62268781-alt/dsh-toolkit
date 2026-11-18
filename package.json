@@ -23,18 +23,18 @@
     }
   },
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "build:host": "node scripts/build-host.mjs",
-    "build:client": "node scripts/build-client.mjs",
-    "build:check": "node scripts/build.mjs --check",
-    "typecheck": "tsc --noEmit",
-    "typecheck:modules": "tsc -p tsconfig.build.json --noEmit",
-    "typecheck:client": "tsc -p tsconfig.client.json",
-    "test": "node scripts/test.mjs",
-    "check": "node scripts/check.mjs",
-    "verify": "node scripts/build.mjs && tsc --noEmit && tsc -p tsconfig.client.json && node scripts/check.mjs && node scripts/test.mjs && node scripts/build.mjs --check",
-    "build:packages": "node scripts/build-packages.mjs",
-    "migrate:config": "node scripts/migrate-config.mjs"
+    "build": "node --max-old-space-size=2048 scripts/build.mjs",
+    "build:host": "node --max-old-space-size=2048 scripts/build-host.mjs",
+    "build:client": "node --max-old-space-size=2048 scripts/build-client.mjs",
+    "build:check": "node --max-old-space-size=2048 scripts/build.mjs --check",
+    "typecheck": "node --max-old-space-size=2048 node_modules/typescript/bin/tsc --noEmit",
+    "typecheck:modules": "node --max-old-space-size=2048 node_modules/typescript/bin/tsc -p tsconfig.build.json --noEmit",
+    "typecheck:client": "node --max-old-space-size=2048 node_modules/typescript/bin/tsc -p tsconfig.client.json",
+    "test": "node --max-old-space-size=2048 scripts/test.mjs",
+    "check": "node --max-old-space-size=2048 scripts/check.mjs",
+    "verify": "node --max-old-space-size=2048 scripts/build.mjs && node --max-old-space-size=2048 node_modules/typescript/bin/tsc --noEmit && node --max-old-space-size=2048 node_modules/typescript/bin/tsc -p tsconfig.client.json && node --max-old-space-size=2048 scripts/check.mjs && node --max-old-space-size=2048 scripts/test.mjs && node --max-old-space-size=2048 scripts/build.mjs --check",
+    "build:packages": "node --max-old-space-size=2048 scripts/build-packages.mjs",
+    "migrate:config": "node --max-old-space-size=2048 scripts/migrate-config.mjs"
   },
   "files": [
     "index.js",
@@ -85,6 +85,7 @@
     "dsh-toolkit-archived": "workspace:^",
     "dsh-toolkit-boot": "workspace:^",
     "dsh-toolkit-git": "workspace:^",
+    "dsh-toolkit-monitor": "workspace:^",
     "dsh-toolkit-hooks": "workspace:^",
     "dsh-toolkit-judgment": "workspace:^",
     "dsh-toolkit-mobile": "workspace:^",

@@ -393,7 +393,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/ui/components/settings-parts/style.css
-    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@media (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@media (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}\n/* 宫格里的可点选卡片 ------------------------------------------------------ */\n\n.sk-ui-option {\n  box-sizing: border-box;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  padding: 5px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 12px;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n  transition: border-color 0.14s ease, background-color 0.14s ease;\n}\n\n.sk-ui-option:hover:not(:disabled) {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n.sk-ui-option[data-selected="true"] {\n  border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n}\n\n.sk-ui-option:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  outline-offset: 3px;\n}\n\n.sk-ui-option:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n.sk-ui-option__media {\n  position: relative;\n  box-sizing: border-box;\n  display: grid;\n  place-items: center;\n  width: 100%;\n  height: 100px;\n  overflow: hidden;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-ui-option__caption {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding: 10px 7px 8px;\n}\n\n.sk-ui-option__name {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 5px;\n  font-size: 13px;\n  line-height: 18px;\n  font-weight: 500;\n  color: inherit;\n}\n\n.sk-ui-option__badge {\n  flex: none;\n  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  font-size: 10px;\n  line-height: 16px;\n  font-weight: 400;\n  white-space: nowrap;\n}\n\n.sk-ui-option__hint {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 16px;\n}\n\n@media (max-width: 620px) {\n  .sk-ui-option__media {\n    height: 82px;\n  }\n\n  .sk-ui-option__caption {\n    padding: 8px 3px;\n  }\n\n  .sk-ui-option__name {\n    align-items: flex-start;\n    flex-direction: column;\n  }\n\n  .sk-ui-option__badge {\n    font-size: 9px;\n  }\n\n  .sk-ui-option__hint {\n    font-size: 10px;\n  }\n}\n\n/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。 */\n@media (max-width: 420px) {\n  .sk-ui-option {\n    flex-direction: row;\n    align-items: center;\n    gap: 8px;\n  }\n\n  .sk-ui-option__media {\n    flex: none;\n    width: 96px;\n    height: 72px;\n  }\n\n  .sk-ui-option__name {\n    flex-direction: row;\n    gap: 8px;\n  }\n\n  .sk-ui-option__caption {\n    flex: 1;\n    padding: 8px 0;\n  }\n}\n@media (prefers-reduced-motion: reduce) {\n  .sk-ui-option {\n    transition: none;\n  }\n\n  .sk-ui-chevron {\n    transition: none;\n  }\n}\n\n/* 展开/收起的箭头 ---------------------------------------------------------\n * 与 skills & mcp 卡片上的那枚完全同款：16px、1.4 描边、收起时转 -90° 指向右。\n * 各面板只负责 `open`，方向与配色留在这里，避免九处各写一套。 */\n.sk-ui-chevron {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  transition: transform 0.14s ease-in-out;\n}\n\n.sk-ui-chevron[data-open="false"] {\n  transform: rotate(-90deg);\n}\n\n/* 行内计数/来源小标签 -----------------------------------------------------\n * 样式照 skills & mcp 的「全局 / 项目」标签：999px 药丸、11px、浅底、\n * 文字用二级灰——它是佐证，不该和标题抢视觉重量。 */\n.sk-ui-tag {\n  display: inline-flex;\n  align-items: center;\n  border-radius: 999px;\n  padding: 1px 8px;\n  font-size: 11px;\n  line-height: 17px;\n  font-weight: 500;\n  white-space: nowrap;\n}\n\n.sk-ui-tag[data-tone="neutral"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-tag[data-tone="ok"] {\n  background: var(--dsw-alias-state-success-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-success-primary, #067647);\n}\n\n.sk-ui-tag[data-tone="warn"] {\n  background: var(--dsw-alias-state-warn-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-warn-primary, #b54708);\n}\n\n/* danger 无 tertiary 底色可用，改用描边拉开对比（与 skills & mcp 原来的处理一致）。 */\n.sk-ui-tag[data-tone="danger"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-state-error-primary, #d92d20);\n  box-shadow: inset 0 0 0 1px var(--dsw-alias-state-error-primary, #d92d20);\n}\n';
+    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 面板内响应式：下面三条断点量的是**面板自己有多宽**，不是窗口有多宽 —— 设置面板在\n * 侧栏里打开、或被拉窄时，这两件事并不一样；`@media` 只看窗口，于是窄侧栏配宽窗口时\n * 该收的地方没收。\n *\n * 只声明 `inline-size`（不是 `size`）：这些盒子靠内容撑高度，`size` 容器会把高度也锁死，\n * 行与宫格就会互相裁切。宫格自己也是容器，因为宠物库弹窗是 `createPortal` 渲染的，\n * 它不在任何 `.sk-ui-card` 里 —— 靠卡片当容器的话，那里的选项卡片会永远量不到宽度。 */\n.sk-ui-cardSection {\n  container-type: inline-size;\n}\n\n.sk-ui-card {\n  container-type: inline-size;\n}\n\n.sk-ui-grid {\n  container-type: inline-size;\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@container (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@container (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}\n/* 宫格里的可点选卡片 ------------------------------------------------------ */\n\n.sk-ui-option {\n  box-sizing: border-box;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  padding: 5px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 12px;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n  transition: border-color 0.14s ease, background-color 0.14s ease;\n}\n\n.sk-ui-option:hover:not(:disabled) {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n.sk-ui-option[data-selected="true"] {\n  border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n}\n\n.sk-ui-option:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  outline-offset: 3px;\n}\n\n.sk-ui-option:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n.sk-ui-option__media {\n  position: relative;\n  box-sizing: border-box;\n  display: grid;\n  place-items: center;\n  width: 100%;\n  height: 100px;\n  overflow: hidden;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-ui-option__caption {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding: 10px 7px 8px;\n}\n\n.sk-ui-option__name {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 5px;\n  font-size: 13px;\n  line-height: 18px;\n  font-weight: 500;\n  color: inherit;\n}\n\n.sk-ui-option__badge {\n  flex: none;\n  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  font-size: 10px;\n  line-height: 16px;\n  font-weight: 400;\n  white-space: nowrap;\n}\n\n.sk-ui-option__hint {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 16px;\n}\n\n@container (max-width: 620px) {\n  .sk-ui-option__media {\n    height: 82px;\n  }\n\n  .sk-ui-option__caption {\n    padding: 8px 3px;\n  }\n\n  .sk-ui-option__name {\n    align-items: flex-start;\n    flex-direction: column;\n  }\n\n  .sk-ui-option__badge {\n    font-size: 9px;\n  }\n\n  .sk-ui-option__hint {\n    font-size: 10px;\n  }\n}\n\n/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。\n *\n * 这一档**故意留在 `@media`**：它换掉的是卡片的方向（竖排 → 横排），而横排卡片的最小\n * 宽度比宫格在 420 时仍然保留的 2–3 列大得多 —— 用窗口宽度判断时，窗口真窄到 420 的\n * 场景里宫格也只剩 2 列，凑合能放；改成按面板宽度判断后，「宽窗口 + 窄面板」（宠物库\n * 那种可缩放弹窗、被压缩的设置容器）会让 3 列横排卡片互相压住。实测见\n * `.cache/x/e-a11y-after.png` 与 `.cache/x/n-before.png` 的对比。 */\n@media (max-width: 420px) {\n  .sk-ui-option {\n    flex-direction: row;\n    align-items: center;\n    gap: 8px;\n  }\n\n  .sk-ui-option__media {\n    flex: none;\n    width: 96px;\n    height: 72px;\n  }\n\n  .sk-ui-option__name {\n    flex-direction: row;\n    gap: 8px;\n  }\n\n  .sk-ui-option__caption {\n    flex: 1;\n    padding: 8px 0;\n  }\n}\n@media (prefers-reduced-motion: reduce) {\n  .sk-ui-option {\n    transition: none;\n  }\n\n  .sk-ui-chevron {\n    transition: none;\n  }\n}\n\n/* 展开/收起的箭头 ---------------------------------------------------------\n * 与 skills & mcp 卡片上的那枚完全同款：16px、1.4 描边、收起时转 -90° 指向右。\n * 各面板只负责 `open`，方向与配色留在这里，避免九处各写一套。 */\n.sk-ui-chevron {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  transition: transform 0.14s ease-in-out;\n}\n\n.sk-ui-chevron[data-open="false"] {\n  transform: rotate(-90deg);\n}\n\n/* 行内计数/来源小标签 -----------------------------------------------------\n * 样式照 skills & mcp 的「全局 / 项目」标签：999px 药丸、11px、浅底、\n * 文字用二级灰——它是佐证，不该和标题抢视觉重量。 */\n.sk-ui-tag {\n  display: inline-flex;\n  align-items: center;\n  border-radius: 999px;\n  padding: 1px 8px;\n  font-size: 11px;\n  line-height: 17px;\n  font-weight: 500;\n  white-space: nowrap;\n}\n\n.sk-ui-tag[data-tone="neutral"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-tag[data-tone="ok"] {\n  background: var(--dsw-alias-state-success-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-success-primary, #067647);\n}\n\n.sk-ui-tag[data-tone="warn"] {\n  background: var(--dsw-alias-state-warn-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-warn-primary, #b54708);\n}\n\n/* danger 无 tertiary 底色可用，改用描边拉开对比（与 skills & mcp 原来的处理一致）。 */\n.sk-ui-tag[data-tone="danger"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-state-error-primary, #d92d20);\n  box-shadow: inset 0 0 0 1px var(--dsw-alias-state-error-primary, #d92d20);\n}\n';
 
     // src/client/ui/components/settings-parts/install.ts
     var SETTINGS_PARTS_ID = "dsh-toolkit-settings-parts";
@@ -493,6 +493,34 @@ window.__ModuleLoader__.load({
         view?.removeEventListener?.("resize", close);
       };
     }
+    var CAN_POPOVER = typeof HTMLElement !== "undefined" && Object.hasOwn(HTMLElement.prototype, "popover");
+    function popoverMenuAttrs() {
+      return CAN_POPOVER ? { popover: "auto" } : {};
+    }
+    function showMenu(element) {
+      if (!CAN_POPOVER || !element) return;
+      try {
+        if (!element.matches(":popover-open")) element.showPopover();
+      } catch {
+      }
+    }
+    function menuKeydown(event, container) {
+      const key = event?.key;
+      if (key !== "ArrowDown" && key !== "ArrowUp" && key !== "Home" && key !== "End") return false;
+      if (!container) return false;
+      const seen = /* @__PURE__ */ new Set();
+      const items = [...container.querySelectorAll('[role="menuitem"], button')].filter((node) => {
+        if (seen.has(node)) return false;
+        seen.add(node);
+        return node.disabled !== true && node.getAttribute?.("aria-disabled") !== "true" && node.hidden !== true;
+      });
+      if (items.length === 0) return false;
+      event.preventDefault();
+      const index = items.indexOf(event.target);
+      const next = key === "Home" ? 0 : key === "End" ? items.length - 1 : index < 0 ? key === "ArrowUp" ? items.length - 1 : 0 : (index + (key === "ArrowUp" ? -1 : 1) + items.length) % items.length;
+      items[next].focus?.();
+      return true;
+    }
 
     // src/client/ui/components/tag/index.tsx
     function Tag({ tone = "neutral", className, children, ...rest }) {
@@ -534,8 +562,19 @@ window.__ModuleLoader__.load({
       const [open, setOpen] = (0, import_react4.useState)(false);
       const [anchor, setAnchor] = (0, import_react4.useState)(null);
       const trigger = (0, import_react4.useRef)(null);
+      const menuRef = (0, import_react4.useRef)(null);
       (0, import_react4.useEffect)(() => {
-        if (open) return listenMenuDismiss(() => setOpen(false));
+        if (!open) return void 0;
+        const element = menuRef.current;
+        if (CAN_POPOVER && element) {
+          showMenu(element);
+          const onToggle = (event) => {
+            if (event?.newState === "closed") setOpen(false);
+          };
+          element.addEventListener("toggle", onToggle);
+          return () => element.removeEventListener("toggle", onToggle);
+        }
+        return listenMenuDismiss(() => setOpen(false));
       }, [open]);
       (0, import_react4.useEffect)(() => {
         if (disabled === true) setOpen(false);
@@ -562,23 +601,36 @@ window.__ModuleLoader__.load({
           onClick: toggle
         },
         "⋯"
-      ), open ? /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-menuScrim", onClick: () => setOpen(false) }), /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-menu", role: "menu", style: anchorStyle(anchor) }, items.map(([label, run, variant, itemDisabled]) => /* @__PURE__ */ __dshReact.createElement(
-        "button",
+      ), open ? /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, CAN_POPOVER ? null : /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-menuScrim", onClick: () => setOpen(false) }), /* @__PURE__ */ __dshReact.createElement(
+        "span",
         {
-          type: "button",
-          key: label,
-          role: "menuitem",
-          className: "jdg-menuItem",
-          "data-variant": variant,
-          disabled: itemDisabled === true,
-          onClick: () => {
-            setOpen(false);
-            if (itemDisabled === true) return;
-            run();
-          }
+          className: "jdg-menu",
+          role: "menu",
+          ref: menuRef,
+          ...popoverMenuAttrs(),
+          onKeyDown: (event) => {
+            menuKeydown(event, menuRef.current);
+          },
+          style: anchorStyle(anchor)
         },
-        label
-      )))) : null);
+        items.map(([label, run, variant, itemDisabled]) => /* @__PURE__ */ __dshReact.createElement(
+          "button",
+          {
+            type: "button",
+            key: label,
+            role: "menuitem",
+            className: "jdg-menuItem",
+            "data-variant": variant,
+            disabled: itemDisabled === true,
+            onClick: () => {
+              setOpen(false);
+              if (itemDisabled === true) return;
+              run();
+            }
+          },
+          label
+        ))
+      )) : null);
     }
     function Status({ tone, text }) {
       return /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-status" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-dot", "data-dot": tone, "aria-hidden": "true" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-statusText" }, text));
@@ -699,6 +751,10 @@ window.__ModuleLoader__.load({
     .jdg-moreTrigger:disabled{opacity:.5;cursor:default}
     .jdg-menuScrim{position:fixed;inset:0;z-index:40}
     .jdg-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:41;min-width:104px;padding:4px;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-1,#fff);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);box-shadow:0 6px 20px rgba(0,0,0,.12)}
+    /* 走原生 popover 时：清掉 UA 的居中定位（否则菜单会被摆到视口正中），
+       并让关闭态真的不可见——作者声明的 display:flex 会盖掉 UA 的 display:none。 */
+    .jdg-menu[popover]{inset:auto;margin:0}
+    .jdg-menu[popover]:not(:popover-open){display:none}
     .jdg-menuItem{box-sizing:border-box;width:100%;text-align:left;border:0;background:0 0;border-radius:var(--dsw-radius-sm);padding:6px 10px;font-size:13px;line-height:18px;color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap}
     .jdg-menuItem:hover{background:var(--dsw-alias-interactive-bg-hover)}
     .jdg-menuItem[data-variant=danger]{color:var(--dsw-alias-state-error-primary,#d92d20)}
@@ -719,41 +775,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/styles/settings.css
-    var settings_default = `/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */
-    .ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}
-    /* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */
-    .ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}
-    .ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
-    .ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}
-    .ab-button[data-variant=outline],.jdg-button[data-variant=outline],.smp-button[data-variant=outline]{border-color:var(--dsw-alias-border-l3)}
-    .ab-button[data-variant=primary],.jdg-button[data-variant=primary],.smp-button[data-variant=primary]{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}
-    .ab-button[data-variant=primary]:hover:not(:disabled),.jdg-button[data-variant=primary]:hover:not(:disabled),.smp-button[data-variant=primary]:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}
-    .ab-button:disabled,.jdg-button:disabled,.smp-button:disabled{opacity:.4;cursor:not-allowed}
-    .jdg-filterRow,.smp-filterRow,.sk-filterRow{display:flex;align-items:center;gap:8px}
-    /* Search matches the built-in plugin inventory (36px, l4 stroke, icon at 12px, 34px right inset, focus ring). */
-    .jdg-search,.smp-search,.sk-search{flex:1 1 auto;min-width:140px;color:var(--dsw-alias-label-tertiary);align-items:center;display:flex;position:relative}
-    .jdg-searchIcon,.smp-searchIcon,.sk-searchIcon{position:absolute;left:12px;display:inline-flex;pointer-events:none}
-    .jdg-searchInput,.smp-searchInput,.sk-searchInput{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);padding:0 34px 0 36px;outline:none}
-    .jdg-searchInput::placeholder,.smp-searchInput::placeholder,.sk-searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}
-    .jdg-searchInput:focus-visible,.smp-searchInput:focus-visible,.sk-searchInput:focus-visible{border-color:var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)) 18%,transparent)}
-    .jdg-tabs,.smp-tabs{display:flex;gap:24px;border-bottom:.5px solid var(--dsw-alias-border-l2)}
-    .jdg-tab,.smp-tab{appearance:none;background:none;border:0;padding:0 2px 10px;font:inherit;font-size:14px;line-height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
-    .jdg-tab[data-active=true],.smp-tab[data-active=true]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-label-primary)}
-    .jdg-cards,.smp-cards{flex-direction:column;gap:14px;margin:0;padding:0;list-style:none;display:flex}
-    .jdg-card,.smp-card{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:4px;padding:12px 14px;min-width:0;display:flex}
-    .jdg-cardRow,.smp-cardRow{align-items:center;gap:10px;min-width:0;display:flex}
-    .jdg-cardIdentity,.smp-cardIdentity{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;min-width:0;overflow-wrap:anywhere}
-    .jdg-cardEnd,.smp-cardEnd{flex:none;align-items:center;gap:8px;display:inline-flex}
-    .jdg-cardDetails,.smp-cardDetails{border-top:.5px solid var(--dsw-alias-border-l2);padding:12px 0 0}
-    .jdg-card>.jdg-cardDetails:first-child,.smp-card>.smp-cardDetails:first-child{border-top:0;padding-top:0}
-    .jdg-formGrid,.smp-formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
-    /* 原生下拉在这套设置页里只有一种外观：启动动画与通知两个面板共用同一条规则，由
-     * settingsStyles() 按面板前缀各自裁剪。appearance:none 去掉平台自带箭头（macOS 会把它
-     * 紧贴右边框），改由 data-URI 自绘 14px chevron，距右边缘 10px。 */
-    .boot-select,.ntf-select{box-sizing:border-box;height:30px;max-width:100%;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md,8px);appearance:none;-webkit-appearance:none;padding:0 30px 0 10px;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:14px;text-overflow:ellipsis;cursor:pointer}
-    .boot-select:focus-visible,.ntf-select:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}
-    .boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}
-    `;
+    var settings_default = "/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */\n.ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}\n/* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */\n.ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}\n.ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}\n.ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}\n.ab-button[data-variant=outline],.jdg-button[data-variant=outline],.smp-button[data-variant=outline]{border-color:var(--dsw-alias-border-l3)}\n.ab-button[data-variant=primary],.jdg-button[data-variant=primary],.smp-button[data-variant=primary]{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}\n.ab-button[data-variant=primary]:hover:not(:disabled),.jdg-button[data-variant=primary]:hover:not(:disabled),.smp-button[data-variant=primary]:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}\n.ab-button:disabled,.jdg-button:disabled,.smp-button:disabled{opacity:.4;cursor:not-allowed}\n.jdg-filterRow,.smp-filterRow,.sk-filterRow{display:flex;align-items:center;gap:8px}\n/* Search matches the built-in plugin inventory (36px, l4 stroke, icon at 12px, 34px right inset, focus ring). */\n.jdg-search,.smp-search,.sk-search{flex:1 1 auto;min-width:140px;color:var(--dsw-alias-label-tertiary);align-items:center;display:flex;position:relative}\n.jdg-searchIcon,.smp-searchIcon,.sk-searchIcon{position:absolute;left:12px;display:inline-flex;pointer-events:none}\n.jdg-searchInput,.smp-searchInput,.sk-searchInput{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);padding:0 34px 0 36px;outline:none}\n.jdg-searchInput::placeholder,.smp-searchInput::placeholder,.sk-searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}\n.jdg-searchInput:focus-visible,.smp-searchInput:focus-visible,.sk-searchInput:focus-visible{border-color:var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)) 18%,transparent)}\n.jdg-tabs,.smp-tabs{display:flex;gap:24px;border-bottom:.5px solid var(--dsw-alias-border-l2)}\n.jdg-tab,.smp-tab{appearance:none;background:none;border:0;padding:0 2px 10px;font:inherit;font-size:14px;line-height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}\n/* Active tab: derived from `aria-selected` (what the a11y tree exposes); `[data-active]`\n * stays because older markup and pinned tests still write it. A selector list rather\n * than `:is()` on purpose — `tests/judgment/panel.test.mjs` pins the literal\n * `.jdg-tab[data-active=true]` selector. */\n.jdg-tab[data-active=true],.jdg-tab[aria-selected=true],.smp-tab[data-active=true],.smp-tab[aria-selected=true]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-label-primary)}\n.jdg-cards,.smp-cards{flex-direction:column;gap:14px;margin:0;padding:0;list-style:none;display:flex}\n.jdg-card,.smp-card{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:4px;padding:12px 14px;min-width:0;display:flex}\n.jdg-cardRow,.smp-cardRow{align-items:center;gap:10px;min-width:0;display:flex}\n.jdg-cardIdentity,.smp-cardIdentity{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;min-width:0;overflow-wrap:anywhere}\n.jdg-cardEnd,.smp-cardEnd{flex:none;align-items:center;gap:8px;display:inline-flex}\n.jdg-cardDetails,.smp-cardDetails{border-top:.5px solid var(--dsw-alias-border-l2);padding:12px 0 0}\n.jdg-card>.jdg-cardDetails:first-child,.smp-card>.smp-cardDetails:first-child{border-top:0;padding-top:0}\n.jdg-formGrid,.smp-formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}\n/* 原生下拉在这套设置页里只有一种外观：启动动画与通知两个面板共用同一条规则，由\n * settingsStyles() 按面板前缀各自裁剪。appearance:none 去掉平台自带箭头（macOS 会把它\n * 紧贴右边框），改由 data-URI 自绘 14px chevron，距右边缘 10px。 */\n.boot-select,.ntf-select{box-sizing:border-box;height:30px;max-width:100%;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md,8px);appearance:none;-webkit-appearance:none;padding:0 30px 0 10px;background-image:url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;background-size:14px;text-overflow:ellipsis;cursor:pointer}\n.boot-select:focus-visible,.ntf-select:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}\n.boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}\n/* 表单字段级校验（skills-mcp 的 serverForm / skillDialog）。\n * `:user-invalid` 是主力：浏览器自己知道「用户交互过、且 `required`/`pattern` 不满足」，\n * 所以不需要额外状态类。`[aria-invalid=true]` 是提交被拦下那一刻由 form.ts 的\n * syncAriaInvalid / showFieldIssues 写上的同一事实 —— 两条都留着，读屏读到的与眼睛\n * 看到的不会各说各话。选择器带 `.smp-field`，因为 panel.css 里的\n * `.smp-cardDetails .smp-input` 与单类选择器同权重、且在本文之后注入。 */\n.smp-fieldError{color:var(--dsw-alias-state-error-primary,#d92d20);font-size:12px;line-height:18px}\n.smp-field .smp-input:user-invalid,.smp-field .smp-textarea:user-invalid,\n.smp-field .smp-input[aria-invalid=true],.smp-field .smp-textarea[aria-invalid=true]{border-color:var(--dsw-alias-state-error-primary,#d92d20)}\n/* 文本框随内容长高、到上限再滚（`field-sizing` 在 Chromium 123+ 才有；不支持的宿主\n * 退回 `rows` 的固定高度，所以 `min-block-size` 与原来的 `min-height:84px` 一致）。\n * 正文这类字段以前写死 `rows={8}`：十行内容一开场就带滚动条，三行的请求头又占半屏。 */\n.smp-formGrid .smp-textarea{field-sizing:content;width:100%;height:auto;min-block-size:84px;max-block-size:260px}\n";
 
     // src/client/styles/settings.ts
     function settingsStyles(namespace) {
@@ -771,7 +793,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/ui/toast.css
-    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+    var toast_default = '/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n *\n * 两条路径共用同一套类名：\n * - 原生路径：栈是 `popover="manual"`（top layer），单条靠 `@starting-style` + `transition` 进出场；\n * - 退化路径（jsdom、没有 popover 的宿主）：就是改造前的固定定位栈 + 两个 `@keyframes`。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n/* display 只跟着「栈开着」走：popover 关闭时 UA 是 display:none，作者样式不能把它顶回来。 */\n.sk-toast-stack:not([popover]),\n.sk-toast-stack:popover-open {\n  display: flex;\n}\n\n/* popover 在 top layer 里，UA 会给 position:fixed + inset:0 + margin:auto + 边框/背景，\n   这里全部按原布局收回来，只保留 `top:40px / left:50%` 的居中胶囊位置。 */\n.sk-toast-stack[popover] {\n  inset: auto;\n  top: 40px;\n  left: 50%;\n  margin: 0;\n  padding: 0;\n  border: 0;\n  background: transparent;\n  color: inherit;\n  overflow: visible;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* 退化路径：没有 `:popover-open` 的宿主继续用关键帧，行为与改造前一致。 */\n@supports not (selector(:popover-open)) {\n  .sk-toast {\n    animation: sk-toast-in 0.16s ease-out;\n  }\n\n  .sk-toast--leaving {\n    animation: sk-toast-out 0.18s ease-in forwards;\n  }\n}\n\n/* 原生路径：进场由 `@starting-style` 给出起点，退场由 `--leaving` 的目标值给出终点。\n   `transition-behavior: allow-discrete` 必须是独立声明，并进 `transition` 简写会让整条声明失效。 */\n@supports (selector(:popover-open)) {\n  .sk-toast {\n    transition: opacity 0.16s ease-out, transform 0.16s ease-out;\n    transition-behavior: allow-discrete;\n  }\n\n  @starting-style {\n    .sk-toast {\n      opacity: 0;\n      transform: translateY(-6px);\n    }\n  }\n}\n\n.sk-toast--leaving {\n  opacity: 0;\n  transform: translateY(-4px);\n}\n\n/* 减弱动效：过渡与关键帧都不跑，节点靠 `toast.ts` 的兜底定时器收掉。 */\n@media (prefers-reduced-motion: reduce) {\n  .sk-toast,\n  .sk-toast--leaving {\n    animation: none;\n    transition: none;\n  }\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n';
 
     // src/client/ui/toast.ts
     var HOST_KEY = "__dshToolkitToast__";
@@ -787,9 +809,12 @@ window.__ModuleLoader__.load({
       if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
       const root = document.createElement("div");
       root.className = "sk-toast-stack";
-      root.setAttribute("aria-live", "polite");
+      root.setAttribute("role", "region");
+      root.setAttribute("aria-label", "通知");
+      const popover = typeof root.showPopover === "function";
+      if (popover) root.setAttribute("popover", "manual");
       document.body.appendChild(root);
-      const created = { root, entries: [] };
+      const created = { root, entries: [], popover, shown: false };
       scope[HOST_KEY] = created;
       return created;
     }
@@ -807,17 +832,50 @@ window.__ModuleLoader__.load({
     function clamp(text) {
       return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
     }
+    function openStack(host) {
+      if (!host.popover || host.shown) return;
+      try {
+        host.root.showPopover();
+        host.shown = true;
+      } catch {
+      }
+    }
+    function closeStack(host) {
+      if (!host.popover || !host.shown) return;
+      host.shown = false;
+      try {
+        host.root.hidePopover();
+      } catch {
+      }
+    }
     function dismiss(host, entry) {
       if (host.entries.indexOf(entry) === -1) return;
       host.entries = host.entries.filter((item) => item !== entry);
       if (entry.timer !== void 0) clearTimeout(entry.timer);
       entry.el.classList.add("sk-toast--leaving");
-      const remove = () => entry.el.remove();
-      const timeout = setTimeout(remove, EXIT_MS);
-      entry.el.addEventListener("animationend", () => {
+      let done = false;
+      function finish() {
+        if (done) return;
+        done = true;
         clearTimeout(timeout);
-        remove();
-      }, { once: true });
+        entry.el.removeEventListener("transitionend", onEnd);
+        entry.el.removeEventListener("animationend", onEnd);
+        entry.el.remove();
+        if (host.root.childElementCount === 0) closeStack(host);
+      }
+      function onEnd(event) {
+        if (event.target !== entry.el) return;
+        finish();
+      }
+      entry.el.addEventListener("transitionend", onEnd);
+      entry.el.addEventListener("animationend", onEnd);
+      const timeout = setTimeout(finish, EXIT_MS);
+      if (typeof entry.el.getAnimations === "function") {
+        try {
+          if (entry.el.getAnimations().length === 0) finish();
+        } catch {
+        }
+      }
     }
     function arm(host, entry, holdMs) {
       if (entry.timer !== void 0) clearTimeout(entry.timer);
@@ -856,6 +914,7 @@ window.__ModuleLoader__.load({
       body.textContent = message;
       el.appendChild(body);
       host.root.appendChild(el);
+      openStack(host);
       const entry = { tone, text: message, el, timer: void 0 };
       host.entries.push(entry);
       while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
@@ -1339,7 +1398,19 @@ window.__ModuleLoader__.load({
           title: "决策",
           subtitle: "结构化判断能力：一次调用 = 一份状态 + 一批命名问题 → 概率答案。它判断，消费者决定。"
         }
-      ), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-tabs" }, Object.entries(lists).map(([id, list]) => /* @__PURE__ */ __dshReact.createElement("button", { type: "button", key: id, className: "jdg-tab", "data-active": tab === id, onClick: () => selectTab(id) }, list.tab))), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-summary" }, active.summary), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-filterRow" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-search" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-searchIcon" }, /* @__PURE__ */ __dshReact.createElement(SearchIcon, null)), /* @__PURE__ */ __dshReact.createElement(
+      ), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-tabs", role: "tablist" }, Object.entries(lists).map(([id, list]) => /* @__PURE__ */ __dshReact.createElement(
+        "button",
+        {
+          type: "button",
+          key: id,
+          className: "jdg-tab",
+          role: "tab",
+          "aria-selected": tab === id,
+          "data-active": tab === id,
+          onClick: () => selectTab(id)
+        },
+        list.tab
+      ))), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-summary" }, active.summary), /* @__PURE__ */ __dshReact.createElement("div", { className: "jdg-filterRow" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-search" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "jdg-searchIcon" }, /* @__PURE__ */ __dshReact.createElement(SearchIcon, null)), /* @__PURE__ */ __dshReact.createElement(
         "input",
         {
           className: "jdg-searchInput",

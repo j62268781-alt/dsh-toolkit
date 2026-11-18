@@ -303,7 +303,7 @@ export async function runTask(goal, deps) {
         }
         const filledThisRun = steps.some((item) => item.reason === 'filled_from_inputs');
         const dataEntryGoal = /\b(fill|type|enter|choose|select|set)\b|输入|填写|选择/i.test(goal);
-        const lastFillStep = filledThisRun ? [...steps].reverse().find((item) => item.reason === 'filled_from_inputs')?.step : undefined;
+        const lastFillStep = filledThisRun ? steps.findLast((item) => item.reason === 'filled_from_inputs')?.step : undefined;
         const executedAfterFill = lastFillStep === undefined
             ? false
             : steps.some((item) => item.executed && item.step > lastFillStep && item.reason !== 'filled_from_inputs');
@@ -440,7 +440,7 @@ export async function runTask(goal, deps) {
             lastChange !== undefined &&
             (lastChange.url_changed === true || lastChange.added !== undefined || lastChange.removed !== undefined || lastChange.text_changed === true);
         const followUpPending = followUpNeeded && !followUpEvidence;
-        const lastExecutedStep = [...steps].reverse().find((item) => item.executed);
+        const lastExecutedStep = steps.findLast((item) => item.executed);
         const lastDescription = lastExecutedStep === undefined
             ? undefined
             : observedPage.candidates.find((candidate) => candidate.id === lastExecutedStep.action)?.description ??

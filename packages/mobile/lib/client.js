@@ -27,13 +27,22 @@ window.__ModuleLoader__.load({
     ));
 
     // src/client/http.ts
-    async function fetchJson(url, { json, ...options } = {}) {
+    var DEFAULT_TIMEOUT_MS = 15e3;
+    function withDeadline(timeoutMs, signal) {
+      if (!(timeoutMs > 0) || typeof AbortSignal.timeout !== "function") return signal;
+      const deadline = AbortSignal.timeout(timeoutMs);
+      if (signal === void 0) return deadline;
+      if (typeof AbortSignal.any !== "function") return signal;
+      return AbortSignal.any([signal, deadline]);
+    }
+    async function fetchJson(url, { json, timeoutMs = DEFAULT_TIMEOUT_MS, ...options } = {}) {
       const headers = new Headers(options.headers);
       if (json !== void 0) headers.set("content-type", "application/json");
       const response = await fetch(url, {
         credentials: "same-origin",
         cache: "no-store",
         ...options,
+        signal: withDeadline(timeoutMs, options.signal),
         headers: Object.fromEntries(headers),
         // `json` 意味着有请求体，而 fetch 默认 GET —— 浏览器在发请求前就抛
         // "Request with GET/HEAD method cannot have body"。调用方没写 method 时按 POST 补齐，
@@ -81,6 +90,7 @@ window.__ModuleLoader__.load({
     var REGRANT_MIN_INTERVAL_MS = 5e3;
     var REGRANT_COOLDOWN_MAX_MS = 6e4;
     var REGRANT_TICK_MS = 250;
+    var REGRANT_SETTLE_MS = REGRANT_DOWNSCALE_HOLD_MS + REGRANT_TICK_MS * 4;
     var REGRANT_STABLE_PX = 1;
     var DEVICE_WIDTH_FALLBACK = 1080;
     function newRegrantStreak() {
@@ -143,9 +153,91 @@ window.__ModuleLoader__.load({
 
     // src/modules/mobile/client/stream/canvas.ts
     var CHASSIS_INSET = 6;
+    var VISIBILITY_MARGIN = "200px";
+    function supportsContentVisibility() {
+      try {
+        return typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("content-visibility", "auto") === true;
+      } catch {
+        return false;
+      }
+    }
+    function intrinsicSizeHint(element) {
+      const width = typeof element.offsetWidth === "number" ? element.offsetWidth : 0;
+      const height = typeof element.offsetHeight === "number" ? element.offsetHeight : 0;
+      return width > 0 && height > 0 ? `auto ${width}px ${height}px` : "auto";
+    }
+    function watchCanvasVisibility(canvas, onChange) {
+      const doc = typeof document === "undefined" ? null : document;
+      const element = canvas !== null && canvas !== void 0 && typeof canvas.addEventListener === "function" && typeof canvas.style === "object" ? canvas : null;
+      if (element === null) return () => {
+      };
+      const signals = {
+        document: doc === null || doc.visibilityState !== "hidden",
+        intersect: true,
+        content: true
+      };
+      let visible = true;
+      let confirmed = false;
+      const sync = () => {
+        const next = signals.document && signals.intersect && signals.content;
+        if (next === visible) return;
+        visible = next;
+        onChange(next);
+      };
+      const disposers = [];
+      if (supportsContentVisibility()) {
+        element.style.contentVisibility = "auto";
+        element.style.containIntrinsicSize = intrinsicSizeHint(element);
+        disposers.push(() => {
+          element.style.contentVisibility = "";
+          element.style.containIntrinsicSize = "";
+        });
+      }
+      if ("oncontentvisibilityautostatechange" in element) {
+        const onState = (event) => {
+          if (typeof event?.skipped !== "boolean") return;
+          if (event.skipped === false) {
+            confirmed = true;
+            signals.content = true;
+          } else if (confirmed) {
+            signals.content = false;
+          }
+          sync();
+        };
+        element.addEventListener("contentvisibilityautostatechange", onState);
+        disposers.push(() => element.removeEventListener("contentvisibilityautostatechange", onState));
+      }
+      if (typeof IntersectionObserver === "function") {
+        const observer = new IntersectionObserver((entries) => {
+          const entry = entries[entries.length - 1];
+          if (entry === void 0) return;
+          signals.intersect = entry.isIntersecting === true;
+          if (signals.intersect) {
+            confirmed = true;
+            signals.content = true;
+          }
+          sync();
+        }, { rootMargin: VISIBILITY_MARGIN });
+        observer.observe(element);
+        disposers.push(() => observer.disconnect());
+      }
+      if (doc !== null && typeof doc.addEventListener === "function") {
+        const onDocumentVisibility = () => {
+          signals.document = doc.visibilityState !== "hidden";
+          sync();
+        };
+        doc.addEventListener("visibilitychange", onDocumentVisibility);
+        disposers.push(() => doc.removeEventListener("visibilitychange", onDocumentVisibility));
+      }
+      sync();
+      return () => {
+        for (const dispose of disposers.reverse()) dispose();
+      };
+    }
     function createCanvasRuntime() {
       const stageLayout = /* @__PURE__ */ new WeakMap();
       const mediaContexts = /* @__PURE__ */ new WeakMap();
+      const stageSubscribers = /* @__PURE__ */ new Set();
       let devicePixelWidth = 0;
       let panelCssWidth = 0;
       function maxMediaCssWidth(dpr) {
@@ -223,6 +315,21 @@ window.__ModuleLoader__.load({
         }
         return { width: cssWidth, height: cssHeight, downscale: frameWidth / bufferWidth };
       }
+      function watchStageResize(listener) {
+        if (typeof ResizeObserver === "undefined") return null;
+        stageSubscribers.add(listener);
+        return () => {
+          stageSubscribers.delete(listener);
+        };
+      }
+      function notifyStageResize() {
+        for (const listener of [...stageSubscribers]) {
+          try {
+            listener();
+          } catch {
+          }
+        }
+      }
       function watchStageSize(canvas) {
         const parent = canvas.parentElement;
         if (parent === null) return () => {
@@ -248,6 +355,7 @@ window.__ModuleLoader__.load({
           }
           layout.availWidth = entry.contentRect.width;
           layout.availHeight = entry.contentRect.height;
+          notifyStageResize();
         });
         observer.observe(stage);
         return () => {
@@ -270,6 +378,8 @@ window.__ModuleLoader__.load({
         measureStage,
         fitCanvasToFrame,
         watchStageSize,
+        watchStageResize,
+        watchCanvasVisibility,
         getMediaContext,
         getPanelCssWidth: () => panelCssWidth,
         setDevicePixelWidth(width) {
@@ -337,7 +447,7 @@ window.__ModuleLoader__.load({
     var VSYNC_SLACK_MS = 4;
     function createUseH264Canvas(React2, canvasRuntime) {
       const { useEffect } = React2;
-      const { fitCanvasToFrame, getMediaContext, watchStageSize } = canvasRuntime;
+      const { fitCanvasToFrame, getMediaContext, watchStageSize, watchCanvasVisibility: watchCanvasVisibility2 } = canvasRuntime;
       function useH264Canvas(streamUrl, canvasRef, onState, frameSizeRef) {
         useEffect(() => {
           if (streamUrl === null) return void 0;
@@ -355,6 +465,7 @@ window.__ModuleLoader__.load({
           };
           let decoder = null;
           let reader = null;
+          let attemptController = null;
           let stallTimer = null;
           let bytesReceived = 0;
           let endedCleanly = false;
@@ -369,6 +480,27 @@ window.__ModuleLoader__.load({
           let pendingFrame = null;
           let rafId = 0;
           let lastDrawAt = 0;
+          let paused = false;
+          let resumeWaiters = [];
+          const waitForResume = () => paused ? new Promise((resolve) => {
+            resumeWaiters.push(resolve);
+          }) : Promise.resolve();
+          const releaseResumeWaiters = () => {
+            const waiters = resumeWaiters;
+            resumeWaiters = [];
+            for (const resolve of waiters) resolve();
+          };
+          const setVisible = (visible) => {
+            if (cancelled || visible === !paused) return;
+            paused = !visible;
+            if (!paused) {
+              releaseResumeWaiters();
+              return;
+            }
+            needsKeyframe = true;
+            attemptController?.abort();
+            void cancelReader(reader);
+          };
           const report = (state, detail) => {
             if (!cancelled) onState(state, detail);
           };
@@ -401,7 +533,7 @@ window.__ModuleLoader__.load({
             }
           };
           const scheduleDraw = () => {
-            if (rafId !== 0 || cancelled) return;
+            if (rafId !== 0 || cancelled || paused) return;
             rafId = requestAnimationFrame(drawLatestFrame);
           };
           const buildDecoder = (codec) => {
@@ -444,16 +576,30 @@ window.__ModuleLoader__.load({
             activeCodec = codec;
           };
           const run = async () => {
+            if (paused) return;
             report("connecting");
             endedCleanly = false;
+            const attempt = new AbortController();
+            attemptController = attempt;
+            const relayAbort = () => attempt.abort();
+            controller.signal.addEventListener("abort", relayAbort, { once: true });
+            if (controller.signal.aborted) attempt.abort();
             let response;
             try {
-              response = await fetch(streamUrl, { cache: "no-store", signal: controller.signal });
+              response = await fetch(streamUrl, { cache: "no-store", signal: attempt.signal });
             } catch (error) {
+              if (cancelled || paused || attempt.signal.aborted) return;
               report("error", `取流失败：${error?.message ?? error}`);
               return;
+            } finally {
+              controller.signal.removeEventListener("abort", relayAbort);
+              if (attemptController === attempt) attemptController = null;
             }
             if (cancelled) {
+              await cancelReader(response.body);
+              return;
+            }
+            if (paused) {
               await cancelReader(response.body);
               return;
             }
@@ -472,7 +618,7 @@ window.__ModuleLoader__.load({
             const STALL_TIMEOUT_MS = 3e3;
             let lastByteAt = performance.now();
             stallTimer = setInterval(() => {
-              if (cancelled) return;
+              if (cancelled || paused) return;
               if (performance.now() - lastByteAt > STALL_TIMEOUT_MS) {
                 report("connecting", "画面卡住了，正在重连…");
                 void cancelReader(activeReader);
@@ -480,11 +626,12 @@ window.__ModuleLoader__.load({
             }, 500);
             try {
               for (; ; ) {
+                if (paused) break;
                 const { done, value } = await activeReader.read();
                 if (done && !cancelled) {
                   endedCleanly = true;
                 }
-                if (cancelled || done) break;
+                if (cancelled || done || paused) break;
                 lastByteAt = performance.now();
                 bytesReceived += value?.byteLength ?? 0;
                 const { units, rest } = splitAnnexB(carry, value);
@@ -540,7 +687,7 @@ window.__ModuleLoader__.load({
                 }
               }
             } catch (error) {
-              if (!cancelled) report("error", `读取流失败：${error?.message ?? error}`);
+              if (!cancelled && !paused && !attempt.signal.aborted) report("error", `读取流失败：${error?.message ?? error}`);
             } finally {
               if (stallTimer !== null) {
                 clearInterval(stallTimer);
@@ -560,9 +707,15 @@ window.__ModuleLoader__.load({
           let reconnectDelay = RECONNECT_BASE_MS;
           const runWithReconnect = async () => {
             for (; ; ) {
+              if (cancelled) return;
+              if (paused) {
+                await waitForResume();
+                if (cancelled) return;
+              }
               const before = bytesReceived;
               await run();
               if (cancelled) return;
+              if (paused) continue;
               const healthy = bytesReceived > before;
               if (healthy) reconnectDelay = RECONNECT_BASE_MS;
               const waitMs = healthy && endedCleanly ? RECONNECT_FAST_MS : reconnectDelay;
@@ -593,12 +746,17 @@ window.__ModuleLoader__.load({
           const canvasElement = canvasRef.current;
           const unwatchStage = canvasElement === null ? () => {
           } : watchStageSize(canvasElement);
+          const unwatchVisibility = typeof watchCanvasVisibility2 === "function" ? watchCanvasVisibility2(canvasElement, setVisible) : () => {
+          };
           void runWithReconnect();
           return () => {
             cancelled = true;
             controller.abort();
+            attemptController?.abort();
             finishReconnect?.();
+            releaseResumeWaiters();
             unwatchStage();
+            unwatchVisibility();
             if (rafId !== 0) {
               cancelAnimationFrame(rafId);
               rafId = 0;
@@ -779,6 +937,12 @@ window.__ModuleLoader__.load({
         return entries.map(([kind, list]) => h("optgroup", { key: kind, label: kind }, list.map((d) => h("option", { key: d.id, value: d.id }, deviceOptionText(d, false)))));
       }
       return renderDeviceOptions;
+    }
+
+    // src/client/ime.ts
+    function isComposingEvent(event) {
+      const native = event?.nativeEvent ?? event;
+      return native?.isComposing === true || native?.keyCode === 229;
     }
 
     // src/modules/mobile/client/components/stream-view.tsx
@@ -966,6 +1130,7 @@ window.__ModuleLoader__.load({
         );
         const keyboardHandlers = interactive ? {
           onKeyDown: (event) => {
+            if (isComposingEvent(event)) return;
             if (event.metaKey || event.ctrlKey) {
               const probe = translateKey(event);
               const EDIT_KEYS = /* @__PURE__ */ new Set(["a", "c", "v", "x", "z", "ctrl+a", "ctrl+c", "ctrl+v", "ctrl+x", "ctrl+z", "cmd+a", "cmd+c", "cmd+v", "cmd+x", "cmd+z"]);
@@ -1070,12 +1235,19 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/poll.ts
-    function startPolling(task, { intervalMs, onError = () => {
+    function hasDocument() {
+      return typeof document !== "undefined" && typeof document.addEventListener === "function";
+    }
+    function pageHidden() {
+      return typeof document !== "undefined" && document.visibilityState === "hidden";
+    }
+    function startPolling(task, { intervalMs, pauseWhenHidden = false, onError = () => {
     } }) {
       let stopped = false;
       let timer;
       let pending;
       let controller;
+      const pauses = pauseWhenHidden && hasDocument();
       const delay = () => typeof intervalMs === "function" ? intervalMs() : intervalMs;
       function refresh() {
         if (stopped) return Promise.resolve();
@@ -1087,10 +1259,20 @@ window.__ModuleLoader__.load({
           if (!stopped && !active.signal.aborted) onError(error);
         }).finally(() => {
           pending = void 0;
-          if (!stopped) timer = setTimeout(refresh, delay());
+          if (!stopped && !(pauses && pageHidden())) timer = setTimeout(refresh, delay());
         });
         return pending;
       }
+      const onVisibilityChange = () => {
+        if (stopped) return;
+        if (pageHidden()) {
+          clearTimeout(timer);
+          timer = void 0;
+          return;
+        }
+        void refresh();
+      };
+      if (pauses) document.addEventListener("visibilitychange", onVisibilityChange);
       void refresh();
       return {
         refresh,
@@ -1098,12 +1280,13 @@ window.__ModuleLoader__.load({
           stopped = true;
           clearTimeout(timer);
           controller?.abort();
+          if (pauses) document.removeEventListener("visibilitychange", onVisibilityChange);
         }
       };
     }
 
     // src/client/ui/toast.css
-    var toast_default = "/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n  animation: sk-toast-in 0.16s ease-out;\n}\n\n.sk-toast--leaving {\n  animation: sk-toast-out 0.18s ease-in forwards;\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n";
+    var toast_default = '/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n *\n * 两条路径共用同一套类名：\n * - 原生路径：栈是 `popover="manual"`（top layer），单条靠 `@starting-style` + `transition` 进出场；\n * - 退化路径（jsdom、没有 popover 的宿主）：就是改造前的固定定位栈 + 两个 `@keyframes`。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n/* display 只跟着「栈开着」走：popover 关闭时 UA 是 display:none，作者样式不能把它顶回来。 */\n.sk-toast-stack:not([popover]),\n.sk-toast-stack:popover-open {\n  display: flex;\n}\n\n/* popover 在 top layer 里，UA 会给 position:fixed + inset:0 + margin:auto + 边框/背景，\n   这里全部按原布局收回来，只保留 `top:40px / left:50%` 的居中胶囊位置。 */\n.sk-toast-stack[popover] {\n  inset: auto;\n  top: 40px;\n  left: 50%;\n  margin: 0;\n  padding: 0;\n  border: 0;\n  background: transparent;\n  color: inherit;\n  overflow: visible;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* 退化路径：没有 `:popover-open` 的宿主继续用关键帧，行为与改造前一致。 */\n@supports not (selector(:popover-open)) {\n  .sk-toast {\n    animation: sk-toast-in 0.16s ease-out;\n  }\n\n  .sk-toast--leaving {\n    animation: sk-toast-out 0.18s ease-in forwards;\n  }\n}\n\n/* 原生路径：进场由 `@starting-style` 给出起点，退场由 `--leaving` 的目标值给出终点。\n   `transition-behavior: allow-discrete` 必须是独立声明，并进 `transition` 简写会让整条声明失效。 */\n@supports (selector(:popover-open)) {\n  .sk-toast {\n    transition: opacity 0.16s ease-out, transform 0.16s ease-out;\n    transition-behavior: allow-discrete;\n  }\n\n  @starting-style {\n    .sk-toast {\n      opacity: 0;\n      transform: translateY(-6px);\n    }\n  }\n}\n\n.sk-toast--leaving {\n  opacity: 0;\n  transform: translateY(-4px);\n}\n\n/* 减弱动效：过渡与关键帧都不跑，节点靠 `toast.ts` 的兜底定时器收掉。 */\n@media (prefers-reduced-motion: reduce) {\n  .sk-toast,\n  .sk-toast--leaving {\n    animation: none;\n    transition: none;\n  }\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n';
 
     // src/client/ui/stylesheet.ts
     function installStylesheet(css, id) {
@@ -1129,9 +1312,12 @@ window.__ModuleLoader__.load({
       if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
       const root = document.createElement("div");
       root.className = "sk-toast-stack";
-      root.setAttribute("aria-live", "polite");
+      root.setAttribute("role", "region");
+      root.setAttribute("aria-label", "通知");
+      const popover = typeof root.showPopover === "function";
+      if (popover) root.setAttribute("popover", "manual");
       document.body.appendChild(root);
-      const created = { root, entries: [] };
+      const created = { root, entries: [], popover, shown: false };
       scope[HOST_KEY] = created;
       return created;
     }
@@ -1149,17 +1335,50 @@ window.__ModuleLoader__.load({
     function clamp(text) {
       return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
     }
+    function openStack(host) {
+      if (!host.popover || host.shown) return;
+      try {
+        host.root.showPopover();
+        host.shown = true;
+      } catch {
+      }
+    }
+    function closeStack(host) {
+      if (!host.popover || !host.shown) return;
+      host.shown = false;
+      try {
+        host.root.hidePopover();
+      } catch {
+      }
+    }
     function dismiss(host, entry) {
       if (host.entries.indexOf(entry) === -1) return;
       host.entries = host.entries.filter((item) => item !== entry);
       if (entry.timer !== void 0) clearTimeout(entry.timer);
       entry.el.classList.add("sk-toast--leaving");
-      const remove = () => entry.el.remove();
-      const timeout = setTimeout(remove, EXIT_MS);
-      entry.el.addEventListener("animationend", () => {
+      let done = false;
+      function finish() {
+        if (done) return;
+        done = true;
         clearTimeout(timeout);
-        remove();
-      }, { once: true });
+        entry.el.removeEventListener("transitionend", onEnd);
+        entry.el.removeEventListener("animationend", onEnd);
+        entry.el.remove();
+        if (host.root.childElementCount === 0) closeStack(host);
+      }
+      function onEnd(event) {
+        if (event.target !== entry.el) return;
+        finish();
+      }
+      entry.el.addEventListener("transitionend", onEnd);
+      entry.el.addEventListener("animationend", onEnd);
+      const timeout = setTimeout(finish, EXIT_MS);
+      if (typeof entry.el.getAnimations === "function") {
+        try {
+          if (entry.el.getAnimations().length === 0) finish();
+        } catch {
+        }
+      }
     }
     function arm(host, entry, holdMs) {
       if (entry.timer !== void 0) clearTimeout(entry.timer);
@@ -1198,6 +1417,7 @@ window.__ModuleLoader__.load({
       body.textContent = message;
       el.appendChild(body);
       host.root.appendChild(el);
+      openStack(host);
       const entry = { tone, text: message, el, timer: void 0 };
       host.entries.push(entry);
       while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
@@ -1211,12 +1431,13 @@ window.__ModuleLoader__.load({
     };
 
     // src/modules/mobile/client/panel.tsx
-    function createMobilePanel(React2, { primitives, api, CSS, canvasRuntime, StreamView, icons, renderDeviceOptions }) {
+    function createMobilePanel(React2, { primitives, api, CSS: CSS2, canvasRuntime, StreamView, icons, renderDeviceOptions }) {
       const h = React2.createElement;
       const { useState, useEffect, useRef, useCallback, useMemo } = React2;
       const { Button, Tooltip, IconChevronDownOutlineRegular } = primitives;
       const { IconHome, IconBack, IconRotate, IconRefresh, IconFrame, IconFrameNone } = icons;
-      const { measureStage, maxMediaCssWidth, getPanelCssWidth, setDevicePixelWidth } = canvasRuntime;
+      const { measureStage, maxMediaCssWidth, getPanelCssWidth, setDevicePixelWidth, watchStageResize } = canvasRuntime;
+      const BUSY_RECHECK_MS = REGRANT_TICK_MS * 4;
       function nextFrame() {
         return new Promise((resolve) => {
           if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
@@ -1248,6 +1469,7 @@ window.__ModuleLoader__.load({
         const busyRef = useRef(false);
         const fixedScaleRef = useRef(false);
         const lastNeedPxRef = useRef(0);
+        const checkSizeRef = useRef(null);
         const preferredStreamWidth = () => {
           const dpr = Math.min(window.devicePixelRatio || 1, 2);
           const panelCssWidth = getPanelCssWidth();
@@ -1334,10 +1556,22 @@ window.__ModuleLoader__.load({
         }, [grant]);
         useEffect(() => {
           if (activeId === null) return void 0;
-          const timer = setInterval(() => {
-            if (busyRef.current) return;
-            if (offlineRef.current) return;
+          let stopped = false;
+          let burstTimer = null;
+          let settleUntil = 0;
+          let eventDriven = false;
+          const check = () => {
+            if (burstTimer !== null) {
+              clearTimeout(burstTimer);
+              burstTimer = null;
+            }
+            if (stopped) return;
             const now = performance.now();
+            if (busyRef.current) {
+              if (eventDriven) burstTimer = setTimeout(check, BUSY_RECHECK_MS);
+              return;
+            }
+            if (offlineRef.current) return;
             const needPx = preferredStreamWidth();
             const prevPx = lastNeedPxRef.current;
             lastNeedPxRef.current = needPx;
@@ -1352,13 +1586,36 @@ window.__ModuleLoader__.load({
               lastAt: lastRegrantAtRef.current,
               cooldown: regrantCooldownRef.current
             })) {
+              const pending = regrantStreakRef.current.direction !== "none";
+              if (eventDriven && (pending || now < settleUntil)) burstTimer = setTimeout(check, REGRANT_TICK_MS);
               return;
             }
             regrantStreakRef.current = newRegrantStreak();
             lastRegrantAtRef.current = now;
             void grant(activeId, { regrant: true });
-          }, REGRANT_TICK_MS);
-          return () => clearInterval(timer);
+          };
+          const wake = () => {
+            settleUntil = performance.now() + REGRANT_SETTLE_MS;
+            check();
+          };
+          checkSizeRef.current = wake;
+          const unwatch = typeof watchStageResize === "function" ? watchStageResize(wake) : null;
+          if (unwatch === null) {
+            const timer = setInterval(wake, REGRANT_TICK_MS);
+            return () => {
+              stopped = true;
+              checkSizeRef.current = null;
+              clearInterval(timer);
+            };
+          }
+          eventDriven = true;
+          wake();
+          return () => {
+            stopped = true;
+            checkSizeRef.current = null;
+            if (burstTimer !== null) clearTimeout(burstTimer);
+            unwatch();
+          };
         }, [activeId, grant]);
         useEffect(() => {
           if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -1373,6 +1630,7 @@ window.__ModuleLoader__.load({
             onChange = () => {
               regrantStreakRef.current = newRegrantStreak();
               watch();
+              checkSizeRef.current?.();
             };
             if (typeof query.addEventListener === "function") query.addEventListener("change", onChange);
             else if (typeof query.addListener === "function") query.addListener(onChange);
@@ -1394,7 +1652,7 @@ window.__ModuleLoader__.load({
             if (Array.isArray(status2.devices)) rememberDevices(status2.devices);
             setAdb(status2.adb ?? null);
             setStatusSeen(true);
-          }, { intervalMs: 5e3 });
+          }, { intervalMs: 5e3, pauseWhenHidden: true });
           return () => poll.stop();
         }, []);
         const act = useCallback(
@@ -1484,7 +1742,7 @@ window.__ModuleLoader__.load({
         )));
         const status = h("div", { className: "mbm-status" }, booting ? h("span", null, h("i", { className: "mbm-dot", "data-on": "2" }), "正在启动设备…（首次可能要几分钟）") : h("span", null, h("i", { className: "mbm-dot", "data-on": streaming ? "1" : "0" }), streaming ? "实时" : "未串流"), active === null ? null : h("span", null, `${active.platform} · ${deviceKindLabel(active.type)} · ${active.version ?? "?"}`), format === "unknown" ? null : h("span", null, format === "h264" ? "H.264" : format === "mjpeg" ? "MJPEG" : format));
         const adbWarning = devices.length === 0 && adb !== null && adb.reason !== "ok" && adb.message ? h("div", { className: "mbm-adb" }, h("strong", null, "无法发现 Android 设备"), h("span", null, adb.message), adb.hint ? h("span", { className: "mbm-adbHint" }, adb.hint) : null, adb.path ? h("code", { className: "mbm-adbPath" }, `adb: ${adb.path}`) : null) : null;
-        return h("div", { className: "mbm-root", ref: rootRef }, h("style", null, CSS), toolbar, adbWarning, h(
+        return h("div", { className: "mbm-root", ref: rootRef }, h("style", null, CSS2), toolbar, adbWarning, h(
           StreamView,
           {
             key: activeId ?? "none",
@@ -1759,7 +2017,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/client/ui/components/settings-parts/style.css
-    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@media (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@media (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}\n/* 宫格里的可点选卡片 ------------------------------------------------------ */\n\n.sk-ui-option {\n  box-sizing: border-box;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  padding: 5px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 12px;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n  transition: border-color 0.14s ease, background-color 0.14s ease;\n}\n\n.sk-ui-option:hover:not(:disabled) {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n.sk-ui-option[data-selected="true"] {\n  border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n}\n\n.sk-ui-option:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  outline-offset: 3px;\n}\n\n.sk-ui-option:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n.sk-ui-option__media {\n  position: relative;\n  box-sizing: border-box;\n  display: grid;\n  place-items: center;\n  width: 100%;\n  height: 100px;\n  overflow: hidden;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-ui-option__caption {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding: 10px 7px 8px;\n}\n\n.sk-ui-option__name {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 5px;\n  font-size: 13px;\n  line-height: 18px;\n  font-weight: 500;\n  color: inherit;\n}\n\n.sk-ui-option__badge {\n  flex: none;\n  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  font-size: 10px;\n  line-height: 16px;\n  font-weight: 400;\n  white-space: nowrap;\n}\n\n.sk-ui-option__hint {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 16px;\n}\n\n@media (max-width: 620px) {\n  .sk-ui-option__media {\n    height: 82px;\n  }\n\n  .sk-ui-option__caption {\n    padding: 8px 3px;\n  }\n\n  .sk-ui-option__name {\n    align-items: flex-start;\n    flex-direction: column;\n  }\n\n  .sk-ui-option__badge {\n    font-size: 9px;\n  }\n\n  .sk-ui-option__hint {\n    font-size: 10px;\n  }\n}\n\n/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。 */\n@media (max-width: 420px) {\n  .sk-ui-option {\n    flex-direction: row;\n    align-items: center;\n    gap: 8px;\n  }\n\n  .sk-ui-option__media {\n    flex: none;\n    width: 96px;\n    height: 72px;\n  }\n\n  .sk-ui-option__name {\n    flex-direction: row;\n    gap: 8px;\n  }\n\n  .sk-ui-option__caption {\n    flex: 1;\n    padding: 8px 0;\n  }\n}\n@media (prefers-reduced-motion: reduce) {\n  .sk-ui-option {\n    transition: none;\n  }\n\n  .sk-ui-chevron {\n    transition: none;\n  }\n}\n\n/* 展开/收起的箭头 ---------------------------------------------------------\n * 与 skills & mcp 卡片上的那枚完全同款：16px、1.4 描边、收起时转 -90° 指向右。\n * 各面板只负责 `open`，方向与配色留在这里，避免九处各写一套。 */\n.sk-ui-chevron {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  transition: transform 0.14s ease-in-out;\n}\n\n.sk-ui-chevron[data-open="false"] {\n  transform: rotate(-90deg);\n}\n\n/* 行内计数/来源小标签 -----------------------------------------------------\n * 样式照 skills & mcp 的「全局 / 项目」标签：999px 药丸、11px、浅底、\n * 文字用二级灰——它是佐证，不该和标题抢视觉重量。 */\n.sk-ui-tag {\n  display: inline-flex;\n  align-items: center;\n  border-radius: 999px;\n  padding: 1px 8px;\n  font-size: 11px;\n  line-height: 17px;\n  font-weight: 500;\n  white-space: nowrap;\n}\n\n.sk-ui-tag[data-tone="neutral"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-tag[data-tone="ok"] {\n  background: var(--dsw-alias-state-success-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-success-primary, #067647);\n}\n\n.sk-ui-tag[data-tone="warn"] {\n  background: var(--dsw-alias-state-warn-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-warn-primary, #b54708);\n}\n\n/* danger 无 tertiary 底色可用，改用描边拉开对比（与 skills & mcp 原来的处理一致）。 */\n.sk-ui-tag[data-tone="danger"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-state-error-primary, #d92d20);\n  box-shadow: inset 0 0 0 1px var(--dsw-alias-state-error-primary, #d92d20);\n}\n';
+    var style_default = '/* 页头与卡片组的公共量值，来源是内置插件页（18/600 标题、13px 三级色副标题、12px 间距）。\n * 这类样式只服务设置面板自身，按 AGENTS §8 不该全局注入；但九个面板都要用同一份，\n * 由 `installSettingsParts` 在 client 根只插一次 <style data-plugin="dsh-toolkit-settings-parts">。 */\n\n.sk-ui-pageHead {\n  box-sizing: border-box;\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-pageHeadText {\n  min-width: 0;\n}\n\n.sk-ui-pageTitle {\n  margin: 0;\n  font-size: 18px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-pageIntro {\n  margin: 12px 0 0;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-ui-cardSection {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n}\n\n.sk-ui-cardTitleRow {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  min-width: 0;\n}\n\n.sk-ui-cardTitle {\n  margin: 0;\n  font-size: 14px;\n  font-weight: 500;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-ui-cardHint {\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-card {\n  min-width: 0;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 12px;\n  padding: 0 16px;\n}\n\n.sk-ui-row {\n  box-sizing: border-box;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 24px;\n  padding: 16px 0;\n}\n\n.sk-ui-row + .sk-ui-row {\n  border-top: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-ui-rowText {\n  min-width: 0;\n  flex: 1 1 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.sk-ui-rowTitle {\n  font-size: 14px;\n  font-weight: 400;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowDesc {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n.sk-ui-rowControl {\n  flex: none;\n  min-width: 0;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 55%;\n}\n\n.sk-ui-grid {\n  display: grid;\n  gap: var(--sk-ui-grid-gap, 12px);\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="2"] {\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n}\n\n.sk-ui-grid[data-columns="4"] {\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n}\n\n/* 面板内响应式：下面三条断点量的是**面板自己有多宽**，不是窗口有多宽 —— 设置面板在\n * 侧栏里打开、或被拉窄时，这两件事并不一样；`@media` 只看窗口，于是窄侧栏配宽窗口时\n * 该收的地方没收。\n *\n * 只声明 `inline-size`（不是 `size`）：这些盒子靠内容撑高度，`size` 容器会把高度也锁死，\n * 行与宫格就会互相裁切。宫格自己也是容器，因为宠物库弹窗是 `createPortal` 渲染的，\n * 它不在任何 `.sk-ui-card` 里 —— 靠卡片当容器的话，那里的选项卡片会永远量不到宽度。 */\n.sk-ui-cardSection {\n  container-type: inline-size;\n}\n\n.sk-ui-card {\n  container-type: inline-size;\n}\n\n.sk-ui-grid {\n  container-type: inline-size;\n}\n\n/* 宠物库：六个小方块一行（成员多、每格只有一个头像 + 名字）。 */\n.sk-ui-grid[data-columns="6"] {\n  grid-template-columns: repeat(6, minmax(0, 1fr));\n}\n\n@container (max-width: 720px) {\n  .sk-ui-row {\n    gap: 12px;\n  }\n\n  .sk-ui-rowControl {\n    max-width: 60%;\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(4, minmax(0, 1fr));\n  }\n}\n\n@container (max-width: 520px) {\n  .sk-ui-grid,\n  .sk-ui-grid[data-columns="4"] {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="6"] {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }\n\n  .sk-ui-grid[data-columns="2"] {\n    grid-template-columns: 1fr;\n  }\n}\n/* 宫格里的可点选卡片 ------------------------------------------------------ */\n\n.sk-ui-option {\n  box-sizing: border-box;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  padding: 5px;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 12px;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n  transition: border-color 0.14s ease, background-color 0.14s ease;\n}\n\n.sk-ui-option:hover:not(:disabled) {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n.sk-ui-option[data-selected="true"] {\n  border-color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n}\n\n.sk-ui-option:focus-visible {\n  outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  outline-offset: 3px;\n}\n\n.sk-ui-option:disabled {\n  opacity: 0.5;\n  cursor: not-allowed;\n}\n\n.sk-ui-option__media {\n  position: relative;\n  box-sizing: border-box;\n  display: grid;\n  place-items: center;\n  width: 100%;\n  height: 100px;\n  overflow: hidden;\n  border: 1px solid var(--dsw-alias-border-l2);\n  border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-ui-option__caption {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding: 10px 7px 8px;\n}\n\n.sk-ui-option__name {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 5px;\n  font-size: 13px;\n  line-height: 18px;\n  font-weight: 500;\n  color: inherit;\n}\n\n.sk-ui-option__badge {\n  flex: none;\n  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #4d6bfe);\n  font-size: 10px;\n  line-height: 16px;\n  font-weight: 400;\n  white-space: nowrap;\n}\n\n.sk-ui-option__hint {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 16px;\n}\n\n@container (max-width: 620px) {\n  .sk-ui-option__media {\n    height: 82px;\n  }\n\n  .sk-ui-option__caption {\n    padding: 8px 3px;\n  }\n\n  .sk-ui-option__name {\n    align-items: flex-start;\n    flex-direction: column;\n  }\n\n  .sk-ui-option__badge {\n    font-size: 9px;\n  }\n\n  .sk-ui-option__hint {\n    font-size: 10px;\n  }\n}\n\n/* 窄到一行放不下时，图区改成左侧缩略图，文字在右。\n *\n * 这一档**故意留在 `@media`**：它换掉的是卡片的方向（竖排 → 横排），而横排卡片的最小\n * 宽度比宫格在 420 时仍然保留的 2–3 列大得多 —— 用窗口宽度判断时，窗口真窄到 420 的\n * 场景里宫格也只剩 2 列，凑合能放；改成按面板宽度判断后，「宽窗口 + 窄面板」（宠物库\n * 那种可缩放弹窗、被压缩的设置容器）会让 3 列横排卡片互相压住。实测见\n * `.cache/x/e-a11y-after.png` 与 `.cache/x/n-before.png` 的对比。 */\n@media (max-width: 420px) {\n  .sk-ui-option {\n    flex-direction: row;\n    align-items: center;\n    gap: 8px;\n  }\n\n  .sk-ui-option__media {\n    flex: none;\n    width: 96px;\n    height: 72px;\n  }\n\n  .sk-ui-option__name {\n    flex-direction: row;\n    gap: 8px;\n  }\n\n  .sk-ui-option__caption {\n    flex: 1;\n    padding: 8px 0;\n  }\n}\n@media (prefers-reduced-motion: reduce) {\n  .sk-ui-option {\n    transition: none;\n  }\n\n  .sk-ui-chevron {\n    transition: none;\n  }\n}\n\n/* 展开/收起的箭头 ---------------------------------------------------------\n * 与 skills & mcp 卡片上的那枚完全同款：16px、1.4 描边、收起时转 -90° 指向右。\n * 各面板只负责 `open`，方向与配色留在这里，避免九处各写一套。 */\n.sk-ui-chevron {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  transition: transform 0.14s ease-in-out;\n}\n\n.sk-ui-chevron[data-open="false"] {\n  transform: rotate(-90deg);\n}\n\n/* 行内计数/来源小标签 -----------------------------------------------------\n * 样式照 skills & mcp 的「全局 / 项目」标签：999px 药丸、11px、浅底、\n * 文字用二级灰——它是佐证，不该和标题抢视觉重量。 */\n.sk-ui-tag {\n  display: inline-flex;\n  align-items: center;\n  border-radius: 999px;\n  padding: 1px 8px;\n  font-size: 11px;\n  line-height: 17px;\n  font-weight: 500;\n  white-space: nowrap;\n}\n\n.sk-ui-tag[data-tone="neutral"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-ui-tag[data-tone="ok"] {\n  background: var(--dsw-alias-state-success-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-success-primary, #067647);\n}\n\n.sk-ui-tag[data-tone="warn"] {\n  background: var(--dsw-alias-state-warn-tertiary, var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1)));\n  color: var(--dsw-alias-state-warn-primary, #b54708);\n}\n\n/* danger 无 tertiary 底色可用，改用描边拉开对比（与 skills & mcp 原来的处理一致）。 */\n.sk-ui-tag[data-tone="danger"] {\n  background: var(--dsw-alias-bg-module-platform, rgba(128, 128, 128, 0.1));\n  color: var(--dsw-alias-state-error-primary, #d92d20);\n  box-shadow: inset 0 0 0 1px var(--dsw-alias-state-error-primary, #d92d20);\n}\n';
 
     // src/client/ui/components/settings-parts/install.ts
     var SETTINGS_PARTS_ID = "dsh-toolkit-settings-parts";
@@ -1885,21 +2143,21 @@ window.__ModuleLoader__.load({
           });
         } catch (error) {
           if (signal?.aborted) throw error;
-          throw new Error(`连不上插件路由（${route}）：${error?.message ?? error}`);
+          throw new Error(`连不上插件路由（${route}）：${error?.message ?? error}`, { cause: error });
         }
         let payload;
         try {
           payload = await response.json();
         } catch (error) {
           if (signal?.aborted) throw error;
-          throw new Error(`路由 ${route} 返回了非 JSON：${error?.bodyPreview ?? error?.message ?? error}`);
+          throw new Error(`路由 ${route} 返回了非 JSON：${error?.bodyPreview ?? error?.message ?? error}`, { cause: error });
         }
         if (!response.ok || payload.ok === false) {
           throw new Error(payload.error ?? `路由 ${route} 失败（HTTP ${response.status}）`);
         }
         return payload;
       }
-      const CSS = '.mbm-root { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 8px; padding: 8px;\n  font-size: 12px; color: var(--dsw-alias-label-primary, #1f2329); }\n\n/* 设备下拉与动作按钮保持一行。 */\n.mbm-bar { display: flex; align-items: center; gap: 8px; }\n\n/* 原生下拉箭头关闭，自绘 chevron 保持左右视觉内边距。 */\n.mbm-selectWrap { position: relative; display: flex; flex: 1; min-width: 0; max-width: 220px; }\n.mbm-select { font: inherit; height: 28px; width: 100%; min-width: 0;\n  appearance: none; -webkit-appearance: none;\n  padding: 0 26px 0 8px; border-radius: var(--dsw-radius-sm, 6px);\n  border: 1px solid var(--dsw-alias-border-l2, #d0d5dd);\n  background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; cursor: pointer; }\n.mbm-select:disabled { opacity: .5; cursor: default; }\n\n.mbm-selectCaret { position: absolute; top: 50%; right: 6px; transform: translateY(-50%);\n  width: 16px; height: 16px; pointer-events: none;\n  color: var(--dsw-alias-label-tertiary, #98a2b3); }\n\n.mbm-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }\n\n/* 尺寸匹配宿主 sm Button；ghost 变体提供 hover 背景。 */\n.mbm-tool { width: 28px; padding: 0; color: var(--dsw-alias-label-secondary, #667085); }\n.mbm-tool:hover:not(:disabled) { color: var(--dsw-alias-label-primary, #1f2329); }\n.mbm-stage { position: relative; flex: 1; min-height: 120px; display: flex; align-items: center;\n  justify-content: center; overflow: hidden; border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-2, #f4f5f7);\n  border: 1px solid var(--dsw-alias-border-l2, #e4e7ec); }\n\n/* 只抵消底部根内边距；横向留白对称，2px padding 接住外伸侧键。 */\n.mbm-stage[data-frame="device"] {\n\n  margin: 0 0 -8px; padding: 2px; border: none; border-radius: 0;\n\n  background: transparent;\n}\n.mbm-stage[data-frame="frameless"] { border: none; background: transparent; }\n\n/* JS 按帧比例写入尺寸；flex:none 防止拉伸，max-* 保留未测量时的兜底。 */\n.mbm-media { display: block; flex: none; max-width: 100%; max-height: 100%; }\n\n.mbm-media:focus { outline: none; }\n.mbm-media:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary, #4d6bfe);\n  outline-offset: 2px; }\n.mbm-stage[data-frame="bezel"] .mbm-media { border-radius: 10px; }\n\n.mbm-stage[data-frame="device"] .mbm-media { border-radius: var(--mbm-device-radius, 14px); }\n\n/* 非 device 模式不生成外壳布局盒，保持 canvas 的百分比尺寸参照。 */\n.mbm-chassis { display: contents; }\n\n/* padding:5px + border:1px 与 stream/canvas.js 的 CHASSIS_INSET=6 同步。 */\n.mbm-stage[data-frame="device"] .mbm-chassis {\n  position: relative; display: inline-flex; flex: none; padding: 5px;\n  border: 1px solid rgba(255, 255, 255, .14);\n  border-radius: calc(var(--mbm-device-radius, 14px) + 6px);\n\n  background: linear-gradient(160deg, #1c1f24 0%, #121419 45%, #0a0b0e 100%);\n  box-shadow: 0 12px 28px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .35);\n}\n\n/* 首帧前只隐藏机身，保留布局尺寸。 */\n.mbm-stage[data-frame="device"] .mbm-chassis[data-media="off"] { opacity: 0; }\n\n/* 装饰节点不拦指针；坐标始终按 canvas 的矩形换算。 */\n.mbm-sideKey, .mbm-island, .mbm-punch { display: none; }\n\n.mbm-stage[data-frame="device"] .mbm-sideKey {\n  display: block; position: absolute; width: 3px; border-radius: 2px;\n  pointer-events: none;\n\n  background: linear-gradient(180deg, #565c66 0%, #3a3f47 55%, #262a30 100%);\n  box-shadow: 0 0 3px rgba(0, 0, 0, .7);\n}\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="power"] {\n  right: -2px; top: 22%; height: 7.5%; }\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="volumeUp"] {\n  left: -2px; top: 18%; height: 5.5%; }\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="volumeDown"] {\n  left: -2px; top: 26%; height: 5.5%; }\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="ios"] .mbm-island {\n  display: block; position: absolute; top: 7px; left: 50%;\n  transform: translateX(-50%); width: 30%; height: 4.3%;\n  min-height: 13px; max-height: 26px; border-radius: 999px;\n  background: #05060a; pointer-events: none;\n  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);\n}\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="ios"] .mbm-island::after {\n  content: ""; position: absolute; right: 12%; top: 50%;\n  transform: translateY(-50%); width: 4px; height: 4px; border-radius: 50%;\n  background: radial-gradient(circle at 35% 30%, #24406e, #05070c 70%); }\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="android"] .mbm-punch {\n  display: block; position: absolute; top: 9px; left: 50%;\n  transform: translateX(-50%); width: 4%; min-width: 9px; max-width: 16px;\n  aspect-ratio: 1 / 1; border-radius: 50%;\n  background: #05060a; pointer-events: none;\n  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); }\n.mbm-hint { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 6px;\n  align-items: center; justify-content: center; text-align: center; padding: 16px;\n  color: var(--dsw-alias-label-tertiary, #667085); line-height: 1.6; }\n.mbm-hint[data-overlay="1"] { background: rgba(16,17,20,.72); color: #fff; }\n\n/* 已有画面时提示贴底且不拦点击，单行省略避免遮住内容。 */\n.mbm-hint[data-floating="1"] {\n  inset: auto 8px 8px; display: block; padding: 5px 10px;\n  border-radius: 999px; background: rgba(16,17,20,.66); color: #fff;\n  font-size: 11px; line-height: 1.5; text-align: center;\n\n  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\n  pointer-events: none; backdrop-filter: blur(6px); }\n.mbm-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }\n.mbm-dot[data-on="1"] { background: #22c55e; }\n.mbm-dot[data-on="0"] { background: #9aa4b2; }\n\n/* 启动中使用琥珀色呼吸动画。 */\n.mbm-dot[data-on="2"] { background: #f59e0b; animation: mbm-pulse 1.2s ease-in-out infinite; }\n@keyframes mbm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }\n.mbm-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;\n  color: var(--dsw-alias-label-tertiary, #667085); font-size: 11px; }\n\n.mbm-adb { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px;\n  border-radius: var(--dsw-radius-sm, 6px); line-height: 1.6;\n  border: 1px solid var(--dsw-alias-state-warning-border, #f7d08a);\n  background: var(--dsw-alias-state-warning-bg, #fff8e6);\n  color: var(--dsw-alias-label-primary, #1f2329); }\n.mbm-adbHint { color: var(--dsw-alias-label-secondary, #667085); }\n.mbm-adbPath { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 10px; color: var(--dsw-alias-label-tertiary, #98a2b3);\n  word-break: break-all; }\n\n/* 宿主 tabTitle 已提供间距，这里只防止图标被压缩。 */\n.mbm-title-icon { flex: none; }\n';
+      const CSS2 = '.mbm-root { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 8px; padding: 8px;\n  font-size: 12px; color: var(--dsw-alias-label-primary, #1f2329); }\n\n/* 设备下拉与动作按钮保持一行。 */\n.mbm-bar { display: flex; align-items: center; gap: 8px; }\n\n/* 原生下拉箭头关闭，自绘 chevron 保持左右视觉内边距。 */\n.mbm-selectWrap { position: relative; display: flex; flex: 1; min-width: 0; max-width: 220px; }\n.mbm-select { font: inherit; height: 28px; width: 100%; min-width: 0;\n  appearance: none; -webkit-appearance: none;\n  padding: 0 26px 0 8px; border-radius: var(--dsw-radius-sm, 6px);\n  border: 1px solid var(--dsw-alias-border-l2, #d0d5dd);\n  background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; cursor: pointer; }\n.mbm-select:disabled { opacity: .5; cursor: default; }\n\n.mbm-selectCaret { position: absolute; top: 50%; right: 6px; transform: translateY(-50%);\n  width: 16px; height: 16px; pointer-events: none;\n  color: var(--dsw-alias-label-tertiary, #98a2b3); }\n\n.mbm-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }\n\n/* 尺寸匹配宿主 sm Button；ghost 变体提供 hover 背景。 */\n.mbm-tool { width: 28px; padding: 0; color: var(--dsw-alias-label-secondary, #667085); }\n.mbm-tool:hover:not(:disabled) { color: var(--dsw-alias-label-primary, #1f2329); }\n.mbm-stage { position: relative; flex: 1; min-height: 120px; display: flex; align-items: center;\n  justify-content: center; overflow: hidden; border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-2, #f4f5f7);\n  border: 1px solid var(--dsw-alias-border-l2, #e4e7ec); }\n\n/* 只抵消底部根内边距；横向留白对称，2px padding 接住外伸侧键。 */\n.mbm-stage[data-frame="device"] {\n\n  margin: 0 0 -8px; padding: 2px; border: none; border-radius: 0;\n\n  background: transparent;\n}\n.mbm-stage[data-frame="frameless"] { border: none; background: transparent; }\n\n/* JS 按帧比例写入尺寸；flex:none 防止拉伸，max-* 保留未测量时的兜底。 */\n.mbm-media { display: block; flex: none; max-width: 100%; max-height: 100%; }\n\n.mbm-media:focus { outline: none; }\n.mbm-media:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary, #4d6bfe);\n  outline-offset: 2px; }\n.mbm-stage[data-frame="bezel"] .mbm-media { border-radius: 10px; }\n\n.mbm-stage[data-frame="device"] .mbm-media { border-radius: var(--mbm-device-radius, 14px); }\n\n/* 非 device 模式不生成外壳布局盒，保持 canvas 的百分比尺寸参照。 */\n.mbm-chassis { display: contents; }\n\n/* padding:5px + border:1px 与 stream/canvas.js 的 CHASSIS_INSET=6 同步。 */\n.mbm-stage[data-frame="device"] .mbm-chassis {\n  position: relative; display: inline-flex; flex: none; padding: 5px;\n  border: 1px solid rgba(255, 255, 255, .14);\n  border-radius: calc(var(--mbm-device-radius, 14px) + 6px);\n\n  background: linear-gradient(160deg, #1c1f24 0%, #121419 45%, #0a0b0e 100%);\n  box-shadow: 0 12px 28px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .35);\n}\n\n/* 首帧前只隐藏机身，保留布局尺寸。 */\n.mbm-stage[data-frame="device"] .mbm-chassis[data-media="off"] { opacity: 0; }\n\n/* 装饰节点不拦指针；坐标始终按 canvas 的矩形换算。 */\n.mbm-sideKey, .mbm-island, .mbm-punch { display: none; }\n\n.mbm-stage[data-frame="device"] .mbm-sideKey {\n  display: block; position: absolute; width: 3px; border-radius: 2px;\n  pointer-events: none;\n\n  background: linear-gradient(180deg, #565c66 0%, #3a3f47 55%, #262a30 100%);\n  box-shadow: 0 0 3px rgba(0, 0, 0, .7);\n}\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="power"] {\n  right: -2px; top: 22%; height: 7.5%; }\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="volumeUp"] {\n  left: -2px; top: 18%; height: 5.5%; }\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="volumeDown"] {\n  left: -2px; top: 26%; height: 5.5%; }\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="ios"] .mbm-island {\n  display: block; position: absolute; top: 7px; left: 50%;\n  transform: translateX(-50%); width: 30%; height: 4.3%;\n  min-height: 13px; max-height: 26px; border-radius: 999px;\n  background: #05060a; pointer-events: none;\n  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);\n}\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="ios"] .mbm-island::after {\n  content: ""; position: absolute; right: 12%; top: 50%;\n  transform: translateY(-50%); width: 4px; height: 4px; border-radius: 50%;\n  background: radial-gradient(circle at 35% 30%, #24406e, #05070c 70%); }\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="android"] .mbm-punch {\n  display: block; position: absolute; top: 9px; left: 50%;\n  transform: translateX(-50%); width: 4%; min-width: 9px; max-width: 16px;\n  aspect-ratio: 1 / 1; border-radius: 50%;\n  background: #05060a; pointer-events: none;\n  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); }\n.mbm-hint { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 6px;\n  align-items: center; justify-content: center; text-align: center; padding: 16px;\n  color: var(--dsw-alias-label-tertiary, #667085); line-height: 1.6; }\n.mbm-hint[data-overlay="1"] { background: rgba(16,17,20,.72); color: #fff; }\n\n/* 已有画面时提示贴底且不拦点击，单行省略避免遮住内容。 */\n.mbm-hint[data-floating="1"] {\n  inset: auto 8px 8px; display: block; padding: 5px 10px;\n  border-radius: 999px; background: rgba(16,17,20,.66); color: #fff;\n  font-size: 11px; line-height: 1.5; text-align: center;\n\n  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\n  pointer-events: none; backdrop-filter: blur(6px); }\n.mbm-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }\n.mbm-dot[data-on="1"] { background: #22c55e; }\n.mbm-dot[data-on="0"] { background: #9aa4b2; }\n\n/* 启动中使用琥珀色呼吸动画。 */\n.mbm-dot[data-on="2"] { background: #f59e0b; animation: mbm-pulse 1.2s ease-in-out infinite; }\n@keyframes mbm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }\n.mbm-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;\n  color: var(--dsw-alias-label-tertiary, #667085); font-size: 11px; }\n\n.mbm-adb { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px;\n  border-radius: var(--dsw-radius-sm, 6px); line-height: 1.6;\n  border: 1px solid var(--dsw-alias-state-warning-border, #f7d08a);\n  background: var(--dsw-alias-state-warning-bg, #fff8e6);\n  color: var(--dsw-alias-label-primary, #1f2329); }\n.mbm-adbHint { color: var(--dsw-alias-label-secondary, #667085); }\n.mbm-adbPath { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 10px; color: var(--dsw-alias-label-tertiary, #98a2b3);\n  word-break: break-all; }\n\n/* 宿主 tabTitle 已提供间距，这里只防止图标被压缩。 */\n.mbm-title-icon { flex: none; }\n';
       const canvasRuntime = createCanvasRuntime();
       const { maxMediaCssWidth } = canvasRuntime;
       const icons = createIcons(React2);
@@ -1907,7 +2165,7 @@ window.__ModuleLoader__.load({
       const renderDeviceOptions = createDeviceOptions(React2);
       const useH264Canvas = createUseH264Canvas(React2, canvasRuntime);
       const StreamView = createStreamView(React2, { api, prefix: API_PREFIX, useH264Canvas });
-      const MobilePanel = createMobilePanel(React2, { primitives, api, CSS, canvasRuntime, StreamView, icons, renderDeviceOptions });
+      const MobilePanel = createMobilePanel(React2, { primitives, api, CSS: CSS2, canvasRuntime, StreamView, icons, renderDeviceOptions });
       const MobileSettings = createMobileSettings(React2, { primitives });
       function MobileTitle({ useTabInfo }) {
         const { tab } = useTabInfo();

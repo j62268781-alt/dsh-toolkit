@@ -17,6 +17,7 @@ const EXPECTED_INJECT = {
   'dsh-toolkit-remote-client': ['locale'],
   'dsh-toolkit-hooks-client': ['slots', 'locale'],
   'dsh-toolkit-git-client': ['slots', 'locale', 'configForms'],
+  'dsh-toolkit-monitor-client': ['slots', 'locale', 'sidebarRightTabs'],
 }
 const ALL_SERVICES = new Set([
   ...Object.values(EXPECTED_INJECT).flat(), 'sidebarRight', 'shortcuts', 'uiSession', 'uiConversation', 'uiWorkspace',
@@ -41,6 +42,11 @@ const IMMEDIATE_EFFECTS = new Set([
   'dsh-toolkit-git:settings',
   // composer 里的分支按钮：注册只是 slots.inject，弹层与样式在真正挂载时才要 DOM。
   'dsh-toolkit-git:branch-chip',
+  // 任务监控：字典、右栏 tab 类型 + keyed body、composer 触发按钮都只走注册面；
+  // 全局样式要 DOM，留给宿主。
+  'locale shell-kit.monitor',
+  'dsh-toolkit-monitor:monitor-tab',
+  'dsh-toolkit-monitor:monitor-trigger',
 ])
 
 async function loadClient() {
@@ -106,6 +112,7 @@ async function boot({ missing = [] } = {}) {
       if (namespace === 'shell-kit.archived') return (key) => ({ nav: '已归档的聊天', title: '已归档的聊天' }[key] ?? key)
       if (namespace === 'shell-kit.hooks') return (key) => ({ nav: '钩子', title: '钩子' }[key] ?? key)
       if (namespace === 'shell-kit.git') return (key) => ({ nav: 'Git', title: 'Git' }[key] ?? key)
+      if (namespace === 'shell-kit.monitor') return (key) => ({ tabTitle: '任务监控', trigger: '任务监控', guideTitle: '任务监控' }[key] ?? key)
       return (key) => key
     },
   }
@@ -140,9 +147,9 @@ async function boot({ missing = [] } = {}) {
     }
     const slots = {
       inject(name, run) {
-        // 设置页挂在 settings.section；Git 的分支按钮挂在 composer 的左侧工具行。
+        // 设置页挂在 settings.section；Git 的分支按钮挂在 composer 左侧，监控触发按钮挂在右侧。
         assert.ok(
-          ['settings.section', 'conversation.input.left'].includes(name),
+          ['settings.section', 'conversation.input.left', 'conversation.input.right'].includes(name),
           `unexpected slot ${name}`,
         )
         return run()
@@ -222,8 +229,8 @@ test('the real classic factory uses only Host seed modules and mounts twelve sep
 
 test('the unified bundle registers the original settings pages, Remote faces, and mobile tab', async () => {
   const result = await boot()
-  assert.equal(result.children.length, 11)
-  assert.equal(result.active.length, 11)
+  assert.equal(result.children.length, 12)
+  assert.equal(result.active.length, 12)
   assert.deepEqual(result.pending, [])
   assert.deepEqual(result.warnings, [])
   const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
@@ -314,10 +321,10 @@ test('the unified bundle registers the original settings pages, Remote faces, an
     assert.ok(result.trace.indexOf(`${plugin}:mount:${namespace}`) < result.trace.indexOf(`${plugin}:slot:${namespace}`), 'self-check Remote must mount before its settings page')
   }
 
-  assert.equal(result.tabTypes.length, 1)
+  assert.equal(result.tabTypes.length, 2)
   const branchSeats = result.registrations.filter(({ registration }) => registration.name === 'conversation.input.left')
   assert.deepEqual(branchSeats.map(({ registration }) => registration.id), ['dsh-toolkit.git.branch'])
-  const [mobile] = result.tabTypes
+  const [mobile, monitorTab] = result.tabTypes
   assert.equal(mobile.id, '@j62268781-alt/dsh-sidebar-mobile')
   assert.equal(mobile.kind, 'mobile')
   assert.equal(mobile.title(), '移动设备')
@@ -330,6 +337,18 @@ test('the unified bundle registers the original settings pages, Remote faces, an
     assert.equal(registration.key, mobile.id)
     assert.equal(typeof Component, 'function')
   }
+  // 任务监控：右栏 keyed body + composer 右座触发按钮，tab 类型带 guide 发现入口。
+  assert.equal(monitorTab.id, 'dsh-toolkit-monitor')
+  assert.equal(monitorTab.kind, 'toolkit-monitor')
+  assert.equal(monitorTab.title(), '任务监控')
+  assert.equal(monitorTab.multiple, false)
+  assert.equal(monitorTab.keepMounted, true)
+  assert.equal(monitorTab.guide[0].id, 'open')
+  const monitorSeats = result.registrations.filter(({ plugin }) => plugin === 'dsh-toolkit-monitor-client')
+  assert.deepEqual(monitorSeats.map(({ registration }) => registration.name), ['sidebar.right.pane.tab', 'conversation.input.right'])
+  assert.equal(monitorSeats[0].registration.key, monitorTab.id)
+  assert.equal(typeof monitorSeats[0].Component, 'function')
+  assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-monitor:stylesheet'))
   assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-theme:stylesheet'))
   assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-archived:stylesheet'))
   assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-notification:dictionary'))
@@ -341,9 +360,9 @@ test('missing archived session services leave theme, other pages, and the mobile
   const result = await boot({ missing: ['sessions'] })
   // pet 客户端现在也读 sessions（主视图切会话时上报已读），缺该服务时与其他会话相关插件一起等待。
   assert.deepEqual(result.pending, ['dsh-toolkit-archived-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-pet-client'])
-  assert.equal(result.active.length, 8)
+  assert.equal(result.active.length, 9)
   assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['boot', 'git', 'hooks', 'judgment', 'skills-mcp', 'theme'])
-  assert.equal(result.tabTypes.length, 1)
+  assert.equal(result.tabTypes.length, 2)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'dsh-toolkit-theme-client'), true)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'dsh-toolkit-archived-client'), false)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'dsh-toolkit-pet-client'), false)
@@ -356,23 +375,23 @@ test('nested Remote dependencies block only the client that declares them', asyn
   ]) {
     const result = await boot({ missing: [dependency] })
     assert.deepEqual(result.pending, [pending])
-    assert.equal(result.active.length, 10)
+    assert.equal(result.active.length, 11)
     const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
     assert.equal(sections.length, 8)
     assert.equal(sections.some(({ registration }) => registration.id === absentSection), false)
     assert.equal(sections.some(({ registration }) => registration.id === 'theme'), true)
-    assert.equal(result.tabTypes.length, 1)
+    assert.equal(result.tabTypes.length, 2)
   }
 })
 
 test('missing settings forms or mobile tab services do not suspend unrelated children', async () => {
   const withoutForms = await boot({ missing: ['configForms'] })
   assert.deepEqual(withoutForms.pending, ['dsh-toolkit-theme-client', 'dsh-toolkit-skills-mcp-client', 'dsh-toolkit-judgment-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-boot-client', 'dsh-toolkit-pet-client', 'dsh-toolkit-git-client'])
-  assert.deepEqual(withoutForms.active.sort(), ['dsh-toolkit-archived-client', 'dsh-toolkit-hooks-client', 'dsh-toolkit-mobile-client', 'dsh-toolkit-remote-client'])
-  assert.equal(withoutForms.tabTypes.length, 1)
+  assert.deepEqual(withoutForms.active.sort(), ['dsh-toolkit-archived-client', 'dsh-toolkit-hooks-client', 'dsh-toolkit-mobile-client', 'dsh-toolkit-monitor-client', 'dsh-toolkit-remote-client'])
+  assert.equal(withoutForms.tabTypes.length, 2)
 
   const withoutTabs = await boot({ missing: ['sidebarRightTabs'] })
-  assert.deepEqual(withoutTabs.pending, ['dsh-toolkit-mobile-client'])
+  assert.deepEqual(withoutTabs.pending, ['dsh-toolkit-mobile-client', 'dsh-toolkit-monitor-client'])
   assert.equal(withoutTabs.active.length, 10)
   assert.equal(withoutTabs.tabTypes.length, 0)
   assert.equal(withoutTabs.registrations.length, 10)
