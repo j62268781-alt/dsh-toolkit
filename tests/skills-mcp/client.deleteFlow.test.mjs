@@ -20,6 +20,7 @@ test('客户端删除流程：删除中不出现按钮边框，回执到达后�
     click(byClass('smp-button', '添加技能'))
     change(panel.byPlaceholder('例如 my-skill'), 'test-skills')
     change(panel.byPlaceholder('一句话说明何时使用它'), 'test-skills')
+    change(byClass('smp-textarea'), '# test-skills\n\n一句话说明。')
     click(byText('创建'))
     // 写入现在走 HTTP（`/skills`），不再排进 settings 队列 —— 队列只是回退通道。
     // 这里同时断言队列**没有**被写，否则又变成两条通道各写一次。
@@ -86,6 +87,7 @@ test('技能写入：路由返回 404 时报错，不回退设置队列', { skip
     click(panel.find((node) => String(node.props.className ?? '').includes('smp-tab') && textOf(node).startsWith('Skills')))
     click(byClass('smp-button', '添加技能'))
     change(panel.byPlaceholder('例如 my-skill'), 'fallback-skill')
+    change(byClass('smp-textarea'), '# fallback-skill\n')
     click(byText('创建'))
     await panel.settle()
     assert.equal(doc.skillRequest?.op ?? '', '', '不该再写设置队列')
