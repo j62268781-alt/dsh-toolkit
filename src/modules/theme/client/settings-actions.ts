@@ -79,13 +79,18 @@ export function installSettingsActions(panel) {
     if (focus) more.focus();
   };
   const enabledActions = (): HTMLButtonElement[] => [...menu.querySelectorAll('button')].filter((button) => !button.hidden && !button.disabled);
+  // popover 的开关状态不在 `hidden` 上：showPopover/hidePopover 只动 top layer，
+  // `hidden` 始终是 false。展开判据只认这一个函数，否则点「更多」永远走 close()、
+  // 菜单的 window 捕获监听器也会把每一次 Escape 都吞掉（返回按钮靠派发 Escape
+  // 关闭设置，于是跟着失效）。
+  const isOpen = () => CAN_POPOVER ? menu.matches(':popover-open') : !menu.hidden;
   const open = () => {
     if (CAN_POPOVER) showMenu(menu);
     else menu.hidden = false;
     more.setAttribute('aria-expanded', 'true');
     (enabledActions()[0] ?? more).focus();
   };
-  more.addEventListener('click', () => menu.hidden ? open() : close(true));
+  more.addEventListener('click', () => isOpen() ? close(true) : open());
   more.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowDown') { event.preventDefault(); open(); }
   });
@@ -109,7 +114,7 @@ export function installSettingsActions(panel) {
   });
   const onPointer = (event) => { if (!menu.contains(event.target) && !more.contains(event.target)) close(); };
   const onKey = (event) => {
-    if (menu.hidden) return;
+    if (!isOpen()) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopImmediatePropagation();
