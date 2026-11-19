@@ -31,8 +31,10 @@
   box-sizing: border-box;
 }
 
-/* 给第一个分区（环境信息）补出顶部留白；吸顶时这个 padding 会跟着滚走。 */
-.sk-task-monitor > :first-child {
+/* 给第一个分区（环境信息）补出顶部留白；吸顶时这个 padding 会跟着滚走。
+   用 nth-child(2) 而不是 first-child：组件把面板样式以 <style> 形式放在
+   根节点的第一个子元素，first-child 会命中那个 style 标签。 */
+.sk-task-monitor > :nth-child(2) {
   padding-top: 13px;
 }
 
