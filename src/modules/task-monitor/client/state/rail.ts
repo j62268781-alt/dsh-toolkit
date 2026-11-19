@@ -76,7 +76,7 @@ export function useRailChoice(sessionId: string | undefined): RailChoice {
 }
 
 /**
- * 会话列太窄时默认收起（用户没表过态时才生效）：卡片固定 220px，挤不下就不
+ * 会话列太窄时默认收起（用户没表过态时才生效）：卡片固定 230px，挤不下就不
  * 硬挤。1000px 与 surfaces/conversation-rail/style.css 的容器查询同值，改一处
  * 要同时改另一处。标题栏按钮始终保留——用户仍可手动展开覆盖这个默认。
  */

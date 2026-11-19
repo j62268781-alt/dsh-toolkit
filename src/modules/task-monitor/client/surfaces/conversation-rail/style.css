@@ -20,19 +20,19 @@
 }
 
 /*
- * 宽度取 220：比 Qoder 的 253 再收一档，给对话列和右侧 turn 索引条留位置，只做
- * 「会话旁边的一张卡片」，不跟消息列抢宽。
+ * 宽度取 230：比 Qoder 的 253 再收一档，与 Codex 主题的工作区列（250 → 230）
+ * 对齐，给对话列和右侧 turn 索引条留位置，只做「会话旁边的一张卡片」。
  * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），
  * 高度贴合内容（align-self: flex-start），内容过长时在卡内滚动。
  */
 .sk-task-monitor-side {
   display: flex;
-  flex: 0 0 220px;
+  flex: 0 0 230px;
   flex-direction: column;
   align-self: flex-start;
   min-height: 0;
-  min-width: 220px;
-  max-width: 220px;
+  min-width: 230px;
+  max-width: 230px;
   max-height: calc(100% - 20px);
   margin: 10px 10px 10px 4px;
   overflow: hidden;
