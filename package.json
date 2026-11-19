@@ -31,6 +31,7 @@
     "typecheck:modules": "node --max-old-space-size=2048 node_modules/typescript/bin/tsc -p tsconfig.build.json --noEmit",
     "typecheck:client": "node --max-old-space-size=2048 node_modules/typescript/bin/tsc -p tsconfig.client.json",
     "test": "node --max-old-space-size=2048 scripts/test.mjs",
+    "test:ui": "node --max-old-space-size=2048 scripts/test.mjs --only-ui",
     "check": "node --max-old-space-size=2048 scripts/check.mjs",
     "verify": "node --max-old-space-size=2048 scripts/build.mjs && node --max-old-space-size=2048 node_modules/typescript/bin/tsc --noEmit && node --max-old-space-size=2048 node_modules/typescript/bin/tsc -p tsconfig.client.json && node --max-old-space-size=2048 scripts/check.mjs && node --max-old-space-size=2048 scripts/test.mjs && node --max-old-space-size=2048 scripts/build.mjs --check",
     "build:packages": "node --max-old-space-size=2048 scripts/build-packages.mjs",

@@ -357,7 +357,10 @@ export async function runMobileCacheTests(test) {
   await test("Mobile status waits for completion and aborts late unmounted results", async () => {
     const { build } = await import("esbuild");
     const output = await build({ entryPoints: [fileURLToPath(new URL("../../src/modules/mobile/client/panel.tsx", import.meta.url))],
-      bundle: true, write: false, format: "esm", platform: "node", target: "es2022", jsxFactory: "h", jsxFragment: "Fragment", logLevel: "silent" });
+      bundle: true, write: false, format: "esm", platform: "node", target: "es2022", jsxFactory: "h", jsxFragment: "Fragment", logLevel: "silent",
+      // panel.tsx 经共享层（如 client/ui/toast）带进 .css，esbuild 默认不会把 CSS 打进
+      // data: URL 里的 ESM，必须显式声明 text loader。
+      loader: { ".css": "text" } });
     const { createMobilePanel } = await import(`data:text/javascript;base64,${Buffer.from(output.outputFiles[0].text).toString("base64")}`);
     const effects = [], writes = [], work = [], timers = clock();
     const restore = globals({ ...timers.values, window: {} });

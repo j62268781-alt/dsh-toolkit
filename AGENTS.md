@@ -84,7 +84,8 @@ esbuild 会把 `./x.js` 解析到 `x.ts`、`./x.jsx` 到 `x.tsx`；node:test 侧
 | `pnpm typecheck` / `pnpm typecheck:modules` | strict / loose 两档 tsc |
 | `pnpm typecheck:client` | client 侧 tsc（`tsconfig.client.json`，见 §2.3） |
 | `pnpm check` | 模块 / 包契约检查（client bundle 断言 + 未定义名字检查） |
-| `pnpm test` | `tests/<group>/*.test.mjs`（node:test，默认 4 路并发、单进程堆上限 1GB；`DSH_TEST_CONCURRENCY` / `DSH_TEST_HEAP_MB` 可调） |
+| `pnpm test` | 非 jsdom 的 `tests/<group>/*.test.mjs`（node:test，**默认串行**、单进程堆上限 1GB、单文件 RSS 上限 1.5GB；`DSH_TEST_CONCURRENCY` / `DSH_TEST_HEAP_MB` / `DSH_TEST_RSS_MB` 可调） |
+| `pnpm test:ui` | 只跑 jsdom/UI 文件（`import 'jsdom'` 的那些，约 30 个），同样串行 + RSS 上限；UI 验证优先用真实浏览器跑 `dsh web`，见 §10 |
 | `pnpm verify` | build → typecheck → typecheck:client → check → test → build:check |
 
 **最低验证线**：`pnpm build` + `pnpm check` + 相关测试；改了 `.ts`/`.tsx` 还要跑 `pnpm typecheck` 与
@@ -313,6 +314,14 @@ for (const surface of SURFACES) ctx.effect(() => surface.install(ctx, host), `ds
 ## 10. 测试
 
 - `tests/<group>/*.test.mjs`，runner 是 `node:test`，DOM 用 `jsdom`（`pretendToBeVisual: true`）。
+- **UI 用例单独跑**：`pnpm test:ui`。它们一个文件就要几百 MB（jsdom + React + esbuild），
+  `pnpm test` 默认跳过；验证真实交互优先起 `dsh web` 在浏览器里点。
+- **断言里不要直接 `assert.equal(<DOM 节点>, null)`**：失败时 Node 的 `inspectValue` 会以
+  `depth: 1000` / `sorted: true` 展开 jsdom 节点，顺着 DOM 上的 `__reactFiber$…` 走完整棵 React 树
+  （实测单次失败吃掉 5–6GB，把 16GB 机器连同 DSH 一起 OOM）。用 `assert.ok(node === null, msg)`。
+- **`vm.runInNewContext` 的沙箱要补齐浏览器全局**：新上下文只有 ECMAScript 内建，没有
+  `AbortSignal` / `AbortController` / `Headers` / `fetch`。`fetchJson` 现在给每个请求套
+  `AbortSignal.timeout()`，漏一个就表现为「请求没发出 + 对话框不关」。
 - 测试 import 源码时写 `.js` / `.jsx`（`jsx-hooks` 负责解析到 `.ts` / `.tsx`）；但**把路径当字符串**用的地方
   （esbuild `entryPoints`、`readFileSync`、`loadClientEntry`）必须写真实扩展名。
 - 断言要抓真问题：状态映射 / 降级路径 / 卸载清理 / 迟到响应，而不是只跑通 happy path。

@@ -45,8 +45,11 @@ async function boot(t, options = {}) {
   // client installs, so a reload test has to seed the transport before this point.
   let fetchImpl = options.fetch ?? (async () => ({ ok: true, status: 200, json: async () => ({ ok: true }) }))
   let spec
+  // 沙箱只补「浏览器有、vm 上下文没有」的那些全局：`fetchJson` 现在给每个请求套
+  // `AbortSignal.timeout()`，缺了它请求根本发不出去（表现为 posts=0 + 对话框不关）。
   vm.runInNewContext(await readFile(new URL('../../lib/modules/archived/client.js', import.meta.url), 'utf8'), {
     window: { __ModuleLoader__: { load(value) { spec = value } } }, document: dom.window.document, Headers,
+    AbortSignal, AbortController,
     fetch: (...args) => fetchImpl(...args),
   })
   const client = spec.factory((id) => {
@@ -111,6 +114,16 @@ async function boot(t, options = {}) {
     text: () => dom.window.document.body.textContent,
     dialog: () => dom.window.document.querySelector('[role="dialog"]'),
   }
+}
+
+/**
+ * 「对话框已关闭」不能写成 `assert.equal(app.dialog(), null)`：断言失败时 Node 的
+ * `inspectValue` 会以 depth:1000 / sorted:true 展开这个 jsdom 节点，顺着 DOM 上的
+ * `__reactFiber$…` 走完整棵 React 树并排序沿途拼出来的巨型字符串 —— 单次失败就能吃掉
+ * 5–6GB（实测把 16GB 机器连同 DSH 一起 OOM）。这里把节点换成布尔值再断言。
+ */
+function assertClosed(app, message) {
+  assert.ok(app.dialog() === null, message)
 }
 
 function seed(workspace, sessions) {
@@ -189,7 +202,7 @@ test('bulk delete sends one batch request, retries failures, and never touches w
   assert.match(app.dialog().textContent, /此操作会从本机移除全部已归档会话，之后不能从 dsh 恢复。/)
   assert.doesNotMatch(app.dialog().textContent, /工作区/)
   await app.click('取消')
-  assert.equal(app.dialog(), null)
+  assertClosed(app)
   assert.equal(app.calls.delete.length, 0)
 
   const batches = []
@@ -226,7 +239,7 @@ test('bulk delete sends one batch request, retries failures, and never touches w
     return { ok: true, status: 200, json: async () => ({ ok: true, results: sessionIds.map((sessionId) => ({ sessionId, statusCode: 200, ok: true, code: DELETION_CODE.deleted })) }) }
   })
   await app.click('永久删除')
-  assert.equal(app.dialog(), null)
+  assertClosed(app)
   assert.deepEqual(app.calls.delete, [])
   assert.equal(app.calls.unarchive, 4)
   assert.equal(app.calls.unpin, 4)
@@ -268,7 +281,7 @@ test('confirming a bulk delete closes the dialog at once and loads the button in
     assert.ok(confirm, 'confirmation button rendered')
     confirm.click()
   })
-  assert.equal(app.dialog(), null, 'the dialog closes before the host answers')
+  assertClosed(app, 'the dialog closes before the host answers')
 
   // The wait is carried by the bulk button: a ring plus aria-busy, never a page row.
   const document = app.dom.window.document
@@ -280,7 +293,7 @@ test('confirming a bulk delete closes the dialog at once and loads the button in
   assert.equal(removeAll.disabled, false, 'a working button is busy, not disabled')
 
   await act(async () => gates.shift()())
-  assert.equal(app.dialog(), null)
+  assertClosed(app)
   assert.equal(document.querySelector('.sk-arch__spinner'), null, 'the ring clears with the batch')
   assert.equal(document.querySelector('.sk-arch__removeAll').getAttribute('aria-busy'), null)
   assert.equal(lookups, 1, 'one lookup at startup, one after the batch')
@@ -423,7 +436,7 @@ test('archiving from the sidebar asks first and refuses silently when cancelled'
   assert.equal(buttons.find((node) => node.textContent === '取消').dataset.variant, 'outline')
   await app.click('取消')
   await assert.rejects(pending, /cancelled/)
-  assert.equal(app.dialog(), null)
+  assertClosed(app)
   assert.deepEqual(app.calls.archive, [], 'cancelling archives nothing')
 
   let confirmed
@@ -431,12 +444,12 @@ test('archiving from the sidebar asks first and refuses silently when cancelled'
   await app.click('归档')
   await confirmed
   assert.deepEqual(app.calls.archive, [{ sessionId: 'a2', options: undefined }])
-  assert.equal(app.dialog(), null)
+  assertClosed(app)
 
   // The host's own stop-and-archive dialog already asked; that path stays direct.
   await act(async () => { await app.ctx.workspaces.archiveSession('loose', { stopActivity: true }) })
   assert.deepEqual(app.calls.archive.at(-1), { sessionId: 'loose', options: { stopActivity: true } })
-  assert.equal(app.dialog(), null)
+  assertClosed(app)
 })
 
 test('disposing the page restores the wrapped archive command', async (t) => {
