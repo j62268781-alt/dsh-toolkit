@@ -318,14 +318,9 @@ window.__ModuleLoader__.load({
     function hiddenOf(entries, expanded) {
       return expanded ? 0 : Math.max(0, entries.length - INITIAL_VISIBLE);
     }
-    function timeLabel(timestamp) {
-      const date = new Date(timestamp);
-      const pad = (value) => String(value).padStart(2, "0");
-      return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-    }
 
     // src/modules/task-monitor/client/components/panel/style.css
-    var style_default = '/*\n * 任务监控右栏 body。只服务面板自身子树，随组件 <style> 注入（§8 判定）。\n * 四个分区各借一个色相做图标座与强调：紫=能力、绿=产出、蓝=网页、琥珀=来源；\n * 底色一律 color-mix 14% 透明叠在宿主面板上，深浅色主题都成立；文字/悬停/圆角/焦点环\n * 全部走宿主 --dsw-* token 并带 px 兜底。\n */\n\n.sk-task-monitor {\n  --skm-capability: #8f7bf9;\n  --skm-artifact: #3fa66a;\n  --skm-web: #4098e0;\n  --skm-source: #d9932f;\n  --skm-danger: #e5534b;\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-height: 0;\n  overflow-y: auto;\n  padding: 10px 12px 14px;\n  color: var(--dsw-alias-label-primary, inherit);\n  font-size: 12px;\n  line-height: 18px;\n  scrollbar-width: thin;\n  scrollbar-color: color-mix(in srgb, var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9)) 35%, transparent) transparent;\n}\n\n.sk-task-monitor,\n.sk-task-monitor * {\n  box-sizing: border-box;\n}\n\n/* 滚动条画成面板自己的语言：8px、圆头、琥珀来源色借一点给 thumb，hover 加深。 */\n.sk-task-monitor::-webkit-scrollbar {\n  width: 8px;\n}\n\n.sk-task-monitor::-webkit-scrollbar-track {\n  background: transparent;\n}\n\n.sk-task-monitor::-webkit-scrollbar-thumb {\n  border-radius: 8px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-source) 40%, transparent);\n}\n\n.sk-task-monitor::-webkit-scrollbar-thumb:hover {\n  background: color-mix(in srgb, var(--skm-source) 65%, transparent);\n}\n\n.sk-task-monitor__head {\n  position: sticky;\n  top: -10px;\n  z-index: 1;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  margin: 0 -12px;\n  padding: 10px 12px 6px;\n  background: color-mix(in srgb, var(--dsw-specific-input-major, var(--dsw-alias-bg-base, #fff)) 88%, transparent);\n  backdrop-filter: blur(6px);\n}\n\n.sk-task-monitor__title {\n  font-size: 13px;\n  font-weight: 600;\n  line-height: 20px;\n}\n\n.sk-task-monitor__headTools {\n  display: inline-flex;\n  align-items: center;\n  gap: 6px;\n}\n\n.sk-task-monitor__stamp {\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 11px;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__refresh {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  flex: none;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  cursor: pointer;\n  padding: 0;\n}\n\n.sk-task-monitor__refresh {\n  width: 24px;\n  height: 24px;\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__refresh:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-task-monitor__refresh:focus-visible,\n.sk-task-monitor__trigger:focus-visible,\n.sk-task-monitor__more:focus-visible,\n.sk-task-monitor__row:focus-visible {\n  outline: none;\n  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, rgba(80, 140, 255, 0.6));\n}\n\n.sk-task-monitor__refresh[data-spinning] > * {\n  animation: sk-task-monitor-spin 0.6s linear infinite;\n}\n\n/* 分区头：折叠按钮独占一行；来源区不再有「添加来源」入口。 */\n\n.sk-task-monitor__headRow {\n  display: flex;\n  align-items: center;\n  gap: 2px;\n  margin: 2px 0;\n}\n\n.sk-task-monitor__trigger {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  flex: 1;\n  min-width: 0;\n  height: 28px;\n  padding: 0 6px;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-weight: 600;\n  cursor: pointer;\n  text-align: left;\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__trigger:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-task-monitor__chevron {\n  display: inline-flex;\n  flex: none;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  transform: rotate(-90deg);\n  transition: transform 0.12s;\n}\n\n.sk-task-monitor__chevron[data-open] {\n  transform: rotate(0deg);\n}\n\n.sk-task-monitor__sectionIcon {\n  display: inline-flex;\n  flex: none;\n}\n\n.sk-task-monitor__section[data-kind="capability"] .sk-task-monitor__sectionIcon { color: var(--skm-capability); }\n.sk-task-monitor__section[data-kind="artifact"] .sk-task-monitor__sectionIcon { color: var(--skm-artifact); }\n.sk-task-monitor__section[data-kind="web"] .sk-task-monitor__sectionIcon { color: var(--skm-web); }\n.sk-task-monitor__section[data-kind="source"] .sk-task-monitor__sectionIcon { color: var(--skm-source); }\n.sk-task-monitor__section[data-kind="environment"] .sk-task-monitor__sectionIcon { color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9)); }\n\n.sk-task-monitor__sectionTitle {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-task-monitor__count {\n  margin-left: auto;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 10px;\n  font-weight: 500;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__body {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  padding: 0 2px 6px;\n}\n\n/* 条目行：24px 图标座 + 两行文本 + 右侧 meta；入场逐行 stagger（delay 由组件挂）。 */\n.sk-task-monitor__row {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n  padding: 4px 6px;\n  border-radius: var(--dsw-radius-sm, 6px);\n  animation: sk-task-monitor-rise 0.24s ease both;\n}\n\n.sk-task-monitor__row[data-clickable] {\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  /* 只有真能打开的行给 hover 反馈；环境信息是只读事实，不该显得可点。 */\n  .sk-task-monitor__row[data-clickable]:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n  }\n}\n\n.sk-task-monitor__seat {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  flex: none;\n  width: 24px;\n  height: 24px;\n  border-radius: 6px;\n  corner-shape: round;\n}\n\n.sk-task-monitor__row[data-kind="capability"] .sk-task-monitor__seat {\n  color: var(--skm-capability);\n  background: color-mix(in srgb, var(--skm-capability) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="artifact"] .sk-task-monitor__seat {\n  color: var(--skm-artifact);\n  background: color-mix(in srgb, var(--skm-artifact) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="web"] .sk-task-monitor__seat {\n  color: var(--skm-web);\n  background: color-mix(in srgb, var(--skm-web) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="source"] .sk-task-monitor__seat {\n  color: var(--skm-source);\n  background: color-mix(in srgb, var(--skm-source) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="environment"] .sk-task-monitor__seat {\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  background: color-mix(in srgb, var(--dsw-alias-label-secondary, #888) 12%, transparent);\n}\n\n.sk-task-monitor__txt {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-width: 0;\n}\n\n.sk-task-monitor__label {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-primary, inherit);\n}\n\n.sk-task-monitor__detail {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 11px;\n  line-height: 16px;\n}\n\n.sk-task-monitor__meta {\n  display: inline-flex;\n  align-items: center;\n  flex: none;\n}\n\n.sk-task-monitor__times {\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__failed {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-danger) 18%, transparent);\n  color: var(--skm-danger);\n  font-size: 10px;\n  font-weight: 700;\n}\n\n.sk-task-monitor__more {\n  align-self: flex-start;\n  margin: 2px 0 0 32px;\n  padding: 2px 6px;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-size: 11px;\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__more:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-task-monitor__empty {\n  margin: 0;\n  padding: 4px 8px 6px 32px;\n  color: var(--dsw-alias-label-dimmed, rgba(128, 128, 128, 0.6));\n  font-size: 11px;\n}\n\n/* 首屏骨架：三组微光条，读作「正在长出来」而不是空白。 */\n.sk-task-monitor__skeleton {\n  display: flex;\n  flex-direction: column;\n  gap: 14px;\n  padding: 10px 8px;\n}\n\n.sk-task-monitor__skSection {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.sk-task-monitor__skBar {\n  height: 10px;\n  border-radius: 5px;\n  corner-shape: round;\n  background: linear-gradient(90deg, rgba(128, 128, 128, 0.10), rgba(128, 128, 128, 0.22), rgba(128, 128, 128, 0.10));\n  background-size: 200% 100%;\n  animation: sk-task-monitor-shimmer 1.2s linear infinite;\n}\n\n.sk-task-monitor__skBar--title {\n  width: 40%;\n  height: 12px;\n}\n\n.sk-task-monitor__errorBox {\n  display: flex;\n  flex-direction: column;\n  align-items: flex-start;\n  gap: 8px;\n  margin: 8px 6px;\n  padding: 10px 12px;\n  border: 0.5px solid color-mix(in srgb, var(--skm-danger) 45%, transparent);\n  border-radius: 8px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-danger) 8%, transparent);\n}\n\n.sk-task-monitor__errorBox p {\n  margin: 0;\n  color: var(--dsw-alias-label-primary, inherit);\n  overflow-wrap: anywhere;\n}\n\n@keyframes sk-task-monitor-rise {\n  from {\n    opacity: 0;\n    transform: translateY(4px);\n  }\n  to {\n    opacity: 1;\n    transform: translateY(0);\n  }\n}\n\n@keyframes sk-task-monitor-spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n\n@keyframes sk-task-monitor-pulse {\n  0%, 100% {\n    box-shadow: 0 0 0 0 color-mix(in srgb, var(--skm-source) 45%, transparent);\n  }\n  50% {\n    box-shadow: 0 0 0 4px color-mix(in srgb, var(--skm-source) 0%, transparent);\n  }\n}\n\n@keyframes sk-task-monitor-shimmer {\n  from {\n    background-position: 200% 0;\n  }\n  to {\n    background-position: -200% 0;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .sk-task-monitor__row,\n  .sk-task-monitor__skBar,\n  .sk-task-monitor__refresh[data-spinning] > * {\n    animation: none;\n  }\n\n  .sk-task-monitor__chevron {\n    transition: none;\n  }\n}';
+    var style_default = '/*\n * 任务监控右栏 body。只服务面板自身子树，随组件 <style> 注入（§8 判定）。\n * 四个分区各借一个色相做图标座与强调：紫=能力、绿=产出、蓝=网页、琥珀=来源；\n * 底色一律 color-mix 14% 透明叠在宿主面板上，深浅色主题都成立；文字/悬停/圆角/焦点环\n * 全部走宿主 --dsw-* token 并带 px 兜底。\n */\n\n.sk-task-monitor {\n  --skm-capability: #8f7bf9;\n  --skm-artifact: #3fa66a;\n  --skm-web: #4098e0;\n  --skm-source: #d9932f;\n  --skm-danger: #e5534b;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  height: auto;\n  min-height: 0;\n  overflow-y: auto;\n  padding: 10px 12px 14px;\n  color: var(--dsw-alias-label-primary, inherit);\n  font-size: 12px;\n  line-height: 18px;\n  scrollbar-width: thin;\n  scrollbar-color: color-mix(in srgb, var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9)) 35%, transparent) transparent;\n}\n\n.sk-task-monitor,\n.sk-task-monitor * {\n  box-sizing: border-box;\n}\n\n/* 滚动条画成面板自己的语言：8px、圆头、琥珀来源色借一点给 thumb，hover 加深。 */\n.sk-task-monitor::-webkit-scrollbar {\n  width: 8px;\n}\n\n.sk-task-monitor::-webkit-scrollbar-track {\n  background: transparent;\n}\n\n.sk-task-monitor::-webkit-scrollbar-thumb {\n  border-radius: 8px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-source) 40%, transparent);\n}\n\n.sk-task-monitor::-webkit-scrollbar-thumb:hover {\n  background: color-mix(in srgb, var(--skm-source) 65%, transparent);\n}\n\n/* 分区头：原生 <details>/<summary>；内容高度用 ::details-content + interpolate-size 过渡。 */\n\n.sk-task-monitor__section {\n  interpolate-size: allow-keywords;\n}\n\n.sk-task-monitor__section::details-content {\n  block-size: 0;\n  overflow: clip;\n  contain: layout;\n  transition: block-size 0.24s ease, content-visibility 0.24s ease;\n  transition-behavior: allow-discrete;\n}\n\n.sk-task-monitor__section[open]::details-content {\n  block-size: auto;\n}\n\n.sk-task-monitor__trigger {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  min-width: 0;\n  height: 28px;\n  padding: 0 6px;\n  list-style: none;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-weight: 600;\n  cursor: pointer;\n  text-align: left;\n}\n\n.sk-task-monitor__trigger::-webkit-details-marker {\n  display: none;\n}\n\n.sk-task-monitor__trigger:focus-visible,\n.sk-task-monitor__more:focus-visible,\n.sk-task-monitor__row:focus-visible {\n  outline: none;\n  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, rgba(80, 140, 255, 0.6));\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__trigger:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-task-monitor__chevron {\n  display: inline-flex;\n  flex: none;\n  margin-left: auto;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  transform: rotate(-90deg);\n  transition: transform 0.16s;\n}\n\n.sk-task-monitor__section[open] > .sk-task-monitor__trigger > .sk-task-monitor__chevron {\n  transform: rotate(0deg);\n}\n\n.sk-task-monitor__sectionTitle {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-task-monitor__tag {\n  flex: none;\n  min-width: 16px;\n  padding: 0 5px;\n  border-radius: 999px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--dsw-alias-label-secondary, #888) 14%, transparent);\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font-size: 10px;\n  font-weight: 500;\n  line-height: 16px;\n  text-align: center;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__body {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  padding: 0 2px 6px;\n}\n\n/* 条目行：24px 图标座 + 两行文本 + 右侧 meta；入场逐行 stagger（delay 由组件挂）。 */\n.sk-task-monitor__row {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n  padding: 4px 6px;\n  border-radius: var(--dsw-radius-sm, 6px);\n  animation: sk-task-monitor-rise 0.24s ease both;\n}\n\n.sk-task-monitor__row[data-clickable] {\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  /* 只有真能打开的行给 hover 反馈；环境信息是只读事实，不该显得可点。 */\n  .sk-task-monitor__row[data-clickable]:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n  }\n}\n\n.sk-task-monitor__seat {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  flex: none;\n  width: 24px;\n  height: 24px;\n  border-radius: 6px;\n  corner-shape: round;\n}\n\n.sk-task-monitor__row[data-kind="capability"] .sk-task-monitor__seat {\n  color: var(--skm-capability);\n  background: color-mix(in srgb, var(--skm-capability) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="artifact"] .sk-task-monitor__seat {\n  color: var(--skm-artifact);\n  background: color-mix(in srgb, var(--skm-artifact) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="web"] .sk-task-monitor__seat {\n  color: var(--skm-web);\n  background: color-mix(in srgb, var(--skm-web) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="source"] .sk-task-monitor__seat {\n  color: var(--skm-source);\n  background: color-mix(in srgb, var(--skm-source) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="environment"] .sk-task-monitor__seat {\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  background: color-mix(in srgb, var(--dsw-alias-label-secondary, #888) 12%, transparent);\n}\n\n.sk-task-monitor__txt {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-width: 0;\n}\n\n.sk-task-monitor__label {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-primary, inherit);\n}\n\n.sk-task-monitor__detail {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 11px;\n  line-height: 16px;\n}\n\n.sk-task-monitor__meta {\n  display: inline-flex;\n  align-items: center;\n  flex: none;\n}\n\n.sk-task-monitor__times {\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__failed {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-danger) 18%, transparent);\n  color: var(--skm-danger);\n  font-size: 10px;\n  font-weight: 700;\n}\n\n.sk-task-monitor__more {\n  align-self: flex-start;\n  margin: 2px 0 0 32px;\n  padding: 2px 6px;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-size: 11px;\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__more:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-task-monitor__empty {\n  margin: 0;\n  padding: 4px 8px 6px 32px;\n  color: var(--dsw-alias-label-dimmed, rgba(128, 128, 128, 0.6));\n  font-size: 11px;\n}\n\n/* 首屏骨架：三组微光条，读作「正在长出来」而不是空白。 */\n.sk-task-monitor__skeleton {\n  display: flex;\n  flex-direction: column;\n  gap: 14px;\n  padding: 10px 8px;\n}\n\n.sk-task-monitor__skSection {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.sk-task-monitor__skBar {\n  height: 10px;\n  border-radius: 5px;\n  corner-shape: round;\n  background: linear-gradient(90deg, rgba(128, 128, 128, 0.10), rgba(128, 128, 128, 0.22), rgba(128, 128, 128, 0.10));\n  background-size: 200% 100%;\n  animation: sk-task-monitor-shimmer 1.2s linear infinite;\n}\n\n.sk-task-monitor__skBar--title {\n  width: 40%;\n  height: 12px;\n}\n\n.sk-task-monitor__errorBox {\n  display: flex;\n  flex-direction: column;\n  align-items: flex-start;\n  gap: 8px;\n  margin: 8px 6px;\n  padding: 10px 12px;\n  border: 0.5px solid color-mix(in srgb, var(--skm-danger) 45%, transparent);\n  border-radius: 8px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-danger) 8%, transparent);\n}\n\n.sk-task-monitor__errorBox p {\n  margin: 0;\n  color: var(--dsw-alias-label-primary, inherit);\n  overflow-wrap: anywhere;\n}\n\n@keyframes sk-task-monitor-rise {\n  from {\n    opacity: 0;\n    transform: translateY(4px);\n  }\n  to {\n    opacity: 1;\n    transform: translateY(0);\n  }\n}\n\n@keyframes sk-task-monitor-pulse {\n  0%, 100% {\n    box-shadow: 0 0 0 0 color-mix(in srgb, var(--skm-source) 45%, transparent);\n  }\n  50% {\n    box-shadow: 0 0 0 4px color-mix(in srgb, var(--skm-source) 0%, transparent);\n  }\n}\n\n@keyframes sk-task-monitor-shimmer {\n  from {\n    background-position: 200% 0;\n  }\n  to {\n    background-position: -200% 0;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .sk-task-monitor__row,\n  .sk-task-monitor__skBar {\n    animation: none;\n  }\n\n  .sk-task-monitor__chevron {\n    transition: none;\n  }\n\n  .sk-task-monitor__section::details-content {\n    transition: none;\n  }\n}';
 
     // src/modules/task-monitor/client/components/panel/index.tsx
     var SECTION_COPY = {
@@ -355,7 +350,6 @@ window.__ModuleLoader__.load({
     function createTaskMonitorPanel(ctx) {
       const t = ctx.locale.bind(TASK_MONITOR_NS);
       const ChevronIcon = primitives.IconChevronDownOutlineRegular;
-      const RefreshIcon = primitives.IconRefreshOutlineRegular;
       const BranchIcon = primitives.IconBranchOutlineRegular;
       const ChecklistIcon = primitives.IconChecklistOutlineRegular;
       const CheckCircleIcon = primitives.IconCheckCircleOutlineRegular;
@@ -391,11 +385,9 @@ window.__ModuleLoader__.load({
         const [entries, setEntries] = import_react3.default.useState([]);
         const [phase, setPhase] = import_react3.default.useState("loading");
         const [error, setError] = import_react3.default.useState("");
-        const [updatedAt, setUpdatedAt] = import_react3.default.useState(0);
         const [collapsed, setCollapsed] = import_react3.default.useState({});
         const [expanded, setExpanded] = import_react3.default.useState({});
         const [git, setGit] = import_react3.default.useState(null);
-        const [spinning, setSpinning] = import_react3.default.useState(false);
         const load = import_react3.default.useCallback(async (quiet) => {
           if (typeof sessionId !== "string" || sessionId === "") return;
           if (!quiet) setPhase("loading");
@@ -404,7 +396,6 @@ window.__ModuleLoader__.load({
             const payload = await response.json();
             if (!response.ok || payload?.ok !== true) throw new Error(reasonOf(payload, `HTTP ${response.status}`));
             setEntries(Array.isArray(payload.entries) ? payload.entries : []);
-            setUpdatedAt(typeof payload.updatedAt === "number" ? payload.updatedAt : 0);
             setError("");
             setPhase("ready");
           } catch (caught) {
@@ -444,11 +435,6 @@ window.__ModuleLoader__.load({
           }, TASK_MONITOR_POLL_MS);
           return () => clearInterval(timer);
         }, [visible, load]);
-        const refresh = async () => {
-          setSpinning(true);
-          await Promise.all([load(true), loadGit()]);
-          setTimeout(() => setSpinning(false), 500);
-        };
         const sections = import_react3.default.useMemo(() => groupSections(entries), [entries]);
         const openEntry = (entry) => {
           if (entry.target === void 0 || actions === void 0) return;
@@ -509,75 +495,81 @@ window.__ModuleLoader__.load({
           );
         }
         const envCollapsed = collapsed.environment === true;
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor", "data-phase": phase }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default), /* @__PURE__ */ __dshReact.createElement("header", { className: "sk-task-monitor__head" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__title" }, t("tabTitle")), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__headTools" }, phase === "ready" && updatedAt > 0 ? /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__stamp" }, timeLabel(updatedAt)) : null, /* @__PURE__ */ __dshReact.createElement(
-          "button",
+        const chevron = /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__chevron", "aria-hidden": "true" }, ChevronIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(ChevronIcon, { size: 12 }));
+        const toggle = (key, current) => (event) => {
+          event.preventDefault();
+          setCollapsed((map) => ({ ...map, [key]: !current }));
+        };
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor", "data-phase": phase }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default), envRows.length === 0 ? null : /* @__PURE__ */ __dshReact.createElement(
+          "details",
           {
-            type: "button",
-            className: "sk-task-monitor__refresh",
-            "data-spinning": spinning || void 0,
-            "aria-label": t("refresh"),
-            title: t("refresh"),
-            onClick: () => {
-              void refresh();
-            }
+            className: "sk-task-monitor__section",
+            "data-kind": "environment",
+            open: !envCollapsed
           },
-          RefreshIcon === void 0 ? "↻" : /* @__PURE__ */ __dshReact.createElement(RefreshIcon, { size: 14 })
-        ))), envRows.length === 0 ? null : /* @__PURE__ */ __dshReact.createElement("section", { className: "sk-task-monitor__section", "data-kind": "environment", key: "environment" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__headRow" }, /* @__PURE__ */ __dshReact.createElement(
-          "button",
-          {
-            type: "button",
-            className: "sk-task-monitor__trigger",
-            "aria-expanded": !envCollapsed,
-            title: t("envTitle"),
-            onClick: () => setCollapsed((current) => ({ ...current, environment: !envCollapsed }))
-          },
-          /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__chevron", "data-open": !envCollapsed || void 0, "aria-hidden": "true" }, ChevronIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(ChevronIcon, { size: 12 })),
-          /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__sectionIcon", "aria-hidden": "true" }, FolderIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(FolderIcon, { size: 14 })),
-          /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__sectionTitle" }, t("envTitle"))
-        )), envCollapsed ? null : /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__body" }, envRows)), phase === "loading" ? /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__skeleton", role: "status", "aria-label": t("loading") }, [0, 1, 2].map((section) => /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__skSection", key: section }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__skBar sk-task-monitor__skBar--title" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__skBar" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__skBar" })))) : phase === "error" ? /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__errorBox", role: "alert" }, /* @__PURE__ */ __dshReact.createElement("p", null, t("loadFailed", { reason: error })), /* @__PURE__ */ __dshReact.createElement(Button, { variant: "primary", onClick: () => {
+          /* @__PURE__ */ __dshReact.createElement(
+            "summary",
+            {
+              className: "sk-task-monitor__trigger",
+              "aria-expanded": !envCollapsed,
+              title: t("envTitle"),
+              onClick: toggle("environment", envCollapsed)
+            },
+            /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__sectionTitle" }, t("envTitle")),
+            chevron
+          ),
+          /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__body" }, envRows)
+        ), phase === "loading" ? /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__skeleton", role: "status", "aria-label": t("loading") }, [0, 1, 2].map((section) => /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__skSection", key: section }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__skBar sk-task-monitor__skBar--title" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__skBar" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__skBar" })))) : phase === "error" ? /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__errorBox", role: "alert" }, /* @__PURE__ */ __dshReact.createElement("p", null, t("loadFailed", { reason: error })), /* @__PURE__ */ __dshReact.createElement(Button, { variant: "primary", onClick: () => {
           void load(false);
         } }, t("retry"))) : sections.map((section) => {
           const copy = SECTION_COPY[section.kind];
           const isCollapsed = collapsed[section.kind] === true;
           const isExpanded = expanded[section.kind] === true;
           const hidden = hiddenOf(section.entries, isExpanded);
-          const SectionIcon = SECTION_ICON[section.kind];
-          return /* @__PURE__ */ __dshReact.createElement("section", { className: "sk-task-monitor__section", "data-kind": section.kind, key: section.kind }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__headRow" }, /* @__PURE__ */ __dshReact.createElement(
-            "button",
+          return /* @__PURE__ */ __dshReact.createElement(
+            "details",
             {
-              type: "button",
-              className: "sk-task-monitor__trigger",
-              "aria-expanded": !isCollapsed,
-              title: t(copy.desc),
-              onClick: () => setCollapsed((current) => ({ ...current, [section.kind]: !isCollapsed }))
+              className: "sk-task-monitor__section",
+              "data-kind": section.kind,
+              key: section.kind,
+              open: !isCollapsed
             },
-            /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__chevron", "data-open": !isCollapsed || void 0, "aria-hidden": "true" }, ChevronIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(ChevronIcon, { size: 12 })),
-            /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__sectionIcon", "aria-hidden": "true" }, SectionIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(SectionIcon, { size: 14 })),
-            /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__sectionTitle" }, t(copy.title)),
-            /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__count" }, section.entries.length)
-          )), isCollapsed ? null : /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__body" }, section.entries.length === 0 ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-task-monitor__empty" }, t(copy.empty)) : /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, visibleOf(section.entries, isExpanded).map(renderRow), hidden > 0 ? /* @__PURE__ */ __dshReact.createElement(
-            "button",
-            {
-              type: "button",
-              className: "sk-task-monitor__more",
-              onClick: () => setExpanded((current) => ({ ...current, [section.kind]: true }))
-            },
-            t("showMore", { n: hidden })
-          ) : isExpanded && section.entries.length > 5 ? /* @__PURE__ */ __dshReact.createElement(
-            "button",
-            {
-              type: "button",
-              className: "sk-task-monitor__more",
-              onClick: () => setExpanded((current) => ({ ...current, [section.kind]: false }))
-            },
-            t("collapse")
-          ) : null)));
+            /* @__PURE__ */ __dshReact.createElement(
+              "summary",
+              {
+                className: "sk-task-monitor__trigger",
+                "aria-expanded": !isCollapsed,
+                title: t(copy.desc),
+                onClick: toggle(section.kind, isCollapsed)
+              },
+              /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__sectionTitle" }, t(copy.title)),
+              /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__tag" }, section.entries.length),
+              chevron
+            ),
+            /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__body" }, section.entries.length === 0 ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-task-monitor__empty" }, t(copy.empty)) : /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, visibleOf(section.entries, isExpanded).map(renderRow), hidden > 0 ? /* @__PURE__ */ __dshReact.createElement(
+              "button",
+              {
+                type: "button",
+                className: "sk-task-monitor__more",
+                onClick: () => setExpanded((current) => ({ ...current, [section.kind]: true }))
+              },
+              t("showMore", { n: hidden })
+            ) : isExpanded && section.entries.length > 5 ? /* @__PURE__ */ __dshReact.createElement(
+              "button",
+              {
+                type: "button",
+                className: "sk-task-monitor__more",
+                onClick: () => setExpanded((current) => ({ ...current, [section.kind]: false }))
+              },
+              t("collapse")
+            ) : null))
+          );
         }));
       };
     }
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/style.css
-    var style_default2 = "/* 会话内容区内的左右分栏：左边是宿主原本的消息列，右边是常驻监控栏。 */\n.sk-task-monitor-frame {\n  display: flex;\n  flex: 1;\n  flex-direction: row;\n  min-height: 0;\n  min-width: 0;\n}\n\n.sk-task-monitor-column {\n  display: flex;\n  flex: 1;\n  flex-direction: column;\n  min-height: 0;\n  min-width: 0;\n}\n\n/*\n * 宽度跟随窗口但不抢消息列：最窄 300，最宽 420，默认 340。\n * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），\n * 这样它读起来是「会话里的一张卡」，不是宿主右栏那种贴边分栏；不再画分割线。\n */\n.sk-task-monitor-side {\n  display: flex;\n  flex: 0 0 340px;\n  flex-direction: column;\n  min-height: 0;\n  min-width: 300px;\n  max-width: 420px;\n  margin: 10px 12px 10px 4px;\n  overflow: hidden;\n  border: 0;\n  border-radius: var(--dsw-radius-panel, 28px);\n  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));\n  box-shadow: var(--dsw-elevation-soft);\n  --dsw-elevation-stroke-color: var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-task-monitor-side > * {\n  flex: 1;\n  min-height: 0;\n}\n";
+    var style_default2 = "/* 会话内容区内的左右分栏：左边是宿主原本的消息列，右边是常驻监控栏。 */\n.sk-task-monitor-frame {\n  display: flex;\n  flex: 1;\n  flex-direction: row;\n  min-height: 0;\n  min-width: 0;\n}\n\n.sk-task-monitor-column {\n  display: flex;\n  flex: 1;\n  flex-direction: column;\n  min-height: 0;\n  min-width: 0;\n}\n\n/*\n * 宽度固定 160：只做「会话旁边的一张卡片」，不跟消息列抢宽。\n * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），\n * 高度贴合内容（align-self: flex-start），内容过长时在卡内滚动。\n */\n.sk-task-monitor-side {\n  display: flex;\n  flex: 0 0 160px;\n  flex-direction: column;\n  align-self: flex-start;\n  min-height: 0;\n  min-width: 160px;\n  max-width: 160px;\n  max-height: 100%;\n  margin: 10px 12px 10px 4px;\n  overflow: hidden;\n  border: 0;\n  border-radius: var(--dsw-radius-panel, 28px);\n  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));\n  box-shadow: var(--dsw-elevation-soft);\n  --dsw-elevation-stroke-color: var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-task-monitor-side > * {\n  flex: 0 1 auto;\n  min-height: 0;\n}\n";
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/index.tsx
     var NAME2 = "conversation-rail";

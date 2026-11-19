@@ -21,7 +21,7 @@ import {
   type TaskMonitorEntry,
   type TaskMonitorSectionKind,
 } from "../../constants.js";
-import { groupSections, hiddenOf, timeLabel, visibleOf } from "../../model.js";
+import { groupSections, hiddenOf, visibleOf } from "../../model.js";
 import panelCss from "./style.css";
 
 export const NAME = "panel";
@@ -64,7 +64,6 @@ function dirNameOf(cwd: string): string {
 export function createTaskMonitorPanel(ctx: any) {
   const t = ctx.locale.bind(TASK_MONITOR_NS);
   const ChevronIcon = primitives.IconChevronDownOutlineRegular;
-  const RefreshIcon = primitives.IconRefreshOutlineRegular;
   const BranchIcon = primitives.IconBranchOutlineRegular;
   const ChecklistIcon = primitives.IconChecklistOutlineRegular;
   const CheckCircleIcon = primitives.IconCheckCircleOutlineRegular;
@@ -106,11 +105,9 @@ export function createTaskMonitorPanel(ctx: any) {
     const [entries, setEntries] = React.useState<TaskMonitorEntry[]>([]);
     const [phase, setPhase] = React.useState<"loading" | "ready" | "error">("loading");
     const [error, setError] = React.useState("");
-    const [updatedAt, setUpdatedAt] = React.useState(0);
     const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
     const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
     const [git, setGit] = React.useState<GitStrip | null>(null);
-    const [spinning, setSpinning] = React.useState(false);
 
     const load = React.useCallback(async (quiet: boolean) => {
       if (typeof sessionId !== "string" || sessionId === "") return;
@@ -120,7 +117,6 @@ export function createTaskMonitorPanel(ctx: any) {
         const payload = await response.json();
         if (!response.ok || payload?.ok !== true) throw new Error(reasonOf(payload, `HTTP ${response.status}`));
         setEntries(Array.isArray(payload.entries) ? payload.entries : []);
-        setUpdatedAt(typeof payload.updatedAt === "number" ? payload.updatedAt : 0);
         setError("");
         setPhase("ready");
       } catch (caught: any) {
@@ -157,12 +153,6 @@ export function createTaskMonitorPanel(ctx: any) {
       const timer = setInterval(() => { void load(true); }, TASK_MONITOR_POLL_MS);
       return () => clearInterval(timer);
     }, [visible, load]);
-
-    const refresh = async (): Promise<void> => {
-      setSpinning(true);
-      await Promise.all([load(true), loadGit()]);
-      setTimeout(() => setSpinning(false), 500);
-    };
 
     const sections = React.useMemo(() => groupSections(entries), [entries]);
 
@@ -259,44 +249,40 @@ export function createTaskMonitorPanel(ctx: any) {
 
     const envCollapsed = collapsed.environment === true;
 
+    const chevron = (
+      <span className="sk-task-monitor__chevron" aria-hidden="true">
+        {ChevronIcon === undefined ? null : <ChevronIcon size={12} />}
+      </span>
+    );
+
+    // summary 的默认开合由浏览器完成；这里 preventDefault 后自己写状态，
+    // 一是让 React 的 open 属性始终是唯一来源（轮询重渲染不会把开合状态抹掉），
+    // 二是保住 jsdom 下可测的 aria-expanded。
+    const toggle = (key: string, current: boolean) => (event: any): void => {
+      event.preventDefault();
+      setCollapsed((map) => ({ ...map, [key]: !current }));
+    };
+
     return (
       <div className="sk-task-monitor" data-phase={phase}>
         <style>{panelCss}</style>
-        <header className="sk-task-monitor__head">
-          <span className="sk-task-monitor__title">{t("tabTitle")}</span>
-          <span className="sk-task-monitor__headTools">
-            {phase === "ready" && updatedAt > 0 ? <span className="sk-task-monitor__stamp">{timeLabel(updatedAt)}</span> : null}
-            <button
-              type="button"
-              className="sk-task-monitor__refresh"
-              data-spinning={spinning || undefined}
-              aria-label={t("refresh")}
-              title={t("refresh")}
-              onClick={() => { void refresh(); }}
-            >
-              {RefreshIcon === undefined ? "↻" : <RefreshIcon size={14} />}
-            </button>
-          </span>
-        </header>
         {envRows.length === 0 ? null : (
-          <section className="sk-task-monitor__section" data-kind="environment" key="environment">
-            <div className="sk-task-monitor__headRow">
-              <button
-                type="button"
-                className="sk-task-monitor__trigger"
-                aria-expanded={!envCollapsed}
-                title={t("envTitle")}
-                onClick={() => setCollapsed((current) => ({ ...current, environment: !envCollapsed }))}
-              >
-                <span className="sk-task-monitor__chevron" data-open={!envCollapsed || undefined} aria-hidden="true">
-                  {ChevronIcon === undefined ? null : <ChevronIcon size={12} />}
-                </span>
-                <span className="sk-task-monitor__sectionIcon" aria-hidden="true">{FolderIcon === undefined ? null : <FolderIcon size={14} />}</span>
-                <span className="sk-task-monitor__sectionTitle">{t("envTitle")}</span>
-              </button>
-            </div>
-            {envCollapsed ? null : <div className="sk-task-monitor__body">{envRows}</div>}
-          </section>
+          <details
+            className="sk-task-monitor__section"
+            data-kind="environment"
+            open={!envCollapsed}
+          >
+            <summary
+              className="sk-task-monitor__trigger"
+              aria-expanded={!envCollapsed}
+              title={t("envTitle")}
+              onClick={toggle("environment", envCollapsed)}
+            >
+              <span className="sk-task-monitor__sectionTitle">{t("envTitle")}</span>
+              {chevron}
+            </summary>
+            <div className="sk-task-monitor__body">{envRows}</div>
+          </details>
         )}
         {phase === "loading" ? (
           <div className="sk-task-monitor__skeleton" role="status" aria-label={t("loading")}>
@@ -319,54 +305,50 @@ export function createTaskMonitorPanel(ctx: any) {
             const isCollapsed = collapsed[section.kind] === true;
             const isExpanded = expanded[section.kind] === true;
             const hidden = hiddenOf(section.entries, isExpanded);
-            const SectionIcon = SECTION_ICON[section.kind];
             return (
-              <section className="sk-task-monitor__section" data-kind={section.kind} key={section.kind}>
-                <div className="sk-task-monitor__headRow">
-                  <button
-                    type="button"
-                    className="sk-task-monitor__trigger"
-                    aria-expanded={!isCollapsed}
-                    title={t(copy.desc)}
-                    onClick={() => setCollapsed((current) => ({ ...current, [section.kind]: !isCollapsed }))}
-                  >
-                    <span className="sk-task-monitor__chevron" data-open={!isCollapsed || undefined} aria-hidden="true">
-                      {ChevronIcon === undefined ? null : <ChevronIcon size={12} />}
-                    </span>
-                    <span className="sk-task-monitor__sectionIcon" aria-hidden="true">{SectionIcon === undefined ? null : <SectionIcon size={14} />}</span>
-                    <span className="sk-task-monitor__sectionTitle">{t(copy.title)}</span>
-                    <span className="sk-task-monitor__count">{section.entries.length}</span>
-                  </button>
+              <details
+                className="sk-task-monitor__section"
+                data-kind={section.kind}
+                key={section.kind}
+                open={!isCollapsed}
+              >
+                <summary
+                  className="sk-task-monitor__trigger"
+                  aria-expanded={!isCollapsed}
+                  title={t(copy.desc)}
+                  onClick={toggle(section.kind, isCollapsed)}
+                >
+                  <span className="sk-task-monitor__sectionTitle">{t(copy.title)}</span>
+                  <span className="sk-task-monitor__tag">{section.entries.length}</span>
+                  {chevron}
+                </summary>
+                <div className="sk-task-monitor__body">
+                  {section.entries.length === 0 ? (
+                    <p className="sk-task-monitor__empty">{t(copy.empty)}</p>
+                  ) : (
+                    <>
+                      {visibleOf(section.entries, isExpanded).map(renderRow)}
+                      {hidden > 0 ? (
+                        <button
+                          type="button"
+                          className="sk-task-monitor__more"
+                          onClick={() => setExpanded((current) => ({ ...current, [section.kind]: true }))}
+                        >
+                          {t("showMore", { n: hidden })}
+                        </button>
+                      ) : isExpanded && section.entries.length > 5 ? (
+                        <button
+                          type="button"
+                          className="sk-task-monitor__more"
+                          onClick={() => setExpanded((current) => ({ ...current, [section.kind]: false }))}
+                        >
+                          {t("collapse")}
+                        </button>
+                      ) : null}
+                    </>
+                  )}
                 </div>
-                {isCollapsed ? null : (
-                  <div className="sk-task-monitor__body">
-                    {section.entries.length === 0 ? (
-                      <p className="sk-task-monitor__empty">{t(copy.empty)}</p>
-                    ) : (
-                      <>
-                        {visibleOf(section.entries, isExpanded).map(renderRow)}
-                        {hidden > 0 ? (
-                          <button
-                            type="button"
-                            className="sk-task-monitor__more"
-                            onClick={() => setExpanded((current) => ({ ...current, [section.kind]: true }))}
-                          >
-                            {t("showMore", { n: hidden })}
-                          </button>
-                        ) : isExpanded && section.entries.length > 5 ? (
-                          <button
-                            type="button"
-                            className="sk-task-monitor__more"
-                            onClick={() => setExpanded((current) => ({ ...current, [section.kind]: false }))}
-                          >
-                            {t("collapse")}
-                          </button>
-                        ) : null}
-                      </>
-                    )}
-                  </div>
-                )}
-              </section>
+              </details>
             );
           })
         )}

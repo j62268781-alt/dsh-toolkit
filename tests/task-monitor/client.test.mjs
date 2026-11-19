@@ -259,7 +259,8 @@ test('查看更多 / 收起 / 折叠分区', async (t) => {
   const trigger = query(dom, '.sk-task-monitor__section[data-kind="web"] .sk-task-monitor__trigger')
   await click(dom, act, trigger)
   assert.equal(trigger.getAttribute('aria-expanded'), 'false')
-  assert.equal(rowsIn(dom, 'web').length, 0)
+  // 收起只改 <details open>，行仍留在 DOM 里给 ::details-content 做高度过渡。
+  assert.equal(query(dom, '.sk-task-monitor__section[data-kind="web"]').hasAttribute('open'), false)
 })
 
 test('只读：来源分区不提供添加与移除入口，手动来源照常展示', async (t) => {

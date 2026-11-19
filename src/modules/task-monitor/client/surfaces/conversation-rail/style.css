@@ -16,17 +16,19 @@
 }
 
 /*
- * 宽度跟随窗口但不抢消息列：最窄 300，最宽 420，默认 340。
+ * 宽度固定 160：只做「会话旁边的一张卡片」，不跟消息列抢宽。
  * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），
- * 这样它读起来是「会话里的一张卡」，不是宿主右栏那种贴边分栏；不再画分割线。
+ * 高度贴合内容（align-self: flex-start），内容过长时在卡内滚动。
  */
 .sk-task-monitor-side {
   display: flex;
-  flex: 0 0 340px;
+  flex: 0 0 160px;
   flex-direction: column;
+  align-self: flex-start;
   min-height: 0;
-  min-width: 300px;
-  max-width: 420px;
+  min-width: 160px;
+  max-width: 160px;
+  max-height: 100%;
   margin: 10px 12px 10px 4px;
   overflow: hidden;
   border: 0;
@@ -37,6 +39,6 @@
 }
 
 .sk-task-monitor-side > * {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
 }
