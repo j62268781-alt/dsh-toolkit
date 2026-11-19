@@ -16,5 +16,5 @@ __pycache__/
 # 本地 AI 工具的记忆/缓存目录，与源码无关
 .workbuddy/
 
-# DSH 会话运行时生成的 git worktree，随会话变化，不入库
-.agents/worktrees/
+# 本地技能与 DSH 运行时生成的 git worktree，只留本地，不入库
+.agents/
