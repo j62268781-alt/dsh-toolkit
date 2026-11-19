@@ -17,7 +17,9 @@
   height: auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 13px 8px;
+  /* 顶部不留 padding：分区头要能贴到滚动口顶部吸顶，留白交给第一个子元素，
+     否则内容会从吸顶头上面那条 padding 带里露出来。 */
+  padding: 0 8px 13px;
   scrollbar-width: none;
   color: var(--dsw-alias-label-primary, inherit);
   font-size: 12px;
@@ -27,6 +29,11 @@
 .sk-task-monitor,
 .sk-task-monitor * {
   box-sizing: border-box;
+}
+
+/* 给第一个分区（环境信息）补出顶部留白；吸顶时这个 padding 会跟着滚走。 */
+.sk-task-monitor > :first-child {
+  padding-top: 13px;
 }
 
 /* 不画滚动条：卡片窄，条本身会占一列；内容仍可滚（滚轮/触控板）。 */
@@ -53,6 +60,10 @@
 }
 
 .sk-task-monitor__trigger {
+  /* 吸顶：每个分区头在滚过自己那段时贴住滚动口（sectionList 效果）。 */
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -62,7 +73,9 @@
   list-style: none;
   border: none;
   border-radius: var(--dsw-radius-sm, 6px);
-  background: transparent;
+  /* 吸顶头必须是不透明底，否则下面的行会从标题里透出来；卡片本身是同色，
+     所以静止时看不出来。hover 用 background-image 叠一层半透明，不会盖掉底色。 */
+  background-color: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));
   color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
   font: inherit;
   font-weight: 600;
@@ -83,7 +96,10 @@
 
 @media (hover: hover) {
   .sk-task-monitor__trigger:hover {
-    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
+    background-image: linear-gradient(
+      var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12)),
+      var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12))
+    );
     color: var(--dsw-alias-label-primary, inherit);
   }
 }

@@ -38,8 +38,8 @@
      padding-bottom 4px。字号档位放大时跟着 --dsh-content-font-delta-secondary
      一起长，和那边的预留高度同源。 */
   --sk-task-monitor-gutter: calc(30px + var(--dsh-content-font-delta-secondary, 0px));
-  max-height: calc(100% - var(--sk-task-monitor-gutter) * 2);
-  margin: var(--sk-task-monitor-gutter) 10px var(--sk-task-monitor-gutter) 4px;
+  max-height: calc(100% - 16px - var(--sk-task-monitor-gutter));
+  margin: 16px 10px var(--sk-task-monitor-gutter) 4px;
   overflow: hidden;
   border: 0;
   border-radius: var(--dsw-radius-panel, 28px);
