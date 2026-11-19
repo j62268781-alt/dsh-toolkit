@@ -11,7 +11,7 @@ import {
   MAX_ENTRIES,
   MAX_SOURCE_LENGTH,
   TASK_MONITOR_REASON,
-  SECTION_ORDER,
+  ENTRY_KINDS,
   isHttpUrl,
   type TaskMonitorEntry,
   type TaskMonitorFailure,
@@ -38,7 +38,7 @@ interface SessionState {
   timer?: ReturnType<typeof setTimeout>
 }
 
-const KINDS = new Set<string>(SECTION_ORDER)
+const KINDS = new Set<string>(ENTRY_KINDS)
 
 function failure(code: TaskMonitorReasonCode, detail: string): TaskMonitorFailure {
   return { ok: false, code, detail }

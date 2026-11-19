@@ -1,48 +1,37 @@
 /**
- * 任务监控右栏 body：五个折叠分区（Skill 与 MCP / 产出 / 网页查阅 / 来源 / 知识），
- * 复刻 Qoder 任务监控的条目行规格——24px 图标座、12px 主文本、hover 底色、
- * 首屏 5 条 + 查看更多、手动来源 hover 移除。
+ * 任务监控面板：只读展示当前会话用过的能力、产出、网页与来源。
  *
- * 数据来自本模块三条路由；环境条（分支 / 脏标记）复用 git 模块的快照路由，
- * 不在这里重跑 git。文件行点击走宿主右栏原生文件预览（fileAddressFor），
- * 网页行点击开右栏 browser tab——都是宿主自己的查看器，不另造 iframe。
+ * 分区复刻 Qoder 任务监控的条目行规格——24px 图标座、12px 主文本、hover 底色、
+ * 首屏 5 条 + 查看更多；顶部「环境信息」把 git 状态/分支与 cwd 目录并成一栏，
+ * 不再单独画一条 git 条。面板不提供添加/移除入口，数据由 host 聚合。
+ *
+ * 数据来自本模块的 snapshot 路由；环境信息复用 git 模块的分支快照，不在这里
+ * 重跑 git。文件行点击走宿主右栏原生文件预览（fileAddressFor），网页行点击开
+ * 右栏 browser tab——都是宿主自己的查看器，不另造 iframe。
  */
 import React from "react";
 import { fetchJson } from "../../../../../client/http.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
-import { confirmDialog } from "../../../../../client/ui/components/confirm-dialog/index.jsx";
-import { toast } from "../../../../../client/ui/toast.js";
 import { GIT_BRANCHES_PATH } from "../../../../git/client/constants.js";
 import { TASK_MONITOR_NS } from "../../locale.js";
 import {
-  MAX_SOURCE_LENGTH,
   TASK_MONITOR_POLL_MS,
   TASK_MONITOR_SNAPSHOT_PATH,
-  TASK_MONITOR_SOURCE_ADD_PATH,
-  TASK_MONITOR_SOURCE_REMOVE_PATH,
   isHttpUrl,
   type TaskMonitorEntry,
-  type TaskMonitorKind,
+  type TaskMonitorSectionKind,
 } from "../../constants.js";
 import { groupSections, hiddenOf, timeLabel, visibleOf } from "../../model.js";
 import panelCss from "./style.css";
 
-export const NAME = "sidebar-tab";
+export const NAME = "panel";
 
-const SECTION_COPY: Record<TaskMonitorKind, { title: string, desc: string, empty: string }> = {
+const SECTION_COPY: Record<TaskMonitorSectionKind, { title: string, desc: string, empty: string }> = {
   capability: { title: "sectionCapability", desc: "sectionCapabilityDesc", empty: "emptyCapability" },
   artifact: { title: "sectionArtifact", desc: "sectionArtifactDesc", empty: "emptyArtifact" },
   web: { title: "sectionWeb", desc: "sectionWebDesc", empty: "emptyWeb" },
   source: { title: "sectionSource", desc: "sectionSourceDesc", empty: "emptySource" },
-  knowledge: { title: "sectionKnowledge", desc: "sectionKnowledgeDesc", empty: "emptyKnowledge" },
 };
-
-interface DialogState {
-  readonly kind: "file" | "url";
-  readonly draft: string;
-  readonly error: string;
-  readonly busy: boolean;
-}
 
 interface GitStrip {
   readonly branch: string;
@@ -67,24 +56,27 @@ function reasonOf(payload: any, fallback: string): string {
   return fallback;
 }
 
+function dirNameOf(cwd: string): string {
+  const parts = cwd.split(/[\\/]/).filter((part) => part !== "");
+  return parts.length === 0 ? "" : parts[parts.length - 1];
+}
+
 export function createTaskMonitorPanel(ctx: any) {
   const t = ctx.locale.bind(TASK_MONITOR_NS);
   const ChevronIcon = primitives.IconChevronDownOutlineRegular;
   const RefreshIcon = primitives.IconRefreshOutlineRegular;
-  const PlusIcon = primitives.IconPlusOutlineRegular;
-  const CloseIcon = primitives.IconCloseOutlineRegular;
   const BranchIcon = primitives.IconBranchOutlineRegular;
-  const Menu = primitives.Menu;
-  const MenuItemButton = primitives.MenuItemButton;
+  const ChecklistIcon = primitives.IconChecklistOutlineRegular;
+  const CheckCircleIcon = primitives.IconCheckCircleOutlineRegular;
+  const FolderIcon = primitives.IconFolderOpenOutlineRegular;
+  const TreeIcon = primitives.IconWorkspaceTreeOutlineRegular;
   const Button = primitives.Button ?? "button";
-  const Input = primitives.Input;
 
-  const SECTION_ICON: Record<TaskMonitorKind, any> = {
+  const SECTION_ICON: Record<TaskMonitorSectionKind, any> = {
     capability: primitives.IconSparkleRegular,
     artifact: primitives.IconEditOutlineRegular,
     web: primitives.IconGlobeOutlineRegular,
     source: primitives.IconLinkOutlineRegular,
-    knowledge: primitives.IconThinkOutlineRegular,
   };
 
   function rowIcon(entry: TaskMonitorEntry): any {
@@ -98,7 +90,7 @@ export function createTaskMonitorPanel(ctx: any) {
     return SECTION_ICON[entry.kind];
   }
 
-  return function TaskMonitorTab(props: any) {
+  return function TaskMonitorPanel(props: any) {
     const { sessionId, useSessions, useProjection } = props;
     const info = typeof props.useTabInfo === "function" ? props.useTabInfo() : undefined;
     const tab = info?.tab;
@@ -117,8 +109,6 @@ export function createTaskMonitorPanel(ctx: any) {
     const [updatedAt, setUpdatedAt] = React.useState(0);
     const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
     const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
-    const [menuOpen, setMenuOpen] = React.useState(false);
-    const [dialog, setDialog] = React.useState<DialogState | null>(null);
     const [git, setGit] = React.useState<GitStrip | null>(null);
     const [spinning, setSpinning] = React.useState(false);
 
@@ -186,47 +176,6 @@ export function createTaskMonitorPanel(ctx: any) {
       if (address !== undefined) actions.openResource?.(address);
     };
 
-    const removeEntry = async (entry: TaskMonitorEntry): Promise<void> => {
-      const before = entries;
-      setEntries((current) => current.filter((item) => item.id !== entry.id));
-      try {
-        const response = await fetchJson(TASK_MONITOR_SOURCE_REMOVE_PATH, { json: { sessionId, id: entry.id } });
-        const payload = await response.json();
-        if (!response.ok || payload?.ok !== true) throw new Error(reasonOf(payload, `HTTP ${response.status}`));
-        toast.success(t("removed"));
-      } catch (caught: any) {
-        setEntries(before);
-        toast.error(t("removeFailed", { reason: String(caught?.message ?? caught) }));
-      }
-    };
-
-    const submitSource = async (): Promise<void> => {
-      if (dialog === null || dialog.busy) return;
-      const value = dialog.draft.trim();
-      if (value === "") {
-        setDialog({ ...dialog, error: t(dialog.kind === "url" ? "invalidUrl" : "invalidFile") });
-        return;
-      }
-      if (dialog.kind === "url" && !isHttpUrl(value)) {
-        setDialog({ ...dialog, error: t("invalidUrl") });
-        return;
-      }
-      setDialog({ ...dialog, busy: true, error: "" });
-      try {
-        const response = await fetchJson(TASK_MONITOR_SOURCE_ADD_PATH, { json: { sessionId, kind: dialog.kind, value } });
-        const payload = await response.json();
-        if (!response.ok || payload?.ok !== true || payload.entry === undefined) {
-          throw new Error(reasonOf(payload, `HTTP ${response.status}`));
-        }
-        const entry = payload.entry as TaskMonitorEntry;
-        setEntries((current) => [...current.filter((item) => item.id !== entry.id), entry]);
-        setDialog(null);
-        toast.success(t("added"));
-      } catch (caught: any) {
-        setDialog((current) => current === null ? null : { ...current, busy: false, error: t("addFailed", { reason: String(caught?.message ?? caught) }) });
-      }
-    };
-
     const renderRow = (entry: TaskMonitorEntry, index: number): React.ReactNode => {
       const Icon = rowIcon(entry);
       const clickable = entry.target !== undefined && actions !== undefined;
@@ -261,89 +210,54 @@ export function createTaskMonitorPanel(ctx: any) {
               ? <span className="sk-task-monitor__failed" title={t("failedStatus")} aria-label={t("failedStatus")}>!</span>
               : entry.count > 1 ? <span className="sk-task-monitor__times">{t("times", { n: entry.count })}</span> : null}
           </span>
-          {entry.manual === true ? (
-            <button
-              type="button"
-              className="sk-task-monitor__remove"
-              aria-label={t("removeAria", { name: entry.label })}
-              title={t("removeAria", { name: entry.label })}
-              onClick={(event: any) => { event.stopPropagation(); void removeEntry(entry); }}
-            >
-              {CloseIcon === undefined ? "×" : <CloseIcon size={12} />}
-            </button>
-          ) : null}
         </div>
       );
     };
 
-    const dialogInput = dialog === null ? null : (
-      <div className="sk-task-monitor__creator">
-        {Input === undefined ? (
-          <input
-            className="sk-task-monitor__fallbackInput"
-            autoFocus
-            value={dialog.draft}
-            maxLength={MAX_SOURCE_LENGTH}
-            placeholder={t(dialog.kind === "url" ? "linkPlaceholder" : "filePlaceholder")}
-            aria-label={t(dialog.kind === "url" ? "linkTitle" : "fileTitle")}
-            onChange={(event: any) => setDialog((current) => current === null ? null : { ...current, draft: event.target.value })}
-            onKeyDown={(event: any) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                void submitSource();
-              }
-            }}
-          />
-        ) : (
-          <Input
-            autoFocus
-            value={dialog.draft}
-            maxLength={MAX_SOURCE_LENGTH}
-            placeholder={t(dialog.kind === "url" ? "linkPlaceholder" : "filePlaceholder")}
-            aria-label={t(dialog.kind === "url" ? "linkTitle" : "fileTitle")}
-            onChange={(event: any) => setDialog((current) => current === null ? null : { ...current, draft: event?.target?.value ?? "" })}
-            onKeyDown={(event: any) => {
-              if (event?.key === "Enter") {
-                event.preventDefault();
-                void submitSource();
-              }
-            }}
-          />
-        )}
-        {dialog.error === "" ? null : <p className="sk-task-monitor__error" role="alert">{dialog.error}</p>}
-      </div>
+    // 环境信息不是监控条目：状态/位置/分支/目录都来自当前会话，行不可点。
+    const envRows: React.ReactNode[] = [];
+    if (git !== null) {
+      const StatusIcon = git.dirty ? ChecklistIcon : CheckCircleIcon;
+      envRows.push(
+        <div className="sk-task-monitor__row" data-kind="environment" key="status" title={git.dirty ? t("gitDirty") : t("gitClean")}>
+          <span className="sk-task-monitor__seat" aria-hidden="true">{StatusIcon === undefined ? null : <StatusIcon size={14} />}</span>
+          <span className="sk-task-monitor__txt">
+            <span className="sk-task-monitor__label">{git.dirty ? t("envDirty") : t("envClean")}</span>
+          </span>
+        </div>,
+      );
+    }
+    envRows.push(
+      <div className="sk-task-monitor__row" data-kind="environment" key="local">
+        <span className="sk-task-monitor__seat" aria-hidden="true">{FolderIcon === undefined ? null : <FolderIcon size={14} />}</span>
+        <span className="sk-task-monitor__txt">
+          <span className="sk-task-monitor__label">{t("envLocal")}</span>
+        </span>
+      </div>,
     );
+    if (git !== null) {
+      envRows.push(
+        <div className="sk-task-monitor__row" data-kind="environment" key="branch" title={git.branch}>
+          <span className="sk-task-monitor__seat" aria-hidden="true">{BranchIcon === undefined ? null : <BranchIcon size={14} />}</span>
+          <span className="sk-task-monitor__txt">
+            <span className="sk-task-monitor__label">{git.detached ? "HEAD" : git.branch}</span>
+          </span>
+        </div>,
+      );
+    }
+    const dirName = dirNameOf(cwd);
+    if (dirName !== "") {
+      envRows.push(
+        <div className="sk-task-monitor__row" data-kind="environment" key="dir" title={cwd}>
+          <span className="sk-task-monitor__seat" aria-hidden="true">{TreeIcon === undefined ? null : <TreeIcon size={14} />}</span>
+          <span className="sk-task-monitor__txt">
+            <span className="sk-task-monitor__label">{dirName}</span>
+          </span>
+        </div>,
+      );
+    }
 
-    const dialogNode = dialog === null ? null : (primitives.Modal !== undefined ? confirmDialog({
-      primitives,
-      title: t(dialog.kind === "url" ? "linkTitle" : "fileTitle"),
-      description: t(dialog.kind === "url" ? "linkDesc" : "fileDesc"),
-      children: dialogInput,
-      cancelLabel: t("cancel"),
-      confirmLabel: t("add"),
-      pending: dialog.busy,
-      pendingLabel: t("adding"),
-      onCancel: () => setDialog(null),
-      onConfirm: () => { void submitSource(); },
-    }) : (
-      // 宿主没有 Modal 时降级成面板内联卡片，添加来源的主流程不断。
-      <div className="sk-task-monitor__dialog" role="dialog" aria-label={t(dialog.kind === "url" ? "linkTitle" : "fileTitle")}>
-        <p className="sk-task-monitor__dialogTitle">{t(dialog.kind === "url" ? "linkTitle" : "fileTitle")}</p>
-        {Menu === undefined ? (
-          <div className="sk-task-monitor__dialogKinds" role="group" aria-label={t("addSource")}>
-            <button type="button" data-active={dialog.kind === "file" || undefined} onClick={() => setDialog({ ...dialog, kind: "file", error: "" })}>{t("addFile")}</button>
-            <button type="button" data-active={dialog.kind === "url" || undefined} onClick={() => setDialog({ ...dialog, kind: "url", error: "" })}>{t("addLink")}</button>
-          </div>
-        ) : null}
-        {dialogInput}
-        <div className="sk-task-monitor__dialogFoot">
-          <Button variant="outline" onClick={() => setDialog(null)} disabled={dialog.busy}>{t("cancel")}</Button>
-          <Button variant="primary" onClick={() => { void submitSource(); }} disabled={dialog.busy}>
-            {dialog.busy ? t("adding") : t("add")}
-          </Button>
-        </div>
-      </div>
-    ));
+    const envCollapsed = collapsed.environment === true;
 
     return (
       <div className="sk-task-monitor" data-phase={phase}>
@@ -364,13 +278,26 @@ export function createTaskMonitorPanel(ctx: any) {
             </button>
           </span>
         </header>
-        {git !== null ? (
-          <div className="sk-task-monitor__git" title={git.dirty ? t("gitDirty") : t("gitClean")}>
-            <span className="sk-task-monitor__gitIcon" aria-hidden="true">{BranchIcon === undefined ? null : <BranchIcon size={14} />}</span>
-            <span className="sk-task-monitor__gitName">{git.detached ? "HEAD" : git.branch}</span>
-            <span className="sk-task-monitor__gitDot" data-dirty={git.dirty || undefined} />
-          </div>
-        ) : null}
+        {envRows.length === 0 ? null : (
+          <section className="sk-task-monitor__section" data-kind="environment" key="environment">
+            <div className="sk-task-monitor__headRow">
+              <button
+                type="button"
+                className="sk-task-monitor__trigger"
+                aria-expanded={!envCollapsed}
+                title={t("envTitle")}
+                onClick={() => setCollapsed((current) => ({ ...current, environment: !envCollapsed }))}
+              >
+                <span className="sk-task-monitor__chevron" data-open={!envCollapsed || undefined} aria-hidden="true">
+                  {ChevronIcon === undefined ? null : <ChevronIcon size={12} />}
+                </span>
+                <span className="sk-task-monitor__sectionIcon" aria-hidden="true">{FolderIcon === undefined ? null : <FolderIcon size={14} />}</span>
+                <span className="sk-task-monitor__sectionTitle">{t("envTitle")}</span>
+              </button>
+            </div>
+            {envCollapsed ? null : <div className="sk-task-monitor__body">{envRows}</div>}
+          </section>
+        )}
         {phase === "loading" ? (
           <div className="sk-task-monitor__skeleton" role="status" aria-label={t("loading")}>
             {[0, 1, 2].map((section) => (
@@ -410,48 +337,6 @@ export function createTaskMonitorPanel(ctx: any) {
                     <span className="sk-task-monitor__sectionTitle">{t(copy.title)}</span>
                     <span className="sk-task-monitor__count">{section.entries.length}</span>
                   </button>
-                  {section.kind === "source" ? (
-                    Menu === undefined ? (
-                      <button
-                        type="button"
-                        className="sk-task-monitor__add"
-                        aria-label={t("addSource")}
-                        title={t("addSource")}
-                        onClick={() => setDialog({ kind: "url", draft: "", error: "", busy: false })}
-                      >
-                        {PlusIcon === undefined ? "+" : <PlusIcon size={12} />}
-                      </button>
-                    ) : (
-                      <Menu
-                        open={menuOpen}
-                        portal
-                        align="end"
-                        dense
-                        onClose={() => setMenuOpen(false)}
-                        anchor={
-                          <button
-                            type="button"
-                            className="sk-task-monitor__add"
-                            aria-haspopup="menu"
-                            aria-expanded={menuOpen}
-                            aria-label={t("addSource")}
-                            title={t("addSource")}
-                            onClick={() => setMenuOpen((value) => !value)}
-                          >
-                            {PlusIcon === undefined ? "+" : <PlusIcon size={12} />}
-                          </button>
-                        }
-                        items={[
-                          { id: "file", label: t("addFile") },
-                          { id: "link", label: t("addLink") },
-                        ]}
-                        onSelect={(id: string) => {
-                          setMenuOpen(false);
-                          setDialog({ kind: id === "file" ? "file" : "url", draft: "", error: "", busy: false });
-                        }}
-                      />
-                    )
-                  ) : null}
                 </div>
                 {isCollapsed ? null : (
                   <div className="sk-task-monitor__body">
@@ -485,7 +370,6 @@ export function createTaskMonitorPanel(ctx: any) {
             );
           })
         )}
-        {dialogNode}
       </div>
     );
   };

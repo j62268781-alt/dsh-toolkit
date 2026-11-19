@@ -5,9 +5,15 @@ export declare const TASK_MONITOR_SOURCE_REMOVE_PATH: string;
 /** 右栏 tab 类型与 keyed body 的注册身份（页类型，不认领资源地址）。 */
 export declare const TASK_MONITOR_KIND = "toolkit-task-monitor";
 export declare const TASK_MONITOR_TAB_ID = "dsh-toolkit-task-monitor";
-/** 五个分区的固定顺序，与 Qoder 任务监控的设置页一致。 */
-export declare const SECTION_ORDER: readonly ["capability", "artifact", "web", "source", "knowledge"];
-export type TaskMonitorKind = typeof SECTION_ORDER[number];
+/**
+ * 面板展示的四个分区（固定顺序）。知识条目仍按 knowledge 记录，只是不占分区：
+ * Qoder 的任务监控没有这一栏，用户也明确要求去掉。
+ */
+export declare const SECTION_ORDER: readonly ["capability", "artifact", "web", "source"];
+export type TaskMonitorSectionKind = typeof SECTION_ORDER[number];
+export type TaskMonitorKind = TaskMonitorSectionKind | 'knowledge';
+/** 允许入库的条目分区：知识仍记录（供未来的检索视图用），只是不占面板分区。 */
+export declare const ENTRY_KINDS: readonly ["capability", "artifact", "web", "source", "knowledge"];
 /** 首屏每个分区最多露几条，其余收进「查看更多」。 */
 export declare const INITIAL_VISIBLE = 5;
 /** 单会话条目上限：超出先淘汰最旧的非手动条目，手动来源永远保留。 */

@@ -1,6 +1,6 @@
 /*
  * 任务监控右栏 body。只服务面板自身子树，随组件 <style> 注入（§8 判定）。
- * 五个分区各借一个色相做图标座与强调：紫=能力、绿=产出、蓝=网页、琥珀=来源、品红=知识，
+ * 四个分区各借一个色相做图标座与强调：紫=能力、绿=产出、蓝=网页、琥珀=来源；
  * 底色一律 color-mix 14% 透明叠在宿主面板上，深浅色主题都成立；文字/悬停/圆角/焦点环
  * 全部走宿主 --dsw-* token 并带 px 兜底。
  */
@@ -10,14 +10,13 @@
   --skm-artifact: #3fa66a;
   --skm-web: #4098e0;
   --skm-source: #d9932f;
-  --skm-knowledge: #d0679d;
   --skm-danger: #e5534b;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   overflow-y: auto;
-  padding: 4px 6px 12px;
+  padding: 10px 12px 14px;
   color: var(--dsw-alias-label-primary, inherit);
   font-size: 12px;
   line-height: 18px;
@@ -51,15 +50,15 @@
 
 .sk-task-monitor__head {
   position: sticky;
-  top: -4px;
+  top: -10px;
   z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin: 0 -6px;
-  padding: 8px 12px 6px;
-  background: color-mix(in srgb, var(--dsw-alias-fill-base, rgba(128, 128, 128, 0.06)) 92%, transparent);
+  margin: 0 -12px;
+  padding: 10px 12px 6px;
+  background: color-mix(in srgb, var(--dsw-specific-input-major, var(--dsw-alias-bg-base, #fff)) 88%, transparent);
   backdrop-filter: blur(6px);
 }
 
@@ -81,9 +80,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.sk-task-monitor__refresh,
-.sk-task-monitor__add,
-.sk-task-monitor__remove {
+.sk-task-monitor__refresh {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -101,45 +98,14 @@
   height: 24px;
 }
 
-.sk-task-monitor__add {
-  width: 20px;
-  height: 20px;
-}
-
-.sk-task-monitor__remove {
-  width: 18px;
-  height: 18px;
-  opacity: 0;
-}
-
 @media (hover: hover) {
-  .sk-task-monitor__refresh:hover,
-  .sk-task-monitor__add:hover {
+  .sk-task-monitor__refresh:hover {
     background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
     color: var(--dsw-alias-label-primary, inherit);
-  }
-
-  .sk-task-monitor__remove:hover {
-    background: color-mix(in srgb, var(--skm-danger) 16%, transparent);
-    color: var(--skm-danger);
-  }
-
-  .sk-task-monitor__row:hover .sk-task-monitor__remove,
-  .sk-task-monitor__row:focus-within .sk-task-monitor__remove {
-    opacity: 1;
-  }
-}
-
-/* 触屏没有 hover：移除按钮常显，否则手动来源删不掉。 */
-@media (hover: none) {
-  .sk-task-monitor__remove {
-    opacity: 0.7;
   }
 }
 
 .sk-task-monitor__refresh:focus-visible,
-.sk-task-monitor__add:focus-visible,
-.sk-task-monitor__remove:focus-visible,
 .sk-task-monitor__trigger:focus-visible,
 .sk-task-monitor__more:focus-visible,
 .sk-task-monitor__row:focus-visible {
@@ -151,50 +117,8 @@
   animation: sk-task-monitor-spin 0.6s linear infinite;
 }
 
-/* 环境条：分支与脏标记来自 git 模块快照，不重跑 git。 */
-.sk-task-monitor__git {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 2px 6px 8px;
-  padding: 5px 8px;
-  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
-  border-radius: 8px;
-  corner-shape: round;
-  background: color-mix(in srgb, var(--skm-artifact) 7%, transparent);
-  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
-}
+/* 分区头：折叠按钮独占一行；来源区不再有「添加来源」入口。 */
 
-.sk-task-monitor__gitIcon {
-  display: inline-flex;
-  flex: none;
-  color: var(--skm-artifact);
-}
-
-.sk-task-monitor__gitName {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-.sk-task-monitor__gitDot {
-  flex: none;
-  width: 6px;
-  height: 6px;
-  margin-left: auto;
-  border-radius: 50%;
-  corner-shape: round;
-  background: var(--skm-artifact);
-}
-
-.sk-task-monitor__gitDot[data-dirty] {
-  background: var(--skm-source);
-  animation: sk-task-monitor-pulse 1.6s ease-in-out infinite;
-}
-
-/* 分区头：toggle 与「添加来源」是并列的两个按钮，不能嵌套。 */
 .sk-task-monitor__headRow {
   display: flex;
   align-items: center;
@@ -248,7 +172,7 @@
 .sk-task-monitor__section[data-kind="artifact"] .sk-task-monitor__sectionIcon { color: var(--skm-artifact); }
 .sk-task-monitor__section[data-kind="web"] .sk-task-monitor__sectionIcon { color: var(--skm-web); }
 .sk-task-monitor__section[data-kind="source"] .sk-task-monitor__sectionIcon { color: var(--skm-source); }
-.sk-task-monitor__section[data-kind="knowledge"] .sk-task-monitor__sectionIcon { color: var(--skm-knowledge); }
+.sk-task-monitor__section[data-kind="environment"] .sk-task-monitor__sectionIcon { color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9)); }
 
 .sk-task-monitor__sectionTitle {
   min-width: 0;
@@ -288,7 +212,8 @@
 }
 
 @media (hover: hover) {
-  .sk-task-monitor__row:hover {
+  /* 只有真能打开的行给 hover 反馈；环境信息是只读事实，不该显得可点。 */
+  .sk-task-monitor__row[data-clickable]:hover {
     background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
   }
 }
@@ -324,9 +249,9 @@
   background: color-mix(in srgb, var(--skm-source) 14%, transparent);
 }
 
-.sk-task-monitor__row[data-kind="knowledge"] .sk-task-monitor__seat {
-  color: var(--skm-knowledge);
-  background: color-mix(in srgb, var(--skm-knowledge) 14%, transparent);
+.sk-task-monitor__row[data-kind="environment"] .sk-task-monitor__seat {
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
+  background: color-mix(in srgb, var(--dsw-alias-label-secondary, #888) 12%, transparent);
 }
 
 .sk-task-monitor__txt {
@@ -490,7 +415,6 @@
 @media (prefers-reduced-motion: reduce) {
   .sk-task-monitor__row,
   .sk-task-monitor__skBar,
-  .sk-task-monitor__gitDot[data-dirty],
   .sk-task-monitor__refresh[data-spinning] > * {
     animation: none;
   }

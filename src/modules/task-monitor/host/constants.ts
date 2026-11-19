@@ -17,9 +17,15 @@ export const TASK_MONITOR_SOURCE_REMOVE_PATH = `${API_PREFIX}/source-remove`
 export const TASK_MONITOR_KIND = 'toolkit-task-monitor'
 export const TASK_MONITOR_TAB_ID = 'dsh-toolkit-task-monitor'
 
-/** 五个分区的固定顺序，与 Qoder 任务监控的设置页一致。 */
-export const SECTION_ORDER = ['capability', 'artifact', 'web', 'source', 'knowledge'] as const
-export type TaskMonitorKind = typeof SECTION_ORDER[number]
+/**
+ * 面板展示的四个分区（固定顺序）。知识条目仍按 knowledge 记录，只是不占分区：
+ * Qoder 的任务监控没有这一栏，用户也明确要求去掉。
+ */
+export const SECTION_ORDER = ['capability', 'artifact', 'web', 'source'] as const
+export type TaskMonitorSectionKind = typeof SECTION_ORDER[number]
+export type TaskMonitorKind = TaskMonitorSectionKind | 'knowledge'
+/** 允许入库的条目分区：知识仍记录（供未来的检索视图用），只是不占面板分区。 */
+export const ENTRY_KINDS = [...SECTION_ORDER, 'knowledge'] as const satisfies readonly TaskMonitorKind[]
 
 /** 首屏每个分区最多露几条，其余收进「查看更多」。 */
 export const INITIAL_VISIBLE = 5

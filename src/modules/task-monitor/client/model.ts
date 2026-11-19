@@ -1,14 +1,14 @@
 /**
  * 纯投影：分区分组、排序、首屏裁切、时间标签。不 import react，可单测。
  */
-import { INITIAL_VISIBLE, SECTION_ORDER, type TaskMonitorEntry, type TaskMonitorKind } from "./constants.js";
+import { INITIAL_VISIBLE, SECTION_ORDER, type TaskMonitorEntry, type TaskMonitorSectionKind } from "./constants.js";
 
 export interface TaskMonitorSection {
-  readonly kind: TaskMonitorKind;
+  readonly kind: TaskMonitorSectionKind;
   readonly entries: TaskMonitorEntry[];
 }
 
-/** 五个分区固定顺序；组内按最近使用倒序（产出即 mtime 口径），同时间按名字稳定排。 */
+/** 四个分区固定顺序；组内按最近使用倒序（产出即 mtime 口径），同时间按名字稳定排。 */
 export function groupSections(entries: readonly TaskMonitorEntry[]): TaskMonitorSection[] {
   return SECTION_ORDER.map((kind) => ({
     kind,

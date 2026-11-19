@@ -5,7 +5,7 @@ import { groupSections, hiddenOf, timeLabel, visibleOf } from '../../src/modules
 
 const entry = (id, kind, updatedAt, label = id) => ({ id, kind, label, detail: '', count: 1, status: 'ok', updatedAt })
 
-test('五个分区固定顺序，组内最近使用倒序、同时间按名字稳定排', () => {
+test('四个分区固定顺序，知识不占分区，组内最近使用倒序、同时间按名字稳定排', () => {
   const sections = groupSections([
     entry('w1', 'web', 30),
     entry('c1', 'capability', 10),
@@ -15,7 +15,8 @@ test('五个分区固定顺序，组内最近使用倒序、同时间按名字�
     entry('s2', 'source', 20, 'aaa'),
     entry('s3', 'source', 90),
   ])
-  assert.deepEqual(sections.map((section) => section.kind), ['capability', 'artifact', 'web', 'source', 'knowledge'])
+  assert.deepEqual(sections.map((section) => section.kind), ['capability', 'artifact', 'web', 'source'])
+  assert.equal(sections.some((section) => section.entries.some((item) => item.id === 'k1')), false)
   assert.deepEqual(sections[3].entries.map((item) => item.id), ['s3', 's2', 's1'])
   assert.deepEqual(sections[0].entries.map((item) => item.id), ['c1'])
 })

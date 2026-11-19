@@ -15,7 +15,11 @@
   min-width: 0;
 }
 
-/* 宽度跟随窗口但不抢消息列：最窄 300，最宽 420，默认 340。 */
+/*
+ * 宽度跟随窗口但不抢消息列：最窄 300，最宽 420，默认 340。
+ * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），
+ * 这样它读起来是「会话里的一张卡」，不是宿主右栏那种贴边分栏；不再画分割线。
+ */
 .sk-task-monitor-side {
   display: flex;
   flex: 0 0 340px;
@@ -23,9 +27,13 @@
   min-height: 0;
   min-width: 300px;
   max-width: 420px;
+  margin: 10px 12px 10px 4px;
   overflow: hidden;
-  border-left: 0.5px solid var(--dsw-alias-border-l3, rgba(127, 127, 127, 0.24));
-  background: var(--dsw-alias-bg-base, transparent);
+  border: 0;
+  border-radius: var(--dsw-radius-panel, 28px);
+  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));
+  box-shadow: var(--dsw-elevation-soft);
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
 }
 
 .sk-task-monitor-side > * {

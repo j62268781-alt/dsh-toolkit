@@ -12,6 +12,7 @@ export {
   isHttpUrl,
   type TaskMonitorEntry,
   type TaskMonitorKind,
+  type TaskMonitorSectionKind,
   type TaskMonitorSnapshot,
 } from "../host/constants.js";
 

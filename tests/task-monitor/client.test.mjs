@@ -1,6 +1,6 @@
 /**
- * 任务监控右栏 body 的交互：分区/行/查看更多/折叠、原生打开、添加来源（Menu+Modal 与
- * 无 primitives 降级两条路）、乐观移除与回滚、错误态重试。fetch 全替身，不碰网络。
+ * 任务监控面板的交互：环境信息 + 四分区、行/查看更多/折叠、原生打开、只读展示
+ * （没有添加/移除入口）、错误态重试。fetch 全替身，不碰网络。
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
@@ -9,7 +9,7 @@ import { JSDOM } from 'jsdom'
 import { build } from 'esbuild'
 import React from 'react'
 import { TASK_MONITOR_COPY } from '../../src/modules/task-monitor/client/locale.ts'
-import { TASK_MONITOR_SNAPSHOT_PATH, TASK_MONITOR_SOURCE_ADD_PATH, TASK_MONITOR_SOURCE_REMOVE_PATH } from '../../src/modules/task-monitor/host/constants.ts'
+import { TASK_MONITOR_SNAPSHOT_PATH } from '../../src/modules/task-monitor/host/constants.ts'
 import { GIT_BRANCHES_PATH } from '../../src/modules/git/host/constants.ts'
 
 const ENTRY = 'src/modules/task-monitor/client/components/panel/index.tsx'
@@ -40,6 +40,10 @@ function fakePrimitives() {
     IconPlusOutlineRegular: icon,
     IconCloseOutlineRegular: icon,
     IconBranchOutlineRegular: icon,
+    IconChecklistOutlineRegular: icon,
+    IconCheckCircleOutlineRegular: icon,
+    IconFolderOpenOutlineRegular: icon,
+    IconWorkspaceTreeOutlineRegular: icon,
     IconSparkleRegular: icon,
     IconEditOutlineRegular: icon,
     IconGlobeOutlineRegular: icon,
@@ -210,18 +214,21 @@ const seedEntries = () => [
   entry('url:https://bad.example/x', 'web', { label: 'bad.example', detail: 'https://bad.example/x', target: 'https://bad.example/x', status: 'failed' }),
 ]
 
-test('五分区渲染：标题、计数、×N、失败标记、git 环境条', async (t) => {
+test('环境信息 + 四分区渲染：计数、×N、失败标记，知识不占分区', async (t) => {
   const dom = withDom(t)
   const state = { entries: seedEntries() }
   await mount(t, dom, state)
   const titles = all(dom, '.sk-task-monitor__sectionTitle').map((node) => node.textContent)
-  assert.deepEqual(titles, ['Skill 与 MCP', '产出', '网页查阅', '来源', '知识'])
+  assert.deepEqual(titles, ['环境信息', '技能与 MCP', '产出', '网页查阅', '来源'])
   assert.equal(rowsIn(dom, 'capability')[0].querySelector('.sk-task-monitor__times').textContent, '×3')
   assert.equal(rowsIn(dom, 'web').length, 2)
   assert.ok(rowsIn(dom, 'web').some((row) => row.querySelector('.sk-task-monitor__failed') !== null))
-  assert.equal(query(dom, '.sk-task-monitor__gitName').textContent, 'main')
-  assert.ok(query(dom, '.sk-task-monitor__gitDot').hasAttribute('data-dirty'))
-  assert.equal(all(dom, '.sk-task-monitor__remove').length, 1)
+  const env = rowsIn(dom, 'environment').map((row) => row.querySelector('.sk-task-monitor__label').textContent)
+  assert.deepEqual(env, ['有未提交改动', '本地', 'main', 'repo'])
+  // 知识条目仍按 knowledge 入库，只是不再占分区；面板也不再有添加/移除入口。
+  assert.equal(all(dom, '.sk-task-monitor__section[data-kind="knowledge"]').length, 0)
+  assert.equal(all(dom, '.sk-task-monitor__add').length, 0)
+  assert.equal(all(dom, '.sk-task-monitor__remove').length, 0)
 })
 
 test('行点击：网页开右栏 browser，文件走宿主原生预览', async (t) => {
@@ -255,44 +262,17 @@ test('查看更多 / 收起 / 折叠分区', async (t) => {
   assert.equal(rowsIn(dom, 'web').length, 0)
 })
 
-test('Menu 添加链接：非法链接就地报错，合法链接入列并 toast', async (t) => {
-  const dom = withDom(t)
-  const state = { entries: seedEntries() }
-  const { act, calls } = await mount(t, dom, state)
-  await click(dom, act, query(dom, '.sk-task-monitor__section[data-kind="source"] .sk-task-monitor__add'))
-  const linkItem = all(dom, '.fake-menu li button').find((button) => button.textContent === '添加链接')
-  await click(dom, act, linkItem)
-  const input = query(dom, '.fake-modal input')
-  assert.ok(input)
-  await type(dom, act, input, 'javascript:alert(1)')
-  await pressEnter(dom, act, input)
-  assert.match(query(dom, '.fake-modal .sk-task-monitor__error').textContent, /http/)
-  assert.equal(calls.some((call) => call.url === TASK_MONITOR_SOURCE_ADD_PATH), false)
-  await type(dom, act, input, 'https://ok.example/x')
-  await pressEnter(dom, act, input)
-  assert.equal(query(dom, '.fake-modal'), null)
-  assert.ok(rowsIn(dom, 'source').some((row) => row.textContent.includes('ok.example')))
-  assert.ok(calls.some((call) => call.url === TASK_MONITOR_SOURCE_ADD_PATH && call.body.value === 'https://ok.example/x'))
-  assert.match(dom.window.document.body.textContent, /已添加来源/)
-})
-
-test('移除手动来源：乐观消失；失败回滚并报错', async (t) => {
+test('只读：来源分区不提供添加与移除入口，手动来源照常展示', async (t) => {
   const dom = withDom(t)
   const state = { entries: seedEntries() }
   const { act } = await mount(t, dom, state)
-  const remove = query(dom, '.sk-task-monitor__remove')
-  await click(dom, act, remove)
-  assert.equal(rowsIn(dom, 'source').some((row) => row.textContent.includes('pinned.example')), false)
-  assert.match(dom.window.document.body.textContent, /已移除来源/)
-
-  state.entries = [...state.entries, entry('manual:url:https://second.example/y', 'source', { label: 'second.example', manual: true, target: 'https://second.example/y' })]
-  const refresh = query(dom, '.sk-task-monitor__refresh')
-  await click(dom, act, refresh)
-  state.failRemove = true
-  const second = all(dom, '.sk-task-monitor__remove').at(-1)
-  await click(dom, act, second)
-  assert.ok(rowsIn(dom, 'source').some((row) => row.textContent.includes('second.example')))
-  assert.match(dom.window.document.body.textContent, /无法移除来源/)
+  const source = query(dom, '.sk-task-monitor__section[data-kind="source"]')
+  assert.ok(source.textContent.includes('pinned.example'))
+  assert.equal(source.querySelector('.sk-task-monitor__add'), null)
+  assert.equal(source.querySelector('.sk-task-monitor__remove'), null)
+  // 没入口可点，点击行也不会触发删除请求。
+  await click(dom, act, rowsIn(dom, 'source')[1])
+  assert.ok(rowsIn(dom, 'source').some((row) => row.textContent.includes('pinned.example')))
 })
 
 test('首屏失败进错误态，重试恢复', async (t) => {
@@ -304,22 +284,22 @@ test('首屏失败进错误态，重试恢复', async (t) => {
   await click(dom, act, query(dom, '.sk-task-monitor__errorBox button'))
   assert.equal(query(dom, '.sk-task-monitor__errorBox'), null)
   assert.equal(all(dom, '.sk-task-monitor__section').length, 5)
+  assert.equal(rowsIn(dom, 'source').length, 2)
 })
 
-test('无宿主 primitives：内联弹窗带类型切换，文件来源主流程不断', async (t) => {
+test('无宿主 primitives：图标降级为空、重试按钮走原生 button', async (t) => {
   const dom = withDom(t, { host: false })
-  const state = { entries: [] }
-  const { act, calls } = await mount(t, dom, state, { host: false })
-  assert.equal(query(dom, '.fake-modal'), null)
-  await click(dom, act, query(dom, '.sk-task-monitor__section[data-kind="source"] .sk-task-monitor__add'))
-  const dialog = query(dom, '.sk-task-monitor__dialog')
-  assert.ok(dialog)
-  const fileKind = [...dialog.querySelectorAll('button')].find((button) => button.textContent === '添加文件')
-  await click(dom, act, fileKind)
-  const input = dialog.querySelector('input')
-  await type(dom, act, input, 'docs/spec.md')
-  await pressEnter(dom, act, input)
-  assert.equal(query(dom, '.sk-task-monitor__dialog'), null)
-  assert.ok(rowsIn(dom, 'source').some((row) => row.textContent.includes('spec.md')))
-  assert.ok(calls.some((call) => call.url === TASK_MONITOR_SOURCE_ADD_PATH && call.body.kind === 'file'))
+  const state = { entries: seedEntries(), failSnapshot: true }
+  const { act } = await mount(t, dom, state, { host: false })
+  // 图标组件拿不到就渲染 null，分区与行仍在；没有 Modal/Menu，也不再需要添加来源。
+  assert.ok(rowsIn(dom, 'environment').length >= 1)
+  // 错误态只露环境信息；重试成功后四个分区与来源行才回来。
+  assert.equal(rowsIn(dom, 'source').length, 0)
+  const retry = query(dom, '.sk-task-monitor__errorBox button')
+  assert.equal(retry.tagName, 'BUTTON')
+  state.failSnapshot = false
+  await click(dom, act, retry)
+  assert.equal(query(dom, '.sk-task-monitor__errorBox'), null)
+  assert.equal(all(dom, '.sk-task-monitor__section').length, 5)
+  assert.equal(rowsIn(dom, 'source').length, 2)
 })
