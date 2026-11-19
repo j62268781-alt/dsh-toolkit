@@ -33,8 +33,13 @@
   min-height: 0;
   min-width: 250px;
   max-width: 250px;
-  max-height: calc(100% - 20px);
-  margin: 10px 10px 10px 4px;
+  /* 上下留白对齐输入框下方那条统计带（composer dock）：dock 的 padding-top 4px
+     + 一行 22px（20px 次级行 + 1px 上下 block padding）+ InputBar 根的
+     padding-bottom 4px。字号档位放大时跟着 --dsh-content-font-delta-secondary
+     一起长，和那边的预留高度同源。 */
+  --sk-task-monitor-gutter: calc(30px + var(--dsh-content-font-delta-secondary, 0px));
+  max-height: calc(100% - var(--sk-task-monitor-gutter) * 2);
+  margin: var(--sk-task-monitor-gutter) 10px var(--sk-task-monitor-gutter) 4px;
   overflow: hidden;
   border: 0;
   border-radius: var(--dsw-radius-panel, 28px);
