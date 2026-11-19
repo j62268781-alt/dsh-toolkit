@@ -3,7 +3,7 @@ import { watchElement, watchSidebar } from "./watch.js";
 
 // Keep the workspace width independent of the rail → hidden collapse cycle.
 const RAIL_WIDTH = 52;
-const WORKSPACE_MIN = 250;
+const WORKSPACE_MIN = 220;
 const WORKSPACE_MAX = 450;
 const RAIL_W = `${RAIL_WIDTH}px`;
 let frameEl = null;
