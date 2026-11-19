@@ -21,7 +21,7 @@ import {
   type TaskMonitorEntry,
   type TaskMonitorSectionKind,
 } from "../../constants.js";
-import { groupSections, hiddenOf, visibleOf } from "../../model.js";
+import { fileAddressFor, groupSections, hiddenOf, visibleOf } from "../../model.js";
 import panelCss from "./style.css";
 
 export const NAME = "panel";
@@ -37,16 +37,6 @@ interface GitStrip {
   readonly branch: string;
   readonly dirty: boolean;
   readonly detached: boolean;
-}
-
-/** 懒 require：宿主模块表里有这个 util 才拿，拿不到文件行就只读不可点（降级不报错）。 */
-function fileAddress(sessionId: string, cwd: string, path: string): string | undefined {
-  try {
-    const util = require("@deepseek-ai/dsh-util-workspace-path");
-    return typeof util?.fileAddressFor === "function" ? util.fileAddressFor(sessionId, cwd, path) : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 function reasonOf(payload: any, fallback: string): string {
@@ -162,8 +152,7 @@ export function createTaskMonitorPanel(ctx: any) {
         actions.openTab?.("browser", { params: { url: entry.target } });
         return;
       }
-      const address = fileAddress(sessionId, cwd, entry.target);
-      if (address !== undefined) actions.openResource?.(address);
+      actions.openResource?.(fileAddressFor(sessionId, cwd, entry.target));
     };
 
     const renderRow = (entry: TaskMonitorEntry, index: number): React.ReactNode => {
@@ -198,7 +187,7 @@ export function createTaskMonitorPanel(ctx: any) {
           <span className="sk-task-monitor__meta">
             {entry.status === "failed"
               ? <span className="sk-task-monitor__failed" title={t("failedStatus")} aria-label={t("failedStatus")}>!</span>
-              : entry.count > 1 ? <span className="sk-task-monitor__times">{t("times", { n: entry.count })}</span> : null}
+              : null}
           </span>
         </div>
       );

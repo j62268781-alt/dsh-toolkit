@@ -229,12 +229,6 @@
   flex: none;
 }
 
-.sk-task-monitor__times {
-  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-}
-
 .sk-task-monitor__failed {
   display: inline-flex;
   align-items: center;
@@ -271,8 +265,10 @@
 
 .sk-task-monitor__empty {
   margin: 0;
-  padding: 4px 8px 6px 32px;
-  color: var(--dsw-alias-label-dimmed, rgba(128, 128, 128, 0.6));
+  /* 与条目行的图标座左缘对齐（面板 8 + body 2 + row 6 = 16px），空态不缩进成「行内文字」。 */
+  padding: 4px 6px 6px 6px;
+  /* 与「查看更多」同一档文字色：dimmed 在卡片底色上过于虚，读起来像不可用。 */
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
   font-size: 11px;
 }
 

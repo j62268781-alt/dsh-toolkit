@@ -16,9 +16,13 @@ export const NAME = "conversation-rail";
 export function install(ctx: any) {
   const t = ctx.locale.bind(TASK_MONITOR_NS);
   const Panel = createTaskMonitorPanel(ctx);
-  const actions = {
-    openTab: (kind: string, options?: any) => ctx.sidebarRight?.openTab?.(kind, options),
-    openResource: (address: string, options?: any) => ctx.sidebarRight?.openResource?.(address, options),
+  // `sidebarRight` 没写进静态 inject，属性访问会被 cordis 的 inject 守卫拦成异常
+  // （`cannot get property "sidebarRight" without inject`），`ctx.get()` 才是免守卫的
+  // 取法。服务缺席时整份 actions 缺席，条目行随之降级成只读而不是点了没反应。
+  const sidebarRight = sidebarRightOf(ctx);
+  const actions = sidebarRight === undefined ? undefined : {
+    openTab: (kind: string, options?: any) => sidebarRight.openTab?.(kind, options),
+    openResource: (address: string, options?: any) => sidebarRight.openResource?.(address, options),
   };
 
   return ctx.slots.inject("conversation.hero.frame", () =>
@@ -27,6 +31,18 @@ export function install(ctx: any) {
       (props: any) => <RailLayer {...props} Panel={Panel} actions={actions} label={t("trigger")} />,
     ),
   );
+}
+
+function sidebarRightOf(ctx: any): any {
+  if (typeof ctx.get === "function") {
+    const service = ctx.get("sidebarRight");
+    if (service !== undefined) return service;
+  }
+  try {
+    return ctx.sidebarRight;
+  } catch {
+    return undefined;
+  }
 }
 
 function activeSessionId(useSessions: any): string | undefined {

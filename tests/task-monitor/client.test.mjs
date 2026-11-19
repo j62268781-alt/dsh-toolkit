@@ -95,9 +95,6 @@ function withDom(t, { host = true } = {}) {
   if (host) {
     globals.require = (id) => {
       if (id === '@deepseek-ai/dsh-client-ui-primitives') return fakePrimitives()
-      if (id === '@deepseek-ai/dsh-util-workspace-path') {
-        return { fileAddressFor: (sessionId, cwd, path) => `dsh-resource://file/session/${sessionId}/${encodeURIComponent(path)}` }
-      }
       throw new Error(`unexpected require ${id}`)
     }
   }
@@ -214,13 +211,14 @@ const seedEntries = () => [
   entry('url:https://bad.example/x', 'web', { label: 'bad.example', detail: 'https://bad.example/x', target: 'https://bad.example/x', status: 'failed' }),
 ]
 
-test('环境信息 + 四分区渲染：计数、×N、失败标记，知识不占分区', async (t) => {
+test('环境信息 + 四分区渲染：计数、去重后不显示 ×N、失败标记，知识不占分区', async (t) => {
   const dom = withDom(t)
   const state = { entries: seedEntries() }
   await mount(t, dom, state)
   const titles = all(dom, '.sk-task-monitor__sectionTitle').map((node) => node.textContent)
   assert.deepEqual(titles, ['环境信息', '技能与 MCP', '产出', '网页查阅', '来源'])
-  assert.equal(rowsIn(dom, 'capability')[0].querySelector('.sk-task-monitor__times').textContent, '×3')
+  // 条目已按路径去重，出现次数不再画成 ×N 徽标。
+  assert.ok(rowsIn(dom, 'capability')[0].querySelector('.sk-task-monitor__times') === null, '不再渲染 ×N 徽标')
   assert.equal(rowsIn(dom, 'web').length, 2)
   assert.ok(rowsIn(dom, 'web').some((row) => row.querySelector('.sk-task-monitor__failed') !== null))
   const env = rowsIn(dom, 'environment').map((row) => row.querySelector('.sk-task-monitor__label').textContent)
@@ -233,14 +231,27 @@ test('环境信息 + 四分区渲染：计数、×N、失败标记，知识不�
 
 test('行点击：网页开右栏 browser，文件走宿主原生预览', async (t) => {
   const dom = withDom(t)
-  const state = { entries: seedEntries() }
+  const state = {
+    entries: [
+      ...seedEntries(),
+      // 相对路径按会话 cwd 折叠；空格要按段编码，右栏只认这一种拼写。
+      entry('artifact:src/main.ts', 'artifact', { label: 'main.ts', detail: 'src', target: 'src/main.ts' }),
+      entry('source:docs/a b.md', 'source', { label: 'a b.md', detail: 'docs', target: 'docs/a b.md' }),
+    ],
+  }
   const { act, opened } = await mount(t, dom, state)
   const webRow = rowsIn(dom, 'web').find((row) => row.textContent.includes('example.com'))
   await click(dom, act, webRow)
-  await click(dom, act, rowsIn(dom, 'artifact')[0])
+  const artifactRows = rowsIn(dom, 'artifact')
+  await click(dom, act, artifactRows.find((row) => row.textContent.includes('main.ts')))
+  await click(dom, act, artifactRows.find((row) => row.textContent.includes('out.png')))
+  const sourceRow = rowsIn(dom, 'source').find((row) => row.textContent.includes('a b.md'))
+  await click(dom, act, sourceRow)
   assert.deepEqual(opened[0], ['tab', 'browser', { params: { url: 'https://example.com/a' } }])
   assert.equal(opened[1][0], 'resource')
-  assert.match(opened[1][1], /^dsh-resource:\/\/file\/session\/s1\//)
+  assert.equal(opened[1][1], 'dsh-resource://file/session/s1/src/main.ts')
+  assert.equal(opened[2][1], 'dsh-resource://file/session/s1//repo/out.png')
+  assert.equal(opened[3][1], 'dsh-resource://file/session/s1/docs/a%20b.md')
 })
 
 test('查看更多 / 收起 / 折叠分区', async (t) => {
