@@ -277,12 +277,13 @@ Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" 
 
 ---
 
-## 12. 本机 DSH 环境
+## 12. 改动何时生效
 
-- `DSH_HOME=D:\DeepSeekHarness-home`，profile 是桌面端 `desktop`；本仓库以 `link:` 装进该 profile。
-- 生效方式：只改 client → `pnpm build` 后按 **Ctrl+R**；改 host（含 `cordis.patch.yml`、`src/index.ts`）→
-  **重启 DSH 桌面端**（bundles 只在进程启动时读一次）。重启会中断当前会话回合，由用户操作。
-- 安装步骤、备份清单、从 `app.asar` 反查宿主实现：见 [docs/agent/env.md](docs/agent/env.md)。
+- 只改 client → `pnpm build` 后按 **Ctrl+R**。
+- 改 host（含 `cordis.patch.yml`、`src/index.ts`）→ **重启 DSH**：bundles 只在进程启动时读一次。
+  重启会中断当前会话回合，**自己不要重启**，交给用户。
+- 本机 `DSH_HOME`、profile 名、`link:` 安装与 `app.asar` 反查：见 [docs/agent/env.md](docs/agent/env.md)。
+  这三样随机器而变，不要写进本文件。
 
 ---
 

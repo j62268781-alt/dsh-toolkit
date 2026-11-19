@@ -1,8 +1,9 @@
-# 本机 DSH 环境（AGENTS.md §12 细则）
+# 本机 DSH 环境与安装（AGENTS.md §12 的细则：随机器而变的部分都在这里）
 
-> 从 AGENTS.md 拆出，内容不变；改这类约定时先改这里，再看 AGENTS.md 的摘要要不要同步。
+> AGENTS.md §12 只讲「改完之后怎么生效」；`DSH_HOME` 路径、profile 名、安装命令、asar 反查
+> 都依赖具体机器，所以只放这里，不进每会话注入的那一页。换机器时改这一篇即可。
 
-## 12. 本机 DSH 环境
+## 本机 DSH 环境
 
 - `DSH_HOME=D:\DeepSeekHarness-home`，profile 是桌面端 `desktop`。
 - 本仓库以 `link:` 装进 profile：`dsh.profile.bundles` 加 `dsh-toolkit`，`dependencies` 加
