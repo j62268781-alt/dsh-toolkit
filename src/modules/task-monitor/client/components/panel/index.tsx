@@ -20,8 +20,6 @@ import {
   TASK_MONITOR_SNAPSHOT_PATH,
   TASK_MONITOR_SOURCE_ADD_PATH,
   TASK_MONITOR_SOURCE_REMOVE_PATH,
-  TASK_MONITOR_TAB_ID,
-  TASK_MONITOR_KIND,
   isHttpUrl,
   type TaskMonitorEntry,
   type TaskMonitorKind,
@@ -69,7 +67,7 @@ function reasonOf(payload: any, fallback: string): string {
   return fallback;
 }
 
-export function createTaskMonitorTab(ctx: any) {
+export function createTaskMonitorPanel(ctx: any) {
   const t = ctx.locale.bind(TASK_MONITOR_NS);
   const ChevronIcon = primitives.IconChevronDownOutlineRegular;
   const RefreshIcon = primitives.IconRefreshOutlineRegular;
@@ -105,7 +103,7 @@ export function createTaskMonitorTab(ctx: any) {
     const info = typeof props.useTabInfo === "function" ? props.useTabInfo() : undefined;
     const tab = info?.tab;
     const visible = tab?.visible !== false;
-    const actions = tab?.actions;
+    const actions = props.actions ?? tab?.actions;
     const revision = tab?.navigation?.revision ?? 0;
     const projected = typeof useProjection === "function" ? useProjection("workingDirectory") : undefined;
     const owned = typeof useSessions === "function"
@@ -491,85 +489,4 @@ export function createTaskMonitorTab(ctx: any) {
       </div>
     );
   };
-}
-
-export function install(ctx: any) {
-  const t = ctx.locale.bind(TASK_MONITOR_NS);
-  const offType = ctx.sidebarRightTabs.register({
-    id: TASK_MONITOR_TAB_ID,
-    kind: TASK_MONITOR_KIND,
-    multiple: false,
-    keepMounted: true,
-    title: () => t("tabTitle"),
-    guide: [{
-      id: "open",
-      order: 45,
-      title: () => t("guideTitle"),
-      description: () => t("guideDescription"),
-      icon: primitives.IconSparkleRegular,
-    }],
-  });
-  const offBody = ctx.slots.register({
-    name: "sidebar.right.pane.tab",
-    key: TASK_MONITOR_TAB_ID,
-    locale: TASK_MONITOR_NS,
-  }, createTaskMonitorTab(ctx));
-  return () => {
-    offBody?.();
-    offType?.();
-  };
-}
-
-/**
- * 会话一开始就把任务监控露在右栏：宿主右栏默认收起，用户要的是「会话开始
- * 就能看到本次会话生成了什么」，所以每个被挂载的会话自动展开一次。
- *
- * 只在进程内记账：用户随后手动收起不再弹，换会话或刷新页面各算一次新的开始。
- * 命令必须等宿主在本次 commit 里为该会话 mint 出 store —— mounted 快照会先于
- * 渲染变化，所以延后一个宏任务再发；列还没就绪就放弃这次，标题栏按钮仍可手动打开。
- */
-export function installAutoOpen(ctx: any) {
-  // 每个会话只自动展开一次：标记落 localStorage，刷新后仍尊重用户手动收起。
-  // 隐私模式 / 存储被禁时退回进程内记账，至少不在同一次运行里反复弹。
-  const opened = new Set<string>();
-  const seen = (sessionId: string): boolean => {
-    const key = `dsh-toolkit-task-monitor:auto-open:${sessionId}`;
-    try {
-      if (localStorage.getItem(key) !== null) return true;
-      localStorage.setItem(key, "1");
-      return false;
-    } catch {
-      if (opened.has(sessionId)) return true;
-      opened.add(sessionId);
-      return false;
-    }
-  };
-  const offInject = ctx.inject(["sidebarRight"], (scope: any) => {
-    scope.effect(() => {
-      const sidebar = scope.sidebarRight;
-      const timers = new Set<ReturnType<typeof setTimeout>>();
-      const reveal = (sessionId: unknown): void => {
-        if (typeof sessionId !== "string" || sessionId === "" || seen(sessionId)) return;
-        const timer = setTimeout(() => {
-          timers.delete(timer);
-          try {
-            sidebar.openTab(TASK_MONITOR_KIND);
-          } catch {
-            // 右栏尚未 adopt 该会话：留给标题栏按钮，不在后台反复重试。
-          }
-        }, 0);
-        timers.add(timer);
-      };
-      reveal(sidebar.mounted.getSnapshot());
-      const offMounted = sidebar.mounted.subscribe(() => {
-        reveal(sidebar.mounted.getSnapshot());
-      });
-      return () => {
-        offMounted?.();
-        for (const timer of timers) clearTimeout(timer);
-        timers.clear();
-      };
-    }, "dsh-toolkit-task-monitor:auto-open");
-  });
-  return () => offInject?.();
 }

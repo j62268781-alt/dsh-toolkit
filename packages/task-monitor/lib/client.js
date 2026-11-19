@@ -167,7 +167,7 @@ window.__ModuleLoader__.load({
     };
 
     // src/modules/task-monitor/client/surfaces/header-button/index.tsx
-    var import_react = require("react");
+    var import_react2 = require("react");
 
     // src/client/ui/slot.ts
     function installSlot(ctx, descriptor, Component) {
@@ -182,6 +182,171 @@ window.__ModuleLoader__.load({
         return {};
       }
     })();
+
+    // src/modules/task-monitor/client/state/rail.ts
+    var import_react = __toESM(require("react"), 1);
+    var KEY = "dsh-toolkit-task-monitor:rail:";
+    var listeners = /* @__PURE__ */ new Set();
+    var memory = /* @__PURE__ */ new Set();
+    function storageKey(sessionId) {
+      return `${KEY}${sessionId}`;
+    }
+    function railHidden(sessionId) {
+      if (sessionId === void 0 || sessionId === "") return true;
+      try {
+        return localStorage.getItem(storageKey(sessionId)) === "hidden";
+      } catch {
+        return memory.has(sessionId);
+      }
+    }
+    function setRailHidden(sessionId, hidden) {
+      if (sessionId === "") return;
+      try {
+        if (hidden) localStorage.setItem(storageKey(sessionId), "hidden");
+        else localStorage.removeItem(storageKey(sessionId));
+      } catch {
+        if (hidden) memory.add(sessionId);
+        else memory.delete(sessionId);
+      }
+      for (const listener of listeners) listener();
+    }
+    function subscribeRail(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    }
+    function useRailHidden(sessionId) {
+      return import_react.default.useSyncExternalStore(
+        subscribeRail,
+        () => railHidden(sessionId),
+        () => railHidden(sessionId)
+      );
+    }
+
+    // src/modules/task-monitor/client/surfaces/header-button/index.tsx
+    var NAME = "header-button";
+    function install(ctx) {
+      const t = ctx.locale.bind(TASK_MONITOR_NS);
+      function HeaderButton(props) {
+        const sessionId = props.sessionId;
+        const hidden = useRailHidden(sessionId);
+        const open = !hidden && typeof sessionId === "string" && sessionId !== "";
+        const label = t("trigger");
+        const Icon = primitives.IconInspectOutlineRegular;
+        return /* @__PURE__ */ __dshReact.createElement(
+          "button",
+          {
+            type: "button",
+            className: "sk-task-monitor-button",
+            "aria-label": label,
+            "aria-pressed": open,
+            title: label,
+            onClick: () => {
+              if (typeof sessionId !== "string" || sessionId === "") return;
+              setRailHidden(sessionId, !hidden);
+            }
+          },
+          Icon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(Icon, { size: 16 })
+        );
+      }
+      const offSlot = installSlot(ctx, {
+        name: "conversation.session.header.utilities",
+        id: "dsh-toolkit-task-monitor",
+        order: -3,
+        locale: TASK_MONITOR_NS,
+        label: () => t("trigger")
+      }, HeaderButton);
+      return () => {
+        offSlot?.();
+      };
+    }
+
+    // src/modules/task-monitor/client/surfaces/conversation-rail/index.tsx
+    var import_react4 = __toESM(require("react"), 1);
+
+    // src/modules/task-monitor/client/components/panel/index.tsx
+    var import_react3 = __toESM(require("react"), 1);
+
+    // src/client/http.ts
+    var DEFAULT_TIMEOUT_MS = 15e3;
+    function withDeadline(timeoutMs, signal) {
+      if (!(timeoutMs > 0) || typeof AbortSignal === "undefined" || typeof AbortSignal.timeout !== "function") return signal;
+      const deadline = AbortSignal.timeout(timeoutMs);
+      if (signal === void 0) return deadline;
+      if (typeof AbortSignal.any !== "function") return signal;
+      return AbortSignal.any([signal, deadline]);
+    }
+    async function fetchJson(url, { json, timeoutMs = DEFAULT_TIMEOUT_MS, ...options } = {}) {
+      const headers = new Headers(options.headers);
+      if (json !== void 0) headers.set("content-type", "application/json");
+      const response = await fetch(url, {
+        credentials: "same-origin",
+        cache: "no-store",
+        ...options,
+        signal: withDeadline(timeoutMs, options.signal),
+        headers: Object.fromEntries(headers),
+        // `json` 意味着有请求体，而 fetch 默认 GET —— 浏览器在发请求前就抛
+        // "Request with GET/HEAD method cannot have body"。调用方没写 method 时按 POST 补齐，
+        // 该行为在 fetchJson 这一层收口，免得每个「忘了写 method」的调用点各炸一次。
+        ...json === void 0 ? {} : { method: options.method ?? "POST", body: JSON.stringify(json) }
+      });
+      let parsed;
+      return {
+        ok: response.ok,
+        status: response.status,
+        headers: response.headers,
+        json() {
+          parsed ??= (async () => {
+            if (typeof response.text !== "function") return response.json();
+            const text = await response.text();
+            if (text === "") return {};
+            try {
+              return JSON.parse(text);
+            } catch {
+              const error = new Error(`HTTP ${response.status} 返回了非 JSON：${text.slice(0, 200)}`);
+              error.status = response.status;
+              error.bodyPreview = text.slice(0, 200);
+              throw error;
+            }
+          })();
+          return parsed;
+        }
+      };
+    }
+
+    // src/client/ui/components/confirm-dialog/index.tsx
+    function confirmDialog({
+      primitives: primitives2,
+      title,
+      description,
+      children,
+      onCancel,
+      onConfirm,
+      pending = false,
+      confirmButton,
+      closeLabel = "关闭",
+      cancelLabel = "取消",
+      confirmLabel = "删除",
+      pendingLabel = "删除中…"
+    }) {
+      const Modal = primitives2?.Modal;
+      if (Modal === void 0) return null;
+      const Button = primitives2.Button ?? "button";
+      const confirm = confirmButton ?? /* @__PURE__ */ __dshReact.createElement(Button, { variant: "primary", key: "ok", onClick: onConfirm, disabled: pending }, pending ? pendingLabel : confirmLabel);
+      return /* @__PURE__ */ __dshReact.createElement(
+        Modal,
+        {
+          open: true,
+          onClose: onCancel,
+          title,
+          closeLabel,
+          description,
+          footer: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(Button, { variant: "outline", key: "cancel", onClick: onCancel, disabled: pending }, cancelLabel), confirm)
+        },
+        children
+      );
+    }
 
     // src/client/ui/toast.css
     var toast_default = '/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n *\n * 两条路径共用同一套类名：\n * - 原生路径：栈是 `popover="manual"`（top layer），单条靠 `@starting-style` + `transition` 进出场；\n * - 退化路径（jsdom、没有 popover 的宿主）：就是改造前的固定定位栈 + 两个 `@keyframes`。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n/* display 只跟着「栈开着」走：popover 关闭时 UA 是 display:none，作者样式不能把它顶回来。 */\n.sk-toast-stack:not([popover]),\n.sk-toast-stack:popover-open {\n  display: flex;\n}\n\n/* popover 在 top layer 里，UA 会给 position:fixed + inset:0 + margin:auto + 边框/背景，\n   这里全部按原布局收回来，只保留 `top:40px / left:50%` 的居中胶囊位置。 */\n.sk-toast-stack[popover] {\n  inset: auto;\n  top: 40px;\n  left: 50%;\n  margin: 0;\n  padding: 0;\n  border: 0;\n  background: transparent;\n  color: inherit;\n  overflow: visible;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* 退化路径：没有 `:popover-open` 的宿主继续用关键帧，行为与改造前一致。 */\n@supports not (selector(:popover-open)) {\n  .sk-toast {\n    animation: sk-toast-in 0.16s ease-out;\n  }\n\n  .sk-toast--leaving {\n    animation: sk-toast-out 0.18s ease-in forwards;\n  }\n}\n\n/* 原生路径：进场由 `@starting-style` 给出起点，退场由 `--leaving` 的目标值给出终点。\n   `transition-behavior: allow-discrete` 必须是独立声明，并进 `transition` 简写会让整条声明失效。 */\n@supports (selector(:popover-open)) {\n  .sk-toast {\n    transition: opacity 0.16s ease-out, transform 0.16s ease-out;\n    transition-behavior: allow-discrete;\n  }\n\n  @starting-style {\n    .sk-toast {\n      opacity: 0;\n      transform: translateY(-6px);\n    }\n  }\n}\n\n.sk-toast--leaving {\n  opacity: 0;\n  transform: translateY(-4px);\n}\n\n/* 减弱动效：过渡与关键帧都不跑，节点靠 `toast.ts` 的兜底定时器收掉。 */\n@media (prefers-reduced-motion: reduce) {\n  .sk-toast,\n  .sk-toast--leaving {\n    animation: none;\n    transition: none;\n  }\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n';
@@ -324,13 +489,17 @@ window.__ModuleLoader__.load({
       return `${PLUGIN_API_ROOT}/${moduleName}`;
     }
 
+    // src/modules/git/host/constants.ts
+    var API_PREFIX = pluginApiPath("git");
+    var GIT_BRANCHES_PATH = `${API_PREFIX}/branches`;
+    var GIT_CHECKOUT_PATH = `${API_PREFIX}/checkout`;
+    var GIT_CREATE_BRANCH_PATH = `${API_PREFIX}/create-branch`;
+
     // src/modules/task-monitor/host/constants.ts
-    var API_PREFIX = pluginApiPath("task-monitor");
-    var TASK_MONITOR_SNAPSHOT_PATH = `${API_PREFIX}/snapshot`;
-    var TASK_MONITOR_SOURCE_ADD_PATH = `${API_PREFIX}/source-add`;
-    var TASK_MONITOR_SOURCE_REMOVE_PATH = `${API_PREFIX}/source-remove`;
-    var TASK_MONITOR_KIND = "toolkit-task-monitor";
-    var TASK_MONITOR_TAB_ID = "dsh-toolkit-task-monitor";
+    var API_PREFIX2 = pluginApiPath("task-monitor");
+    var TASK_MONITOR_SNAPSHOT_PATH = `${API_PREFIX2}/snapshot`;
+    var TASK_MONITOR_SOURCE_ADD_PATH = `${API_PREFIX2}/source-add`;
+    var TASK_MONITOR_SOURCE_REMOVE_PATH = `${API_PREFIX2}/source-remove`;
     var SECTION_ORDER = ["capability", "artifact", "web", "source", "knowledge"];
     var INITIAL_VISIBLE = 5;
     var MAX_SOURCE_LENGTH = 2048;
@@ -345,148 +514,6 @@ window.__ModuleLoader__.load({
 
     // src/modules/task-monitor/client/constants.ts
     var TASK_MONITOR_POLL_MS = 2500;
-
-    // src/modules/task-monitor/client/surfaces/header-button/index.tsx
-    var NAME = "header-button";
-    function install(ctx) {
-      const t = ctx.locale.bind(TASK_MONITOR_NS);
-      let sidebar;
-      const offService = ctx.inject(["sidebarRight"], (scope) => {
-        scope.effect(() => {
-          sidebar = scope.sidebarRight;
-          return () => {
-            sidebar = void 0;
-          };
-        }, "dsh-toolkit-task-monitor:header-button-service");
-      });
-      function HeaderButton() {
-        const Icon = primitives.IconInspectOutlineRegular;
-        const label = t("trigger");
-        return /* @__PURE__ */ __dshReact.createElement(
-          "button",
-          {
-            type: "button",
-            className: "sk-task-monitor-button",
-            "aria-label": label,
-            title: label,
-            onClick: () => {
-              if (sidebar === void 0) {
-                toast.info(t("triggerUnsupported"));
-                return;
-              }
-              try {
-                const active = sidebar.active();
-                if (active?.kind === TASK_MONITOR_KIND && sidebar.isExpanded()) sidebar.toggleExpanded();
-                else sidebar.openTab(TASK_MONITOR_KIND);
-              } catch {
-                toast.info(t("triggerUnsupported"));
-              }
-            }
-          },
-          Icon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(Icon, { size: 16 })
-        );
-      }
-      const offSlot = installSlot(ctx, {
-        name: "conversation.session.header.utilities",
-        id: "dsh-toolkit-task-monitor",
-        order: -3,
-        locale: TASK_MONITOR_NS,
-        label: () => t("trigger")
-      }, HeaderButton);
-      return () => {
-        offSlot?.();
-        offService?.();
-      };
-    }
-
-    // src/modules/task-monitor/client/surfaces/sidebar-tab/index.tsx
-    var import_react2 = __toESM(require("react"), 1);
-
-    // src/client/http.ts
-    var DEFAULT_TIMEOUT_MS = 15e3;
-    function withDeadline(timeoutMs, signal) {
-      if (!(timeoutMs > 0) || typeof AbortSignal === "undefined" || typeof AbortSignal.timeout !== "function") return signal;
-      const deadline = AbortSignal.timeout(timeoutMs);
-      if (signal === void 0) return deadline;
-      if (typeof AbortSignal.any !== "function") return signal;
-      return AbortSignal.any([signal, deadline]);
-    }
-    async function fetchJson(url, { json, timeoutMs = DEFAULT_TIMEOUT_MS, ...options } = {}) {
-      const headers = new Headers(options.headers);
-      if (json !== void 0) headers.set("content-type", "application/json");
-      const response = await fetch(url, {
-        credentials: "same-origin",
-        cache: "no-store",
-        ...options,
-        signal: withDeadline(timeoutMs, options.signal),
-        headers: Object.fromEntries(headers),
-        // `json` 意味着有请求体，而 fetch 默认 GET —— 浏览器在发请求前就抛
-        // "Request with GET/HEAD method cannot have body"。调用方没写 method 时按 POST 补齐，
-        // 该行为在 fetchJson 这一层收口，免得每个「忘了写 method」的调用点各炸一次。
-        ...json === void 0 ? {} : { method: options.method ?? "POST", body: JSON.stringify(json) }
-      });
-      let parsed;
-      return {
-        ok: response.ok,
-        status: response.status,
-        headers: response.headers,
-        json() {
-          parsed ??= (async () => {
-            if (typeof response.text !== "function") return response.json();
-            const text = await response.text();
-            if (text === "") return {};
-            try {
-              return JSON.parse(text);
-            } catch {
-              const error = new Error(`HTTP ${response.status} 返回了非 JSON：${text.slice(0, 200)}`);
-              error.status = response.status;
-              error.bodyPreview = text.slice(0, 200);
-              throw error;
-            }
-          })();
-          return parsed;
-        }
-      };
-    }
-
-    // src/client/ui/components/confirm-dialog/index.tsx
-    function confirmDialog({
-      primitives: primitives2,
-      title,
-      description,
-      children,
-      onCancel,
-      onConfirm,
-      pending = false,
-      confirmButton,
-      closeLabel = "关闭",
-      cancelLabel = "取消",
-      confirmLabel = "删除",
-      pendingLabel = "删除中…"
-    }) {
-      const Modal = primitives2?.Modal;
-      if (Modal === void 0) return null;
-      const Button = primitives2.Button ?? "button";
-      const confirm = confirmButton ?? /* @__PURE__ */ __dshReact.createElement(Button, { variant: "primary", key: "ok", onClick: onConfirm, disabled: pending }, pending ? pendingLabel : confirmLabel);
-      return /* @__PURE__ */ __dshReact.createElement(
-        Modal,
-        {
-          open: true,
-          onClose: onCancel,
-          title,
-          closeLabel,
-          description,
-          footer: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(Button, { variant: "outline", key: "cancel", onClick: onCancel, disabled: pending }, cancelLabel), confirm)
-        },
-        children
-      );
-    }
-
-    // src/modules/git/host/constants.ts
-    var API_PREFIX2 = pluginApiPath("git");
-    var GIT_BRANCHES_PATH = `${API_PREFIX2}/branches`;
-    var GIT_CHECKOUT_PATH = `${API_PREFIX2}/checkout`;
-    var GIT_CREATE_BRANCH_PATH = `${API_PREFIX2}/create-branch`;
 
     // src/modules/task-monitor/client/model.ts
     function groupSections(entries) {
@@ -507,11 +534,10 @@ window.__ModuleLoader__.load({
       return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
     }
 
-    // src/modules/task-monitor/client/surfaces/sidebar-tab/style.css
+    // src/modules/task-monitor/client/components/panel/style.css
     var style_default = '/*\n * 任务监控右栏 body。只服务面板自身子树，随组件 <style> 注入（§8 判定）。\n * 五个分区各借一个色相做图标座与强调：紫=能力、绿=产出、蓝=网页、琥珀=来源、品红=知识，\n * 底色一律 color-mix 14% 透明叠在宿主面板上，深浅色主题都成立；文字/悬停/圆角/焦点环\n * 全部走宿主 --dsw-* token 并带 px 兜底。\n */\n\n.sk-task-monitor {\n  --skm-capability: #8f7bf9;\n  --skm-artifact: #3fa66a;\n  --skm-web: #4098e0;\n  --skm-source: #d9932f;\n  --skm-knowledge: #d0679d;\n  --skm-danger: #e5534b;\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  min-height: 0;\n  overflow-y: auto;\n  padding: 4px 6px 12px;\n  color: var(--dsw-alias-label-primary, inherit);\n  font-size: 12px;\n  line-height: 18px;\n  scrollbar-width: thin;\n  scrollbar-color: color-mix(in srgb, var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9)) 35%, transparent) transparent;\n}\n\n.sk-task-monitor,\n.sk-task-monitor * {\n  box-sizing: border-box;\n}\n\n/* 滚动条画成面板自己的语言：8px、圆头、琥珀来源色借一点给 thumb，hover 加深。 */\n.sk-task-monitor::-webkit-scrollbar {\n  width: 8px;\n}\n\n.sk-task-monitor::-webkit-scrollbar-track {\n  background: transparent;\n}\n\n.sk-task-monitor::-webkit-scrollbar-thumb {\n  border-radius: 8px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-source) 40%, transparent);\n}\n\n.sk-task-monitor::-webkit-scrollbar-thumb:hover {\n  background: color-mix(in srgb, var(--skm-source) 65%, transparent);\n}\n\n.sk-task-monitor__head {\n  position: sticky;\n  top: -4px;\n  z-index: 1;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  margin: 0 -6px;\n  padding: 8px 12px 6px;\n  background: color-mix(in srgb, var(--dsw-alias-fill-base, rgba(128, 128, 128, 0.06)) 92%, transparent);\n  backdrop-filter: blur(6px);\n}\n\n.sk-task-monitor__title {\n  font-size: 13px;\n  font-weight: 600;\n  line-height: 20px;\n}\n\n.sk-task-monitor__headTools {\n  display: inline-flex;\n  align-items: center;\n  gap: 6px;\n}\n\n.sk-task-monitor__stamp {\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 11px;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__refresh,\n.sk-task-monitor__add,\n.sk-task-monitor__remove {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  flex: none;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  cursor: pointer;\n  padding: 0;\n}\n\n.sk-task-monitor__refresh {\n  width: 24px;\n  height: 24px;\n}\n\n.sk-task-monitor__add {\n  width: 20px;\n  height: 20px;\n}\n\n.sk-task-monitor__remove {\n  width: 18px;\n  height: 18px;\n  opacity: 0;\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__refresh:hover,\n  .sk-task-monitor__add:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n\n  .sk-task-monitor__remove:hover {\n    background: color-mix(in srgb, var(--skm-danger) 16%, transparent);\n    color: var(--skm-danger);\n  }\n\n  .sk-task-monitor__row:hover .sk-task-monitor__remove,\n  .sk-task-monitor__row:focus-within .sk-task-monitor__remove {\n    opacity: 1;\n  }\n}\n\n/* 触屏没有 hover：移除按钮常显，否则手动来源删不掉。 */\n@media (hover: none) {\n  .sk-task-monitor__remove {\n    opacity: 0.7;\n  }\n}\n\n.sk-task-monitor__refresh:focus-visible,\n.sk-task-monitor__add:focus-visible,\n.sk-task-monitor__remove:focus-visible,\n.sk-task-monitor__trigger:focus-visible,\n.sk-task-monitor__more:focus-visible,\n.sk-task-monitor__row:focus-visible {\n  outline: none;\n  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, rgba(80, 140, 255, 0.6));\n}\n\n.sk-task-monitor__refresh[data-spinning] > * {\n  animation: sk-task-monitor-spin 0.6s linear infinite;\n}\n\n/* 环境条：分支与脏标记来自 git 模块快照，不重跑 git。 */\n.sk-task-monitor__git {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  margin: 2px 6px 8px;\n  padding: 5px 8px;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n  border-radius: 8px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-artifact) 7%, transparent);\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n}\n\n.sk-task-monitor__gitIcon {\n  display: inline-flex;\n  flex: none;\n  color: var(--skm-artifact);\n}\n\n.sk-task-monitor__gitName {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-weight: 500;\n}\n\n.sk-task-monitor__gitDot {\n  flex: none;\n  width: 6px;\n  height: 6px;\n  margin-left: auto;\n  border-radius: 50%;\n  corner-shape: round;\n  background: var(--skm-artifact);\n}\n\n.sk-task-monitor__gitDot[data-dirty] {\n  background: var(--skm-source);\n  animation: sk-task-monitor-pulse 1.6s ease-in-out infinite;\n}\n\n/* 分区头：toggle 与「添加来源」是并列的两个按钮，不能嵌套。 */\n.sk-task-monitor__headRow {\n  display: flex;\n  align-items: center;\n  gap: 2px;\n  margin: 2px 0;\n}\n\n.sk-task-monitor__trigger {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  flex: 1;\n  min-width: 0;\n  height: 28px;\n  padding: 0 6px;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-weight: 600;\n  cursor: pointer;\n  text-align: left;\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__trigger:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-task-monitor__chevron {\n  display: inline-flex;\n  flex: none;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  transform: rotate(-90deg);\n  transition: transform 0.12s;\n}\n\n.sk-task-monitor__chevron[data-open] {\n  transform: rotate(0deg);\n}\n\n.sk-task-monitor__sectionIcon {\n  display: inline-flex;\n  flex: none;\n}\n\n.sk-task-monitor__section[data-kind="capability"] .sk-task-monitor__sectionIcon { color: var(--skm-capability); }\n.sk-task-monitor__section[data-kind="artifact"] .sk-task-monitor__sectionIcon { color: var(--skm-artifact); }\n.sk-task-monitor__section[data-kind="web"] .sk-task-monitor__sectionIcon { color: var(--skm-web); }\n.sk-task-monitor__section[data-kind="source"] .sk-task-monitor__sectionIcon { color: var(--skm-source); }\n.sk-task-monitor__section[data-kind="knowledge"] .sk-task-monitor__sectionIcon { color: var(--skm-knowledge); }\n\n.sk-task-monitor__sectionTitle {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-task-monitor__count {\n  margin-left: auto;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 10px;\n  font-weight: 500;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__body {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  padding: 0 2px 6px;\n}\n\n/* 条目行：24px 图标座 + 两行文本 + 右侧 meta；入场逐行 stagger（delay 由组件挂）。 */\n.sk-task-monitor__row {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n  padding: 4px 6px;\n  border-radius: var(--dsw-radius-sm, 6px);\n  animation: sk-task-monitor-rise 0.24s ease both;\n}\n\n.sk-task-monitor__row[data-clickable] {\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__row:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n  }\n}\n\n.sk-task-monitor__seat {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  flex: none;\n  width: 24px;\n  height: 24px;\n  border-radius: 6px;\n  corner-shape: round;\n}\n\n.sk-task-monitor__row[data-kind="capability"] .sk-task-monitor__seat {\n  color: var(--skm-capability);\n  background: color-mix(in srgb, var(--skm-capability) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="artifact"] .sk-task-monitor__seat {\n  color: var(--skm-artifact);\n  background: color-mix(in srgb, var(--skm-artifact) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="web"] .sk-task-monitor__seat {\n  color: var(--skm-web);\n  background: color-mix(in srgb, var(--skm-web) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="source"] .sk-task-monitor__seat {\n  color: var(--skm-source);\n  background: color-mix(in srgb, var(--skm-source) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="knowledge"] .sk-task-monitor__seat {\n  color: var(--skm-knowledge);\n  background: color-mix(in srgb, var(--skm-knowledge) 14%, transparent);\n}\n\n.sk-task-monitor__txt {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-width: 0;\n}\n\n.sk-task-monitor__label {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-primary, inherit);\n}\n\n.sk-task-monitor__detail {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 11px;\n  line-height: 16px;\n}\n\n.sk-task-monitor__meta {\n  display: inline-flex;\n  align-items: center;\n  flex: none;\n}\n\n.sk-task-monitor__times {\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__failed {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-danger) 18%, transparent);\n  color: var(--skm-danger);\n  font-size: 10px;\n  font-weight: 700;\n}\n\n.sk-task-monitor__more {\n  align-self: flex-start;\n  margin: 2px 0 0 32px;\n  padding: 2px 6px;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-size: 11px;\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__more:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-task-monitor__empty {\n  margin: 0;\n  padding: 4px 8px 6px 32px;\n  color: var(--dsw-alias-label-dimmed, rgba(128, 128, 128, 0.6));\n  font-size: 11px;\n}\n\n/* 首屏骨架：三组微光条，读作「正在长出来」而不是空白。 */\n.sk-task-monitor__skeleton {\n  display: flex;\n  flex-direction: column;\n  gap: 14px;\n  padding: 10px 8px;\n}\n\n.sk-task-monitor__skSection {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.sk-task-monitor__skBar {\n  height: 10px;\n  border-radius: 5px;\n  corner-shape: round;\n  background: linear-gradient(90deg, rgba(128, 128, 128, 0.10), rgba(128, 128, 128, 0.22), rgba(128, 128, 128, 0.10));\n  background-size: 200% 100%;\n  animation: sk-task-monitor-shimmer 1.2s linear infinite;\n}\n\n.sk-task-monitor__skBar--title {\n  width: 40%;\n  height: 12px;\n}\n\n.sk-task-monitor__errorBox {\n  display: flex;\n  flex-direction: column;\n  align-items: flex-start;\n  gap: 8px;\n  margin: 8px 6px;\n  padding: 10px 12px;\n  border: 0.5px solid color-mix(in srgb, var(--skm-danger) 45%, transparent);\n  border-radius: 8px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-danger) 8%, transparent);\n}\n\n.sk-task-monitor__errorBox p {\n  margin: 0;\n  color: var(--dsw-alias-label-primary, inherit);\n  overflow-wrap: anywhere;\n}\n\n@keyframes sk-task-monitor-rise {\n  from {\n    opacity: 0;\n    transform: translateY(4px);\n  }\n  to {\n    opacity: 1;\n    transform: translateY(0);\n  }\n}\n\n@keyframes sk-task-monitor-spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n\n@keyframes sk-task-monitor-pulse {\n  0%, 100% {\n    box-shadow: 0 0 0 0 color-mix(in srgb, var(--skm-source) 45%, transparent);\n  }\n  50% {\n    box-shadow: 0 0 0 4px color-mix(in srgb, var(--skm-source) 0%, transparent);\n  }\n}\n\n@keyframes sk-task-monitor-shimmer {\n  from {\n    background-position: 200% 0;\n  }\n  to {\n    background-position: -200% 0;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .sk-task-monitor__row,\n  .sk-task-monitor__skBar,\n  .sk-task-monitor__gitDot[data-dirty],\n  .sk-task-monitor__refresh[data-spinning] > * {\n    animation: none;\n  }\n\n  .sk-task-monitor__chevron {\n    transition: none;\n  }\n}';
 
-    // src/modules/task-monitor/client/surfaces/sidebar-tab/index.tsx
-    var NAME2 = "sidebar-tab";
+    // src/modules/task-monitor/client/components/panel/index.tsx
     var SECTION_COPY = {
       capability: { title: "sectionCapability", desc: "sectionCapabilityDesc", empty: "emptyCapability" },
       artifact: { title: "sectionArtifact", desc: "sectionArtifactDesc", empty: "emptyArtifact" },
@@ -533,7 +559,7 @@ window.__ModuleLoader__.load({
       }
       return fallback;
     }
-    function createTaskMonitorTab(ctx) {
+    function createTaskMonitorPanel(ctx) {
       const t = ctx.locale.bind(TASK_MONITOR_NS);
       const ChevronIcon = primitives.IconChevronDownOutlineRegular;
       const RefreshIcon = primitives.IconRefreshOutlineRegular;
@@ -566,22 +592,22 @@ window.__ModuleLoader__.load({
         const info = typeof props.useTabInfo === "function" ? props.useTabInfo() : void 0;
         const tab = info?.tab;
         const visible = tab?.visible !== false;
-        const actions = tab?.actions;
+        const actions = props.actions ?? tab?.actions;
         const revision = tab?.navigation?.revision ?? 0;
         const projected = typeof useProjection === "function" ? useProjection("workingDirectory") : void 0;
         const owned = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.cwd) : void 0;
         const cwd = typeof projected === "string" && projected !== "" ? projected : typeof owned === "string" ? owned : "";
-        const [entries, setEntries] = import_react2.default.useState([]);
-        const [phase, setPhase] = import_react2.default.useState("loading");
-        const [error, setError] = import_react2.default.useState("");
-        const [updatedAt, setUpdatedAt] = import_react2.default.useState(0);
-        const [collapsed, setCollapsed] = import_react2.default.useState({});
-        const [expanded, setExpanded] = import_react2.default.useState({});
-        const [menuOpen, setMenuOpen] = import_react2.default.useState(false);
-        const [dialog, setDialog] = import_react2.default.useState(null);
-        const [git, setGit] = import_react2.default.useState(null);
-        const [spinning, setSpinning] = import_react2.default.useState(false);
-        const load = import_react2.default.useCallback(async (quiet) => {
+        const [entries, setEntries] = import_react3.default.useState([]);
+        const [phase, setPhase] = import_react3.default.useState("loading");
+        const [error, setError] = import_react3.default.useState("");
+        const [updatedAt, setUpdatedAt] = import_react3.default.useState(0);
+        const [collapsed, setCollapsed] = import_react3.default.useState({});
+        const [expanded, setExpanded] = import_react3.default.useState({});
+        const [menuOpen, setMenuOpen] = import_react3.default.useState(false);
+        const [dialog, setDialog] = import_react3.default.useState(null);
+        const [git, setGit] = import_react3.default.useState(null);
+        const [spinning, setSpinning] = import_react3.default.useState(false);
+        const load = import_react3.default.useCallback(async (quiet) => {
           if (typeof sessionId !== "string" || sessionId === "") return;
           if (!quiet) setPhase("loading");
           try {
@@ -599,7 +625,7 @@ window.__ModuleLoader__.load({
             }
           }
         }, [sessionId]);
-        const loadGit = import_react2.default.useCallback(async () => {
+        const loadGit = import_react3.default.useCallback(async () => {
           if (cwd === "") {
             setGit(null);
             return;
@@ -616,13 +642,13 @@ window.__ModuleLoader__.load({
             setGit(null);
           }
         }, [cwd]);
-        import_react2.default.useEffect(() => {
+        import_react3.default.useEffect(() => {
           void load(false);
         }, [load, revision]);
-        import_react2.default.useEffect(() => {
+        import_react3.default.useEffect(() => {
           void loadGit();
         }, [loadGit]);
-        import_react2.default.useEffect(() => {
+        import_react3.default.useEffect(() => {
           if (!visible) return void 0;
           const timer = setInterval(() => {
             void load(true);
@@ -634,7 +660,7 @@ window.__ModuleLoader__.load({
           await Promise.all([load(true), loadGit()]);
           setTimeout(() => setSpinning(false), 500);
         };
-        const sections = import_react2.default.useMemo(() => groupSections(entries), [entries]);
+        const sections = import_react3.default.useMemo(() => groupSections(entries), [entries]);
         const openEntry = (entry) => {
           if (entry.target === void 0 || actions === void 0) return;
           if (isHttpUrl(entry.target)) {
@@ -872,88 +898,67 @@ window.__ModuleLoader__.load({
         }), dialogNode);
       };
     }
+
+    // src/modules/task-monitor/client/surfaces/conversation-rail/style.css
+    var style_default2 = "/* 会话内容区内的左右分栏：左边是宿主原本的消息列，右边是常驻监控栏。 */\n.sk-task-monitor-frame {\n  display: flex;\n  flex: 1;\n  flex-direction: row;\n  min-height: 0;\n  min-width: 0;\n}\n\n.sk-task-monitor-column {\n  display: flex;\n  flex: 1;\n  flex-direction: column;\n  min-height: 0;\n  min-width: 0;\n}\n\n/* 宽度跟随窗口但不抢消息列：最窄 300，最宽 420，默认 340。 */\n.sk-task-monitor-side {\n  display: flex;\n  flex: 0 0 340px;\n  flex-direction: column;\n  min-height: 0;\n  min-width: 300px;\n  max-width: 420px;\n  overflow: hidden;\n  border-left: 0.5px solid var(--dsw-alias-border-l3, rgba(127, 127, 127, 0.24));\n  background: var(--dsw-alias-bg-base, transparent);\n}\n\n.sk-task-monitor-side > * {\n  flex: 1;\n  min-height: 0;\n}\n";
+
+    // src/modules/task-monitor/client/surfaces/conversation-rail/index.tsx
+    var NAME2 = "conversation-rail";
     function install2(ctx) {
       const t = ctx.locale.bind(TASK_MONITOR_NS);
-      const offType = ctx.sidebarRightTabs.register({
-        id: TASK_MONITOR_TAB_ID,
-        kind: TASK_MONITOR_KIND,
-        multiple: false,
-        keepMounted: true,
-        title: () => t("tabTitle"),
-        guide: [{
-          id: "open",
-          order: 45,
-          title: () => t("guideTitle"),
-          description: () => t("guideDescription"),
-          icon: primitives.IconSparkleRegular
-        }]
-      });
-      const offBody = ctx.slots.register({
-        name: "sidebar.right.pane.tab",
-        key: TASK_MONITOR_TAB_ID,
-        locale: TASK_MONITOR_NS
-      }, createTaskMonitorTab(ctx));
-      return () => {
-        offBody?.();
-        offType?.();
+      const Panel = createTaskMonitorPanel(ctx);
+      const actions = {
+        openTab: (kind, options) => ctx.sidebarRight?.openTab?.(kind, options),
+        openResource: (address, options) => ctx.sidebarRight?.openResource?.(address, options)
       };
+      return ctx.slots.inject(
+        "conversation.hero.frame",
+        () => ctx.slots.register(
+          { name: "conversation.hero.frame", id: "task-monitor-rail", order: 40 },
+          (props) => /* @__PURE__ */ __dshReact.createElement(RailLayer, { ...props, Panel, actions, label: t("trigger") })
+        )
+      );
     }
-    function installAutoOpen(ctx) {
-      const opened = /* @__PURE__ */ new Set();
-      const seen = (sessionId) => {
-        const key = `dsh-toolkit-task-monitor:auto-open:${sessionId}`;
-        try {
-          if (localStorage.getItem(key) !== null) return true;
-          localStorage.setItem(key, "1");
-          return false;
-        } catch {
-          if (opened.has(sessionId)) return true;
-          opened.add(sessionId);
-          return false;
-        }
-      };
-      const offInject = ctx.inject(["sidebarRight"], (scope) => {
-        scope.effect(() => {
-          const sidebar = scope.sidebarRight;
-          const timers = /* @__PURE__ */ new Set();
-          const reveal = (sessionId) => {
-            if (typeof sessionId !== "string" || sessionId === "" || seen(sessionId)) return;
-            const timer = setTimeout(() => {
-              timers.delete(timer);
-              try {
-                sidebar.openTab(TASK_MONITOR_KIND);
-              } catch {
-              }
-            }, 0);
-            timers.add(timer);
-          };
-          reveal(sidebar.mounted.getSnapshot());
-          const offMounted = sidebar.mounted.subscribe(() => {
-            reveal(sidebar.mounted.getSnapshot());
-          });
-          return () => {
-            offMounted?.();
-            for (const timer of timers) clearTimeout(timer);
-            timers.clear();
-          };
-        }, "dsh-toolkit-task-monitor:auto-open");
+    function activeSessionId(useSessions) {
+      if (typeof useSessions !== "function") return void 0;
+      return useSessions((state) => {
+        const rows = Object.values(state?.byId ?? {});
+        return rows.find((row) => (row?.retainedBy?.mainView ?? 0) > 0)?.id;
       });
-      return () => offInject?.();
+    }
+    function RailLayer({ children, useSessions, Panel, actions, label }) {
+      const wrapRef = import_react4.default.useRef(null);
+      const [embedded, setEmbedded] = import_react4.default.useState(false);
+      const sessionId = activeSessionId(useSessions);
+      const hidden = useRailHidden(sessionId);
+      const open = !hidden && !embedded && typeof sessionId === "string" && sessionId !== "";
+      import_react4.default.useEffect(() => {
+        const wrap = wrapRef.current;
+        setEmbedded(wrap !== null && wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null);
+      }, []);
+      return /* @__PURE__ */ __dshReact.createElement("div", { ref: wrapRef, className: "sk-task-monitor-frame", "data-rail": open ? "open" : "closed" }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default2), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor-column" }, children), open ? /* @__PURE__ */ __dshReact.createElement("aside", { className: "sk-task-monitor-side", "aria-label": label }, /* @__PURE__ */ __dshReact.createElement(
+        Panel,
+        {
+          key: sessionId,
+          sessionId,
+          useSessions,
+          actions
+        }
+      )) : null);
     }
 
-    // src/modules/task-monitor/client/surfaces/sidebar-tab/dialog.css
+    // src/modules/task-monitor/client/components/panel/dialog.css
     var dialog_default = "/*\n * 添加来源弹窗的正文样式。宿主 Modal 用 createPortal 渲染在面板 React 子树之外，\n * 面板内 <style> 覆盖不到它，所以这份必须全局注入（§8）；内联降级卡片复用同一批类。\n * 选择器全部带 .sk-task-monitor 前缀，避免误伤宿主。\n */\n\n.sk-task-monitor__creator {\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n  min-width: 260px;\n}\n\n/* 宿主 Input 根是写死的 inline-flex/180px，拉满到弹窗正文宽度（同 branch-chip 的两级压法）。 */\n.sk-task-monitor__creator > * {\n  box-sizing: border-box;\n  width: 100%;\n}\n\n.sk-task-monitor__fallbackInput {\n  width: 100%;\n  height: 32px;\n  padding: 0 10px;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.24));\n  border-radius: 8px;\n  corner-shape: round;\n  background: rgba(128, 128, 128, 0.08);\n  color: inherit;\n  font: inherit;\n  font-size: 13px;\n}\n\n.sk-task-monitor__fallbackInput:focus-visible {\n  outline: none;\n  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, rgba(80, 140, 255, 0.6));\n}\n\n.sk-task-monitor__error {\n  margin: 0;\n  color: #e5534b;\n  font-size: 12px;\n  line-height: 18px;\n  overflow-wrap: anywhere;\n}\n\n/* 没有宿主 Modal 时的内联降级卡片：主流程不断，样式自足。 */\n.sk-task-monitor__dialog {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n  margin: 8px 6px;\n  padding: 12px;\n  border: 0.5px solid var(--dsw-alias-border-l3, rgba(128, 128, 128, 0.28));\n  border-radius: 10px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--dsw-alias-fill-base, rgba(128, 128, 128, 0.06)) 96%, transparent);\n  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);\n}\n\n.sk-task-monitor__dialogTitle {\n  margin: 0;\n  font-size: 13px;\n  font-weight: 600;\n}\n\n/* 没有 Menu 时的类型切换：文件 / 链接两个入口都保住。 */\n.sk-task-monitor__dialogKinds {\n  display: flex;\n  gap: 4px;\n}\n\n.sk-task-monitor__dialogKinds button {\n  flex: 1;\n  height: 26px;\n  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.24));\n  border-radius: 6px;\n  corner-shape: round;\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-size: 12px;\n  cursor: pointer;\n}\n\n.sk-task-monitor__dialogKinds button[data-active] {\n  border-color: color-mix(in srgb, #d9932f 55%, transparent);\n  background: color-mix(in srgb, #d9932f 14%, transparent);\n  color: var(--dsw-alias-label-primary, inherit);\n}\n\n.sk-task-monitor__dialogFoot {\n  display: flex;\n  justify-content: flex-end;\n  gap: 8px;\n}";
 
     // src/modules/task-monitor/client/surfaces/header-button/style.css
-    var style_default2 = "/* 会话标题行的 icon-only 开关：28px 热区 + 图标，规格对齐宿主 utilities\n   里其它图标按钮（右栏展开、schedule 入口）。挂载点在面板 React 子树外，\n   所以这份样式由 client/index.ts 全局注入。 */\n.sk-task-monitor-button {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 28px;\n  height: 28px;\n  padding: 0;\n  border: 0;\n  border-radius: 28px;\n  background: transparent;\n  color: var(--dsw-alias-label-tertiary);\n  cursor: pointer;\n}\n\n.sk-task-monitor-button:focus-visible {\n  color: var(--dsw-alias-label-secondary);\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n@media (hover: hover) {\n  .sk-task-monitor-button:hover {\n    color: var(--dsw-alias-label-secondary);\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n.sk-task-monitor-button svg {\n  flex: none;\n}\n";
+    var style_default3 = "/* 会话标题行的 icon-only 开关：28px 热区 + 图标，规格对齐宿主 utilities\n   里其它图标按钮（右栏展开、schedule 入口）。挂载点在面板 React 子树外，\n   所以这份样式由 client/index.ts 全局注入。 */\n.sk-task-monitor-button {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 28px;\n  height: 28px;\n  padding: 0;\n  border: 0;\n  border-radius: 28px;\n  background: transparent;\n  color: var(--dsw-alias-label-tertiary);\n  cursor: pointer;\n}\n\n.sk-task-monitor-button:focus-visible {\n  color: var(--dsw-alias-label-secondary);\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n@media (hover: hover) {\n  .sk-task-monitor-button:hover {\n    color: var(--dsw-alias-label-secondary);\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n.sk-task-monitor-button svg {\n  flex: none;\n}\n";
 
     // src/modules/task-monitor/client/index.ts
-    var inject = ["slots", "locale", "sidebarRightTabs"];
+    var inject = ["slots", "locale"];
     function apply(ctx) {
       installDictionary(ctx, TASK_MONITOR_NS, TASK_MONITOR_COPY);
-      ctx.effect(() => installStylesheet(composeStyles(style_default2, dialog_default), "dsh-toolkit-task-monitor"), "dsh-toolkit-task-monitor:stylesheet");
+      ctx.effect(() => installStylesheet(composeStyles(style_default3, dialog_default), "dsh-toolkit-task-monitor"), "dsh-toolkit-task-monitor:stylesheet");
       ctx.effect(() => install2(ctx), `dsh-toolkit-task-monitor:${NAME2}`);
-      ctx.effect(() => installAutoOpen(ctx), `dsh-toolkit-task-monitor:${NAME2}-auto-open`);
       ctx.effect(() => install(ctx), `dsh-toolkit-task-monitor:${NAME}`);
     }
 

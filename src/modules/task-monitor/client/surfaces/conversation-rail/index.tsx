@@ -1,0 +1,79 @@
+import React from "react";
+import { TASK_MONITOR_NS } from "../../locale.js";
+import { createTaskMonitorPanel } from "../../components/panel/index.jsx";
+import { useRailHidden } from "../../state/rail.js";
+import railCss from "./style.css";
+
+export const NAME = "conversation-rail";
+
+/**
+ * 把任务监控挂进会话内容区，而不是宿主右栏。
+ *
+ * `conversation.hero.frame` 是宿主给「包住整块滚动区」的 HOC 座位：这里把默认的
+ * 单列 children 改成「消息列 + 右栏」的 flex row，面板因此长在会话内部、和
+ * composer 同一列高度里，像 Qoder 那样贴着对话。宿主自己的右栏（rightbar）保持不动。
+ */
+export function install(ctx: any) {
+  const t = ctx.locale.bind(TASK_MONITOR_NS);
+  const Panel = createTaskMonitorPanel(ctx);
+  const actions = {
+    openTab: (kind: string, options?: any) => ctx.sidebarRight?.openTab?.(kind, options),
+    openResource: (address: string, options?: any) => ctx.sidebarRight?.openResource?.(address, options),
+  };
+
+  return ctx.slots.inject("conversation.hero.frame", () =>
+    ctx.slots.register(
+      { name: "conversation.hero.frame", id: "task-monitor-rail", order: 40 },
+      (props: any) => <RailLayer {...props} Panel={Panel} actions={actions} label={t("trigger")} />,
+    ),
+  );
+}
+
+function activeSessionId(useSessions: any): string | undefined {
+  if (typeof useSessions !== "function") return undefined;
+  return useSessions((state: any) => {
+    const rows = Object.values(state?.byId ?? {}) as any[];
+    return rows.find((row) => (row?.retainedBy?.mainView ?? 0) > 0)?.id;
+  });
+}
+
+interface RailProps {
+  children?: React.ReactNode;
+  useSessions?: any;
+  Panel: React.ComponentType<any>;
+  actions: any;
+  label: string;
+}
+
+function RailLayer({ children, useSessions, Panel, actions, label }: RailProps) {
+  const wrapRef = React.useRef<HTMLDivElement | null>(null);
+  const [embedded, setEmbedded] = React.useState(false);
+  const sessionId = activeSessionId(useSessions);
+  const hidden = useRailHidden(sessionId);
+  const open = !hidden && !embedded && typeof sessionId === "string" && sessionId !== "";
+
+  // 子代理侧栏里也渲染一份 Conversation：那里已经有宿主自己的栏位，再塞一条
+  // 监控会把同一会话的内容显示两遍。座位本身是 display:contents 的 data-slot，
+  // 挂载后向上找它最省事。
+  React.useEffect(() => {
+    const wrap = wrapRef.current;
+    setEmbedded(wrap !== null && wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null);
+  }, []);
+
+  return (
+    <div ref={wrapRef} className="sk-task-monitor-frame" data-rail={open ? "open" : "closed"}>
+      <style>{railCss}</style>
+      <div className="sk-task-monitor-column">{children}</div>
+      {open ? (
+        <aside className="sk-task-monitor-side" aria-label={label}>
+          <Panel
+            key={sessionId}
+            sessionId={sessionId}
+            useSessions={useSessions}
+            actions={actions}
+          />
+        </aside>
+      ) : null}
+    </div>
+  );
+}

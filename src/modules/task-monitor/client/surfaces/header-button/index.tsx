@@ -1,52 +1,36 @@
 /**
- * 会话标题行最右的「任务监控」开关：右栏是会话区右侧唯一的列，这个按钮只负责
- * 把它展开/收起（打开时再点一次收起），不再在 composer 里放第二个入口。
+ * 会话标题行最右的「任务监控」开关：控制会话内容区右栏的显隐。
  *
- * 是否打开以宿主右栏的实时状态为准，不缓存：`active()` 认 tab 类型，`isExpanded()`
- * 认列状态，两者都在点击（commit 之后）读取，不会撞上 store 尚未 adopt 的窗口。
- * 面板挂载点在右栏，样式仍走 client/index.ts 的全局注入（按钮与 portal Modal
- * 都在面板子树外）。
+ * 面板本身挂在 conversation.hero.frame（见 surfaces/conversation-rail），这里只
+ * 写显隐状态；状态按会话记在 localStorage 里，收起后刷新仍收起，换会话默认再打开。
  */
 import React from "react";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
-import { toast } from "../../../../../client/ui/toast.js";
-import { TASK_MONITOR_KIND } from "../../constants.js";
 import { TASK_MONITOR_NS } from "../../locale.js";
+import { setRailHidden, useRailHidden } from "../../state/rail.js";
 
 export const NAME = "header-button";
 
 export function install(ctx: any) {
   const t = ctx.locale.bind(TASK_MONITOR_NS);
-  let sidebar: any;
-  const offService = ctx.inject(["sidebarRight"], (scope: any) => {
-    scope.effect(() => {
-      sidebar = scope.sidebarRight;
-      return () => { sidebar = undefined; };
-    }, "dsh-toolkit-task-monitor:header-button-service");
-  });
 
-  function HeaderButton() {
-    const Icon = primitives.IconInspectOutlineRegular;
+  function HeaderButton(props: any) {
+    const sessionId: string | undefined = props.sessionId;
+    const hidden = useRailHidden(sessionId);
+    const open = !hidden && typeof sessionId === "string" && sessionId !== "";
     const label = t("trigger");
+    const Icon = primitives.IconInspectOutlineRegular;
     return (
       <button
         type="button"
         className="sk-task-monitor-button"
         aria-label={label}
+        aria-pressed={open}
         title={label}
         onClick={() => {
-          if (sidebar === undefined) {
-            toast.info(t("triggerUnsupported"));
-            return;
-          }
-          try {
-            const active = sidebar.active();
-            if (active?.kind === TASK_MONITOR_KIND && sidebar.isExpanded()) sidebar.toggleExpanded();
-            else sidebar.openTab(TASK_MONITOR_KIND);
-          } catch {
-            toast.info(t("triggerUnsupported"));
-          }
+          if (typeof sessionId !== "string" || sessionId === "") return;
+          setRailHidden(sessionId, !hidden);
         }}
       >
         {Icon === undefined ? null : <Icon size={16} />}
@@ -63,6 +47,5 @@ export function install(ctx: any) {
   }, HeaderButton);
   return () => {
     offSlot?.();
-    offService?.();
   };
 }

@@ -1,0 +1,34 @@
+/* 会话内容区内的左右分栏：左边是宿主原本的消息列，右边是常驻监控栏。 */
+.sk-task-monitor-frame {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  min-height: 0;
+  min-width: 0;
+}
+
+.sk-task-monitor-column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* 宽度跟随窗口但不抢消息列：最窄 300，最宽 420，默认 340。 */
+.sk-task-monitor-side {
+  display: flex;
+  flex: 0 0 340px;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 300px;
+  max-width: 420px;
+  overflow: hidden;
+  border-left: 0.5px solid var(--dsw-alias-border-l3, rgba(127, 127, 127, 0.24));
+  background: var(--dsw-alias-bg-base, transparent);
+}
+
+.sk-task-monitor-side > * {
+  flex: 1;
+  min-height: 0;
+}

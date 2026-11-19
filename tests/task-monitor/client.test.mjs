@@ -12,7 +12,7 @@ import { TASK_MONITOR_COPY } from '../../src/modules/task-monitor/client/locale.
 import { TASK_MONITOR_SNAPSHOT_PATH, TASK_MONITOR_SOURCE_ADD_PATH, TASK_MONITOR_SOURCE_REMOVE_PATH } from '../../src/modules/task-monitor/host/constants.ts'
 import { GIT_BRANCHES_PATH } from '../../src/modules/git/host/constants.ts'
 
-const ENTRY = 'src/modules/task-monitor/client/surfaces/sidebar-tab/index.tsx'
+const ENTRY = 'src/modules/task-monitor/client/components/panel/index.tsx'
 
 const entry = (id, kind, extra = {}) => ({ id, kind, label: id, detail: '', count: 1, status: 'ok', updatedAt: 1700000000000, ...extra })
 
@@ -158,9 +158,9 @@ async function mount(t, dom, state, { host = true } = {}) {
   })
   const { act } = React
   const { createRoot } = await import('react-dom/client')
-  const { createTaskMonitorTab } = await loadEntry(host ? 'host' : 'bare')
+  const { createTaskMonitorPanel } = await loadEntry(host ? 'host' : 'bare')
   const opened = []
-  const Tab = createTaskMonitorTab({ locale: { bind: () => translator() } })
+  const Tab = createTaskMonitorPanel({ locale: { bind: () => translator() } })
   const props = {
     sessionId: 's1',
     useProjection: () => 'D:/repo',
