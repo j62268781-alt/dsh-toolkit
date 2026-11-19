@@ -44,6 +44,18 @@ export function apply(ctx: any, config: unknown = {}): void {
     if (sessionId !== '') void store.record(sessionId, classifyCall(exec?.name, exec?.arguments), 'failed')
   })
 
+  // 官方「代码审查和变更」tab 的地址要 (seq, turn)，`workspace/changes` 事件正好带着这两个：
+  // 记住最近一次的坐标，面板那行 +N −M 点开的就是它。只记坐标，不碰事件本身（观察者）。
+  ctx.on('session/event', (session: any, event: any) => {
+    if (event?.type !== 'workspace/changes') return
+    const sessionId = session?.header?.id
+    if (typeof sessionId !== 'string' || sessionId === '') return
+    const seq = event?.seq
+    const turn = event?.data?.turn
+    if (typeof seq !== 'number' || typeof turn !== 'number') return
+    store.noteChange(sessionId, seq, turn)
+  })
+
   ctx.on('agent/disposed', ({ agent }: any) => {
     const sessionId = sessionOf(agent)
     if (sessionId !== '') void store.flush(sessionId)

@@ -37,7 +37,7 @@ export function createTaskMonitorStore(options) {
     function stateOf(sessionId) {
         let state = sessions.get(sessionId);
         if (state === undefined) {
-            state = { entries: new Map(), updatedAt: 0, dirty: false };
+            state = { entries: new Map(), updatedAt: 0, dirty: false, review: null };
             sessions.set(sessionId, state);
         }
         return state;
@@ -137,6 +137,14 @@ export function createTaskMonitorStore(options) {
             touch(state);
             schedule(sessionId, state);
         },
+        /** 记住本会话最近一次变更记录的坐标：面板那行 +N −M 据此打开官方审查 tab。 */
+        noteChange(sessionId, seq, turn) {
+            if (!enabled() || sessionId === '')
+                return;
+            if (!Number.isSafeInteger(seq) || seq <= 0 || !Number.isSafeInteger(turn) || turn <= 0)
+                return;
+            stateOf(sessionId).review = { seq, turn };
+        },
         async snapshot(sessionId) {
             if (!enabled())
                 return failure(TASK_MONITOR_REASON.disabled, '任务监控已关闭。');
@@ -145,7 +153,7 @@ export function createTaskMonitorStore(options) {
             }
             const state = stateOf(sessionId);
             await ensureLoaded(sessionId, state);
-            return { ok: true, sessionId, updatedAt: state.updatedAt, entries: [...state.entries.values()] };
+            return { ok: true, sessionId, updatedAt: state.updatedAt, entries: [...state.entries.values()], review: state.review };
         },
         async addSource(sessionId, kind, value) {
             if (!enabled())

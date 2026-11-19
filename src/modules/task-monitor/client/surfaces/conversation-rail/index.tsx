@@ -20,9 +20,14 @@ export function install(ctx: any) {
   // （`cannot get property "sidebarRight" without inject`），`ctx.get()` 才是免守卫的
   // 取法。服务缺席时整份 actions 缺席，条目行随之降级成只读而不是点了没反应。
   const sidebarRight = sidebarRightOf(ctx);
+  // 「代码审查和变更」是官方 deliverables 插件注册的 tab 类型；关掉它时打开会失败，
+  // 所以先问注册表，没装就不把环境信息那行做成可点的。
+  const tabs = typeof ctx.get === "function" ? ctx.get("sidebarRightTabs") : undefined;
+  const reviewEnabled = typeof tabs?.get === "function" && tabs.get("changes-review") !== undefined;
   const actions = sidebarRight === undefined ? undefined : {
     openTab: (kind: string, options?: any) => sidebarRight.openTab?.(kind, options),
     openResource: (address: string, options?: any) => sidebarRight.openResource?.(address, options),
+    openReview: reviewEnabled ? (address: string) => sidebarRight.openResource?.(address) : undefined,
   };
 
   return ctx.slots.inject("conversation.hero.frame", () =>

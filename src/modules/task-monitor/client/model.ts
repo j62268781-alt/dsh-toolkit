@@ -69,3 +69,12 @@ export function timeLabel(timestamp: number): string {
   const pad = (value: number): string => String(value).padStart(2, "0");
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
+/**
+ * 官方「代码审查和变更」tab 的地址：`dsh-resource://changes-review/session/<enc>/<seq>/<turn>`。
+ *
+ * 它由宿主 deliverables 插件按回合注册（`parseChangesReviewAddress` 只认这个三段式），
+ * 所以 seq / turn 必须是 `workspace/changes` 事件自己的，不能拿回合序号硬凑。
+ */
+export function changesReviewAddress(sessionId: string, seq: number, turn: number): string {
+  return `dsh-resource://changes-review/session/${encodeURIComponent(sessionId)}/${seq}/${turn}`;
+}

@@ -13,6 +13,7 @@ import {
   TASK_MONITOR_REASON,
   ENTRY_KINDS,
   isHttpUrl,
+  type ChangesReviewCoordinates,
   type TaskMonitorEntry,
   type TaskMonitorFailure,
   type TaskMonitorReasonCode,
@@ -34,6 +35,8 @@ interface SessionState {
   entries: Map<string, TaskMonitorEntry>
   updatedAt: number
   dirty: boolean
+  /** 只活在内存里：重启后要等这个会话的下一次 `workspace/changes` 才会再出现。 */
+  review: ChangesReviewCoordinates | null
   loading?: Promise<void>
   timer?: ReturnType<typeof setTimeout>
 }
@@ -69,7 +72,7 @@ export function createTaskMonitorStore(options: TaskMonitorStoreOptions) {
   function stateOf(sessionId: string): SessionState {
     let state = sessions.get(sessionId)
     if (state === undefined) {
-      state = { entries: new Map(), updatedAt: 0, dirty: false }
+      state = { entries: new Map(), updatedAt: 0, dirty: false, review: null }
       sessions.set(sessionId, state)
     }
     return state
@@ -168,6 +171,13 @@ export function createTaskMonitorStore(options: TaskMonitorStoreOptions) {
       schedule(sessionId, state)
     },
 
+    /** 记住本会话最近一次变更记录的坐标：面板那行 +N −M 据此打开官方审查 tab。 */
+    noteChange(sessionId: string, seq: number, turn: number): void {
+      if (!enabled() || sessionId === '') return
+      if (!Number.isSafeInteger(seq) || seq <= 0 || !Number.isSafeInteger(turn) || turn <= 0) return
+      stateOf(sessionId).review = { seq, turn }
+    },
+
     async snapshot(sessionId: unknown): Promise<TaskMonitorResult> {
       if (!enabled()) return failure(TASK_MONITOR_REASON.disabled, '任务监控已关闭。')
       if (typeof sessionId !== 'string' || sessionId === '') {
@@ -175,7 +185,7 @@ export function createTaskMonitorStore(options: TaskMonitorStoreOptions) {
       }
       const state = stateOf(sessionId)
       await ensureLoaded(sessionId, state)
-      return { ok: true, sessionId, updatedAt: state.updatedAt, entries: [...state.entries.values()] }
+      return { ok: true, sessionId, updatedAt: state.updatedAt, entries: [...state.entries.values()], review: state.review }
     },
 
     async addSource(sessionId: unknown, kind: unknown, value: unknown): Promise<AddSourceResult> {

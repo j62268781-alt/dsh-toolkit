@@ -32,6 +32,20 @@ test('record 聚合计数与状态翻转，snapshot 按会话隔离', async (t) 
   assert.deepEqual(await store.snapshot(''), { ok: false, code: TASK_MONITOR_REASON.invalidSession, detail: '缺少 sessionId。' })
 })
 
+test('变更坐标：只收合法的 seq/turn，snapshot 原样带出', async (t) => {
+  const { store } = await withStore(t)
+  assert.equal((await store.snapshot('s1')).review, null)
+  store.noteChange('s1', 7, 3)
+  assert.deepEqual((await store.snapshot('s1')).review, { seq: 7, turn: 3 })
+  // 0 / 负数 / 小数 / 空会话号都不该写进去：官方 tab 的地址按 ^\d+$ 与 ^[1-9]\d*$ 解析，
+  // 记错一个值拼出来的地址会被 canOpen 判成无效，点了没反应。
+  store.noteChange('s1', 0, 3)
+  store.noteChange('s1', 8, 0)
+  store.noteChange('s1', 8.5, 3)
+  store.noteChange('', 9, 3)
+  assert.deepEqual((await store.snapshot('s1')).review, { seq: 7, turn: 3 })
+})
+
 test('手动来源：校验、幂等、只删手动', async (t) => {
   const { store } = await withStore(t)
   assert.equal((await store.addSource('s1', 'url', 'javascript:alert(1)')).code, TASK_MONITOR_REASON.invalidSource)

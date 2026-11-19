@@ -49,11 +49,24 @@ export interface TaskMonitorEntry {
     readonly status: 'ok' | 'failed';
     readonly updatedAt: number;
 }
+/**
+ * 官方「代码审查和变更」tab 的坐标。
+ *
+ * `seq` 是会话里那条 `workspace/changes` 事件自己的序号、`turn` 是事件 data 里的回合号：
+ * 官方 tab 的地址按 `<sessionId>/<seq>/<turn>` 三段解析，缺一段就打不开，而事件序号不是回合号，
+ * 所以只能由宿主从事件里记下来，不能拿面板轮询的次数硬凑。
+ */
+export interface ChangesReviewCoordinates {
+    readonly seq: number;
+    readonly turn: number;
+}
 export interface TaskMonitorSnapshot {
     readonly ok: true;
     readonly sessionId: string;
     readonly updatedAt: number;
     readonly entries: readonly TaskMonitorEntry[];
+    /** 最近一次变更记录的坐标：有值且官方审查插件装着时，面板那行可点。 */
+    readonly review: ChangesReviewCoordinates | null;
 }
 export interface TaskMonitorFailure {
     readonly ok: false;

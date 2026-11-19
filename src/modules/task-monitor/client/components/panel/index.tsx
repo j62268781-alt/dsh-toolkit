@@ -21,7 +21,7 @@ import {
   type TaskMonitorEntry,
   type TaskMonitorSectionKind,
 } from "../../constants.js";
-import { fileAddressFor, groupSections, hiddenOf, visibleOf } from "../../model.js";
+import { changesReviewAddress, fileAddressFor, groupSections, hiddenOf, visibleOf } from "../../model.js";
 import panelCss from "./style.css";
 
 export const NAME = "panel";
@@ -59,6 +59,16 @@ function changesOf(payload: any): ChangesStat | null {
   if (payload === null || typeof payload !== "object" || payload.ok !== true) return null;
   const read = (value: any): number => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.round(value) : 0);
   return { files: read(payload.files), insertions: read(payload.insertions), deletions: read(payload.deletions), untracked: read(payload.untracked) };
+}
+
+/** 官方审查 tab 的坐标（`workspace/changes` 的 seq 与 turn）；没有就不做可点。 */
+function reviewOf(payload: any): { seq: number; turn: number } | null {
+  const value = payload?.review;
+  if (value === null || typeof value !== "object") return null;
+  const { seq, turn } = value;
+  if (typeof seq !== "number" || !Number.isSafeInteger(seq) || seq <= 0) return null;
+  if (typeof turn !== "number" || !Number.isSafeInteger(turn) || turn <= 0) return null;
+  return { seq, turn };
 }
 
 function reasonOf(payload: any, fallback: string): string {
@@ -120,6 +130,7 @@ export function createTaskMonitorPanel(ctx: any) {
     const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
     const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
     const [git, setGit] = React.useState<GitStrip | null>(null);
+    const [review, setReview] = React.useState<{ seq: number; turn: number } | null>(null);
 
     const load = React.useCallback(async (quiet: boolean) => {
       if (typeof sessionId !== "string" || sessionId === "") return;
@@ -129,6 +140,7 @@ export function createTaskMonitorPanel(ctx: any) {
         const payload = await response.json();
         if (!response.ok || payload?.ok !== true) throw new Error(reasonOf(payload, `HTTP ${response.status}`));
         setEntries(Array.isArray(payload.entries) ? payload.entries : []);
+        setReview(reviewOf(payload));
         setError("");
         setPhase("ready");
       } catch (caught: any) {
@@ -238,8 +250,27 @@ export function createTaskMonitorPanel(ctx: any) {
       const counted = changed && delta > 0;
       const StatusIcon = changed || git.dirty ? ChecklistIcon : CheckCircleIcon;
       const detail = !changed ? null : stat.untracked > 0 ? t("envUntracked", { n: String(stat.untracked) }) : t("envFiles", { n: String(stat.files) });
+      // 有改动且宿主装着官方「代码审查和变更」tab 时，这一行点开那次变更的审查。
+      const openReview = changed && review !== null && typeof actions?.openReview === "function"
+        ? () => actions.openReview(changesReviewAddress(sessionId, review.seq, review.turn))
+        : undefined;
       envRows.push(
-        <div className="sk-task-monitor__row" data-kind="environment" key="status" title={git.dirty ? t("gitDirty") : t("gitClean")}>
+        <div
+          className="sk-task-monitor__row"
+          data-kind="environment"
+          key="status"
+          data-clickable={openReview === undefined ? undefined : true}
+          role={openReview === undefined ? undefined : "button"}
+          tabIndex={openReview === undefined ? undefined : 0}
+          title={git.dirty ? t("gitDirty") : t("gitClean")}
+          onClick={openReview}
+          onKeyDown={openReview === undefined ? undefined : (event: any) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openReview();
+            }
+          }}
+        >
           <span className="sk-task-monitor__seat" aria-hidden="true">{StatusIcon === undefined ? null : <StatusIcon size={14} />}</span>
           <span className="sk-task-monitor__txt">
             {counted

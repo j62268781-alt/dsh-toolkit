@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { INITIAL_VISIBLE } from '../../src/modules/task-monitor/host/constants.js'
-import { fileAddressFor, groupSections, hiddenOf, timeLabel, visibleOf } from '../../src/modules/task-monitor/client/model.js'
+import { changesReviewAddress, fileAddressFor, groupSections, hiddenOf, timeLabel, visibleOf } from '../../src/modules/task-monitor/client/model.js'
 
 const entry = (id, kind, updatedAt, label = id) => ({ id, kind, label, detail: '', count: 1, status: 'ok', updatedAt })
 
@@ -44,4 +44,10 @@ test('文件地址按宿主规则拼：相对路径折叠、段编码、cwd 外�
   assert.equal(fileAddressFor('s1', '/repo', '/etc/hosts'), 'dsh-resource://file/session/s1//etc/hosts')
   assert.equal(fileAddressFor('s1', 'D:\\repo\\', 'D:\\repo\\src\\main.ts'), 'dsh-resource://file/session/s1/src/main.ts')
   assert.equal(fileAddressFor('s:1', '/repo', 'a.ts'), 'dsh-resource://file/session/s:1/a.ts')
+})
+
+test('审查地址：三段式，会话号要编码，seq/turn 原样拼', () => {
+  // 与宿主 changesReviewAddress 逐字对齐：解析时要求正好三段，且 seq/turn 必须是纯数字。
+  assert.equal(changesReviewAddress('s1', 7, 3), 'dsh-resource://changes-review/session/s1/7/3')
+  assert.equal(changesReviewAddress('s:1', 7, 3), 'dsh-resource://changes-review/session/s%3A1/7/3')
 })
