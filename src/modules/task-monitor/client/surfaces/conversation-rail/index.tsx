@@ -48,6 +48,7 @@ interface RailProps {
 function RailLayer({ children, useSessions, Panel, actions, label }: RailProps) {
   const wrapRef = React.useRef<HTMLDivElement | null>(null);
   const [embedded, setEmbedded] = React.useState(false);
+  const [maxHeight, setMaxHeight] = React.useState<number | null>(null);
   const sessionId = activeSessionId(useSessions);
   const choice = useRailChoice(sessionId);
   const narrow = useRailNarrow();
@@ -70,12 +71,27 @@ function RailLayer({ children, useSessions, Panel, actions, label }: RailProps) 
     if (wrap === null || typeof ResizeObserver === "undefined") return undefined;
     // 子代理侧栏里那份是窄槽，量它会误伤主会话：embedded 的实例不参与判定。
     if (wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null) return undefined;
+
+    // 卡片的可用高度必须按「会话内容区的下沿」量，不能只靠 CSS 的 100%：hero.frame
+    // 的百分比基准在宿主里不一定等于可视区域，实测会出现卡片底部伸出窗口被裁掉。
+    // 46 = 上边距 16 + 底部统计带占位 30。
+    const measure = () => {
+      const rect = wrap.getBoundingClientRect();
+      const scroll = wrap.querySelector("[data-conversation-scroll]");
+      const bottom = scroll ? scroll.getBoundingClientRect().bottom : window.innerHeight;
+      setMaxHeight(Math.max(180, Math.round(bottom - rect.top - 46)));
+    };
+    if (typeof window !== "undefined") window.addEventListener("resize", measure);
+
     const observer = new ResizeObserver(() => {
       setRailNarrow(wrap.getBoundingClientRect().width <= RAIL_HIDE_WIDTH);
+      measure();
     });
+    measure();
     observer.observe(wrap);
     return () => {
       observer.disconnect();
+      if (typeof window !== "undefined") window.removeEventListener("resize", measure);
       setRailNarrow(false);
     };
   }, []);
@@ -85,7 +101,11 @@ function RailLayer({ children, useSessions, Panel, actions, label }: RailProps) 
       <style>{railCss}</style>
       <div className="sk-task-monitor-column">{children}</div>
       {open ? (
-        <aside className="sk-task-monitor-side" aria-label={label}>
+        <aside
+          className="sk-task-monitor-side"
+          aria-label={label}
+          style={maxHeight === null ? undefined : { maxHeight }}
+        >
           <Panel
             key={sessionId}
             sessionId={sessionId}

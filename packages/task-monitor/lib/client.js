@@ -620,6 +620,7 @@ window.__ModuleLoader__.load({
     function RailLayer({ children, useSessions, Panel, actions, label }) {
       const wrapRef = import_react4.default.useRef(null);
       const [embedded, setEmbedded] = import_react4.default.useState(false);
+      const [maxHeight, setMaxHeight] = import_react4.default.useState(null);
       const sessionId = activeSessionId(useSessions);
       const choice = useRailChoice(sessionId);
       const narrow2 = useRailNarrow();
@@ -632,24 +633,42 @@ window.__ModuleLoader__.load({
         const wrap = wrapRef.current;
         if (wrap === null || typeof ResizeObserver === "undefined") return void 0;
         if (wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null) return void 0;
+        const measure = () => {
+          const rect = wrap.getBoundingClientRect();
+          const scroll = wrap.querySelector("[data-conversation-scroll]");
+          const bottom = scroll ? scroll.getBoundingClientRect().bottom : window.innerHeight;
+          setMaxHeight(Math.max(180, Math.round(bottom - rect.top - 46)));
+        };
+        if (typeof window !== "undefined") window.addEventListener("resize", measure);
         const observer = new ResizeObserver(() => {
           setRailNarrow(wrap.getBoundingClientRect().width <= RAIL_HIDE_WIDTH);
+          measure();
         });
+        measure();
         observer.observe(wrap);
         return () => {
           observer.disconnect();
+          if (typeof window !== "undefined") window.removeEventListener("resize", measure);
           setRailNarrow(false);
         };
       }, []);
-      return /* @__PURE__ */ __dshReact.createElement("div", { ref: wrapRef, className: "sk-task-monitor-frame", "data-rail": open ? "open" : "closed" }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default2), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor-column" }, children), open ? /* @__PURE__ */ __dshReact.createElement("aside", { className: "sk-task-monitor-side", "aria-label": label }, /* @__PURE__ */ __dshReact.createElement(
-        Panel,
+      return /* @__PURE__ */ __dshReact.createElement("div", { ref: wrapRef, className: "sk-task-monitor-frame", "data-rail": open ? "open" : "closed" }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default2), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor-column" }, children), open ? /* @__PURE__ */ __dshReact.createElement(
+        "aside",
         {
-          key: sessionId,
-          sessionId,
-          useSessions,
-          actions
-        }
-      )) : null);
+          className: "sk-task-monitor-side",
+          "aria-label": label,
+          style: maxHeight === null ? void 0 : { maxHeight }
+        },
+        /* @__PURE__ */ __dshReact.createElement(
+          Panel,
+          {
+            key: sessionId,
+            sessionId,
+            useSessions,
+            actions
+          }
+        )
+      ) : null);
     }
 
     // src/modules/task-monitor/client/surfaces/header-button/style.css
