@@ -357,3 +357,58 @@ test('renameBranch：from 省略时改当前分支，重名与非法名字在跑
   assert.equal(invalid.ok, false)
   assert.equal(invalid.reason, 'invalid-branch')
 })
+
+const CHANGES_BASE = {
+  'rev-parse --is-inside-work-tree': { stdout: 'true\n' },
+  'rev-parse --verify --quiet HEAD': { stdout: 'abc1234\n' },
+}
+
+test('changes：用 diff HEAD 一次覆盖已暂存与未暂存，未跟踪只计数不带行数', async () => {
+  const run = runnerOf(repoTable({
+    ...CHANGES_BASE,
+    'diff --numstat HEAD': { stdout: '12\t3\tsrc/a.ts\n-\t-\tlogo.png\n200\t0\tdocs/x.md\n' },
+    'ls-files --others --exclude-standard -z': { stdout: 'new.txt\0docs/y.md\0' },
+  }))
+  const result = await createRepository(run).changes(REPO)
+  assert.deepEqual(result, { ok: true, files: 5, insertions: 212, deletions: 3, untracked: 2 })
+})
+
+test('changes：还没有提交的新仓库退回「工作区 vs 索引 + 索引 vs 空树」两段统计', async () => {
+  const run = runnerOf(repoTable({
+    'rev-parse --is-inside-work-tree': { stdout: 'true\n' },
+    'rev-parse --verify --quiet HEAD': { code: 128, stderr: 'fatal: Needed a single revision\n' },
+    'diff --numstat': { stdout: '4\t0\ta.ts\n' },
+    'diff --cached --numstat': { stdout: '6\t2\tb.ts\n' },
+  }))
+  const result = await createRepository(run).changes(REPO)
+  assert.deepEqual(result, { ok: true, files: 2, insertions: 10, deletions: 2, untracked: 0 })
+})
+
+test('changes：单条 diff 失败（子模块/权限）跳过它，剩下的统计照报', async () => {
+  const run = runnerOf(repoTable({
+    ...CHANGES_BASE,
+    'diff --numstat HEAD': { code: 128, stderr: 'fatal: bad object\n' },
+    'ls-files --others --exclude-standard -z': { stdout: '' },
+  }))
+  const result = await createRepository(run).changes(REPO)
+  assert.deepEqual(result, { ok: true, files: 0, insertions: 0, deletions: 0, untracked: 0 })
+})
+
+test('changes：不是仓库 / 缺 git / 非法 cwd 三种失败，非法 cwd 不跑 git', async () => {
+  const notRepo = await createRepository(runnerOf({
+    'rev-parse --is-inside-work-tree': { code: 128, stderr: 'fatal: not a git repository (or any parent)\nmore\n' },
+  })).changes(PLAIN)
+  assert.deepEqual(notRepo, { ok: false, reason: 'not-a-repository', detail: 'fatal: not a git repository (or any parent)' })
+
+  const missing = await createRepository(runnerOf({
+    'rev-parse --is-inside-work-tree': { code: null, spawnError: new Error('ENOENT') },
+  })).changes(REPO)
+  assert.equal(missing.ok, false)
+  assert.equal(missing.reason, 'git-missing')
+
+  const run = runnerOf(repoTable(CHANGES_BASE))
+  const invalid = await createRepository(run).changes('relative/repo')
+  assert.equal(invalid.ok, false)
+  assert.equal(invalid.reason, 'invalid-cwd')
+  assert.deepEqual(run.calls, [])
+})

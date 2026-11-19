@@ -12,7 +12,7 @@
 import React from "react";
 import { fetchJson } from "../../../../../client/http.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
-import { GIT_BRANCHES_PATH } from "../../../../git/client/constants.js";
+import { GIT_BRANCHES_PATH, GIT_CHANGES_PATH } from "../../../../git/client/constants.js";
 import { TASK_MONITOR_NS } from "../../locale.js";
 import {
   TASK_MONITOR_POLL_MS,
@@ -33,10 +33,32 @@ const SECTION_COPY: Record<TaskMonitorSectionKind, { title: string, desc: string
   source: { title: "sectionSource", desc: "sectionSourceDesc", empty: "emptySource" },
 };
 
+interface ChangesStat {
+  readonly files: number;
+  readonly insertions: number;
+  readonly deletions: number;
+  readonly untracked: number;
+}
+
 interface GitStrip {
   readonly branch: string;
   readonly dirty: boolean;
   readonly detached: boolean;
+  /** 工作区增删行数；读不到（不是仓库、没装 git）时为 null，这一行退回「有未提交改动」。 */
+  readonly changes: ChangesStat | null;
+}
+
+/** `+1234` 这种数字在 12px 行里挤，四位数以上用「1.2k」。 */
+function compactCount(value: number): string {
+  if (value < 1000) return String(value);
+  const thousands = value / 1000;
+  return `${thousands >= 10 ? Math.round(thousands) : thousands.toFixed(1).replace(/\.0$/, "")}k`;
+}
+
+function changesOf(payload: any): ChangesStat | null {
+  if (payload === null || typeof payload !== "object" || payload.ok !== true) return null;
+  const read = (value: any): number => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.round(value) : 0);
+  return { files: read(payload.files), insertions: read(payload.insertions), deletions: read(payload.deletions), untracked: read(payload.untracked) };
 }
 
 function reasonOf(payload: any, fallback: string): string {
@@ -124,13 +146,26 @@ export function createTaskMonitorPanel(ctx: any) {
         return;
       }
       try {
-        const response = await fetchJson(GIT_BRANCHES_PATH, { json: { cwd } });
-        const payload = await response.json();
-        if (response.ok && payload?.ok === true) {
-          setGit({ branch: typeof payload.branch === "string" ? payload.branch : "", dirty: payload.dirty === true, detached: payload.detached === true });
-        } else {
+        // 分支快照与改动统计各自独立：统计失败不该把分支行一起抹掉（反之亦然）。
+        const [branchResponse, changesResponse] = await Promise.all([
+          fetchJson(GIT_BRANCHES_PATH, { json: { cwd } }),
+          fetchJson(GIT_CHANGES_PATH, { json: { cwd } }).catch(() => null),
+        ]);
+        const payload = await branchResponse.json();
+        if (!branchResponse.ok || payload?.ok !== true) {
           setGit(null);
+          return;
         }
+        let changes: ChangesStat | null = null;
+        if (changesResponse?.ok === true) {
+          changes = changesOf(await changesResponse.json().catch(() => null));
+        }
+        setGit({
+          branch: typeof payload.branch === "string" ? payload.branch : "",
+          dirty: payload.dirty === true,
+          detached: payload.detached === true,
+          changes,
+        });
       } catch {
         setGit(null);
       }
@@ -196,12 +231,24 @@ export function createTaskMonitorPanel(ctx: any) {
     // 环境信息不是监控条目：状态/位置/分支/目录都来自当前会话，行不可点。
     const envRows: React.ReactNode[] = [];
     if (git !== null) {
-      const StatusIcon = git.dirty ? ChecklistIcon : CheckCircleIcon;
+      const stat = git.changes;
+      const delta = stat === null ? 0 : stat.insertions + stat.deletions;
+      // 只有未跟踪文件（或二进制改动）时 numstat 是 0 行，这时仍然要承认「有改动」。
+      const changed = stat !== null && stat.files > 0;
+      const counted = changed && delta > 0;
+      const StatusIcon = changed || git.dirty ? ChecklistIcon : CheckCircleIcon;
+      const detail = !changed ? null : stat.untracked > 0 ? t("envUntracked", { n: String(stat.untracked) }) : t("envFiles", { n: String(stat.files) });
       envRows.push(
         <div className="sk-task-monitor__row" data-kind="environment" key="status" title={git.dirty ? t("gitDirty") : t("gitClean")}>
           <span className="sk-task-monitor__seat" aria-hidden="true">{StatusIcon === undefined ? null : <StatusIcon size={14} />}</span>
           <span className="sk-task-monitor__txt">
-            <span className="sk-task-monitor__label">{git.dirty ? t("envDirty") : t("envClean")}</span>
+            {counted
+              ? <span className="sk-task-monitor__label sk-task-monitor__delta">
+                  <span className="sk-task-monitor__added">+{compactCount(stat.insertions)}</span>
+                  <span className="sk-task-monitor__deleted">−{compactCount(stat.deletions)}</span>
+                </span>
+              : <span className="sk-task-monitor__label">{git.dirty || changed ? t("envDirty") : t("envClean")}</span>}
+            {detail === null ? null : <span className="sk-task-monitor__detail">{detail}</span>}
           </span>
         </div>,
       );

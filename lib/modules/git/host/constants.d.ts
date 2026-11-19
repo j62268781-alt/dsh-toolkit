@@ -2,6 +2,13 @@ export declare const NAME = "dsh-toolkit-git";
 export declare const GIT_BRANCHES_PATH: string;
 export declare const GIT_CHECKOUT_PATH: string;
 export declare const GIT_CREATE_BRANCH_PATH: string;
+/**
+ * 工作区改动的行数统计（`+新增 / -删除`）。
+ *
+ * 单独一条路由而不是塞进 `branches`：分支快照是切分支/开弹层要的，
+ * 而统计每次面板轮询都会来问，两类读取的代价与频率差了一个量级。
+ */
+export declare const GIT_CHANGES_PATH: string;
 /** 一次最多列多少条本地分支：再多也不适合一个弹层，且 `for-each-ref` 的输出要兜住。 */
 export declare const MAX_BRANCH_LIST = 200;
 /** 分支名上限。Git 自己按引用名长度兜底，这里先挡住明显异常的输入。 */

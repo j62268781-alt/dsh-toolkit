@@ -513,6 +513,7 @@ window.__ModuleLoader__.load({
     var GIT_BRANCHES_PATH = `${API_PREFIX}/branches`;
     var GIT_CHECKOUT_PATH = `${API_PREFIX}/checkout`;
     var GIT_CREATE_BRANCH_PATH = `${API_PREFIX}/create-branch`;
+    var GIT_CHANGES_PATH = `${API_PREFIX}/changes`;
     var MAX_BRANCH_NAME_LENGTH = 200;
     var DEFAULT_BRANCH_PREFIX = "";
     var DEFAULT_ALWAYS_FORCE_PUSH = false;

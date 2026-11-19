@@ -9,6 +9,7 @@ import { test } from 'node:test'
 
 import {
   GIT_BRANCHES_PATH,
+  GIT_CHANGES_PATH,
   GIT_CHECKOUT_PATH,
   GIT_CREATE_BRANCH_PATH,
   MAX_BRANCH_PREFIX_LENGTH,
@@ -164,10 +165,14 @@ test('路由：领域失败按「改输入 / 换状态 / 环境坏了」折成 4
   const repository = {
     snapshot: async () => results.get(current),
     checkout: async () => results.get(current),
+    changes: async () => results.get(current),
     createBranch: async () => results.get(current),
   }
   const specs = createGitRoutes({ repository })
-  assert.deepEqual(specs.map((spec) => spec.path), [GIT_BRANCHES_PATH, GIT_CHECKOUT_PATH, GIT_CREATE_BRANCH_PATH])
+  assert.deepEqual(
+    specs.map((spec) => spec.path),
+    [GIT_BRANCHES_PATH, GIT_CHANGES_PATH, GIT_CHECKOUT_PATH, GIT_CREATE_BRANCH_PATH],
+  )
 
   const status = async (name, value) => {
     current = name
@@ -185,10 +190,13 @@ test('路由：body 形状在跑 git 之前就被拦下', () => {
   assert.equal(specs[0].pick({ cwd: '/repo' }), '/repo')
   assert.equal(specs[0].check('/repo'), true)
   assert.equal(specs[0].check(undefined), false)
-  assert.deepEqual(specs[1].pick({ cwd: '/repo', name: 'dev' }), ['/repo', 'dev'])
-  assert.equal(specs[1].check(['/repo', 'dev']), true)
-  assert.equal(specs[1].check(['/repo']), false)
-  assert.equal(specs[1].check('nope'), false)
+  // 改动统计与分支快照同一个形状：只要一个 cwd。
+  assert.equal(specs[1].pick({ cwd: '/repo' }), '/repo')
+  assert.equal(specs[1].check(undefined), false)
+  assert.deepEqual(specs[2].pick({ cwd: '/repo', name: 'dev' }), ['/repo', 'dev'])
+  assert.equal(specs[2].check(['/repo', 'dev']), true)
+  assert.equal(specs[2].check(['/repo']), false)
+  assert.equal(specs[2].check('nope'), false)
 })
 
 test('装配面：name / inject / Config / apply 四样俱全', () => {

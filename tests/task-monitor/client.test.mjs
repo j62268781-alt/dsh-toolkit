@@ -10,7 +10,7 @@ import { build } from 'esbuild'
 import React from 'react'
 import { TASK_MONITOR_COPY } from '../../src/modules/task-monitor/client/locale.ts'
 import { TASK_MONITOR_SNAPSHOT_PATH } from '../../src/modules/task-monitor/host/constants.ts'
-import { GIT_BRANCHES_PATH } from '../../src/modules/git/host/constants.ts'
+import { GIT_BRANCHES_PATH, GIT_CHANGES_PATH } from '../../src/modules/git/host/constants.ts'
 
 const ENTRY = 'src/modules/task-monitor/client/components/panel/index.tsx'
 
@@ -131,6 +131,9 @@ function fakeFetch(state) {
       return respond(200, { ok: true, sessionId: body.sessionId, updatedAt: 1700000000000, entries: state.entries })
     }
     if (url === GIT_BRANCHES_PATH) return respond(200, { ok: true, branch: 'main', dirty: true, detached: false })
+    if (url === GIT_CHANGES_PATH) {
+      return respond(200, state.changes ?? { ok: true, files: 0, insertions: 0, deletions: 0, untracked: 0 })
+    }
     if (url === TASK_MONITOR_SOURCE_ADD_PATH) {
       const value = String(body.value).trim()
       const id = `manual:${body.kind}:${value}`
@@ -227,6 +230,26 @@ test('环境信息 + 四分区渲染：计数、去重后不显示 ×N、失败�
   assert.equal(all(dom, '.sk-task-monitor__section[data-kind="knowledge"]').length, 0)
   assert.equal(all(dom, '.sk-task-monitor__add').length, 0)
   assert.equal(all(dom, '.sk-task-monitor__remove').length, 0)
+})
+
+test('环境信息第一行：工作区改动画成 +新增 / −删除，新文件单独计数', async (t) => {
+  const dom = withDom(t)
+  const state = { entries: seedEntries(), changes: { ok: true, files: 4, insertions: 1234, deletions: 12, untracked: 2 } }
+  await mount(t, dom, state)
+  const status = rowsIn(dom, 'environment')[0]
+  assert.equal(status.querySelector('.sk-task-monitor__added').textContent, '+1.2k')
+  assert.equal(status.querySelector('.sk-task-monitor__deleted').textContent, '−12')
+  assert.equal(status.querySelector('.sk-task-monitor__detail').textContent, '新文件 2')
+})
+
+test('环境信息第一行：只有新文件（或二进制改动）时不画 +0 −0，仍算有改动', async (t) => {
+  const dom = withDom(t)
+  const state = { entries: seedEntries(), changes: { ok: true, files: 3, insertions: 0, deletions: 0, untracked: 3 } }
+  await mount(t, dom, state)
+  const status = rowsIn(dom, 'environment')[0]
+  assert.equal(status.querySelector('.sk-task-monitor__label').textContent, '有未提交改动')
+  assert.equal(status.querySelector('.sk-task-monitor__detail').textContent, '新文件 3')
+  assert.ok(status.querySelector('.sk-task-monitor__added') === null)
 })
 
 test('行点击：网页开右栏 browser，文件走宿主原生预览', async (t) => {

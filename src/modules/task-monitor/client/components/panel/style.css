@@ -214,6 +214,21 @@
   color: var(--dsw-alias-label-primary, inherit);
 }
 
+/* 工作区增删行数：沿用宿主 diff 视图的增删语义色，避免第三套绿/红。 */
+.sk-task-monitor__delta {
+  display: inline-flex;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-task-monitor__added {
+  color: var(--dsw-alias-file-diff-added-marker, #1a7f37);
+}
+
+.sk-task-monitor__deleted {
+  color: var(--dsw-alias-file-diff-deleted-marker, #cf222e);
+}
+
 .sk-task-monitor__detail {
   overflow: hidden;
   text-overflow: ellipsis;

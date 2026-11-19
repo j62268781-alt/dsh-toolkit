@@ -24,6 +24,21 @@ export interface BranchFailure {
 }
 export type BranchResult = BranchSnapshot | BranchFailure;
 /**
+ * 工作区改动统计：`git diff --numstat HEAD` 的合计 + 未跟踪文件数。
+ *
+ * 只给数字，不下发逐文件列表：面板一行只有 12px 的宽度可用，逐文件差异属于
+ * 审查视图的事，而宿主目前没有「工作区」级的审查面（只有按回合的 `changes-review`）。
+ */
+export interface ChangesSnapshot {
+    readonly ok: true;
+    /** 改动文件数（含未跟踪）。 */
+    readonly files: number;
+    readonly insertions: number;
+    readonly deletions: number;
+    readonly untracked: number;
+}
+export type ChangesResult = ChangesSnapshot | BranchFailure;
+/**
  * 「执行一条会改动仓库状态的命令」的结果。
  *
  * 与 `BranchResult` 分开：切完/建完要回读快照给面板，而这些命令（提交、同步、删/改分支）
@@ -42,6 +57,7 @@ export declare function upstreamOf(run: GitRunner, cwd: string, branch: string):
 export declare function createRepository(run?: GitRunner): {
     /** 一次拿全：仓库根、当前分支、是否有未提交改动、本地分支列表。 */
     snapshot(cwd: unknown): Promise<BranchResult>;
+    changes(cwd: unknown): Promise<ChangesResult>;
     checkout(cwd: unknown, name: unknown): Promise<BranchResult>;
     createBranch(cwd: unknown, name: unknown): Promise<BranchResult>;
     /**
