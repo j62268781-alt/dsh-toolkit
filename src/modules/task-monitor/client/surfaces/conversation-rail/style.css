@@ -16,18 +16,19 @@
 }
 
 /*
- * 宽度固定 160：只做「会话旁边的一张卡片」，不跟消息列抢宽。
+ * 宽度对齐 Qoder 的任务监控栏（截图量得内容区约 253px）：取 260，只做
+ * 「会话旁边的一张卡片」，不跟消息列抢宽。
  * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），
  * 高度贴合内容（align-self: flex-start），内容过长时在卡内滚动。
  */
 .sk-task-monitor-side {
   display: flex;
-  flex: 0 0 160px;
+  flex: 0 0 260px;
   flex-direction: column;
   align-self: flex-start;
   min-height: 0;
-  min-width: 160px;
-  max-width: 160px;
+  min-width: 260px;
+  max-width: 260px;
   max-height: 100%;
   margin: 10px 12px 10px 4px;
   overflow: hidden;
