@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert'
 import test from 'node:test'
 import {
   railHidden, setRailHidden, subscribeRail,
+  railChoice, setRailChoice,
   railNarrow, setRailNarrow, subscribeRailNarrow,
 } from '../../src/modules/task-monitor/client/state/rail.js'
 
@@ -77,3 +78,20 @@ test('narrow flag: 订阅、去重、退订', () => {
   assert.equal(railNarrow(), true);
   setRailNarrow(false);
 });
+
+test('显式展开记成 visible：窄列下也能覆盖自动收起', (t) => {
+  const storage = fakeStorage()
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, writable: true, value: storage })
+  t.after(() => { delete globalThis.localStorage })
+
+  assert.equal(railChoice('s4'), null, '没表态时跟随宽度')
+  setRailChoice('s4', 'visible')
+  assert.equal(railChoice('s4'), 'visible')
+  assert.equal(railHidden('s4'), false)
+  setRailChoice('s4', 'hidden')
+  assert.equal(railChoice('s4'), 'hidden')
+  assert.equal(railHidden('s4'), true)
+  setRailChoice('s4', null)
+  assert.equal(railChoice('s4'), null)
+  assert.equal(storage.data.has('dsh-toolkit-task-monitor:rail:s4'), false)
+})

@@ -8,7 +8,7 @@ import React from "react";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { TASK_MONITOR_NS } from "../../locale.js";
-import { setRailHidden, useRailHidden, useRailNarrow } from "../../state/rail.js";
+import { setRailChoice, useRailChoice, useRailNarrow } from "../../state/rail.js";
 
 export const NAME = "header-button";
 
@@ -17,13 +17,12 @@ export function install(ctx: any) {
 
   function HeaderButton(props: any) {
     const sessionId: string | undefined = props.sessionId;
-    const hidden = useRailHidden(sessionId);
+    const choice = useRailChoice(sessionId);
     const narrow = useRailNarrow();
-    const open = !hidden && !narrow && typeof sessionId === "string" && sessionId !== "";
+    const open = typeof sessionId === "string" && sessionId !== ""
+      && (choice === "visible" || (choice === null && !narrow));
     const label = t("trigger");
     const Icon = primitives.IconInspectOutlineRegular;
-    // 对话列窄到放不下卡片时整栏已经自动退场，按钮留着只会「按了没反应」。
-    if (narrow) return null;
     return (
       <button
         type="button"
@@ -33,7 +32,8 @@ export function install(ctx: any) {
         title={label}
         onClick={() => {
           if (typeof sessionId !== "string" || sessionId === "") return;
-          setRailHidden(sessionId, !hidden);
+          // 手动开/关都记成明确表态，窄列下也能强制展开。
+          setRailChoice(sessionId, open ? "hidden" : "visible");
         }}
       >
         {Icon === undefined ? null : <Icon size={16} />}

@@ -48,16 +48,7 @@
   min-height: 0;
 }
 
-/* 1200 以下先收一档宽度，避免把消息列挤到读不下去。 */
-@container task-monitor (max-width: 1200px) {
-  .sk-task-monitor-side {
-    flex-basis: 200px;
-    min-width: 200px;
-    max-width: 200px;
-  }
-}
-
-/* 1000 以下整栏退场（React 侧同时不再渲染，这里是兜底）。 */
+/* 1000 以下默认收起（React 按同一阈值决定是否渲染，这里是兜底）。 */
 @container task-monitor (max-width: 1000px) {
   .sk-task-monitor-side {
     display: none;

@@ -1,7 +1,7 @@
 import React from "react";
 import { TASK_MONITOR_NS } from "../../locale.js";
 import { createTaskMonitorPanel } from "../../components/panel/index.jsx";
-import { RAIL_HIDE_WIDTH, setRailNarrow, useRailHidden, useRailNarrow } from "../../state/rail.js";
+import { RAIL_HIDE_WIDTH, setRailNarrow, useRailChoice, useRailNarrow } from "../../state/rail.js";
 import railCss from "./style.css";
 
 export const NAME = "conversation-rail";
@@ -49,9 +49,11 @@ function RailLayer({ children, useSessions, Panel, actions, label }: RailProps) 
   const wrapRef = React.useRef<HTMLDivElement | null>(null);
   const [embedded, setEmbedded] = React.useState(false);
   const sessionId = activeSessionId(useSessions);
-  const hidden = useRailHidden(sessionId);
+  const choice = useRailChoice(sessionId);
   const narrow = useRailNarrow();
-  const open = !hidden && !embedded && !narrow && typeof sessionId === "string" && sessionId !== "";
+  // 用户表过态就听用户的；没表态时，对话列太窄就默认收起。
+  const open = !embedded && typeof sessionId === "string" && sessionId !== ""
+    && (choice === "visible" || (choice === null && !narrow));
 
   // 子代理侧栏里也渲染一份 Conversation：那里已经有宿主自己的栏位，再塞一条
   // 监控会把同一会话的内容显示两遍。座位本身是 display:contents 的 data-slot，

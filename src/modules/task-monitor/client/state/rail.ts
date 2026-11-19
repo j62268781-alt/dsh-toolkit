@@ -10,31 +10,45 @@ import React from "react";
 const KEY = "dsh-toolkit-task-monitor:rail:";
 
 const listeners = new Set<() => void>();
-const memory = new Set<string>();
+const memory = new Map<string, RailChoice>();
 
 function storageKey(sessionId: string): string {
   return `${KEY}${sessionId}`;
 }
 
-export function railHidden(sessionId: string | undefined): boolean {
-  if (sessionId === undefined || sessionId === "") return true;
+/** null 表示用户还没表态：跟对话列宽度走（窄了就自动收起）。 */
+export type RailChoice = "visible" | "hidden" | null;
+
+export function railChoice(sessionId: string | undefined): RailChoice {
+  if (sessionId === undefined || sessionId === "") return null;
   try {
-    return localStorage.getItem(storageKey(sessionId)) === "hidden";
+    const value = localStorage.getItem(storageKey(sessionId));
+    return value === "hidden" || value === "visible" ? value : null;
   } catch {
-    return memory.has(sessionId);
+    return memory.get(sessionId) ?? null;
   }
 }
 
-export function setRailHidden(sessionId: string, hidden: boolean): void {
+export function setRailChoice(sessionId: string, choice: RailChoice): void {
   if (sessionId === "") return;
   try {
-    if (hidden) localStorage.setItem(storageKey(sessionId), "hidden");
-    else localStorage.removeItem(storageKey(sessionId));
+    if (choice === null) localStorage.removeItem(storageKey(sessionId));
+    else localStorage.setItem(storageKey(sessionId), choice);
   } catch {
-    if (hidden) memory.add(sessionId);
-    else memory.delete(sessionId);
+    if (choice === null) memory.delete(sessionId);
+    else memory.set(sessionId, choice);
   }
   for (const listener of listeners) listener();
+}
+
+/** 用户明确收起过。null/visible 都算「没收起」。 */
+export function railHidden(sessionId: string | undefined): boolean {
+  if (sessionId === undefined || sessionId === "") return true;
+  return railChoice(sessionId) === "hidden";
+}
+
+export function setRailHidden(sessionId: string, hidden: boolean): void {
+  setRailChoice(sessionId, hidden ? "hidden" : null);
 }
 
 export function subscribeRail(listener: () => void): () => void {
@@ -53,10 +67,18 @@ export function useRailHidden(sessionId: string | undefined): boolean {
   );
 }
 
+export function useRailChoice(sessionId: string | undefined): RailChoice {
+  return React.useSyncExternalStore(
+    subscribeRail,
+    () => railChoice(sessionId),
+    () => railChoice(sessionId),
+  );
+}
+
 /**
- * 会话列太窄时自动退场：卡片固定 220px，挤在宽度不足的对话区里只会把消息列
- * 压到不可读。1000px 与 components/panel/style.css 的容器查询同值，改一处要
- * 同时改另一处。窄到这一步时标题栏按钮也一起消失——否则按了没反应。
+ * 会话列太窄时默认收起（用户没表过态时才生效）：卡片固定 220px，挤不下就不
+ * 硬挤。1000px 与 surfaces/conversation-rail/style.css 的容器查询同值，改一处
+ * 要同时改另一处。标题栏按钮始终保留——用户仍可手动展开覆盖这个默认。
  */
 export const RAIL_HIDE_WIDTH = 1000;
 
