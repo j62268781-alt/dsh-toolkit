@@ -256,8 +256,10 @@ test('all palettes start at their own minimum while native palettes retain full 
   for (const palette of ['native', 'ocean', 'hope']) {
     root.setAttribute('data-sk-palette', 'codex')
     await flush()
-    assert.match(frame.style.gridTemplateColumns, /^302px/, 'Codex minimum includes its 52px rail')
-    assert.equal(handle.getAttribute('aria-valuemin'), '250')
+    assert.match(frame.style.gridTemplateColumns, /^302px/, 'Codex default width stays 250 + its 52px rail')
+    assert.equal(handle.getAttribute('aria-valuemin'), '220')
+    handle.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Home', bubbles: true }))
+    assert.match(frame.style.gridTemplateColumns, /^272px/, 'Codex can be dragged down to 220 + its 52px rail')
     root.setAttribute('data-sk-palette', palette)
     await flush()
     // The host owns the column: its next layout pass writes the stored width back

@@ -3,7 +3,10 @@ import { watchElement, watchSidebar } from "./watch.js";
 
 // Keep the workspace width independent of the rail → hidden collapse cycle.
 const RAIL_WIDTH = 52;
-const WORKSPACE_MIN = 250;
+// 默认仍是 250（与宿主原生列宽一致）；下限放到 220，让用户能把会话区再拉宽一点。
+// 再窄文件树就只剩图标了，所以 220 是下限，不是 0。
+const WORKSPACE_DEFAULT = 250;
+const WORKSPACE_MIN = 220;
 const WORKSPACE_MAX = 450;
 const RAIL_W = `${RAIL_WIDTH}px`;
 let frameEl = null;
@@ -41,7 +44,7 @@ export function installSidebarWidth(ctx: any, options: { native?: boolean } = {}
   const maxWidth = native ? 420 : WORKSPACE_MAX;
   let queued = 0;
   let offPanel = null;
-  let workspaceWidth = minWidth;
+  let workspaceWidth = native ? minWidth : WORKSPACE_DEFAULT;
   let drag = null;
   const clampWidth = (width) => Math.min(maxWidth, Math.max(minWidth, Math.round(width)));
   const handles = new Map();
