@@ -1,6 +1,9 @@
 import { strict as assert } from 'node:assert'
 import test from 'node:test'
-import { railHidden, setRailHidden, subscribeRail } from '../../src/modules/task-monitor/client/state/rail.js'
+import {
+  railHidden, setRailHidden, subscribeRail,
+  railNarrow, setRailNarrow, subscribeRailNarrow,
+} from '../../src/modules/task-monitor/client/state/rail.js'
 
 function fakeStorage() {
   const data = new Map()
@@ -60,3 +63,17 @@ test('localStorage 不可用时退回进程内记账', (t) => {
   setRailHidden('s3', false)
   assert.equal(railHidden('s3'), false)
 })
+
+test('narrow flag: 订阅、去重、退订', () => {
+  assert.equal(railNarrow(), false);
+  const seen = [];
+  const off = subscribeRailNarrow(() => { seen.push(railNarrow()); });
+  setRailNarrow(true);
+  setRailNarrow(true);
+  setRailNarrow(false);
+  off();
+  setRailNarrow(true);
+  assert.deepEqual(seen, [true, false]);
+  assert.equal(railNarrow(), true);
+  setRailNarrow(false);
+});

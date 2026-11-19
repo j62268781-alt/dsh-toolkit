@@ -181,6 +181,26 @@ window.__ModuleLoader__.load({
         () => railHidden(sessionId)
       );
     }
+    var RAIL_HIDE_WIDTH = 1e3;
+    var narrow = false;
+    var narrowListeners = /* @__PURE__ */ new Set();
+    function railNarrow() {
+      return narrow;
+    }
+    function setRailNarrow(next) {
+      if (next === narrow) return;
+      narrow = next;
+      for (const listener of narrowListeners) listener();
+    }
+    function subscribeRailNarrow(listener) {
+      narrowListeners.add(listener);
+      return () => {
+        narrowListeners.delete(listener);
+      };
+    }
+    function useRailNarrow() {
+      return import_react.default.useSyncExternalStore(subscribeRailNarrow, railNarrow, railNarrow);
+    }
 
     // src/modules/task-monitor/client/surfaces/header-button/index.tsx
     var NAME = "header-button";
@@ -189,9 +209,11 @@ window.__ModuleLoader__.load({
       function HeaderButton(props) {
         const sessionId = props.sessionId;
         const hidden = useRailHidden(sessionId);
-        const open = !hidden && typeof sessionId === "string" && sessionId !== "";
+        const narrow2 = useRailNarrow();
+        const open = !hidden && !narrow2 && typeof sessionId === "string" && sessionId !== "";
         const label = t("trigger");
         const Icon = primitives.IconInspectOutlineRegular;
+        if (narrow2) return null;
         return /* @__PURE__ */ __dshReact.createElement(
           "button",
           {
@@ -569,7 +591,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/style.css
-    var style_default2 = "/* 会话内容区内的左右分栏：左边是宿主原本的消息列，右边是常驻监控栏。 */\n.sk-task-monitor-frame {\n  display: flex;\n  flex: 1;\n  flex-direction: row;\n  min-height: 0;\n  min-width: 0;\n}\n\n.sk-task-monitor-column {\n  display: flex;\n  flex: 1;\n  flex-direction: column;\n  min-height: 0;\n  min-width: 0;\n}\n\n/*\n * 宽度取 220：比 Qoder 的 253 再收一档，给对话列和右侧 turn 索引条留位置，只做\n * 「会话旁边的一张卡片」，不跟消息列抢宽。\n * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），\n * 高度贴合内容（align-self: flex-start），内容过长时在卡内滚动。\n */\n.sk-task-monitor-side {\n  display: flex;\n  flex: 0 0 220px;\n  flex-direction: column;\n  align-self: flex-start;\n  min-height: 0;\n  min-width: 220px;\n  max-width: 220px;\n  max-height: calc(100% - 20px);\n  margin: 10px 10px 10px 4px;\n  overflow: hidden;\n  border: 0;\n  border-radius: var(--dsw-radius-panel, 28px);\n  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));\n  box-shadow: var(--dsw-elevation-soft);\n  --dsw-elevation-stroke-color: var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-task-monitor-side > * {\n  flex: 0 1 auto;\n  min-height: 0;\n}\n";
+    var style_default2 = "/* 会话内容区内的左右分栏：左边是宿主原本的消息列，右边是常驻监控栏。 */\n.sk-task-monitor-frame {\n  display: flex;\n  flex: 1;\n  flex-direction: row;\n  min-height: 0;\n  min-width: 0;\n  /* 卡片按「对话列自身」的宽度让步：左侧栏收起时窗口没变但这一列变宽了，\n     用窗口媒体查询会误判。@container 的阈值 1000 与 state/rail.ts 的\n     RAIL_HIDE_WIDTH 保持一致（那边负责同时收掉标题栏按钮）。 */\n  container: task-monitor / inline-size;\n}\n\n.sk-task-monitor-column {\n  display: flex;\n  flex: 1;\n  flex-direction: column;\n  min-height: 0;\n  min-width: 0;\n}\n\n/*\n * 宽度取 220：比 Qoder 的 253 再收一档，给对话列和右侧 turn 索引条留位置，只做\n * 「会话旁边的一张卡片」，不跟消息列抢宽。\n * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），\n * 高度贴合内容（align-self: flex-start），内容过长时在卡内滚动。\n */\n.sk-task-monitor-side {\n  display: flex;\n  flex: 0 0 220px;\n  flex-direction: column;\n  align-self: flex-start;\n  min-height: 0;\n  min-width: 220px;\n  max-width: 220px;\n  max-height: calc(100% - 20px);\n  margin: 10px 10px 10px 4px;\n  overflow: hidden;\n  border: 0;\n  border-radius: var(--dsw-radius-panel, 28px);\n  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));\n  box-shadow: var(--dsw-elevation-soft);\n  --dsw-elevation-stroke-color: var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-task-monitor-side > * {\n  flex: 0 1 auto;\n  min-height: 0;\n}\n\n/* 1200 以下先收一档宽度，避免把消息列挤到读不下去。 */\n@container task-monitor (max-width: 1200px) {\n  .sk-task-monitor-side {\n    flex-basis: 200px;\n    min-width: 200px;\n    max-width: 200px;\n  }\n}\n\n/* 1000 以下整栏退场（React 侧同时不再渲染，这里是兜底）。 */\n@container task-monitor (max-width: 1000px) {\n  .sk-task-monitor-side {\n    display: none;\n  }\n}\n";
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/index.tsx
     var NAME2 = "conversation-rail";
@@ -600,10 +622,24 @@ window.__ModuleLoader__.load({
       const [embedded, setEmbedded] = import_react4.default.useState(false);
       const sessionId = activeSessionId(useSessions);
       const hidden = useRailHidden(sessionId);
-      const open = !hidden && !embedded && typeof sessionId === "string" && sessionId !== "";
+      const narrow2 = useRailNarrow();
+      const open = !hidden && !embedded && !narrow2 && typeof sessionId === "string" && sessionId !== "";
       import_react4.default.useEffect(() => {
         const wrap = wrapRef.current;
         setEmbedded(wrap !== null && wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null);
+      }, []);
+      import_react4.default.useEffect(() => {
+        const wrap = wrapRef.current;
+        if (wrap === null || typeof ResizeObserver === "undefined") return void 0;
+        if (wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null) return void 0;
+        const observer = new ResizeObserver(() => {
+          setRailNarrow(wrap.getBoundingClientRect().width <= RAIL_HIDE_WIDTH);
+        });
+        observer.observe(wrap);
+        return () => {
+          observer.disconnect();
+          setRailNarrow(false);
+        };
       }, []);
       return /* @__PURE__ */ __dshReact.createElement("div", { ref: wrapRef, className: "sk-task-monitor-frame", "data-rail": open ? "open" : "closed" }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default2), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor-column" }, children), open ? /* @__PURE__ */ __dshReact.createElement("aside", { className: "sk-task-monitor-side", "aria-label": label }, /* @__PURE__ */ __dshReact.createElement(
         Panel,

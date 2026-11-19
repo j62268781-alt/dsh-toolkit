@@ -52,3 +52,34 @@ export function useRailHidden(sessionId: string | undefined): boolean {
     () => railHidden(sessionId),
   );
 }
+
+/**
+ * 会话列太窄时自动退场：卡片固定 220px，挤在宽度不足的对话区里只会把消息列
+ * 压到不可读。1000px 与 components/panel/style.css 的容器查询同值，改一处要
+ * 同时改另一处。窄到这一步时标题栏按钮也一起消失——否则按了没反应。
+ */
+export const RAIL_HIDE_WIDTH = 1000;
+
+let narrow = false;
+const narrowListeners = new Set<() => void>();
+
+export function railNarrow(): boolean {
+  return narrow;
+}
+
+export function setRailNarrow(next: boolean): void {
+  if (next === narrow) return;
+  narrow = next;
+  for (const listener of narrowListeners) listener();
+}
+
+export function subscribeRailNarrow(listener: () => void): () => void {
+  narrowListeners.add(listener);
+  return () => {
+    narrowListeners.delete(listener);
+  };
+}
+
+export function useRailNarrow(): boolean {
+  return React.useSyncExternalStore(subscribeRailNarrow, railNarrow, railNarrow);
+}

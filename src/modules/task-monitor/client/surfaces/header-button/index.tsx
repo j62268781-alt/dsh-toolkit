@@ -8,7 +8,7 @@ import React from "react";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { TASK_MONITOR_NS } from "../../locale.js";
-import { setRailHidden, useRailHidden } from "../../state/rail.js";
+import { setRailHidden, useRailHidden, useRailNarrow } from "../../state/rail.js";
 
 export const NAME = "header-button";
 
@@ -18,9 +18,12 @@ export function install(ctx: any) {
   function HeaderButton(props: any) {
     const sessionId: string | undefined = props.sessionId;
     const hidden = useRailHidden(sessionId);
-    const open = !hidden && typeof sessionId === "string" && sessionId !== "";
+    const narrow = useRailNarrow();
+    const open = !hidden && !narrow && typeof sessionId === "string" && sessionId !== "";
     const label = t("trigger");
     const Icon = primitives.IconInspectOutlineRegular;
+    // 对话列窄到放不下卡片时整栏已经自动退场，按钮留着只会「按了没反应」。
+    if (narrow) return null;
     return (
       <button
         type="button"

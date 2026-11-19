@@ -1,7 +1,7 @@
 import React from "react";
 import { TASK_MONITOR_NS } from "../../locale.js";
 import { createTaskMonitorPanel } from "../../components/panel/index.jsx";
-import { useRailHidden } from "../../state/rail.js";
+import { RAIL_HIDE_WIDTH, setRailNarrow, useRailHidden, useRailNarrow } from "../../state/rail.js";
 import railCss from "./style.css";
 
 export const NAME = "conversation-rail";
@@ -50,7 +50,8 @@ function RailLayer({ children, useSessions, Panel, actions, label }: RailProps) 
   const [embedded, setEmbedded] = React.useState(false);
   const sessionId = activeSessionId(useSessions);
   const hidden = useRailHidden(sessionId);
-  const open = !hidden && !embedded && typeof sessionId === "string" && sessionId !== "";
+  const narrow = useRailNarrow();
+  const open = !hidden && !embedded && !narrow && typeof sessionId === "string" && sessionId !== "";
 
   // 子代理侧栏里也渲染一份 Conversation：那里已经有宿主自己的栏位，再塞一条
   // 监控会把同一会话的内容显示两遍。座位本身是 display:contents 的 data-slot，
@@ -58,6 +59,23 @@ function RailLayer({ children, useSessions, Panel, actions, label }: RailProps) 
   React.useEffect(() => {
     const wrap = wrapRef.current;
     setEmbedded(wrap !== null && wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null);
+  }, []);
+
+  // 容器宽度而不是窗口宽度：左侧栏收起/展开时窗口没变，但对话区变宽了，
+  // 用 window.matchMedia 会误判。阈值与 style.css 的 @container 保持一致。
+  React.useEffect(() => {
+    const wrap = wrapRef.current;
+    if (wrap === null || typeof ResizeObserver === "undefined") return undefined;
+    // 子代理侧栏里那份是窄槽，量它会误伤主会话：embedded 的实例不参与判定。
+    if (wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null) return undefined;
+    const observer = new ResizeObserver(() => {
+      setRailNarrow(wrap.getBoundingClientRect().width <= RAIL_HIDE_WIDTH);
+    });
+    observer.observe(wrap);
+    return () => {
+      observer.disconnect();
+      setRailNarrow(false);
+    };
   }, []);
 
   return (

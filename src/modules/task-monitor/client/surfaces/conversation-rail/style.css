@@ -5,6 +5,10 @@
   flex-direction: row;
   min-height: 0;
   min-width: 0;
+  /* 卡片按「对话列自身」的宽度让步：左侧栏收起时窗口没变但这一列变宽了，
+     用窗口媒体查询会误判。@container 的阈值 1000 与 state/rail.ts 的
+     RAIL_HIDE_WIDTH 保持一致（那边负责同时收掉标题栏按钮）。 */
+  container: task-monitor / inline-size;
 }
 
 .sk-task-monitor-column {
@@ -42,4 +46,20 @@
 .sk-task-monitor-side > * {
   flex: 0 1 auto;
   min-height: 0;
+}
+
+/* 1200 以下先收一档宽度，避免把消息列挤到读不下去。 */
+@container task-monitor (max-width: 1200px) {
+  .sk-task-monitor-side {
+    flex-basis: 200px;
+    min-width: 200px;
+    max-width: 200px;
+  }
+}
+
+/* 1000 以下整栏退场（React 侧同时不再渲染，这里是兜底）。 */
+@container task-monitor (max-width: 1000px) {
+  .sk-task-monitor-side {
+    display: none;
+  }
 }
