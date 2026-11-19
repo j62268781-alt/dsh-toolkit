@@ -36,7 +36,6 @@ export const TASK_MONITOR_COPY = {
     gitDirty: "工作区有未提交的改动（来自 git 模块）",
     gitClean: "工作区干净（来自 git 模块）",
     envUntracked: "新文件 {n}",
-    envFiles: "{n} 个文件",
   },
   en: {
     tabTitle: "Task monitor",
@@ -68,6 +67,5 @@ export const TASK_MONITOR_COPY = {
     gitDirty: "Uncommitted changes in the workspace (from the git module)",
     gitClean: "Workspace clean (from the git module)",
     envUntracked: "{n} new",
-    envFiles: "{n} files",
   },
 };

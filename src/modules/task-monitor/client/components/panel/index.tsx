@@ -249,7 +249,9 @@ export function createTaskMonitorPanel(ctx: any) {
       const changed = stat !== null && stat.files > 0;
       const counted = changed && delta > 0;
       const StatusIcon = changed || git.dirty ? ChecklistIcon : CheckCircleIcon;
-      const detail = !changed ? null : stat.untracked > 0 ? t("envUntracked", { n: String(stat.untracked) }) : t("envFiles", { n: String(stat.files) });
+      // 只留「新文件 n」：未跟踪文件不在 +N −M 里，得让用户知道差在哪；
+      // 单纯的「n 个文件」和下面「产出」分区重复，不再显示。
+      const detail = !changed || stat.untracked === 0 ? null : t("envUntracked", { n: String(stat.untracked) });
       // 有改动且宿主装着官方「代码审查和变更」tab 时，这一行点开那次变更的审查。
       const openReview = changed && review !== null && typeof actions?.openReview === "function"
         ? () => actions.openReview(changesReviewAddress(sessionId, review.seq, review.turn))

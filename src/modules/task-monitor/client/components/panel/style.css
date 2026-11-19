@@ -158,8 +158,9 @@
 }
 
 @media (hover: hover) {
-  /* 只有真能打开的行给 hover 反馈；环境信息是只读事实，不该显得可点。 */
-  .sk-task-monitor__row[data-clickable]:hover {
+  /* 每个条目行都有 hover 底色（分组内的行都在这套样式下）；能不能点由上面的
+     cursor 决定，只读行不该显得可点、但按下前的悬停反馈要一致。 */
+  .sk-task-monitor__row:hover {
     background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
   }
 }
