@@ -709,7 +709,7 @@ window.__ModuleLoader__.load({
     // src/client/http.ts
     var DEFAULT_TIMEOUT_MS = 15e3;
     function withDeadline(timeoutMs, signal) {
-      if (!(timeoutMs > 0) || typeof AbortSignal.timeout !== "function") return signal;
+      if (!(timeoutMs > 0) || typeof AbortSignal === "undefined" || typeof AbortSignal.timeout !== "function") return signal;
       const deadline = AbortSignal.timeout(timeoutMs);
       if (signal === void 0) return deadline;
       if (typeof AbortSignal.any !== "function") return signal;

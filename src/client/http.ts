@@ -25,7 +25,9 @@ export interface FetchJsonOptions {
 
 /** Combine the caller's signal with the deadline; degrade to the caller's signal. */
 function withDeadline(timeoutMs: number, signal: AbortSignal | undefined): AbortSignal | undefined {
-  if (!(timeoutMs > 0) || typeof AbortSignal.timeout !== 'function') return signal
+  // `typeof AbortSignal.timeout` 在 AbortSignal 整个不存在时会抛 ReferenceError（vm 沙箱、
+  // 老 WebView 都这样），那样每个请求都会死在构造阶段 —— 宁可不加截止时间也要把请求发出去。
+  if (!(timeoutMs > 0) || typeof AbortSignal === 'undefined' || typeof AbortSignal.timeout !== 'function') return signal
   const deadline = AbortSignal.timeout(timeoutMs)
   if (signal === undefined) return deadline
   if (typeof AbortSignal.any !== 'function') return signal
