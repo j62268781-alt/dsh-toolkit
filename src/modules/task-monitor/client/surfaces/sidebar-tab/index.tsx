@@ -529,14 +529,27 @@ export function install(ctx: any) {
  * 渲染变化，所以延后一个宏任务再发；列还没就绪就放弃这次，标题栏按钮仍可手动打开。
  */
 export function installAutoOpen(ctx: any) {
+  // 每个会话只自动展开一次：标记落 localStorage，刷新后仍尊重用户手动收起。
+  // 隐私模式 / 存储被禁时退回进程内记账，至少不在同一次运行里反复弹。
   const opened = new Set<string>();
+  const seen = (sessionId: string): boolean => {
+    const key = `dsh-toolkit-task-monitor:auto-open:${sessionId}`;
+    try {
+      if (localStorage.getItem(key) !== null) return true;
+      localStorage.setItem(key, "1");
+      return false;
+    } catch {
+      if (opened.has(sessionId)) return true;
+      opened.add(sessionId);
+      return false;
+    }
+  };
   const offInject = ctx.inject(["sidebarRight"], (scope: any) => {
     scope.effect(() => {
       const sidebar = scope.sidebarRight;
       const timers = new Set<ReturnType<typeof setTimeout>>();
       const reveal = (sessionId: unknown): void => {
-        if (typeof sessionId !== "string" || sessionId === "" || opened.has(sessionId)) return;
-        opened.add(sessionId);
+        if (typeof sessionId !== "string" || sessionId === "" || seen(sessionId)) return;
         const timer = setTimeout(() => {
           timers.delete(timer);
           try {
