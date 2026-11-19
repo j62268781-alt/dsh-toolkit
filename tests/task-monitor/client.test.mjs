@@ -152,7 +152,7 @@ function fakeFetch(state) {
   return { calls, fetchImpl }
 }
 
-async function mount(t, dom, state, { host = true } = {}) {
+async function mount(t, dom, state, { host = true, reviewAction = true } = {}) {
   const { calls, fetchImpl } = fakeFetch(state)
   const savedFetch = Object.getOwnPropertyDescriptor(globalThis, 'fetch')
   Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: fetchImpl })
@@ -172,7 +172,7 @@ async function mount(t, dom, state, { host = true } = {}) {
     useTabInfo: () => ({ tab: { visible: true, navigation: { revision: 0 }, actions: {
       openResource: (address) => opened.push(['resource', address]),
       openTab: (kind, options) => opened.push(['tab', kind, options]),
-      openReview: (address) => opened.push(['review', address]),
+      ...(reviewAction ? { openReview: (address) => opened.push(['review', address]) } : {}),
     } } }),
   }
   const root = createRoot(dom.window.document.getElementById('root'))
@@ -267,13 +267,30 @@ test('环境信息第一行：有改动且带审查坐标时点开官方审查 t
   assert.deepEqual(opened, [['review', 'dsh-resource://changes-review/session/s1/7/3']])
 })
 
-test('环境信息第一行：没有审查坐标（或没改动）时不做成可点', async (t) => {
+test('环境信息第一行：没有审查坐标时不做成可点', async (t) => {
   const dom = withDom(t)
   const state = { entries: seedEntries(), changes: { ok: true, files: 2, insertions: 5, deletions: 1, untracked: 0 } }
   const { opened } = await mount(t, dom, state)
   const status = rowsIn(dom, 'environment')[0]
   assert.ok(status.getAttribute('data-clickable') === null, '缺坐标时不可点')
   assert.deepEqual(opened, [])
+})
+
+test('环境信息第一行：有改动但宿主没装审查 tab 时点出提示，而不是死行', async (t) => {
+  const dom = withDom(t)
+  const state = {
+    entries: seedEntries(),
+    changes: { ok: true, files: 2, insertions: 5, deletions: 1, untracked: 0 },
+    review: { seq: 7, turn: 3 },
+  }
+  const { act, opened } = await mount(t, dom, state, { reviewAction: false })
+  const status = rowsIn(dom, 'environment')[0]
+  assert.equal(status.getAttribute('data-clickable'), 'true')
+  await click(dom, act, status)
+  assert.deepEqual(opened, [])
+  const toast = query(dom, '.sk-toast__text')
+  assert.ok(toast !== null, 'toast 出现了')
+  assert.match(toast.textContent, /代码审查和变更/)
 })
 
 test('行点击：网页开右栏 browser，文件走宿主原生预览', async (t) => {

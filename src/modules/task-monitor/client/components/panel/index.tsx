@@ -12,6 +12,7 @@
 import React from "react";
 import { fetchJson } from "../../../../../client/http.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
+import { showToast } from "../../../../../client/ui/toast.js";
 import { GIT_BRANCHES_PATH, GIT_CHANGES_PATH } from "../../../../git/client/constants.js";
 import { TASK_MONITOR_NS } from "../../locale.js";
 import {
@@ -252,10 +253,12 @@ export function createTaskMonitorPanel(ctx: any) {
       // 只留「新文件 n」：未跟踪文件不在 +N −M 里，得让用户知道差在哪；
       // 单纯的「n 个文件」和下面「产出」分区重复，不再显示。
       const detail = !changed || stat.untracked === 0 ? null : t("envUntracked", { n: String(stat.untracked) });
-      // 有改动且宿主装着官方「代码审查和变更」tab 时，这一行点开那次变更的审查。
-      const openReview = changed && review !== null && typeof actions?.openReview === "function"
+      // 有改动且有审查坐标时这一行可点：装着官方「代码审查和变更」就直接开那次审查，
+      // 没装就弹一条 toast 告诉用户去开——不做成死行，否则用户只会觉得点了没反应。
+      const canReview = changed && review !== null;
+      const openReview = !canReview ? undefined : typeof actions?.openReview === "function"
         ? () => actions.openReview(changesReviewAddress(sessionId, review.seq, review.turn))
-        : undefined;
+        : () => showToast(t("reviewDisabled"), { tone: "info" });
       envRows.push(
         <div
           className="sk-task-monitor__row"

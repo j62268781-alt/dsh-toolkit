@@ -36,6 +36,7 @@ export const TASK_MONITOR_COPY = {
     gitDirty: "工作区有未提交的改动（来自 git 模块）",
     gitClean: "工作区干净（来自 git 模块）",
     envUntracked: "新文件 {n}",
+    reviewDisabled: "开启官方「代码审查和变更」插件后，可以从这一行打开审查",
   },
   en: {
     tabTitle: "Task monitor",
@@ -67,5 +68,6 @@ export const TASK_MONITOR_COPY = {
     gitDirty: "Uncommitted changes in the workspace (from the git module)",
     gitClean: "Workspace clean (from the git module)",
     envUntracked: "{n} new",
+    reviewDisabled: "Enable the built-in Code review & changes plugin to open the review from this row",
   },
 };
