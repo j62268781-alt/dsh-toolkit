@@ -1,0 +1,95 @@
+/*
+ * 添加来源弹窗的正文样式。宿主 Modal 用 createPortal 渲染在面板 React 子树之外，
+ * 面板内 <style> 覆盖不到它，所以这份必须全局注入（§8）；内联降级卡片复用同一批类。
+ * 选择器全部带 .sk-task-monitor 前缀，避免误伤宿主。
+ */
+
+.sk-task-monitor__creator {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 260px;
+}
+
+/* 宿主 Input 根是写死的 inline-flex/180px，拉满到弹窗正文宽度（同 branch-chip 的两级压法）。 */
+.sk-task-monitor__creator > * {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.sk-task-monitor__fallbackInput {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.24));
+  border-radius: 8px;
+  corner-shape: round;
+  background: rgba(128, 128, 128, 0.08);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}
+
+.sk-task-monitor__fallbackInput:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, rgba(80, 140, 255, 0.6));
+}
+
+.sk-task-monitor__error {
+  margin: 0;
+  color: #e5534b;
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+/* 没有宿主 Modal 时的内联降级卡片：主流程不断，样式自足。 */
+.sk-task-monitor__dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 6px;
+  padding: 12px;
+  border: 0.5px solid var(--dsw-alias-border-l3, rgba(128, 128, 128, 0.28));
+  border-radius: 10px;
+  corner-shape: round;
+  background: color-mix(in srgb, var(--dsw-alias-fill-base, rgba(128, 128, 128, 0.06)) 96%, transparent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.sk-task-monitor__dialogTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 没有 Menu 时的类型切换：文件 / 链接两个入口都保住。 */
+.sk-task-monitor__dialogKinds {
+  display: flex;
+  gap: 4px;
+}
+
+.sk-task-monitor__dialogKinds button {
+  flex: 1;
+  height: 26px;
+  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.24));
+  border-radius: 6px;
+  corner-shape: round;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sk-task-monitor__dialogKinds button[data-active] {
+  border-color: color-mix(in srgb, #d9932f 55%, transparent);
+  background: color-mix(in srgb, #d9932f 14%, transparent);
+  color: var(--dsw-alias-label-primary, inherit);
+}
+
+.sk-task-monitor__dialogFoot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

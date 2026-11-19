@@ -92,7 +92,7 @@ const judgmentConfig = {
 
 test('root schema preserves module defaults and existing volatile boundaries', () => {
   const config = Config({ mobile: { enabled: false, routePrefix: '/custom-mobile' } })
-  assert.deepEqual(Object.keys(config).sort(), ['archived', 'boot', 'git', 'hooks', 'judgement', 'mobile', 'monitor', 'notification', 'pet', 'remote', 'shell', 'skillsMcp', 'theme'])
+  assert.deepEqual(Object.keys(config).sort(), ['archived', 'boot', 'git', 'hooks', 'judgement', 'mobile', 'notification', 'pet', 'remote', 'shell', 'skillsMcp', 'taskMonitor', 'theme'])
   // 浏览器模块已整体删除：根配置不应再冒出 browser 键（防止注册点被误加回来）。
   assert.equal(Object.hasOwn(config, 'browser'), false)
   assert.equal(isVolatile(config.judgement.connections), true)

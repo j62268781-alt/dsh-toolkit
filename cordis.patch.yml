@@ -24,8 +24,8 @@
       name: dsh-toolkit-remote
     - id: dsh-toolkit-git
       name: dsh-toolkit-git
-    - id: dsh-toolkit-monitor
-      name: dsh-toolkit-monitor
+    - id: dsh-toolkit-task-monitor
+      name: dsh-toolkit-task-monitor
     - id: ds-harness-remote
       name: dsh-toolkit/remote-host
       inject:

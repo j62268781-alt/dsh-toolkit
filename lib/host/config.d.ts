@@ -254,7 +254,7 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         alwaysForcePush: s<boolean, boolean, "defined">;
         commitInstructions: s<string, string, "defined">;
     }>>, "defined">;
-    monitor: s<Schemastery.ObjectS<NoInfer<{
+    taskMonitor: s<Schemastery.ObjectS<NoInfer<{
         enabled: s<boolean, boolean, "defined">;
     }>>, Schemastery.ObjectT<NoInfer<{
         enabled: s<boolean, boolean, "defined">;
@@ -514,7 +514,7 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         alwaysForcePush: s<boolean, boolean, "defined">;
         commitInstructions: s<string, string, "defined">;
     }>>, "defined">;
-    monitor: s<Schemastery.ObjectS<NoInfer<{
+    taskMonitor: s<Schemastery.ObjectS<NoInfer<{
         enabled: s<boolean, boolean, "defined">;
     }>>, Schemastery.ObjectT<NoInfer<{
         enabled: s<boolean, boolean, "defined">;

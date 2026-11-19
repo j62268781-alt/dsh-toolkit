@@ -1,0 +1,501 @@
+/*
+ * 任务监控右栏 body。只服务面板自身子树，随组件 <style> 注入（§8 判定）。
+ * 五个分区各借一个色相做图标座与强调：紫=能力、绿=产出、蓝=网页、琥珀=来源、品红=知识，
+ * 底色一律 color-mix 14% 透明叠在宿主面板上，深浅色主题都成立；文字/悬停/圆角/焦点环
+ * 全部走宿主 --dsw-* token 并带 px 兜底。
+ */
+
+.sk-task-monitor {
+  --skm-capability: #8f7bf9;
+  --skm-artifact: #3fa66a;
+  --skm-web: #4098e0;
+  --skm-source: #d9932f;
+  --skm-knowledge: #d0679d;
+  --skm-danger: #e5534b;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 6px 12px;
+  color: var(--dsw-alias-label-primary, inherit);
+  font-size: 12px;
+  line-height: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9)) 35%, transparent) transparent;
+}
+
+.sk-task-monitor,
+.sk-task-monitor * {
+  box-sizing: border-box;
+}
+
+/* 滚动条画成面板自己的语言：8px、圆头、琥珀来源色借一点给 thumb，hover 加深。 */
+.sk-task-monitor::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sk-task-monitor::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sk-task-monitor::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  corner-shape: round;
+  background: color-mix(in srgb, var(--skm-source) 40%, transparent);
+}
+
+.sk-task-monitor::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--skm-source) 65%, transparent);
+}
+
+.sk-task-monitor__head {
+  position: sticky;
+  top: -4px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 -6px;
+  padding: 8px 12px 6px;
+  background: color-mix(in srgb, var(--dsw-alias-fill-base, rgba(128, 128, 128, 0.06)) 92%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.sk-task-monitor__title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.sk-task-monitor__headTools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sk-task-monitor__stamp {
+  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-task-monitor__refresh,
+.sk-task-monitor__add,
+.sk-task-monitor__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border: none;
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
+  cursor: pointer;
+  padding: 0;
+}
+
+.sk-task-monitor__refresh {
+  width: 24px;
+  height: 24px;
+}
+
+.sk-task-monitor__add {
+  width: 20px;
+  height: 20px;
+}
+
+.sk-task-monitor__remove {
+  width: 18px;
+  height: 18px;
+  opacity: 0;
+}
+
+@media (hover: hover) {
+  .sk-task-monitor__refresh:hover,
+  .sk-task-monitor__add:hover {
+    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
+    color: var(--dsw-alias-label-primary, inherit);
+  }
+
+  .sk-task-monitor__remove:hover {
+    background: color-mix(in srgb, var(--skm-danger) 16%, transparent);
+    color: var(--skm-danger);
+  }
+
+  .sk-task-monitor__row:hover .sk-task-monitor__remove,
+  .sk-task-monitor__row:focus-within .sk-task-monitor__remove {
+    opacity: 1;
+  }
+}
+
+/* 触屏没有 hover：移除按钮常显，否则手动来源删不掉。 */
+@media (hover: none) {
+  .sk-task-monitor__remove {
+    opacity: 0.7;
+  }
+}
+
+.sk-task-monitor__refresh:focus-visible,
+.sk-task-monitor__add:focus-visible,
+.sk-task-monitor__remove:focus-visible,
+.sk-task-monitor__trigger:focus-visible,
+.sk-task-monitor__more:focus-visible,
+.sk-task-monitor__row:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, rgba(80, 140, 255, 0.6));
+}
+
+.sk-task-monitor__refresh[data-spinning] > * {
+  animation: sk-task-monitor-spin 0.6s linear infinite;
+}
+
+/* 环境条：分支与脏标记来自 git 模块快照，不重跑 git。 */
+.sk-task-monitor__git {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 6px 8px;
+  padding: 5px 8px;
+  border: 0.5px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
+  border-radius: 8px;
+  corner-shape: round;
+  background: color-mix(in srgb, var(--skm-artifact) 7%, transparent);
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
+}
+
+.sk-task-monitor__gitIcon {
+  display: inline-flex;
+  flex: none;
+  color: var(--skm-artifact);
+}
+
+.sk-task-monitor__gitName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.sk-task-monitor__gitDot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  border-radius: 50%;
+  corner-shape: round;
+  background: var(--skm-artifact);
+}
+
+.sk-task-monitor__gitDot[data-dirty] {
+  background: var(--skm-source);
+  animation: sk-task-monitor-pulse 1.6s ease-in-out infinite;
+}
+
+/* 分区头：toggle 与「添加来源」是并列的两个按钮，不能嵌套。 */
+.sk-task-monitor__headRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 2px 0;
+}
+
+.sk-task-monitor__trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: none;
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+@media (hover: hover) {
+  .sk-task-monitor__trigger:hover {
+    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
+    color: var(--dsw-alias-label-primary, inherit);
+  }
+}
+
+.sk-task-monitor__chevron {
+  display: inline-flex;
+  flex: none;
+  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));
+  transform: rotate(-90deg);
+  transition: transform 0.12s;
+}
+
+.sk-task-monitor__chevron[data-open] {
+  transform: rotate(0deg);
+}
+
+.sk-task-monitor__sectionIcon {
+  display: inline-flex;
+  flex: none;
+}
+
+.sk-task-monitor__section[data-kind="capability"] .sk-task-monitor__sectionIcon { color: var(--skm-capability); }
+.sk-task-monitor__section[data-kind="artifact"] .sk-task-monitor__sectionIcon { color: var(--skm-artifact); }
+.sk-task-monitor__section[data-kind="web"] .sk-task-monitor__sectionIcon { color: var(--skm-web); }
+.sk-task-monitor__section[data-kind="source"] .sk-task-monitor__sectionIcon { color: var(--skm-source); }
+.sk-task-monitor__section[data-kind="knowledge"] .sk-task-monitor__sectionIcon { color: var(--skm-knowledge); }
+
+.sk-task-monitor__sectionTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-task-monitor__count {
+  margin-left: auto;
+  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));
+  font-size: 10px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-task-monitor__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px 6px;
+}
+
+/* 条目行：24px 图标座 + 两行文本 + 右侧 meta；入场逐行 stagger（delay 由组件挂）。 */
+.sk-task-monitor__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: var(--dsw-radius-sm, 6px);
+  animation: sk-task-monitor-rise 0.24s ease both;
+}
+
+.sk-task-monitor__row[data-clickable] {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .sk-task-monitor__row:hover {
+    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
+  }
+}
+
+.sk-task-monitor__seat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  corner-shape: round;
+}
+
+.sk-task-monitor__row[data-kind="capability"] .sk-task-monitor__seat {
+  color: var(--skm-capability);
+  background: color-mix(in srgb, var(--skm-capability) 14%, transparent);
+}
+
+.sk-task-monitor__row[data-kind="artifact"] .sk-task-monitor__seat {
+  color: var(--skm-artifact);
+  background: color-mix(in srgb, var(--skm-artifact) 14%, transparent);
+}
+
+.sk-task-monitor__row[data-kind="web"] .sk-task-monitor__seat {
+  color: var(--skm-web);
+  background: color-mix(in srgb, var(--skm-web) 14%, transparent);
+}
+
+.sk-task-monitor__row[data-kind="source"] .sk-task-monitor__seat {
+  color: var(--skm-source);
+  background: color-mix(in srgb, var(--skm-source) 14%, transparent);
+}
+
+.sk-task-monitor__row[data-kind="knowledge"] .sk-task-monitor__seat {
+  color: var(--skm-knowledge);
+  background: color-mix(in srgb, var(--skm-knowledge) 14%, transparent);
+}
+
+.sk-task-monitor__txt {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.sk-task-monitor__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-primary, inherit);
+}
+
+.sk-task-monitor__detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.sk-task-monitor__meta {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+.sk-task-monitor__times {
+  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-task-monitor__failed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  corner-shape: round;
+  background: color-mix(in srgb, var(--skm-danger) 18%, transparent);
+  color: var(--skm-danger);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sk-task-monitor__more {
+  align-self: flex-start;
+  margin: 2px 0 0 32px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .sk-task-monitor__more:hover {
+    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
+    color: var(--dsw-alias-label-primary, inherit);
+  }
+}
+
+.sk-task-monitor__empty {
+  margin: 0;
+  padding: 4px 8px 6px 32px;
+  color: var(--dsw-alias-label-dimmed, rgba(128, 128, 128, 0.6));
+  font-size: 11px;
+}
+
+/* 首屏骨架：三组微光条，读作「正在长出来」而不是空白。 */
+.sk-task-monitor__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px 8px;
+}
+
+.sk-task-monitor__skSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sk-task-monitor__skBar {
+  height: 10px;
+  border-radius: 5px;
+  corner-shape: round;
+  background: linear-gradient(90deg, rgba(128, 128, 128, 0.10), rgba(128, 128, 128, 0.22), rgba(128, 128, 128, 0.10));
+  background-size: 200% 100%;
+  animation: sk-task-monitor-shimmer 1.2s linear infinite;
+}
+
+.sk-task-monitor__skBar--title {
+  width: 40%;
+  height: 12px;
+}
+
+.sk-task-monitor__errorBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 6px;
+  padding: 10px 12px;
+  border: 0.5px solid color-mix(in srgb, var(--skm-danger) 45%, transparent);
+  border-radius: 8px;
+  corner-shape: round;
+  background: color-mix(in srgb, var(--skm-danger) 8%, transparent);
+}
+
+.sk-task-monitor__errorBox p {
+  margin: 0;
+  color: var(--dsw-alias-label-primary, inherit);
+  overflow-wrap: anywhere;
+}
+
+@keyframes sk-task-monitor-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sk-task-monitor-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sk-task-monitor-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--skm-source) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--skm-source) 0%, transparent);
+  }
+}
+
+@keyframes sk-task-monitor-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-task-monitor__row,
+  .sk-task-monitor__skBar,
+  .sk-task-monitor__gitDot[data-dirty],
+  .sk-task-monitor__refresh[data-spinning] > * {
+    animation: none;
+  }
+
+  .sk-task-monitor__chevron {
+    transition: none;
+  }
+}

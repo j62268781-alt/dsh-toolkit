@@ -52,9 +52,6 @@ importers:
       dsh-toolkit-mobile:
         specifier: workspace:^
         version: link:packages/mobile
-      dsh-toolkit-monitor:
-        specifier: workspace:^
-        version: link:packages/monitor
       dsh-toolkit-notification:
         specifier: workspace:^
         version: link:packages/notification
@@ -67,6 +64,9 @@ importers:
       dsh-toolkit-skills-mcp:
         specifier: workspace:^
         version: link:packages/skills-mcp
+      dsh-toolkit-task-monitor:
+        specifier: workspace:^
+        version: link:packages/task-monitor
       dsh-toolkit-theme:
         specifier: workspace:^
         version: link:packages/theme
@@ -200,8 +200,6 @@ importers:
         specifier: 0.2.1-rc.1
         version: 0.2.1-rc.1(c3b211c6f014171a83f9423fed3f65af)
 
-  packages/monitor: {}
-
   packages/notification:
     dependencies:
       '@deepseek-ai/schemastery':
@@ -243,6 +241,8 @@ importers:
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
+
+  packages/task-monitor: {}
 
   packages/theme:
     dependencies:

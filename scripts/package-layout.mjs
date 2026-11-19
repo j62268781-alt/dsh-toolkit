@@ -34,5 +34,5 @@ export const PACKAGE_MODULES = Object.freeze([
   { name: 'hooks', client: { entry: 'src/modules/hooks/client/index', factory: false }, skills: [] },
   { name: 'remote', client: { entry: 'src/modules/remote/client/index', factory: true }, skills: [] },
   { name: 'git', client: { entry: 'src/modules/git/client/index', factory: false }, skills: [] },
-  { name: 'monitor', client: { entry: 'src/modules/monitor/client/index', factory: false }, skills: [] },
+  { name: 'task-monitor', client: { entry: 'src/modules/task-monitor/client/index', factory: false }, skills: [] },
 ].map((module) => Object.freeze({ ...module, packageName: `dsh-toolkit-${module.name}` })))

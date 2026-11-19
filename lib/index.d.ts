@@ -261,7 +261,7 @@ declare const _default: {
             alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
             commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
         }>>, "defined">;
-        monitor: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+        taskMonitor: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
             enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
         }>>, Schemastery.ObjectT<NoInfer<{
             enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
@@ -521,7 +521,7 @@ declare const _default: {
             alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
             commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
         }>>, "defined">;
-        monitor: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+        taskMonitor: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
             enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
         }>>, Schemastery.ObjectT<NoInfer<{
             enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;

@@ -8,7 +8,7 @@ import * as notification from './modules/notification/host/index.js'
 import * as pet from './modules/pet/host/index.js'
 import * as skillsMcp from './modules/skills-mcp/host/index.js'
 import * as remote from './modules/remote/host/index.js'
-import * as monitor from './modules/monitor/host/index.js'
+import * as taskMonitor from './modules/task-monitor/host/index.js'
 import { Config } from './host/config.js'
 import { configuredPlugin, configuredService } from './host/plugins.js'
 
@@ -34,7 +34,7 @@ export function apply(ctx: any, config: any): void {
   ctx.plugin(configuredPlugin(remote), config.remote)
   // 追加在最后：既有子插件的下标保持不变（集成测试按 children[i] 断言）。
   ctx.plugin(configuredPlugin(git), config.git)
-  ctx.plugin(configuredPlugin(monitor), config.monitor)
+  ctx.plugin(configuredPlugin(taskMonitor), config.taskMonitor)
 }
 
 export default { name, inject, Config, apply }

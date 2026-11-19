@@ -96,7 +96,7 @@ client 侧运行期全局（`__CLIENT_CSS__`）与资源模块声明在 `src/cli
 
 ```
 src/modules/<module>/{host,client}/  ← 唯一源码位置（archived boot git hooks judgment mobile
-                                       monitor notification pet remote skills-mcp theme）
+                                       task-monitor notification pet remote skills-mcp theme）
 src/host/   src/client/              ← 跨模块公共层
 packages/<module>/                   ← 每个模块的独立包（index.js + package.json + lib/）
 lib/                                 ← 聚合包的构建产物

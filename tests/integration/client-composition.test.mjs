@@ -17,7 +17,7 @@ const EXPECTED_INJECT = {
   'dsh-toolkit-remote-client': ['locale'],
   'dsh-toolkit-hooks-client': ['slots', 'locale'],
   'dsh-toolkit-git-client': ['slots', 'locale', 'configForms'],
-  'dsh-toolkit-monitor-client': ['slots', 'locale', 'sidebarRightTabs'],
+  'dsh-toolkit-task-monitor-client': ['slots', 'locale', 'sidebarRightTabs'],
 }
 const ALL_SERVICES = new Set([
   ...Object.values(EXPECTED_INJECT).flat(), 'sidebarRight', 'shortcuts', 'uiSession', 'uiConversation', 'uiWorkspace',
@@ -42,11 +42,13 @@ const IMMEDIATE_EFFECTS = new Set([
   'dsh-toolkit-git:settings',
   // composer 里的分支按钮：注册只是 slots.inject，弹层与样式在真正挂载时才要 DOM。
   'dsh-toolkit-git:branch-chip',
-  // 任务监控：字典、右栏 tab 类型 + keyed body、composer 触发按钮都只走注册面；
+  // 任务监控：字典、右栏 tab 类型 + keyed body、标题行开关都只走注册面；
   // 全局样式要 DOM，留给宿主。
-  'locale shell-kit.monitor',
-  'dsh-toolkit-monitor:monitor-tab',
-  'dsh-toolkit-monitor:monitor-trigger',
+  'locale shell-kit.task-monitor',
+  'dsh-toolkit-task-monitor:sidebar-tab',
+  'dsh-toolkit-task-monitor:header-button',
+  // 自动展开：只做 sidebarRight.inject + subscribe，命令要等宿主 adopt，测试里不外发。
+  'dsh-toolkit-task-monitor:sidebar-tab-auto-open',
 ])
 
 async function loadClient() {
@@ -112,7 +114,7 @@ async function boot({ missing = [] } = {}) {
       if (namespace === 'shell-kit.archived') return (key) => ({ nav: '已归档的聊天', title: '已归档的聊天' }[key] ?? key)
       if (namespace === 'shell-kit.hooks') return (key) => ({ nav: '钩子', title: '钩子' }[key] ?? key)
       if (namespace === 'shell-kit.git') return (key) => ({ nav: 'Git', title: 'Git' }[key] ?? key)
-      if (namespace === 'shell-kit.monitor') return (key) => ({ tabTitle: '任务监控', trigger: '任务监控', guideTitle: '任务监控' }[key] ?? key)
+      if (namespace === 'shell-kit.task-monitor') return (key) => ({ tabTitle: '任务监控', trigger: '任务监控', guideTitle: '任务监控' }[key] ?? key)
       return (key) => key
     },
   }
@@ -147,9 +149,9 @@ async function boot({ missing = [] } = {}) {
     }
     const slots = {
       inject(name, run) {
-        // 设置页挂在 settings.section；Git 的分支按钮挂在 composer 左侧，监控触发按钮挂在右侧。
+        // 设置页挂在 settings.section；Git 的分支按钮挂在 composer 左侧，任务监控开关挂在会话标题行。
         assert.ok(
-          ['settings.section', 'conversation.input.left', 'conversation.input.right'].includes(name),
+          ['settings.section', 'conversation.input.left', 'conversation.session.header.utilities'].includes(name),
           `unexpected slot ${name}`,
         )
         return run()
@@ -324,7 +326,7 @@ test('the unified bundle registers the original settings pages, Remote faces, an
   assert.equal(result.tabTypes.length, 2)
   const branchSeats = result.registrations.filter(({ registration }) => registration.name === 'conversation.input.left')
   assert.deepEqual(branchSeats.map(({ registration }) => registration.id), ['dsh-toolkit.git.branch'])
-  const [mobile, monitorTab] = result.tabTypes
+  const [mobile, taskMonitorTab] = result.tabTypes
   assert.equal(mobile.id, '@j62268781-alt/dsh-sidebar-mobile')
   assert.equal(mobile.kind, 'mobile')
   assert.equal(mobile.title(), '移动设备')
@@ -337,18 +339,18 @@ test('the unified bundle registers the original settings pages, Remote faces, an
     assert.equal(registration.key, mobile.id)
     assert.equal(typeof Component, 'function')
   }
-  // 任务监控：右栏 keyed body + composer 右座触发按钮，tab 类型带 guide 发现入口。
-  assert.equal(monitorTab.id, 'dsh-toolkit-monitor')
-  assert.equal(monitorTab.kind, 'toolkit-monitor')
-  assert.equal(monitorTab.title(), '任务监控')
-  assert.equal(monitorTab.multiple, false)
-  assert.equal(monitorTab.keepMounted, true)
-  assert.equal(monitorTab.guide[0].id, 'open')
-  const monitorSeats = result.registrations.filter(({ plugin }) => plugin === 'dsh-toolkit-monitor-client')
-  assert.deepEqual(monitorSeats.map(({ registration }) => registration.name), ['sidebar.right.pane.tab', 'conversation.input.right'])
-  assert.equal(monitorSeats[0].registration.key, monitorTab.id)
-  assert.equal(typeof monitorSeats[0].Component, 'function')
-  assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-monitor:stylesheet'))
+  // 任务监控：右栏 keyed body + 标题行开关，tab 类型带 guide 发现入口。
+  assert.equal(taskMonitorTab.id, 'dsh-toolkit-task-monitor')
+  assert.equal(taskMonitorTab.kind, 'toolkit-task-monitor')
+  assert.equal(taskMonitorTab.title(), '任务监控')
+  assert.equal(taskMonitorTab.multiple, false)
+  assert.equal(taskMonitorTab.keepMounted, true)
+  assert.equal(taskMonitorTab.guide[0].id, 'open')
+  const taskMonitorSeats = result.registrations.filter(({ plugin }) => plugin === 'dsh-toolkit-task-monitor-client')
+  assert.deepEqual(taskMonitorSeats.map(({ registration }) => registration.name), ['sidebar.right.pane.tab', 'conversation.session.header.utilities'])
+  assert.equal(taskMonitorSeats[0].registration.key, taskMonitorTab.id)
+  assert.equal(typeof taskMonitorSeats[0].Component, 'function')
+  assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-task-monitor:stylesheet'))
   assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-theme:stylesheet'))
   assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-archived:stylesheet'))
   assert.ok(result.effects.some(({ label }) => label === 'dsh-toolkit-notification:dictionary'))
@@ -387,11 +389,11 @@ test('nested Remote dependencies block only the client that declares them', asyn
 test('missing settings forms or mobile tab services do not suspend unrelated children', async () => {
   const withoutForms = await boot({ missing: ['configForms'] })
   assert.deepEqual(withoutForms.pending, ['dsh-toolkit-theme-client', 'dsh-toolkit-skills-mcp-client', 'dsh-toolkit-judgment-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-boot-client', 'dsh-toolkit-pet-client', 'dsh-toolkit-git-client'])
-  assert.deepEqual(withoutForms.active.sort(), ['dsh-toolkit-archived-client', 'dsh-toolkit-hooks-client', 'dsh-toolkit-mobile-client', 'dsh-toolkit-monitor-client', 'dsh-toolkit-remote-client'])
+  assert.deepEqual(withoutForms.active.sort(), ['dsh-toolkit-archived-client', 'dsh-toolkit-hooks-client', 'dsh-toolkit-mobile-client', 'dsh-toolkit-remote-client', 'dsh-toolkit-task-monitor-client'])
   assert.equal(withoutForms.tabTypes.length, 2)
 
   const withoutTabs = await boot({ missing: ['sidebarRightTabs'] })
-  assert.deepEqual(withoutTabs.pending, ['dsh-toolkit-mobile-client', 'dsh-toolkit-monitor-client'])
+  assert.deepEqual(withoutTabs.pending, ['dsh-toolkit-mobile-client', 'dsh-toolkit-task-monitor-client'])
   assert.equal(withoutTabs.active.length, 10)
   assert.equal(withoutTabs.tabTypes.length, 0)
   assert.equal(withoutTabs.registrations.length, 10)
