@@ -3268,7 +3268,7 @@ window.__ModuleLoader__.load({
 
     // src/modules/theme/client/sidebar.ts
     var RAIL_WIDTH = 52;
-    var WORKSPACE_MIN = 240;
+    var WORKSPACE_MIN = 250;
     var WORKSPACE_MAX = 450;
     var RAIL_W = `${RAIL_WIDTH}px`;
     var frameEl = null;
