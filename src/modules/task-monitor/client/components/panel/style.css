@@ -55,7 +55,8 @@
 .sk-task-monitor__trigger {
   /* 吸顶：每个分区头在滚过自己那段时贴住滚动口（sectionList 效果）。
      面板有 13px padding，top 取 0 时吸顶标题正好落在 padding 下沿（离卡片
-     顶边 13px）；上面那条垫片盖住 padding 带，避免行内容从缝里透出来。 */
+     顶边 13px）；滚动时露出 padding 带的那几像素由卡片自己封住（
+     conversation-rail 的 ::before 盖片），标题只画自己那一行。 */
   position: sticky;
   top: 0;
   z-index: 2;
@@ -117,14 +118,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.sk-task-monitor__trigger::before {
-  content: "";
-  position: absolute;
-  inset: -13px 0 auto;
-  height: 13px;
-  background-color: inherit;
 }
 
 .sk-task-monitor__tag {

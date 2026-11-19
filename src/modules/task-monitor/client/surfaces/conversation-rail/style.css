@@ -40,6 +40,7 @@
   --sk-task-monitor-gutter: calc(30px + var(--dsh-content-font-delta-secondary, 0px));
   max-height: calc(100% - 16px - var(--sk-task-monitor-gutter));
   margin: 16px 10px var(--sk-task-monitor-gutter) 4px;
+  position: relative;
   overflow: hidden;
   border: 0;
   border-radius: var(--dsw-radius-panel, 28px);
@@ -51,6 +52,18 @@
 .sk-task-monitor-side > * {
   flex: 0 1 auto;
   min-height: 0;
+}
+
+/* 面板顶部 13px 的 padding 带：内容往上滚时会从这条缝里露出来。盖片放在卡片上，
+   而不是每个分区头向上延伸 13px——那会把上一个分区的最后一行切掉。 */
+.sk-task-monitor-side::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
+  height: 13px;
+  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));
+  pointer-events: none;
 }
 
 /* 1000 以下默认收起（React 按同一阈值决定是否渲染，这里是兜底）。 */
