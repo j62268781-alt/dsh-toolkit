@@ -17,9 +17,7 @@
   height: auto;
   min-height: 0;
   overflow-y: auto;
-  /* 顶部不留 padding：分区头要能贴到滚动口顶部吸顶，留白交给第一个子元素，
-     否则内容会从吸顶头上面那条 padding 带里露出来。 */
-  padding: 0 8px 13px;
+  padding: 13px 8px;
   scrollbar-width: none;
   color: var(--dsw-alias-label-primary, inherit);
   font-size: 12px;
@@ -29,13 +27,6 @@
 .sk-task-monitor,
 .sk-task-monitor * {
   box-sizing: border-box;
-}
-
-/* 给第一个分区（环境信息）补出顶部留白；吸顶时这个 padding 会跟着滚走。
-   用 nth-child(2) 而不是 first-child：组件把面板样式以 <style> 形式放在
-   根节点的第一个子元素，first-child 会命中那个 style 标签。 */
-.sk-task-monitor > :nth-child(2) {
-  padding-top: 13px;
 }
 
 /* 不画滚动条：卡片窄，条本身会占一列；内容仍可滚（滚轮/触控板）。 */
@@ -62,7 +53,9 @@
 }
 
 .sk-task-monitor__trigger {
-  /* 吸顶：每个分区头在滚过自己那段时贴住滚动口（sectionList 效果）。 */
+  /* 吸顶：每个分区头在滚过自己那段时贴住滚动口（sectionList 效果）。
+     面板有 13px padding，top 取 0 时吸顶标题正好落在 padding 下沿（离卡片
+     顶边 13px）；上面那条垫片盖住 padding 带，避免行内容从缝里透出来。 */
   position: sticky;
   top: 0;
   z-index: 2;
@@ -124,6 +117,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sk-task-monitor__trigger::before {
+  content: "";
+  position: absolute;
+  inset: -13px 0 auto;
+  height: 13px;
+  background-color: inherit;
 }
 
 .sk-task-monitor__tag {
