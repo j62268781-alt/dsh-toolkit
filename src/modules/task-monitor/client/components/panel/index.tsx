@@ -39,7 +39,6 @@ interface ChangesStat {
   readonly files: number;
   readonly insertions: number;
   readonly deletions: number;
-  readonly untracked: number;
 }
 
 interface GitStrip {
@@ -60,7 +59,7 @@ function compactCount(value: number): string {
 function changesOf(payload: any): ChangesStat | null {
   if (payload === null || typeof payload !== "object" || payload.ok !== true) return null;
   const read = (value: any): number => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.round(value) : 0);
-  return { files: read(payload.files), insertions: read(payload.insertions), deletions: read(payload.deletions), untracked: read(payload.untracked) };
+  return { files: read(payload.files), insertions: read(payload.insertions), deletions: read(payload.deletions) };
 }
 
 /** 官方审查 tab 的坐标（`workspace/changes` 的 seq 与 turn）；没有就不做可点。 */
@@ -282,9 +281,6 @@ export function createTaskMonitorPanel(ctx: any) {
       const changed = stat !== null && stat.files > 0;
       const counted = changed && delta > 0;
       const StatusIcon = changed || git.dirty ? ChecklistIcon : CheckCircleIcon;
-      // 只留「新文件 n」：未跟踪文件不在 +N −M 里，得让用户知道差在哪；
-      // 单纯的「n 个文件」和下面「产出」分区重复，不再显示。
-      const detail = !changed || stat.untracked === 0 ? null : t("envUntracked", { n: String(stat.untracked) });
       // 有改动且有审查坐标时这一行可点：装着官方「代码审查和变更」就直接开那次审查，
       // 没装就弹一条 toast 告诉用户去开——不做成死行，否则用户只会觉得点了没反应。
       const canReview = changed && review !== null;
@@ -316,7 +312,6 @@ export function createTaskMonitorPanel(ctx: any) {
                   <span className="sk-task-monitor__deleted">−{compactCount(stat.deletions)}</span>
                 </span>
               : <span className="sk-task-monitor__label">{git.dirty || changed ? t("envDirty") : t("envClean")}</span>}
-            {detail === null ? null : <span className="sk-task-monitor__detail">{detail}</span>}
           </span>
         </div>,
       );

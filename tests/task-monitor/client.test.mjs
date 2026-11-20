@@ -269,14 +269,14 @@ test('有条目时不打 data-empty', async (t) => {
   assert.equal(query(dom, '.sk-task-monitor').hasAttribute('data-empty'), false)
 })
 
-test('环境信息第一行：工作区改动画成 +新增 / −删除，新文件单独计数', async (t) => {
+test('环境信息第一行：工作区改动只显示 +新增 / −删除，不显示新文件计数', async (t) => {
   const dom = withDom(t)
   const state = { entries: seedEntries(), changes: { ok: true, files: 4, insertions: 1234, deletions: 12, untracked: 2 } }
   await mount(t, dom, state)
   const status = rowsIn(dom, 'environment')[0]
   assert.equal(status.querySelector('.sk-task-monitor__added').textContent, '+1.2k')
   assert.equal(status.querySelector('.sk-task-monitor__deleted').textContent, '−12')
-  assert.equal(status.querySelector('.sk-task-monitor__detail').textContent, '新文件 2')
+  assert.ok(status.querySelector('.sk-task-monitor__detail') === null)
 })
 
 test('环境信息第一行：只有新文件（或二进制改动）时不画 +0 −0，仍算有改动', async (t) => {
@@ -285,8 +285,9 @@ test('环境信息第一行：只有新文件（或二进制改动）时不画 +
   await mount(t, dom, state)
   const status = rowsIn(dom, 'environment')[0]
   assert.equal(status.querySelector('.sk-task-monitor__label').textContent, '有未提交改动')
-  assert.equal(status.querySelector('.sk-task-monitor__detail').textContent, '新文件 3')
+  assert.ok(status.querySelector('.sk-task-monitor__detail') === null)
   assert.ok(status.querySelector('.sk-task-monitor__added') === null)
+  assert.ok(status.querySelector('.sk-task-monitor__deleted') === null)
 })
 
 test('环境信息第一行：有改动且带审查坐标时点开官方审查 tab', async (t) => {
