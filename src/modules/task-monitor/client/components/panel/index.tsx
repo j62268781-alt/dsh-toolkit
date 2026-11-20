@@ -203,6 +203,20 @@ export function createTaskMonitorPanel(ctx: any) {
 
     const sections = React.useMemo(() => groupSections(entries), [entries]);
 
+    // 默认开合只定一次（每个会话第一次拿到快照时）：环境信息常开，其余分区
+    // 有数据展开、没数据收起。之后无论数据怎么变、用户怎么点，都不再重算——
+    // 否则面板会自己跳，用户刚展开的空分区又会被合上。
+    const seeded = React.useRef<string | null>(null);
+    React.useEffect(() => {
+      if (phase !== "ready" || seeded.current === sessionId) return;
+      seeded.current = sessionId;
+      const seed: Record<string, boolean> = {};
+      for (const section of sections) {
+        if (section.entries.length === 0) seed[section.kind] = true;
+      }
+      setCollapsed(seed);
+    }, [phase, sections, sessionId]);
+
     const openEntry = (entry: TaskMonitorEntry): void => {
       if (entry.target === undefined || actions === undefined) return;
       if (isHttpUrl(entry.target)) {

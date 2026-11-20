@@ -357,6 +357,24 @@ test('查看更多 / 收起 / 折叠分区', async (t) => {
   assert.equal(query(dom, '.sk-task-monitor__section[data-kind="web"]').hasAttribute('open'), false)
 })
 
+test('空分区默认收起、有数据的分区默认展开，且只在首帧定一次', async (t) => {
+  const dom = withDom(t)
+  // 只有「技能与 MCP」有数据：其余三个分区应当收起，环境信息（第一个）永远展开。
+  const state = { entries: [entry('skill:browser-use', 'capability', { label: 'browser-use', detail: 'Skill' })] }
+  const { act } = await mount(t, dom, state)
+  const open = (kind) => query(dom, `.sk-task-monitor__section[data-kind="${kind}"]`).hasAttribute('open')
+  assert.equal(open('environment'), true, '环境信息常开')
+  assert.equal(open('capability'), true, '有数据的分区展开')
+  assert.equal(open('artifact'), false, '空分区收起')
+  assert.equal(open('web'), false, '空分区收起')
+  assert.equal(open('source'), false, '空分区收起')
+  // 之后用户手动展开空分区：只要首帧已经定过，不会被再合上。
+  const trigger = query(dom, '.sk-task-monitor__section[data-kind="artifact"] .sk-task-monitor__trigger')
+  await click(dom, act, trigger)
+  assert.equal(trigger.getAttribute('aria-expanded'), 'true')
+  assert.equal(open('artifact'), true)
+})
+
 test('只读：来源分区不提供添加与移除入口，手动来源照常展示', async (t) => {
   const dom = withDom(t)
   const state = { entries: seedEntries() }
