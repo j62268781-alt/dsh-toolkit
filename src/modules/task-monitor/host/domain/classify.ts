@@ -48,8 +48,17 @@ export function hostOf(url: string): string {
   }
 }
 
+/**
+ * 同一文件会被工具写成 `src/a.ts`、`./src/a.ts`、`src\\a.ts` 三种拼法，
+ * 按原文当 id 会变成三条。归一（去 `./`、反斜杠转正斜杠）后合并成一条。
+ */
+export function normalizePath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^(?:\.\/)+/, '')
+}
+
 function fileSeed(kind: TaskMonitorKind, prefix: string, path: string): ClassifiedSeed {
-  return { kind, id: `${prefix}:${path}`, label: baseName(path), detail: dirName(path), target: path }
+  const clean = normalizePath(path)
+  return { kind, id: `${prefix}:${clean}`, label: baseName(clean), detail: dirName(clean), target: clean }
 }
 
 /** 一次调用可能产出多条种子（present 的 files 数组）；归不了类的调用返回空数组。 */
@@ -75,7 +84,9 @@ export function classifyCall(name: unknown, args: unknown): ClassifiedSeed[] {
     if (/browser/i.test(server) && BROWSER_NAVIGATE.test(tool) && url !== '') {
       return [{ kind: 'web', id: `url:${url}`, label: hostOf(url), detail: url, target: url }]
     }
-    return [{ kind: 'capability', id: `mcp:${server}:${tool}`, label: server, detail: tool }]
+    // 同一个 MCP server 的 N 个工具算一个「来源」：面板要的是「这轮用过哪个 MCP」，
+    // 逐个工具列出来（读文件一个、抓页面一个…）只是噪音。
+    return [{ kind: 'capability', id: `mcp:${server}`, label: server, detail: '' }]
   }
 
   if (WRITE_TOOLS.has(lower)) {

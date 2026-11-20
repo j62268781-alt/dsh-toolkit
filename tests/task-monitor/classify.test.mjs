@@ -6,13 +6,19 @@ test('skill 与 MCP 能力各归其位', () => {
   assert.deepEqual(classifyCall('skill', { skill: 'browser-use' }), [
     { kind: 'capability', id: 'skill:browser-use', label: 'browser-use', detail: 'Skill' },
   ])
+  // 同一个 server 的多个工具合并成一条「来源」：id 只到 server，细节不再区分工具。
   assert.deepEqual(classifyCall('mcp__node-repl__node_repl', {}), [
-    { kind: 'capability', id: 'mcp:node-repl:node_repl', label: 'node-repl', detail: 'node_repl' },
+    { kind: 'capability', id: 'mcp:node-repl', label: 'node-repl', detail: '' },
   ])
-  // 工具名里再带双下划线也不能丢尾巴。
+  // 工具名里再带双下划线也不影响合并。
   assert.deepEqual(classifyCall('mcp__srv__a__b', {}), [
-    { kind: 'capability', id: 'mcp:srv:a__b', label: 'srv', detail: 'a__b' },
+    { kind: 'capability', id: 'mcp:srv', label: 'srv', detail: '' },
   ])
+  assert.deepEqual(
+    classifyCall('mcp__srv__other_tool', {}).map((seed) => seed.id),
+    ['mcp:srv'],
+    '同 server 的不同工具落到同一个 id，聚合时就是一行',
+  )
 })
 
 test('知识类 MCP 与内置检索进知识分区', () => {
@@ -42,13 +48,19 @@ test('浏览器 MCP 导航与 web_fetch 进网页查阅，搜索单独成条', (
 })
 
 test('写工具与 present 进产出，读工具进来源', () => {
+  // 反斜杠统一成 `/`：同一文件在 Windows 路径与 POSIX 路径下是同一个 id。
   const [write] = classifyCall('write', { file_path: 'D:\\repo\\src\\a.ts' })
-  assert.deepEqual(write, { kind: 'artifact', id: 'artifact:D:\\repo\\src\\a.ts', label: 'a.ts', detail: 'D:/repo/src', target: 'D:\\repo\\src\\a.ts' })
+  assert.deepEqual(write, { kind: 'artifact', id: 'artifact:D:/repo/src/a.ts', label: 'a.ts', detail: 'D:/repo/src', target: 'D:/repo/src/a.ts' })
   const [edit] = classifyCall('Edit', { path: '/repo/b.md' })
   assert.equal(edit.kind, 'artifact')
   assert.equal(edit.label, 'b.md')
   const presented = classifyCall('present', { files: [{ path: '/repo/c.png' }, { path: '' }, null, { path: '/repo/d.pdf' }] })
   assert.deepEqual(presented.map((seed) => seed.label), ['c.png', 'd.pdf'])
+  // `./src/a.ts` 与 `src/a.ts` 归一成同一条：否则同一个文件会在「来源」里出现两次。
+  assert.equal(
+    classifyCall('read', { file_path: './src/a.ts' })[0].id,
+    classifyCall('read', { file_path: 'src/a.ts' })[0].id,
+  )
   const [read] = classifyCall('read', { file_path: '/repo/e.ts' })
   assert.equal(read.kind, 'source')
   assert.equal(read.target, '/repo/e.ts')
