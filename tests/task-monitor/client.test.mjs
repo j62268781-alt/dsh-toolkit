@@ -237,6 +237,23 @@ test('环境信息 + 四分区渲染：计数、去重后不显示 ×N、失败�
   assert.equal(all(dom, '.sk-task-monitor__remove').length, 0)
 })
 
+test('网页查阅只显示完整链接；无链接的搜索记录只显示搜索词', async (t) => {
+  const dom = withDom(t)
+  const url = 'https://example.com/docs?q=task#monitor'
+  const { act, opened } = await mount(t, dom, { entries: [
+    entry(`url:${url}`, 'web', { label: 'example.com', detail: url, target: url }),
+    entry('search:task monitor', 'web', { label: 'task monitor', detail: 'web_search' }),
+  ] })
+  const rows = rowsIn(dom, 'web')
+  const labelOf = (row) => row.querySelector('.sk-task-monitor__label').textContent
+  assert.deepEqual(rows.map(labelOf).sort(), [url, 'task monitor'])
+  assert.ok(rows.every((row) => row.querySelector('.sk-task-monitor__detail') === null))
+  const link = rows.find((row) => labelOf(row) === url)
+  assert.equal(link.title, url)
+  await click(dom, act, link)
+  assert.deepEqual(opened, [['tab', 'browser', { params: { url } }]])
+})
+
 test('新会话没有条目时打上 data-empty，右栏与标题栏按钮据此不出现', async (t) => {
   const dom = withDom(t)
   await mount(t, dom, { entries: [] })

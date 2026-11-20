@@ -728,7 +728,9 @@ window.__ModuleLoader__.load({
           const Icon = rowIcon(entry);
           const unavailable = entry.kind === "artifact" && entry.unavailable === true;
           const clickable = !unavailable && entry.target !== void 0 && actions !== void 0;
-          const showDetail = entry.detail !== "" && entry.detail !== entry.label && entry.kind !== "artifact" && entry.kind !== "source";
+          const webUrl = entry.kind === "web" && entry.target !== void 0 && isHttpUrl(entry.target) ? entry.target : void 0;
+          const label = webUrl ?? entry.label;
+          const showDetail = entry.detail !== "" && entry.detail !== label && entry.kind !== "artifact" && entry.kind !== "source" && entry.kind !== "web";
           return /* @__PURE__ */ __dshReact.createElement(
             "div",
             {
@@ -741,7 +743,7 @@ window.__ModuleLoader__.load({
               role: clickable ? "button" : void 0,
               tabIndex: clickable ? 0 : void 0,
               style: { animationDelay: `${Math.min(index, 8) * 24}ms` },
-              title: entry.detail !== "" ? entry.detail : entry.label,
+              title: entry.kind === "web" || entry.detail === "" ? label : entry.detail,
               onClick: clickable ? () => openEntry(entry) : void 0,
               onKeyDown: clickable ? (event) => {
                 if (event.key === "Enter" || event.key === " ") {
@@ -751,7 +753,7 @@ window.__ModuleLoader__.load({
               } : void 0
             },
             /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__seat", "aria-hidden": "true" }, Icon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(Icon, { size: 14 })),
-            /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__txt" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__label" }, entry.label), showDetail ? /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__detail" }, entry.detail) : null),
+            /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__txt" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__label" }, label), showDetail ? /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__detail" }, entry.detail) : null),
             /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__meta" }, unavailable ? /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__unavailable" }, t("artifactUnavailable")) : null, entry.status === "failed" ? /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__failed", title: t("failedStatus"), "aria-label": t("failedStatus") }, "!") : null)
           );
         };
