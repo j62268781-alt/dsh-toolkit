@@ -74,6 +74,26 @@
  * 之所以不一步收到 1000：对话列 1000 时两侧都还很宽裕，硬收会让用户以为功能没了。
  */
 /*
+ * 轮次导航条（宿主 dsh-client-ui-chat 的 TurnNavigator）按「对话区宽度 ≤900」
+ * 自己 display:none。我们这张卡片占掉 260，等于把这个判定提前触发了——用户会
+ * 觉得「装了监控条之后轮次导航没了」。所以栏开着时按「对话列还剩多少」重算：
+ * 对话列 ≥520 就保持显示（520 正是卡片让位的下限），再窄交回宿主默认逻辑。
+ *
+ * 选择器走结构而不是宿主 hash 类名：导航条里每个刻度是带 data-index 的 button，
+ * 一个 nav 里还有它们就说明是轮次导航。样式注入在 <style> 里（文档内、宿主 head
+ * 的样式之后），同权重下靠顺序盖住宿主的 display:none。
+ */
+.sk-task-monitor-frame[data-rail="open"] nav:has(button[data-index]) {
+  display: block;
+}
+
+@container task-monitor (max-width: 800px) {
+  .sk-task-monitor-frame[data-rail="open"] nav:has(button[data-index]) {
+    display: none;
+  }
+}
+
+/*
  * 新会话还没有任何条目：卡片不出现（对话区占满整行）。用 display:none 而不是
  * 不渲染——面板组件本身要挂载着去拉快照，否则永远判断不出「现在是空的」。
  */
