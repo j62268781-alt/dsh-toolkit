@@ -337,6 +337,24 @@ test('行点击：网页开右栏 browser，文件走宿主原生预览', async 
   assert.equal(opened[3][1], 'dsh-resource://file/session/s1/docs/a%20b.md')
 })
 
+test('缺失的产出留在末尾，仅展示不可用状态；来源不分页', async (t) => {
+  const dom = withDom(t)
+  const state = { entries: [
+    entry('artifact:gone', 'artifact', { label: 'gone.txt', target: 'gone.txt', unavailable: true }),
+    entry('artifact:ok', 'artifact', { label: 'ok.txt', target: 'ok.txt', modifiedAt: 1 }),
+    ...Array.from({ length: 7 }, (_, index) => entry(`input:file:${index}`, 'source')),
+  ] }
+  const { act, opened } = await mount(t, dom, state)
+  const [available, missing] = rowsIn(dom, 'artifact')
+  assert.match(available.textContent, /ok\.txt/)
+  assert.match(missing.textContent, /gone\.txt.*文件不可用/)
+  assert.equal(missing.hasAttribute('tabindex'), false)
+  await click(dom, act, missing)
+  assert.deepEqual(opened, [])
+  assert.equal(rowsIn(dom, 'source').length, 7)
+  assert.ok(query(dom, '.sk-task-monitor__section[data-kind="source"] .sk-task-monitor__more') === null)
+})
+
 test('查看更多 / 收起 / 折叠分区', async (t) => {
   const dom = withDom(t)
   const state = { entries: Array.from({ length: 7 }, (_, index) => entry(`url:https://e.example/${index}`, 'web', { label: `e${index}`, target: `https://e.example/${index}`, updatedAt: 1700000000000 + index })) }

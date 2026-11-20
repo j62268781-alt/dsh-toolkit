@@ -8,6 +8,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { MAX_ENTRIES, MAX_SOURCE_LENGTH, TASK_MONITOR_REASON, ENTRY_KINDS, isHttpUrl, } from '../constants.js';
+import { withArtifactMetadata } from './artifacts.js';
 import { baseName, hostOf } from './classify.js';
 const KINDS = new Set(ENTRY_KINDS);
 function failure(code, detail) {
@@ -48,6 +49,10 @@ export function createTaskMonitorStore(options) {
             const entries = Array.isArray(parsed?.entries) ? parsed.entries.filter(validEntry) : [];
             // 读盘期间可能已有新事件进内存：磁盘只补不覆盖。
             for (const entry of entries) {
+                if (entry.kind === 'source' && entry.manual !== true && entry.id.startsWith('source:'))
+                    continue;
+                if (entry.kind === 'artifact' && entry.status === 'failed')
+                    continue;
                 if (!state.entries.has(entry.id))
                     state.entries.set(entry.id, entry);
             }
@@ -120,10 +125,15 @@ export function createTaskMonitorStore(options) {
             await persist(sessionId, state);
     }
     return {
-        /** 工具事件聚合入口：失败也只影响监控自己，不碰工具链。 */
+        /** 失败的文件操作不是产出，也不覆盖此前成功的产出。 */
         async record(sessionId, seeds, status) {
             if (!enabled() || sessionId === '' || seeds.length === 0)
                 return;
+            if (status === 'failed') {
+                seeds = seeds.filter(seed => seed.kind !== 'artifact');
+                if (seeds.length === 0)
+                    return;
+            }
             const state = stateOf(sessionId);
             await ensureLoaded(sessionId, state);
             const at = now();
@@ -153,7 +163,10 @@ export function createTaskMonitorStore(options) {
             }
             const state = stateOf(sessionId);
             await ensureLoaded(sessionId, state);
-            return { ok: true, sessionId, updatedAt: state.updatedAt, entries: [...state.entries.values()], review: state.review };
+            const entries = [...state.entries.values()];
+            const cwd = entries.some(entry => entry.kind === 'artifact') ? options.cwdOf?.(sessionId) : undefined;
+            const snapshot = { ok: true, sessionId, updatedAt: state.updatedAt, review: state.review };
+            return { ...snapshot, entries: await Promise.all(entries.map(entry => withArtifactMetadata(entry, cwd))) };
         },
         async addSource(sessionId, kind, value) {
             if (!enabled())

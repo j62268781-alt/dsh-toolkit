@@ -16,7 +16,6 @@ export interface ClassifiedSeed {
 }
 
 const WRITE_TOOLS = new Set(['write', 'edit', 'multi_edit', 'multiedit', 'notebook_edit'])
-const READ_TOOLS = new Set(['read', 'read_image'])
 const KNOWLEDGE_TOOLS = new Set(['search_knowledge', 'searchknowledge', 'search_workspace', 'searchworkspace'])
 const KNOWLEDGE_SERVER = /repowiki|qmind|knowledge/i
 const BROWSER_NAVIGATE = /navigate|fetch|open|goto|new_page/i
@@ -56,6 +55,10 @@ export function normalizePath(path: string): string {
   return path.replace(/\\/g, '/').replace(/^(?:\.\/)+/, '')
 }
 
+export function artifactSeed(path: string): ClassifiedSeed {
+  return fileSeed('artifact', 'artifact', path)
+}
+
 function fileSeed(kind: TaskMonitorKind, prefix: string, path: string): ClassifiedSeed {
   const clean = normalizePath(path)
   return { kind, id: `${prefix}:${clean}`, label: baseName(clean), detail: dirName(clean), target: clean }
@@ -91,7 +94,7 @@ export function classifyCall(name: unknown, args: unknown): ClassifiedSeed[] {
 
   if (WRITE_TOOLS.has(lower)) {
     const path = text(input.file_path) || text(input.path)
-    return path === '' ? [] : [fileSeed('artifact', 'artifact', path)]
+    return path === '' ? [] : [artifactSeed(path)]
   }
 
   if (lower === 'present') {
@@ -99,7 +102,7 @@ export function classifyCall(name: unknown, args: unknown): ClassifiedSeed[] {
     const seeds: ClassifiedSeed[] = []
     for (const file of files) {
       const path = text(record(file).path)
-      if (path !== '') seeds.push(fileSeed('artifact', 'artifact', path))
+      if (path !== '') seeds.push(artifactSeed(path))
     }
     return seeds
   }
@@ -112,11 +115,6 @@ export function classifyCall(name: unknown, args: unknown): ClassifiedSeed[] {
   if (lower === 'web_search') {
     const query = text(input.query)
     return query === '' ? [] : [{ kind: 'web', id: `search:${query}`, label: query, detail: 'web_search' }]
-  }
-
-  if (READ_TOOLS.has(lower)) {
-    const path = text(input.file_path) || text(input.path)
-    return path === '' ? [] : [fileSeed('source', 'source', path)]
   }
 
   if (KNOWLEDGE_TOOLS.has(lower)) {

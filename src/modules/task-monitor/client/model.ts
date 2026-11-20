@@ -8,13 +8,16 @@ export interface TaskMonitorSection {
   readonly entries: TaskMonitorEntry[];
 }
 
-/** 四个分区固定顺序；组内按最近使用倒序（产出即 mtime 口径），同时间按名字稳定排。 */
+/** 产出按文件修改时间，其余分区按任务事件时间。 */
 export function groupSections(entries: readonly TaskMonitorEntry[]): TaskMonitorSection[] {
   return SECTION_ORDER.map((kind) => ({
     kind,
-    entries: entries
-      .filter((entry) => entry.kind === kind)
-      .sort((left, right) => right.updatedAt - left.updatedAt || left.label.localeCompare(right.label)),
+    entries: entries.filter((entry) => entry.kind === kind).sort((left, right) => {
+      const byName = () => left.label.localeCompare(right.label);
+      if (kind !== "artifact") return right.updatedAt - left.updatedAt || byName();
+      return Number(left.unavailable === true) - Number(right.unavailable === true)
+        || (right.modifiedAt ?? -Infinity) - (left.modifiedAt ?? -Infinity) || byName();
+    }),
   }));
 }
 

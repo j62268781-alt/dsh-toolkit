@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { PassThrough } from 'node:stream'
@@ -12,10 +12,11 @@ import {
   TASK_MONITOR_SOURCE_ADD_PATH,
   TASK_MONITOR_SOURCE_REMOVE_PATH,
 } from '../../src/modules/task-monitor/host/constants.js'
+import { apply } from '../../src/modules/task-monitor/host/index.js'
 import { createTaskMonitorStore } from '../../src/modules/task-monitor/host/domain/store.js'
 import { createTaskMonitorRoutes } from '../../src/modules/task-monitor/host/routes/highlights.js'
 
-async function harness(t, { enabled } = {}) {
+async function harness(t, { enabled, workspaceChanges } = {}) {
   const home = await mkdtemp(join(tmpdir(), 'dsh-monitor-routes-'))
   t.after(() => rm(home, { recursive: true, force: true }))
   const store = createTaskMonitorStore({ home, persistDelayMs: 5, enabled })
@@ -34,8 +35,20 @@ async function harness(t, { enabled } = {}) {
       return undefined
     },
   })
+  if (workspaceChanges) ctx.provide('workspaceChanges', workspaceChanges)
   const fiber = ctx.plugin((child) => {
-    registerJsonRoutes(child, createTaskMonitorRoutes({ store }))
+    if (workspaceChanges) {
+      const previous = process.env.DSH_HOME
+      try {
+        process.env.DSH_HOME = home
+        apply(child)
+      } finally {
+        if (previous === undefined) delete process.env.DSH_HOME
+        else process.env.DSH_HOME = previous
+      }
+    } else {
+      registerJsonRoutes(child, createTaskMonitorRoutes({ store }))
+    }
   })
   await fiber
   t.after(() => fiber.dispose())
@@ -62,8 +75,23 @@ async function harness(t, { enabled } = {}) {
     await done
     return { status: res.statusCode, payload: JSON.parse(res.body), headers: res.headers, req }
   }
-  return { store, call, rejections, routes }
+  return { store, call, rejections, routes, ctx, home }
 }
+
+test('宿主回合变更补录 shell 产出，等摘要写入后再读取', async (t) => {
+  const summaries = new Map()
+  const workspaceChanges = { summary: (id, seq) => summaries.get(`${id}:${seq}`) }
+  const { ctx, home, call } = await harness(t, { workspaceChanges })
+  await writeFile(join(home, 'from-shell.txt'), 'shell output')
+  ctx.emit('session/event', { header: { id: 's1' } }, { type: 'workspace/changes', seq: 7, data: { turn: 3 } })
+  summaries.set('s1:7', { cwd: home, files: [{ path: 'from-shell.txt' }] })
+  await Promise.resolve()
+  const { payload } = await call(TASK_MONITOR_SNAPSHOT_PATH, { sessionId: 's1' })
+  assert.deepEqual(payload.review, { seq: 7, turn: 3 })
+  assert.equal(payload.entries.length, 1)
+  assert.equal(payload.entries[0].label, 'from-shell.txt')
+  assert.ok(payload.entries[0].modifiedAt > 0)
+})
 
 test('三条路由挂在统一前缀下，身份拒绝先于读 body', async (t) => {
   const { call, rejections, routes } = await harness(t)

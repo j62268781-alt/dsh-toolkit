@@ -21,6 +21,15 @@ test('四个分区固定顺序，知识不占分区，组内最近使用倒序�
   assert.deepEqual(sections[0].entries.map((item) => item.id), ['c1'])
 })
 
+test('产出按文件 mtime 排序，不可用的文件排最后', () => {
+  const section = groupSections([
+    { ...entry('missing', 'artifact', 999), unavailable: true },
+    { ...entry('older', 'artifact', 200), modifiedAt: 20 },
+    { ...entry('newer', 'artifact', 100), modifiedAt: 40 },
+  ])[1]
+  assert.deepEqual(section.entries.map(item => item.id), ['newer', 'older', 'missing'])
+})
+
 test('首屏裁切与查看更多计数', () => {
   const entries = Array.from({ length: INITIAL_VISIBLE + 3 }, (_, index) => entry(`e${index}`, 'web', index))
   assert.equal(visibleOf(entries, false).length, INITIAL_VISIBLE)

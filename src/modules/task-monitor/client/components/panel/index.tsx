@@ -228,7 +228,8 @@ export function createTaskMonitorPanel(ctx: any) {
 
     const renderRow = (entry: TaskMonitorEntry, index: number): React.ReactNode => {
       const Icon = rowIcon(entry);
-      const clickable = entry.target !== undefined && actions !== undefined;
+      const unavailable = entry.kind === "artifact" && entry.unavailable === true;
+      const clickable = !unavailable && entry.target !== undefined && actions !== undefined;
       // 产出 / 来源只画文件名：那两栏的路径副标题占一整行，用户要的是「改了哪些文件」，
       // 目录层级点开右侧预览就有。其他分区（技能、MCP、网页）的副标题是补充信息，留着。
       const showDetail = entry.detail !== "" && entry.detail !== entry.label
@@ -239,6 +240,7 @@ export function createTaskMonitorPanel(ctx: any) {
           className="sk-task-monitor__row"
           data-kind={entry.kind}
           data-status={entry.status}
+          data-unavailable={unavailable || undefined}
           data-clickable={clickable || undefined}
           role={clickable ? "button" : undefined}
           tabIndex={clickable ? 0 : undefined}
@@ -260,6 +262,7 @@ export function createTaskMonitorPanel(ctx: any) {
               : null}
           </span>
           <span className="sk-task-monitor__meta">
+            {unavailable ? <span className="sk-task-monitor__unavailable">{t("artifactUnavailable")}</span> : null}
             {entry.status === "failed"
               ? <span className="sk-task-monitor__failed" title={t("failedStatus")} aria-label={t("failedStatus")}>!</span>
               : null}
@@ -402,7 +405,8 @@ export function createTaskMonitorPanel(ctx: any) {
           sections.map((section) => {
             const copy = SECTION_COPY[section.kind];
             const isCollapsed = collapsed[section.kind] === true;
-            const isExpanded = expanded[section.kind] === true;
+            const paged = section.kind !== "source";
+            const isExpanded = !paged || expanded[section.kind] === true;
             const hidden = hiddenOf(section.entries, isExpanded);
             return (
               <details
@@ -435,7 +439,7 @@ export function createTaskMonitorPanel(ctx: any) {
                         >
                           {t("showMore", { n: hidden })}
                         </button>
-                      ) : isExpanded && section.entries.length > 5 ? (
+                      ) : paged && isExpanded && section.entries.length > 5 ? (
                         <button
                           type="button"
                           className="sk-task-monitor__more"

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -30,6 +30,38 @@ test('record 聚合计数与状态翻转，snapshot 按会话隔离', async (t) 
   const two = await store.snapshot('s2')
   assert.deepEqual(two.entries.map((entry) => entry.id), ['b'])
   assert.deepEqual(await store.snapshot(''), { ok: false, code: TASK_MONITOR_REASON.invalidSession, detail: '缺少 sessionId。' })
+})
+
+test('产出按当前磁盘读取 mtime 和可用性，失败不覆盖成功', async (t) => {
+  let cwd
+  const { store, home } = await withStore(t, { cwdOf: () => cwd })
+  cwd = home
+  const file = join(home, 'result.txt')
+  const artifact = { ...seed('artifact:result.txt', 'artifact'), target: 'result.txt' }
+  await store.record('s1', [artifact], 'failed')
+  assert.deepEqual((await store.snapshot('s1')).entries, [])
+  await writeFile(file, 'result')
+  await utimes(file, 100, 200)
+  await store.record('s1', [artifact], 'ok')
+  await store.record('s1', [artifact], 'failed')
+  const [available] = (await store.snapshot('s1')).entries
+  assert.equal(available.modifiedAt, (await stat(file)).mtimeMs)
+  assert.equal(available.unavailable, undefined)
+  assert.equal(available.status, 'ok')
+  await rm(file)
+  const [missing] = (await store.snapshot('s1')).entries
+  assert.equal(missing.unavailable, true)
+  assert.equal(missing.modifiedAt, undefined)
+  await store.dispose()
+})
+
+test('重启不再展示旧版偶然读取的文件，但保留显式和手动来源', async (t) => {
+  const { store, home } = await withStore(t)
+  await store.record('s1', [seed('source:incidental.txt'), seed('input:file:explicit.txt')], 'ok')
+  await store.addSource('s1', 'file', 'manual.txt')
+  await store.dispose()
+  const reborn = createTaskMonitorStore({ home })
+  assert.deepEqual((await reborn.snapshot('s1')).entries.map(entry => entry.id), ['input:file:explicit.txt', 'manual:file:manual.txt'])
 })
 
 test('变更坐标：只收合法的 seq/turn，snapshot 原样带出', async (t) => {

@@ -73,6 +73,9 @@ export interface TaskMonitorEntry {
   readonly count: number
   readonly status: 'ok' | 'failed'
   readonly updatedAt: number
+  /** 文件元数据随快照读取，不写进事件聚合记录。 */
+  readonly modifiedAt?: number
+  readonly unavailable?: true
 }
 
 /**

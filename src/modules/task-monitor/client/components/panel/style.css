@@ -160,7 +160,7 @@
 @media (hover: hover) {
   /* 每个条目行都有 hover 底色（分组内的行都在这套样式下）；能不能点由上面的
      cursor 决定，只读行不该显得可点、但按下前的悬停反馈要一致。 */
-  .sk-task-monitor__row:hover {
+  .sk-task-monitor__row:not([data-unavailable]):hover {
     background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));
   }
 }
@@ -216,6 +216,16 @@
 }
 
 /* 工作区增删行数：沿用宿主 diff 视图的增删语义色，避免第三套绿/红。 */
+.sk-task-monitor__row[data-unavailable] .sk-task-monitor__label {
+  text-decoration: line-through;
+}
+
+.sk-task-monitor__unavailable {
+  color: var(--dsw-alias-label-secondary, inherit);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .sk-task-monitor__delta {
   display: inline-flex;
   gap: 6px;

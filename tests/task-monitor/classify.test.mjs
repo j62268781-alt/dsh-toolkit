@@ -47,7 +47,7 @@ test('浏览器 MCP 导航与 web_fetch 进网页查阅，搜索单独成条', (
   assert.equal(other.kind, 'capability')
 })
 
-test('写工具与 present 进产出，读工具进来源', () => {
+test('写工具与 present 进产出', () => {
   // 反斜杠统一成 `/`：同一文件在 Windows 路径与 POSIX 路径下是同一个 id。
   const [write] = classifyCall('write', { file_path: 'D:\\repo\\src\\a.ts' })
   assert.deepEqual(write, { kind: 'artifact', id: 'artifact:D:/repo/src/a.ts', label: 'a.ts', detail: 'D:/repo/src', target: 'D:/repo/src/a.ts' })
@@ -56,16 +56,6 @@ test('写工具与 present 进产出，读工具进来源', () => {
   assert.equal(edit.label, 'b.md')
   const presented = classifyCall('present', { files: [{ path: '/repo/c.png' }, { path: '' }, null, { path: '/repo/d.pdf' }] })
   assert.deepEqual(presented.map((seed) => seed.label), ['c.png', 'd.pdf'])
-  // `./src/a.ts` 与 `src/a.ts` 归一成同一条：否则同一个文件会在「来源」里出现两次。
-  assert.equal(
-    classifyCall('read', { file_path: './src/a.ts' })[0].id,
-    classifyCall('read', { file_path: 'src/a.ts' })[0].id,
-  )
-  const [read] = classifyCall('read', { file_path: '/repo/e.ts' })
-  assert.equal(read.kind, 'source')
-  assert.equal(read.target, '/repo/e.ts')
-  const [image] = classifyCall('read_image', { file_path: '/repo/f.png' })
-  assert.equal(image.kind, 'source')
 })
 
 test('归不了类的调用返回空数组，不造垃圾条目', () => {
