@@ -6,7 +6,7 @@
   min-height: 0;
   min-width: 0;
   /* 卡片按「对话列自身」的宽度让步：左侧栏收起时窗口没变但这一列变宽了，
-     用窗口媒体查询会误判。@container 的收起阈值 500 与 state/rail.ts 的
+     用窗口媒体查询会误判。@container 的收起阈值 520 与 state/rail.ts 的
      RAIL_HIDE_WIDTH 保持一致（那边负责同时收掉标题栏按钮）。 */
   container: task-monitor / inline-size;
 }
@@ -20,19 +20,20 @@
 }
 
 /*
- * 宽度取 250：与 Codex 主题的工作区列同宽，视觉上两边对齐；仍比 Qoder 的 253
- * 略窄，给对话列和右侧 turn 索引条留位置，只做「会话旁边的一张卡片」。
+ * 宽度取 260：比 Qoder 的 253 略宽一点，又比 Codex 主题的工作区列（250）宽 10px——
+ * 卡片在对话区右侧，两边不同宽也不会被看成一组。只做「会话旁边的一张卡片」，
+ * 剩下的宽度留给对话列和右侧 turn 索引条。
  * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），
  * 高度贴合内容（align-self: flex-start），内容过长时在卡内滚动。
  */
 .sk-task-monitor-side {
   display: flex;
-  flex: 0 0 250px;
+  flex: 0 0 260px;
   flex-direction: column;
   align-self: flex-start;
   min-height: 0;
-  min-width: 250px;
-  max-width: 250px;
+  min-width: 260px;
+  max-width: 260px;
   /* 上下留白对齐输入框下方那条统计带（composer dock）：dock 的 padding-top 4px
      + 一行 22px（20px 次级行 + 1px 上下 block padding）+ InputBar 根的
      padding-bottom 4px。字号档位放大时跟着 --dsh-content-font-delta-secondary
@@ -68,8 +69,8 @@
 
 /*
  * 窄下来的顺序：先让卡片自己缩，实在放不下再收起。
- *   820 以下 250 → 220、700 以下 → 200（这三档都是卡片让步，对话列不动布局）
- *   500 以下直接收起（= 卡片的 2 倍）；React 按同一阈值决定是否渲染，这里是兜底。
+ *   850 以下 260 → 230、730 以下 → 210（这几档都是卡片让步，对话列不动布局）
+ *   520 以下直接收起（= 卡片的 2 倍）；React 按同一阈值决定是否渲染，这里是兜底。
  * 之所以不一步收到 1000：对话列 1000 时两侧都还很宽裕，硬收会让用户以为功能没了。
  */
 /*
@@ -80,23 +81,23 @@
   display: none;
 }
 
-@container task-monitor (max-width: 820px) {
+@container task-monitor (max-width: 850px) {
   .sk-task-monitor-side {
-    flex-basis: 220px;
-    min-width: 220px;
-    max-width: 220px;
+    flex-basis: 230px;
+    min-width: 230px;
+    max-width: 230px;
   }
 }
 
-@container task-monitor (max-width: 700px) {
+@container task-monitor (max-width: 730px) {
   .sk-task-monitor-side {
-    flex-basis: 200px;
-    min-width: 200px;
-    max-width: 200px;
+    flex-basis: 210px;
+    min-width: 210px;
+    max-width: 210px;
   }
 }
 
-@container task-monitor (max-width: 500px) {
+@container task-monitor (max-width: 520px) {
   .sk-task-monitor-side {
     display: none;
   }

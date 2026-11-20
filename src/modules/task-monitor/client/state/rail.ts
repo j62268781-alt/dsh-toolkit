@@ -77,12 +77,12 @@ export function useRailChoice(sessionId: string | undefined): RailChoice {
 
 /**
  * 会话列窄到「连卡片的两倍都放不下」时才默认收起（用户没表过态时才生效）：
- * 卡片宽 250，2 × 250 = 500——再窄下去对话列自己就比卡片还窄了，那才是该收的时刻。
- * 500 与 surfaces/conversation-rail/style.css 的 @container 同值，改一处要同时改另一处。
+ * 卡片宽 260，2 × 260 = 520——再窄下去对话列自己就比卡片还窄了，那才是该收的时刻。
+ * 520 与 surfaces/conversation-rail/style.css 的 @container 同值，改一处要同时改另一处。
  * 中间那几档（820 / 700）只让卡片缩宽，不收起。标题栏按钮始终保留——用户仍可
  * 手动展开覆盖这个默认。
  */
-export const RAIL_HIDE_WIDTH = 500;
+export const RAIL_HIDE_WIDTH = 520;
 
 let narrow = false;
 const narrowListeners = new Set<() => void>();
