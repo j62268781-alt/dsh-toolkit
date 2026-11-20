@@ -227,6 +227,10 @@ test('环境信息 + 四分区渲染：计数、去重后不显示 ×N、失败�
   assert.ok(rowsIn(dom, 'web').some((row) => row.querySelector('.sk-task-monitor__failed') !== null))
   const env = rowsIn(dom, 'environment').map((row) => row.querySelector('.sk-task-monitor__label').textContent)
   assert.deepEqual(env, ['有未提交改动', '本地', 'main', 'repo'])
+  // 产出 / 来源只画文件名：目录副标题不再出现在行里（避免两行文本挤成三行）。
+  assert.ok(rowsIn(dom, 'artifact')[0].querySelector('.sk-task-monitor__detail') === null, '产出行没有副标题')
+  assert.ok(rowsIn(dom, 'source')[0].querySelector('.sk-task-monitor__detail') === null, '来源行没有副标题')
+  assert.ok(rowsIn(dom, 'capability')[0].querySelector('.sk-task-monitor__detail') !== null, '技能行仍带副标题')
   // 知识条目仍按 knowledge 入库，只是不再占分区；面板也不再有添加/移除入口。
   assert.equal(all(dom, '.sk-task-monitor__section[data-kind="knowledge"]').length, 0)
   assert.equal(all(dom, '.sk-task-monitor__add').length, 0)

@@ -215,6 +215,10 @@ export function createTaskMonitorPanel(ctx: any) {
     const renderRow = (entry: TaskMonitorEntry, index: number): React.ReactNode => {
       const Icon = rowIcon(entry);
       const clickable = entry.target !== undefined && actions !== undefined;
+      // 产出 / 来源只画文件名：那两栏的路径副标题占一整行，用户要的是「改了哪些文件」，
+      // 目录层级点开右侧预览就有。其他分区（技能、MCP、网页）的副标题是补充信息，留着。
+      const showDetail = entry.detail !== "" && entry.detail !== entry.label
+        && entry.kind !== "artifact" && entry.kind !== "source";
       return (
         <div
           key={entry.id}
@@ -237,7 +241,7 @@ export function createTaskMonitorPanel(ctx: any) {
           <span className="sk-task-monitor__seat" aria-hidden="true">{Icon === undefined ? null : <Icon size={14} />}</span>
           <span className="sk-task-monitor__txt">
             <span className="sk-task-monitor__label">{entry.label}</span>
-            {entry.detail !== "" && entry.detail !== entry.label
+            {showDetail
               ? <span className="sk-task-monitor__detail">{entry.detail}</span>
               : null}
           </span>
