@@ -127,24 +127,40 @@ window.__ModuleLoader__.load({
     };
 
     // src/modules/task-monitor/client/surfaces/header-button/index.tsx
-    var import_react3 = require("react");
+    var import_react4 = require("react");
 
     // src/client/ui/slot.ts
     function installSlot(ctx, descriptor, Component) {
       return ctx.slots.inject(descriptor.name, () => ctx.slots.register(descriptor, Component));
     }
 
-    // src/client/ui/primitives.ts
-    var primitives = (() => {
-      try {
-        return require("@deepseek-ai/dsh-client-ui-primitives");
-      } catch {
-        return {};
-      }
-    })();
+    // src/modules/task-monitor/client/components/task-icon/index.tsx
+    var import_react = require("react");
+    function TaskMonitorIcon(props) {
+      const size = props.size ?? 16;
+      return /* @__PURE__ */ __dshReact.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: "currentColor",
+          strokeWidth: 1.7,
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          "aria-hidden": "true",
+          focusable: "false"
+        },
+        /* @__PURE__ */ __dshReact.createElement("path", { d: "M3.8 7.3l2 2 3.5-3.6" }),
+        /* @__PURE__ */ __dshReact.createElement("path", { d: "M12.6 7h7.6" }),
+        /* @__PURE__ */ __dshReact.createElement("path", { d: "M3.8 16.7l2 2 3.5-3.6" }),
+        /* @__PURE__ */ __dshReact.createElement("path", { d: "M12.6 16.7h7.6" })
+      );
+    }
 
     // src/modules/task-monitor/client/state/content.ts
-    var import_react = __toESM(require("react"), 1);
+    var import_react2 = __toESM(require("react"), 1);
     var readings = /* @__PURE__ */ new Map();
     var listeners = /* @__PURE__ */ new Set();
     function emit() {
@@ -167,7 +183,7 @@ window.__ModuleLoader__.load({
       };
     }
     function useHasContent(sessionId) {
-      return import_react.default.useSyncExternalStore(
+      return import_react2.default.useSyncExternalStore(
         subscribeContent,
         () => hasContentOf(sessionId),
         () => hasContentOf(sessionId)
@@ -175,7 +191,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/task-monitor/client/state/rail.ts
-    var import_react2 = __toESM(require("react"), 1);
+    var import_react3 = __toESM(require("react"), 1);
     var KEY = "dsh-toolkit-task-monitor:rail:";
     var listeners2 = /* @__PURE__ */ new Set();
     var memory = /* @__PURE__ */ new Map();
@@ -209,7 +225,7 @@ window.__ModuleLoader__.load({
       };
     }
     function useRailChoice(sessionId) {
-      return import_react2.default.useSyncExternalStore(
+      return import_react3.default.useSyncExternalStore(
         subscribeRail,
         () => railChoice(sessionId),
         () => railChoice(sessionId)
@@ -233,7 +249,7 @@ window.__ModuleLoader__.load({
       };
     }
     function useRailNarrow() {
-      return import_react2.default.useSyncExternalStore(subscribeRailNarrow, railNarrow, railNarrow);
+      return import_react3.default.useSyncExternalStore(subscribeRailNarrow, railNarrow, railNarrow);
     }
 
     // src/modules/task-monitor/client/surfaces/header-button/index.tsx
@@ -247,7 +263,6 @@ window.__ModuleLoader__.load({
         const empty = useHasContent(sessionId) === false;
         const open = typeof sessionId === "string" && sessionId !== "" && (choice === "visible" || choice === null && !narrow2);
         const label = t("trigger");
-        const Icon = primitives.IconInspectOutlineRegular;
         if (empty) return null;
         return /* @__PURE__ */ __dshReact.createElement(
           "button",
@@ -262,7 +277,7 @@ window.__ModuleLoader__.load({
               setRailChoice(sessionId, open ? "hidden" : "visible");
             }
           },
-          Icon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(Icon, { size: 16 })
+          /* @__PURE__ */ __dshReact.createElement(TaskMonitorIcon, { size: 16 })
         );
       }
       const offSlot = installSlot(ctx, {
@@ -278,10 +293,10 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/index.tsx
-    var import_react5 = __toESM(require("react"), 1);
+    var import_react6 = __toESM(require("react"), 1);
 
     // src/modules/task-monitor/client/components/panel/index.tsx
-    var import_react4 = __toESM(require("react"), 1);
+    var import_react5 = __toESM(require("react"), 1);
 
     // src/client/http.ts
     var DEFAULT_TIMEOUT_MS = 15e3;
@@ -329,6 +344,15 @@ window.__ModuleLoader__.load({
         }
       };
     }
+
+    // src/client/ui/primitives.ts
+    var primitives = (() => {
+      try {
+        return require("@deepseek-ai/dsh-client-ui-primitives");
+      } catch {
+        return {};
+      }
+    })();
 
     // src/client/ui/toast.css
     var toast_default = '/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n *\n * 两条路径共用同一套类名：\n * - 原生路径：栈是 `popover="manual"`（top layer），单条靠 `@starting-style` + `transition` 进出场；\n * - 退化路径（jsdom、没有 popover 的宿主）：就是改造前的固定定位栈 + 两个 `@keyframes`。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n/* display 只跟着「栈开着」走：popover 关闭时 UA 是 display:none，作者样式不能把它顶回来。 */\n.sk-toast-stack:not([popover]),\n.sk-toast-stack:popover-open {\n  display: flex;\n}\n\n/* popover 在 top layer 里，UA 会给 position:fixed + inset:0 + margin:auto + 边框/背景，\n   这里全部按原布局收回来，只保留 `top:40px / left:50%` 的居中胶囊位置。 */\n.sk-toast-stack[popover] {\n  inset: auto;\n  top: 40px;\n  left: 50%;\n  margin: 0;\n  padding: 0;\n  border: 0;\n  background: transparent;\n  color: inherit;\n  overflow: visible;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* 退化路径：没有 `:popover-open` 的宿主继续用关键帧，行为与改造前一致。 */\n@supports not (selector(:popover-open)) {\n  .sk-toast {\n    animation: sk-toast-in 0.16s ease-out;\n  }\n\n  .sk-toast--leaving {\n    animation: sk-toast-out 0.18s ease-in forwards;\n  }\n}\n\n/* 原生路径：进场由 `@starting-style` 给出起点，退场由 `--leaving` 的目标值给出终点。\n   `transition-behavior: allow-discrete` 必须是独立声明，并进 `transition` 简写会让整条声明失效。 */\n@supports (selector(:popover-open)) {\n  .sk-toast {\n    transition: opacity 0.16s ease-out, transform 0.16s ease-out;\n    transition-behavior: allow-discrete;\n  }\n\n  @starting-style {\n    .sk-toast {\n      opacity: 0;\n      transform: translateY(-6px);\n    }\n  }\n}\n\n.sk-toast--leaving {\n  opacity: 0;\n  transform: translateY(-4px);\n}\n\n/* 减弱动效：过渡与关键帧都不跑，节点靠 `toast.ts` 的兜底定时器收掉。 */\n@media (prefers-reduced-motion: reduce) {\n  .sk-toast,\n  .sk-toast--leaving {\n    animation: none;\n    transition: none;\n  }\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n';
@@ -604,14 +628,14 @@ window.__ModuleLoader__.load({
         const projected = typeof useProjection === "function" ? useProjection("workingDirectory") : void 0;
         const owned = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.cwd) : void 0;
         const cwd = typeof projected === "string" && projected !== "" ? projected : typeof owned === "string" ? owned : "";
-        const [entries, setEntries] = import_react4.default.useState([]);
-        const [phase, setPhase] = import_react4.default.useState("loading");
-        const [error, setError] = import_react4.default.useState("");
-        const [collapsed, setCollapsed] = import_react4.default.useState({});
-        const [expanded, setExpanded] = import_react4.default.useState({});
-        const [git, setGit] = import_react4.default.useState(null);
-        const [review, setReview] = import_react4.default.useState(null);
-        const load = import_react4.default.useCallback(async (quiet) => {
+        const [entries, setEntries] = import_react5.default.useState([]);
+        const [phase, setPhase] = import_react5.default.useState("loading");
+        const [error, setError] = import_react5.default.useState("");
+        const [collapsed, setCollapsed] = import_react5.default.useState({});
+        const [expanded, setExpanded] = import_react5.default.useState({});
+        const [git, setGit] = import_react5.default.useState(null);
+        const [review, setReview] = import_react5.default.useState(null);
+        const load = import_react5.default.useCallback(async (quiet) => {
           if (typeof sessionId !== "string" || sessionId === "") return;
           if (!quiet) setPhase("loading");
           try {
@@ -629,11 +653,11 @@ window.__ModuleLoader__.load({
             }
           }
         }, [sessionId]);
-        import_react4.default.useEffect(() => {
+        import_react5.default.useEffect(() => {
           if (phase !== "ready") return;
           setHasContent(sessionId, entries.length > 0);
         }, [phase, entries.length, sessionId]);
-        const loadGit = import_react4.default.useCallback(async () => {
+        const loadGit = import_react5.default.useCallback(async () => {
           if (cwd === "") {
             setGit(null);
             return;
@@ -662,22 +686,22 @@ window.__ModuleLoader__.load({
             setGit(null);
           }
         }, [cwd]);
-        import_react4.default.useEffect(() => {
+        import_react5.default.useEffect(() => {
           void load(false);
         }, [load, revision]);
-        import_react4.default.useEffect(() => {
+        import_react5.default.useEffect(() => {
           void loadGit();
         }, [loadGit]);
-        import_react4.default.useEffect(() => {
+        import_react5.default.useEffect(() => {
           if (!visible) return void 0;
           const timer = setInterval(() => {
             void load(true);
           }, TASK_MONITOR_POLL_MS);
           return () => clearInterval(timer);
         }, [visible, load]);
-        const sections = import_react4.default.useMemo(() => groupSections(entries), [entries]);
-        const seeded = import_react4.default.useRef(null);
-        import_react4.default.useEffect(() => {
+        const sections = import_react5.default.useMemo(() => groupSections(entries), [entries]);
+        const seeded = import_react5.default.useRef(null);
+        import_react5.default.useEffect(() => {
           if (phase !== "ready" || seeded.current === sessionId) return;
           seeded.current = sessionId;
           const seed = {};
@@ -888,19 +912,19 @@ window.__ModuleLoader__.load({
       });
     }
     function RailLayer({ children, useSessions, Panel, actions, label }) {
-      const wrapRef = import_react5.default.useRef(null);
-      const [embedded, setEmbedded] = import_react5.default.useState(false);
-      const [maxHeight, setMaxHeight] = import_react5.default.useState(null);
+      const wrapRef = import_react6.default.useRef(null);
+      const [embedded, setEmbedded] = import_react6.default.useState(false);
+      const [maxHeight, setMaxHeight] = import_react6.default.useState(null);
       const sessionId = activeSessionId(useSessions);
       const choice = useRailChoice(sessionId);
       const narrow2 = useRailNarrow();
       const empty = useHasContent(sessionId) === false;
       const open = !embedded && typeof sessionId === "string" && sessionId !== "" && (choice === "visible" || choice === null && !narrow2);
-      import_react5.default.useEffect(() => {
+      import_react6.default.useEffect(() => {
         const wrap = wrapRef.current;
         setEmbedded(wrap !== null && wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null);
       }, []);
-      import_react5.default.useEffect(() => {
+      import_react6.default.useEffect(() => {
         const wrap = wrapRef.current;
         if (wrap === null || typeof ResizeObserver === "undefined") return void 0;
         if (wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null) return void 0;

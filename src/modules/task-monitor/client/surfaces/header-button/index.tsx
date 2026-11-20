@@ -6,7 +6,7 @@
  */
 import React from "react";
 import { installSlot } from "../../../../../client/ui/slot.js";
-import { primitives } from "../../../../../client/ui/primitives.js";
+import { TaskMonitorIcon } from "../../components/task-icon/index.jsx";
 import { TASK_MONITOR_NS } from "../../locale.js";
 import { useHasContent } from "../../state/content.js";
 import { setRailChoice, useRailChoice, useRailNarrow } from "../../state/rail.js";
@@ -26,7 +26,6 @@ export function install(ctx: any) {
     const open = typeof sessionId === "string" && sessionId !== ""
       && (choice === "visible" || (choice === null && !narrow));
     const label = t("trigger");
-    const Icon = primitives.IconInspectOutlineRegular;
     if (empty) return null;
     return (
       <button
@@ -41,7 +40,7 @@ export function install(ctx: any) {
           setRailChoice(sessionId, open ? "hidden" : "visible");
         }}
       >
-        {Icon === undefined ? null : <Icon size={16} />}
+        <TaskMonitorIcon size={16} />
       </button>
     );
   }
