@@ -233,6 +233,21 @@ test('环境信息 + 四分区渲染：计数、去重后不显示 ×N、失败�
   assert.equal(all(dom, '.sk-task-monitor__remove').length, 0)
 })
 
+test('新会话没有条目时打上 data-empty，右栏与标题栏按钮据此不出现', async (t) => {
+  const dom = withDom(t)
+  await mount(t, dom, { entries: [] })
+  const root = query(dom, '.sk-task-monitor')
+  assert.equal(root.getAttribute('data-empty'), 'true')
+  // 面板仍然挂载着（轮询要跑），只是由 data-empty 让外层把它藏掉。
+  assert.equal(root.getAttribute('data-phase'), 'ready')
+})
+
+test('有条目时不打 data-empty', async (t) => {
+  const dom = withDom(t)
+  await mount(t, dom, { entries: seedEntries() })
+  assert.equal(query(dom, '.sk-task-monitor').hasAttribute('data-empty'), false)
+})
+
 test('环境信息第一行：工作区改动画成 +新增 / −删除，新文件单独计数', async (t) => {
   const dom = withDom(t)
   const state = { entries: seedEntries(), changes: { ok: true, files: 4, insertions: 1234, deletions: 12, untracked: 2 } }

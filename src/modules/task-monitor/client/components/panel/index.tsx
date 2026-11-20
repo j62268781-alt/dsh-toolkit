@@ -13,6 +13,7 @@ import React from "react";
 import { fetchJson } from "../../../../../client/http.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { showToast } from "../../../../../client/ui/toast.js";
+import { setHasContent } from "../../state/content.js";
 import { GIT_BRANCHES_PATH, GIT_CHANGES_PATH } from "../../../../git/client/constants.js";
 import { TASK_MONITOR_NS } from "../../locale.js";
 import {
@@ -152,6 +153,14 @@ export function createTaskMonitorPanel(ctx: any) {
         }
       }
     }, [sessionId]);
+
+    // 新会话没有任何条目时不该显示这条栏：把「有没有内容」报给 state/content，
+    // 会话内右栏和标题行按钮都按它决定是否出现。只认 ready——加载中 / 出错时
+    // 还没结论，保持沉默（那边按 undefined 当成「有内容」处理）。
+    React.useEffect(() => {
+      if (phase !== "ready") return;
+      setHasContent(sessionId, entries.length > 0);
+    }, [phase, entries.length, sessionId]);
 
     const loadGit = React.useCallback(async () => {
       if (cwd === "") {
@@ -336,7 +345,7 @@ export function createTaskMonitorPanel(ctx: any) {
     };
 
     return (
-      <div className="sk-task-monitor" data-phase={phase}>
+      <div className="sk-task-monitor" data-phase={phase} data-empty={phase === "ready" && entries.length === 0 ? "true" : undefined}>
         <style>{panelCss}</style>
         {envRows.length === 0 ? null : (
           <details

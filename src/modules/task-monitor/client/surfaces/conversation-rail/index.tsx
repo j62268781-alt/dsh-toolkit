@@ -1,6 +1,7 @@
 import React from "react";
 import { TASK_MONITOR_NS } from "../../locale.js";
 import { createTaskMonitorPanel } from "../../components/panel/index.jsx";
+import { useHasContent } from "../../state/content.js";
 import { RAIL_HIDE_WIDTH, setRailNarrow, useRailChoice, useRailNarrow } from "../../state/rail.js";
 import railCss from "./style.css";
 
@@ -73,6 +74,9 @@ function RailLayer({ children, useSessions, Panel, actions, label }: RailProps) 
   const sessionId = activeSessionId(useSessions);
   const choice = useRailChoice(sessionId);
   const narrow = useRailNarrow();
+  // 面板必须一直挂载：判定「有没有内容」靠它拉快照，收起来只是不显示。
+  // undefined（还没拉到）按「有内容」处理，别让加载过程闪一下。
+  const empty = useHasContent(sessionId) === false;
   // 用户表过态就听用户的；没表态时，对话列太窄就默认收起。
   const open = !embedded && typeof sessionId === "string" && sessionId !== ""
     && (choice === "visible" || (choice === null && !narrow));
@@ -124,7 +128,9 @@ function RailLayer({ children, useSessions, Panel, actions, label }: RailProps) 
       {open ? (
         <aside
           className="sk-task-monitor-side"
+          data-empty={empty ? "true" : undefined}
           aria-label={label}
+          aria-hidden={empty ? true : undefined}
           style={maxHeight === null ? undefined : { maxHeight }}
         >
           <Panel

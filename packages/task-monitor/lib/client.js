@@ -127,7 +127,7 @@ window.__ModuleLoader__.load({
     };
 
     // src/modules/task-monitor/client/surfaces/header-button/index.tsx
-    var import_react2 = require("react");
+    var import_react3 = require("react");
 
     // src/client/ui/slot.ts
     function installSlot(ctx, descriptor, Component) {
@@ -143,10 +143,41 @@ window.__ModuleLoader__.load({
       }
     })();
 
-    // src/modules/task-monitor/client/state/rail.ts
+    // src/modules/task-monitor/client/state/content.ts
     var import_react = __toESM(require("react"), 1);
-    var KEY = "dsh-toolkit-task-monitor:rail:";
+    var readings = /* @__PURE__ */ new Map();
     var listeners = /* @__PURE__ */ new Set();
+    function emit() {
+      for (const listener of listeners) listener();
+    }
+    function setHasContent(sessionId, hasContent) {
+      if (sessionId === "") return;
+      if (readings.get(sessionId) === hasContent) return;
+      readings.set(sessionId, hasContent);
+      emit();
+    }
+    function hasContentOf(sessionId) {
+      if (typeof sessionId !== "string" || sessionId === "") return void 0;
+      return readings.get(sessionId);
+    }
+    function subscribeContent(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    }
+    function useHasContent(sessionId) {
+      return import_react.default.useSyncExternalStore(
+        subscribeContent,
+        () => hasContentOf(sessionId),
+        () => hasContentOf(sessionId)
+      );
+    }
+
+    // src/modules/task-monitor/client/state/rail.ts
+    var import_react2 = __toESM(require("react"), 1);
+    var KEY = "dsh-toolkit-task-monitor:rail:";
+    var listeners2 = /* @__PURE__ */ new Set();
     var memory = /* @__PURE__ */ new Map();
     function storageKey(sessionId) {
       return `${KEY}${sessionId}`;
@@ -169,16 +200,16 @@ window.__ModuleLoader__.load({
         if (choice === null) memory.delete(sessionId);
         else memory.set(sessionId, choice);
       }
-      for (const listener of listeners) listener();
+      for (const listener of listeners2) listener();
     }
     function subscribeRail(listener) {
-      listeners.add(listener);
+      listeners2.add(listener);
       return () => {
-        listeners.delete(listener);
+        listeners2.delete(listener);
       };
     }
     function useRailChoice(sessionId) {
-      return import_react.default.useSyncExternalStore(
+      return import_react2.default.useSyncExternalStore(
         subscribeRail,
         () => railChoice(sessionId),
         () => railChoice(sessionId)
@@ -202,7 +233,7 @@ window.__ModuleLoader__.load({
       };
     }
     function useRailNarrow() {
-      return import_react.default.useSyncExternalStore(subscribeRailNarrow, railNarrow, railNarrow);
+      return import_react2.default.useSyncExternalStore(subscribeRailNarrow, railNarrow, railNarrow);
     }
 
     // src/modules/task-monitor/client/surfaces/header-button/index.tsx
@@ -213,9 +244,11 @@ window.__ModuleLoader__.load({
         const sessionId = props.sessionId;
         const choice = useRailChoice(sessionId);
         const narrow2 = useRailNarrow();
+        const empty = useHasContent(sessionId) === false;
         const open = typeof sessionId === "string" && sessionId !== "" && (choice === "visible" || choice === null && !narrow2);
         const label = t("trigger");
         const Icon = primitives.IconInspectOutlineRegular;
+        if (empty) return null;
         return /* @__PURE__ */ __dshReact.createElement(
           "button",
           {
@@ -245,10 +278,10 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/index.tsx
-    var import_react4 = __toESM(require("react"), 1);
+    var import_react5 = __toESM(require("react"), 1);
 
     // src/modules/task-monitor/client/components/panel/index.tsx
-    var import_react3 = __toESM(require("react"), 1);
+    var import_react4 = __toESM(require("react"), 1);
 
     // src/client/http.ts
     var DEFAULT_TIMEOUT_MS = 15e3;
@@ -571,14 +604,14 @@ window.__ModuleLoader__.load({
         const projected = typeof useProjection === "function" ? useProjection("workingDirectory") : void 0;
         const owned = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.cwd) : void 0;
         const cwd = typeof projected === "string" && projected !== "" ? projected : typeof owned === "string" ? owned : "";
-        const [entries, setEntries] = import_react3.default.useState([]);
-        const [phase, setPhase] = import_react3.default.useState("loading");
-        const [error, setError] = import_react3.default.useState("");
-        const [collapsed, setCollapsed] = import_react3.default.useState({});
-        const [expanded, setExpanded] = import_react3.default.useState({});
-        const [git, setGit] = import_react3.default.useState(null);
-        const [review, setReview] = import_react3.default.useState(null);
-        const load = import_react3.default.useCallback(async (quiet) => {
+        const [entries, setEntries] = import_react4.default.useState([]);
+        const [phase, setPhase] = import_react4.default.useState("loading");
+        const [error, setError] = import_react4.default.useState("");
+        const [collapsed, setCollapsed] = import_react4.default.useState({});
+        const [expanded, setExpanded] = import_react4.default.useState({});
+        const [git, setGit] = import_react4.default.useState(null);
+        const [review, setReview] = import_react4.default.useState(null);
+        const load = import_react4.default.useCallback(async (quiet) => {
           if (typeof sessionId !== "string" || sessionId === "") return;
           if (!quiet) setPhase("loading");
           try {
@@ -596,7 +629,11 @@ window.__ModuleLoader__.load({
             }
           }
         }, [sessionId]);
-        const loadGit = import_react3.default.useCallback(async () => {
+        import_react4.default.useEffect(() => {
+          if (phase !== "ready") return;
+          setHasContent(sessionId, entries.length > 0);
+        }, [phase, entries.length, sessionId]);
+        const loadGit = import_react4.default.useCallback(async () => {
           if (cwd === "") {
             setGit(null);
             return;
@@ -625,20 +662,20 @@ window.__ModuleLoader__.load({
             setGit(null);
           }
         }, [cwd]);
-        import_react3.default.useEffect(() => {
+        import_react4.default.useEffect(() => {
           void load(false);
         }, [load, revision]);
-        import_react3.default.useEffect(() => {
+        import_react4.default.useEffect(() => {
           void loadGit();
         }, [loadGit]);
-        import_react3.default.useEffect(() => {
+        import_react4.default.useEffect(() => {
           if (!visible) return void 0;
           const timer = setInterval(() => {
             void load(true);
           }, TASK_MONITOR_POLL_MS);
           return () => clearInterval(timer);
         }, [visible, load]);
-        const sections = import_react3.default.useMemo(() => groupSections(entries), [entries]);
+        const sections = import_react4.default.useMemo(() => groupSections(entries), [entries]);
         const openEntry = (entry) => {
           if (entry.target === void 0 || actions === void 0) return;
           if (isHttpUrl(entry.target)) {
@@ -729,7 +766,7 @@ window.__ModuleLoader__.load({
           event.preventDefault();
           setCollapsed((map) => ({ ...map, [key]: !current }));
         };
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor", "data-phase": phase }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default), envRows.length === 0 ? null : /* @__PURE__ */ __dshReact.createElement(
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor", "data-phase": phase, "data-empty": phase === "ready" && entries.length === 0 ? "true" : void 0 }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default), envRows.length === 0 ? null : /* @__PURE__ */ __dshReact.createElement(
           "details",
           {
             className: "sk-task-monitor__section",
@@ -798,7 +835,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/style.css
-    var style_default2 = '/* 会话内容区内的左右分栏：左边是宿主原本的消息列，右边是常驻监控栏。 */\n.sk-task-monitor-frame {\n  display: flex;\n  flex: 1;\n  flex-direction: row;\n  min-height: 0;\n  min-width: 0;\n  /* 卡片按「对话列自身」的宽度让步：左侧栏收起时窗口没变但这一列变宽了，\n     用窗口媒体查询会误判。@container 的收起阈值 500 与 state/rail.ts 的\n     RAIL_HIDE_WIDTH 保持一致（那边负责同时收掉标题栏按钮）。 */\n  container: task-monitor / inline-size;\n}\n\n.sk-task-monitor-column {\n  display: flex;\n  flex: 1;\n  flex-direction: column;\n  min-height: 0;\n  min-width: 0;\n}\n\n/*\n * 宽度取 250：与 Codex 主题的工作区列同宽，视觉上两边对齐；仍比 Qoder 的 253\n * 略窄，给对话列和右侧 turn 索引条留位置，只做「会话旁边的一张卡片」。\n * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），\n * 高度贴合内容（align-self: flex-start），内容过长时在卡内滚动。\n */\n.sk-task-monitor-side {\n  display: flex;\n  flex: 0 0 250px;\n  flex-direction: column;\n  align-self: flex-start;\n  min-height: 0;\n  min-width: 250px;\n  max-width: 250px;\n  /* 上下留白对齐输入框下方那条统计带（composer dock）：dock 的 padding-top 4px\n     + 一行 22px（20px 次级行 + 1px 上下 block padding）+ InputBar 根的\n     padding-bottom 4px。字号档位放大时跟着 --dsh-content-font-delta-secondary\n     一起长，和那边的预留高度同源。 */\n  --sk-task-monitor-gutter: calc(30px + var(--dsh-content-font-delta-secondary, 0px));\n  max-height: calc(100% - 16px - var(--sk-task-monitor-gutter));\n  margin: 16px 10px var(--sk-task-monitor-gutter) 4px;\n  position: relative;\n  overflow: hidden;\n  border: 0;\n  border-radius: var(--dsw-radius-panel, 28px);\n  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));\n  box-shadow: var(--dsw-elevation-soft);\n  --dsw-elevation-stroke-color: var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-task-monitor-side > * {\n  flex: 0 1 auto;\n  min-height: 0;\n}\n\n/* 面板顶部 13px 的 padding 带：内容往上滚时会从这条缝里露出来。盖片放在卡片上，\n   而不是每个分区头向上延伸 13px——那会把上一个分区的最后一行切掉。 */\n.sk-task-monitor-side::before {\n  content: "";\n  position: absolute;\n  inset: 0 0 auto;\n  z-index: 3;\n  height: 13px;\n  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));\n  pointer-events: none;\n}\n\n/*\n * 窄下来的顺序：先让卡片自己缩，实在放不下再收起。\n *   820 以下 250 → 220、700 以下 → 200（这三档都是卡片让步，对话列不动布局）\n *   500 以下直接收起（= 卡片的 2 倍）；React 按同一阈值决定是否渲染，这里是兜底。\n * 之所以不一步收到 1000：对话列 1000 时两侧都还很宽裕，硬收会让用户以为功能没了。\n */\n@container task-monitor (max-width: 820px) {\n  .sk-task-monitor-side {\n    flex-basis: 220px;\n    min-width: 220px;\n    max-width: 220px;\n  }\n}\n\n@container task-monitor (max-width: 700px) {\n  .sk-task-monitor-side {\n    flex-basis: 200px;\n    min-width: 200px;\n    max-width: 200px;\n  }\n}\n\n@container task-monitor (max-width: 500px) {\n  .sk-task-monitor-side {\n    display: none;\n  }\n}\n';
+    var style_default2 = '/* 会话内容区内的左右分栏：左边是宿主原本的消息列，右边是常驻监控栏。 */\n.sk-task-monitor-frame {\n  display: flex;\n  flex: 1;\n  flex-direction: row;\n  min-height: 0;\n  min-width: 0;\n  /* 卡片按「对话列自身」的宽度让步：左侧栏收起时窗口没变但这一列变宽了，\n     用窗口媒体查询会误判。@container 的收起阈值 500 与 state/rail.ts 的\n     RAIL_HIDE_WIDTH 保持一致（那边负责同时收掉标题栏按钮）。 */\n  container: task-monitor / inline-size;\n}\n\n.sk-task-monitor-column {\n  display: flex;\n  flex: 1;\n  flex-direction: column;\n  min-height: 0;\n  min-width: 0;\n}\n\n/*\n * 宽度取 250：与 Codex 主题的工作区列同宽，视觉上两边对齐；仍比 Qoder 的 253\n * 略窄，给对话列和右侧 turn 索引条留位置，只做「会话旁边的一张卡片」。\n * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），\n * 高度贴合内容（align-self: flex-start），内容过长时在卡内滚动。\n */\n.sk-task-monitor-side {\n  display: flex;\n  flex: 0 0 250px;\n  flex-direction: column;\n  align-self: flex-start;\n  min-height: 0;\n  min-width: 250px;\n  max-width: 250px;\n  /* 上下留白对齐输入框下方那条统计带（composer dock）：dock 的 padding-top 4px\n     + 一行 22px（20px 次级行 + 1px 上下 block padding）+ InputBar 根的\n     padding-bottom 4px。字号档位放大时跟着 --dsh-content-font-delta-secondary\n     一起长，和那边的预留高度同源。 */\n  --sk-task-monitor-gutter: calc(30px + var(--dsh-content-font-delta-secondary, 0px));\n  max-height: calc(100% - 16px - var(--sk-task-monitor-gutter));\n  margin: 16px 10px var(--sk-task-monitor-gutter) 4px;\n  position: relative;\n  overflow: hidden;\n  border: 0;\n  border-radius: var(--dsw-radius-panel, 28px);\n  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));\n  box-shadow: var(--dsw-elevation-soft);\n  --dsw-elevation-stroke-color: var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));\n}\n\n.sk-task-monitor-side > * {\n  flex: 0 1 auto;\n  min-height: 0;\n}\n\n/* 面板顶部 13px 的 padding 带：内容往上滚时会从这条缝里露出来。盖片放在卡片上，\n   而不是每个分区头向上延伸 13px——那会把上一个分区的最后一行切掉。 */\n.sk-task-monitor-side::before {\n  content: "";\n  position: absolute;\n  inset: 0 0 auto;\n  z-index: 3;\n  height: 13px;\n  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));\n  pointer-events: none;\n}\n\n/*\n * 窄下来的顺序：先让卡片自己缩，实在放不下再收起。\n *   820 以下 250 → 220、700 以下 → 200（这三档都是卡片让步，对话列不动布局）\n *   500 以下直接收起（= 卡片的 2 倍）；React 按同一阈值决定是否渲染，这里是兜底。\n * 之所以不一步收到 1000：对话列 1000 时两侧都还很宽裕，硬收会让用户以为功能没了。\n */\n/*\n * 新会话还没有任何条目：卡片不出现（对话区占满整行）。用 display:none 而不是\n * 不渲染——面板组件本身要挂载着去拉快照，否则永远判断不出「现在是空的」。\n */\n.sk-task-monitor-side[data-empty="true"] {\n  display: none;\n}\n\n@container task-monitor (max-width: 820px) {\n  .sk-task-monitor-side {\n    flex-basis: 220px;\n    min-width: 220px;\n    max-width: 220px;\n  }\n}\n\n@container task-monitor (max-width: 700px) {\n  .sk-task-monitor-side {\n    flex-basis: 200px;\n    min-width: 200px;\n    max-width: 200px;\n  }\n}\n\n@container task-monitor (max-width: 500px) {\n  .sk-task-monitor-side {\n    display: none;\n  }\n}\n';
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/index.tsx
     var NAME2 = "conversation-rail";
@@ -840,18 +877,19 @@ window.__ModuleLoader__.load({
       });
     }
     function RailLayer({ children, useSessions, Panel, actions, label }) {
-      const wrapRef = import_react4.default.useRef(null);
-      const [embedded, setEmbedded] = import_react4.default.useState(false);
-      const [maxHeight, setMaxHeight] = import_react4.default.useState(null);
+      const wrapRef = import_react5.default.useRef(null);
+      const [embedded, setEmbedded] = import_react5.default.useState(false);
+      const [maxHeight, setMaxHeight] = import_react5.default.useState(null);
       const sessionId = activeSessionId(useSessions);
       const choice = useRailChoice(sessionId);
       const narrow2 = useRailNarrow();
+      const empty = useHasContent(sessionId) === false;
       const open = !embedded && typeof sessionId === "string" && sessionId !== "" && (choice === "visible" || choice === null && !narrow2);
-      import_react4.default.useEffect(() => {
+      import_react5.default.useEffect(() => {
         const wrap = wrapRef.current;
         setEmbedded(wrap !== null && wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null);
       }, []);
-      import_react4.default.useEffect(() => {
+      import_react5.default.useEffect(() => {
         const wrap = wrapRef.current;
         if (wrap === null || typeof ResizeObserver === "undefined") return void 0;
         if (wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null) return void 0;
@@ -878,7 +916,9 @@ window.__ModuleLoader__.load({
         "aside",
         {
           className: "sk-task-monitor-side",
+          "data-empty": empty ? "true" : void 0,
           "aria-label": label,
+          "aria-hidden": empty ? true : void 0,
           style: maxHeight === null ? void 0 : { maxHeight }
         },
         /* @__PURE__ */ __dshReact.createElement(

@@ -8,6 +8,7 @@ import React from "react";
 import { installSlot } from "../../../../../client/ui/slot.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { TASK_MONITOR_NS } from "../../locale.js";
+import { useHasContent } from "../../state/content.js";
 import { setRailChoice, useRailChoice, useRailNarrow } from "../../state/rail.js";
 
 export const NAME = "header-button";
@@ -19,10 +20,14 @@ export function install(ctx: any) {
     const sessionId: string | undefined = props.sessionId;
     const choice = useRailChoice(sessionId);
     const narrow = useRailNarrow();
+    // 会话里还没产生任何条目（新开会话）时不出现：这时候展开也只有一个空壳子。
+    // undefined 是「还没拉到快照」，照常显示，免得按钮闪一下。
+    const empty = useHasContent(sessionId) === false;
     const open = typeof sessionId === "string" && sessionId !== ""
       && (choice === "visible" || (choice === null && !narrow));
     const label = t("trigger");
     const Icon = primitives.IconInspectOutlineRegular;
+    if (empty) return null;
     return (
       <button
         type="button"

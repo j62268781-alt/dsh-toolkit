@@ -72,6 +72,14 @@
  *   500 以下直接收起（= 卡片的 2 倍）；React 按同一阈值决定是否渲染，这里是兜底。
  * 之所以不一步收到 1000：对话列 1000 时两侧都还很宽裕，硬收会让用户以为功能没了。
  */
+/*
+ * 新会话还没有任何条目：卡片不出现（对话区占满整行）。用 display:none 而不是
+ * 不渲染——面板组件本身要挂载着去拉快照，否则永远判断不出「现在是空的」。
+ */
+.sk-task-monitor-side[data-empty="true"] {
+  display: none;
+}
+
 @container task-monitor (max-width: 820px) {
   .sk-task-monitor-side {
     flex-basis: 220px;
