@@ -1,8 +1,6 @@
 /*
  * 任务监控右栏 body。只服务面板自身子树，随组件 <style> 注入（§8 判定）。
- * 四个分区各借一个色相做图标座与强调：紫=能力、绿=产出、蓝=网页、琥珀=来源；
- * 底色一律 color-mix 14% 透明叠在宿主面板上，深浅色主题都成立；文字/悬停/圆角/焦点环
- * 全部走宿主 --dsw-* token 并带 px 兜底。
+ * 各分组用原有的颜色区分图标底座，半透明底色跟随宿主深浅主题。
  */
 
 .sk-task-monitor {
@@ -17,7 +15,8 @@
   height: auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 13px 8px;
+  padding-block: 0 4px;
+  padding-inline: 8px;
   scrollbar-width: none;
   color: var(--dsw-alias-label-primary, inherit);
   font-size: 12px;
@@ -53,10 +52,7 @@
 }
 
 .sk-task-monitor__trigger {
-  /* 吸顶：每个分区头在滚过自己那段时贴住滚动口（sectionList 效果）。
-     面板有 13px padding，top 取 0 时吸顶标题正好落在 padding 下沿（离卡片
-     顶边 13px）；滚动时露出 padding 带的那几像素由卡片自己封住（
-     conversation-rail 的 ::before 盖片），标题只画自己那一行。 */
+  /* 分组头贴住滚动口，底色和宿主会话一致，避免条目从标题后透出来。 */
   position: sticky;
   top: 0;
   z-index: 2;
@@ -69,9 +65,7 @@
   list-style: none;
   border: none;
   border-radius: var(--dsw-radius-sm, 6px);
-  /* 吸顶头必须是不透明底，否则下面的行会从标题里透出来；卡片本身是同色，
-     所以静止时看不出来。hover 用 background-image 叠一层半透明，不会盖掉底色。 */
-  background-color: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));
+  background-color: var(--dsw-alias-bg-base, Canvas);
   color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));
   font: inherit;
   font-weight: 600;
@@ -142,7 +136,7 @@
   padding: 0 2px 6px;
 }
 
-/* 条目行：24px 图标座 + 两行文本 + 右侧 meta；入场逐行 stagger（delay 由组件挂）。 */
+/* 条目行：图标 + 两行文本 + 右侧状态；入场延迟由组件传入。 */
 .sk-task-monitor__row {
   display: flex;
   align-items: center;
@@ -353,15 +347,6 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes sk-task-monitor-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--skm-source) 45%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--skm-source) 0%, transparent);
   }
 }
 

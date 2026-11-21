@@ -90,21 +90,19 @@ function RailLayer({ children, useSessions, Panel, actions, label }: RailProps) 
   }, []);
 
   // 容器宽度而不是窗口宽度：左侧栏收起/展开时窗口没变，但对话区变宽了，
-  // 用 window.matchMedia 会误判。阈值与 style.css 的 @container 保持一致。
+  // 用 window.matchMedia 会误判。只有这里决定是否默认收起，CSS 只负责宽度。
   React.useEffect(() => {
     const wrap = wrapRef.current;
     if (wrap === null || typeof ResizeObserver === "undefined") return undefined;
     // 子代理侧栏里那份是窄槽，量它会误伤主会话：embedded 的实例不参与判定。
     if (wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null) return undefined;
 
-    // 卡片的可用高度必须按「会话内容区的下沿」量，不能只靠 CSS 的 100%：hero.frame
-    // 的百分比基准在宿主里不一定等于可视区域，实测会出现卡片底部伸出窗口被裁掉。
-    // 46 = 上边距 16 + 底部统计带占位 30。
+    // 宿主的百分比基准不总是可视区域；这里量可见高度，由 CSS 扣除列表留白。
     const measure = () => {
       const rect = wrap.getBoundingClientRect();
       const scroll = wrap.querySelector("[data-conversation-scroll]");
       const bottom = scroll ? scroll.getBoundingClientRect().bottom : window.innerHeight;
-      setMaxHeight(Math.max(180, Math.round(bottom - rect.top - 46)));
+      setMaxHeight(Math.max(0, Math.round(bottom - rect.top)));
     };
     if (typeof window !== "undefined") window.addEventListener("resize", measure);
 
@@ -131,7 +129,7 @@ function RailLayer({ children, useSessions, Panel, actions, label }: RailProps) 
           data-empty={empty ? "true" : undefined}
           aria-label={label}
           aria-hidden={empty ? true : undefined}
-          style={maxHeight === null ? undefined : { maxHeight }}
+          style={maxHeight === null ? undefined : { "--sk-task-monitor-visible-height": `${maxHeight}px` } as React.CSSProperties}
         >
           <Panel
             key={sessionId}

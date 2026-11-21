@@ -5,9 +5,7 @@
   flex-direction: row;
   min-height: 0;
   min-width: 0;
-  /* 卡片按「对话列自身」的宽度让步：左侧栏收起时窗口没变但这一列变宽了，
-     用窗口媒体查询会误判。@container 的收起阈值 520 与 state/rail.ts 的
-     RAIL_HIDE_WIDTH 保持一致（那边负责同时收掉标题栏按钮）。 */
+  /* 左侧栏收起时窗口没变，但会话列变宽了。 */
   container: task-monitor / inline-size;
 }
 
@@ -19,70 +17,34 @@
   min-width: 0;
 }
 
-/*
- * 宽度取 260：比 Qoder 的 253 略宽一点，又比 Codex 主题的工作区列（250）宽 10px——
- * 卡片在对话区右侧，两边不同宽也不会被看成一组。只做「会话旁边的一张卡片」，
- * 剩下的宽度留给对话列和右侧 turn 索引条。
- * 面型与 composer 卡片同一套 token（圆角 28 + soft elevation 自带 0.5px 描边），
- * 高度贴合内容（align-self: flex-start），内容过长时在卡内滚动。
- */
+/* 复用宿主在滚动容器上实时测得的输入区高度，不改 scrollport 或吸底行为。
+   只缩短主会话的纵向轨道；不支持轨道内缩的浏览器保留宿主样式。 */
+.sk-task-monitor-frame:not([data-slot="sidebar.chat.conversation"] *) > .sk-task-monitor-column > [data-conversation-scroll]::-webkit-scrollbar-track:vertical {
+  margin-bottom: calc(2px + var(--dsh-composer-height, 0px));
+}
+
 .sk-task-monitor-side {
+  box-sizing: border-box;
   display: flex;
   flex: 0 0 260px;
   flex-direction: column;
-  align-self: flex-start;
+  /* 分隔线随会话内容区拉满；内边距只给滚动列表留白。 */
+  align-self: stretch;
   min-height: 0;
-  min-width: 260px;
-  max-width: 260px;
-  /* 上下留白对齐输入框下方那条统计带（composer dock）：dock 的 padding-top 4px
-     + 一行 22px（20px 次级行 + 1px 上下 block padding）+ InputBar 根的
-     padding-bottom 4px。字号档位放大时跟着 --dsh-content-font-delta-secondary
-     一起长，和那边的预留高度同源。 */
-  --sk-task-monitor-gutter: calc(30px + var(--dsh-content-font-delta-secondary, 0px));
-  max-height: calc(100% - 16px - var(--sk-task-monitor-gutter));
-  margin: 16px 10px var(--sk-task-monitor-gutter) 4px;
-  position: relative;
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--dsw-radius-panel, 28px);
-  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));
-  box-shadow: var(--dsw-elevation-soft);
-  --dsw-elevation-stroke-color: var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
+  min-width: 0;
+  --sk-task-monitor-inset-block: 8px;
+  padding-block: var(--sk-task-monitor-inset-block);
+  margin-inline: 4px 6px;
+  border-inline-start: 1px solid var(--dsw-alias-border-l3, rgba(128, 128, 128, 0.14));
 }
 
-.sk-task-monitor-side > * {
+.sk-task-monitor-side > .sk-task-monitor {
   flex: 0 1 auto;
   min-height: 0;
+  max-block-size: calc(var(--sk-task-monitor-visible-height) - 2 * var(--sk-task-monitor-inset-block));
 }
 
-/* 面板顶部 13px 的 padding 带：内容往上滚时会从这条缝里露出来。盖片放在卡片上，
-   而不是每个分区头向上延伸 13px——那会把上一个分区的最后一行切掉。 */
-.sk-task-monitor-side::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 3;
-  height: 13px;
-  background: var(--dsw-specific-input-major, var(--dsw-alias-bg-elevated, #fff));
-  pointer-events: none;
-}
-
-/*
- * 窄下来的顺序：先让卡片自己缩，实在放不下再收起。
- *   850 以下 260 → 230、730 以下 → 210（这几档都是卡片让步，对话列不动布局）
- *   520 以下直接收起（= 卡片的 2 倍）；React 按同一阈值决定是否渲染，这里是兜底。
- * 之所以不一步收到 1000：对话列 1000 时两侧都还很宽裕，硬收会让用户以为功能没了。
- */
-/*
- * 轮次导航条（宿主 dsh-client-ui-chat 的 TurnNavigator）按「对话区宽度 ≤900」
- * 自己 display:none。我们这张卡片占掉 260，等于把这个判定提前触发了——用户会
- * 觉得「装了监控条之后轮次导航没了」。所以栏开着时按「对话列还剩多少」重算：
- * 对话列 ≥520 就保持显示（520 正是卡片让位的下限），再窄交回宿主默认逻辑。
- *
- * 选择器走结构而不是宿主 hash 类名：导航条里每个刻度是带 data-index 的 button，
- * 一个 nav 里还有它们就说明是轮次导航。样式注入在 <style> 里（文档内、宿主 head
- * 的样式之后），同权重下靠顺序盖住宿主的 display:none。
- */
+/* 宿主轮次导航会按 ≤900px 隐藏。监控栏打开时仍在分栏容器 ≥800px 保留它。 */
 .sk-task-monitor-frame[data-rail="open"] nav:has(button[data-index]) {
   display: block;
 }
@@ -93,10 +55,7 @@
   }
 }
 
-/*
- * 新会话还没有任何条目：卡片不出现（对话区占满整行）。用 display:none 而不是
- * 不渲染——面板组件本身要挂载着去拉快照，否则永远判断不出「现在是空的」。
- */
+/* 保持组件挂载以拉取快照，但空面板不占位。 */
 .sk-task-monitor-side[data-empty="true"] {
   display: none;
 }
@@ -104,21 +63,12 @@
 @container task-monitor (max-width: 850px) {
   .sk-task-monitor-side {
     flex-basis: 230px;
-    min-width: 230px;
-    max-width: 230px;
   }
 }
 
 @container task-monitor (max-width: 730px) {
   .sk-task-monitor-side {
-    flex-basis: 210px;
-    min-width: 210px;
-    max-width: 210px;
-  }
-}
-
-@container task-monitor (max-width: 520px) {
-  .sk-task-monitor-side {
-    display: none;
+    /* 窄屏默认收起由 rail 状态决定；手动打开时仍给正文留出大部分宽度。 */
+    flex-basis: min(210px, 40cqi);
   }
 }
