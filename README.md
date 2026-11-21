@@ -68,6 +68,8 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 
 只需要单个模块时，也可将已构建的 `packages/<module>` 目录作为独立 bundle 安装，包名见下表。
 
+只需要 **Git 约定和任务监控** 时，可一次安装 `dsh-toolkit-git-task-monitor`。它保留两个模块的 ID、设置和历史；与这两个独立包以及聚合包互斥。已有安装请先阅读[组合包切换步骤](packages/git-task-monitor/README.md#安装或切换)。
+
 ### 已经安装了十一个独立模块？
 
 先备份目标 profile 的清单、锁文件和配置，再让 DSH 助手完成切换：**安装暂不启用的聚合包 → 移除十一个独立 bundle 安装项 → 启用聚合包**。聚合包保留相同的模块条目 ID，已有配置与组件开关继续生效。这条本地切换路径已经验证。

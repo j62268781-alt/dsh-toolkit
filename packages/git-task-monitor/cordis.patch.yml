@@ -1,0 +1,5 @@
+- insert:
+    - id: dsh-toolkit-git
+      name: ./lib/git/index.js
+    - id: dsh-toolkit-task-monitor
+      name: ./lib/task-monitor/index.js

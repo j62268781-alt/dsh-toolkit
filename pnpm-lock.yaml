@@ -177,6 +177,8 @@ importers:
 
   packages/git: {}
 
+  packages/git-task-monitor: {}
+
   packages/hooks: {}
 
   packages/judgment:
