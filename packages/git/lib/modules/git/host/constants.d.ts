@@ -9,6 +9,9 @@ export declare const GIT_CREATE_BRANCH_PATH: string;
  * 而统计每次面板轮询都会来问，两类读取的代价与频率差了一个量级。
  */
 export declare const GIT_CHANGES_PATH: string;
+export declare const GIT_PUBLISH_PREVIEW_PATH: string;
+export declare const GIT_PUBLISH_ACTION_PATH: string;
+export declare const MAX_PUBLISH_MESSAGE_LENGTH = 4000;
 /** 一次最多列多少条本地分支：再多也不适合一个弹层，且 `for-each-ref` 的输出要兜住。 */
 export declare const MAX_BRANCH_LIST = 200;
 /** 分支名上限。Git 自己按引用名长度兜底，这里先挡住明显异常的输入。 */
@@ -87,8 +90,23 @@ export declare const GIT_REASON: {
     readonly renameFailed: 4109;
     readonly gitMissing: 5201;
 };
+export declare const GIT_PUBLISH_REASON: {
+    readonly 'invalid-cwd': 4101;
+    readonly 'not-a-repository': 4103;
+    readonly 'commit-failed': 4106;
+    readonly 'detached-head': 4110;
+    readonly 'nothing-staged': 4111;
+    readonly 'stale-preview': 4112;
+    readonly 'no-push-destination': 4113;
+    readonly 'push-behind': 4114;
+    readonly 'push-failed': 4115;
+    readonly 'nothing-to-push': 4116;
+    readonly 'invalid-message': 4117;
+    readonly 'commit-in-progress': 4118;
+    readonly 'git-missing': 5201;
+};
 /** `GIT_REASON` 反向查：`snapshot` 里给 client 的是稳定的字符串 key。 */
-export type GitReasonKey = 'invalid-cwd' | 'invalid-branch' | 'not-a-repository' | 'checkout-failed' | 'create-failed' | 'commit-failed' | 'sync-failed' | 'delete-failed' | 'rename-failed' | 'git-missing';
+export type GitReasonKey = 'invalid-cwd' | 'invalid-branch' | 'not-a-repository' | 'checkout-failed' | 'create-failed' | 'commit-failed' | 'sync-failed' | 'delete-failed' | 'rename-failed' | 'stale-preview' | 'git-missing';
 /**
  * 归一化提交说明：统一换行符、去掉控制字符（保留 `\n` 与 `\t`）、裁掉首尾空白、截断超长部分。
  * 它最终会进系统提示词，控制字符（尤其是 `\u001b`）只会让提示词变成噪声。

@@ -514,6 +514,8 @@ window.__ModuleLoader__.load({
     var GIT_CHECKOUT_PATH = `${API_PREFIX}/checkout`;
     var GIT_CREATE_BRANCH_PATH = `${API_PREFIX}/create-branch`;
     var GIT_CHANGES_PATH = `${API_PREFIX}/changes`;
+    var GIT_PUBLISH_PREVIEW_PATH = `${API_PREFIX}/publish-preview`;
+    var GIT_PUBLISH_ACTION_PATH = `${API_PREFIX}/publish-action`;
     var MAX_BRANCH_NAME_LENGTH = 200;
     var DEFAULT_BRANCH_PREFIX = "";
     var DEFAULT_ALWAYS_FORCE_PUSH = false;
@@ -543,6 +545,33 @@ window.__ModuleLoader__.load({
       }
       return true;
     }
+    var GIT_REASON = {
+      invalidCwd: 4101,
+      invalidBranch: 4102,
+      notRepository: 4103,
+      checkoutFailed: 4104,
+      createFailed: 4105,
+      commitFailed: 4106,
+      syncFailed: 4107,
+      deleteFailed: 4108,
+      renameFailed: 4109,
+      gitMissing: 5201
+    };
+    var GIT_PUBLISH_REASON = {
+      "invalid-cwd": GIT_REASON.invalidCwd,
+      "not-a-repository": GIT_REASON.notRepository,
+      "commit-failed": GIT_REASON.commitFailed,
+      "detached-head": 4110,
+      "nothing-staged": 4111,
+      "stale-preview": 4112,
+      "no-push-destination": 4113,
+      "push-behind": 4114,
+      "push-failed": 4115,
+      "nothing-to-push": 4116,
+      "invalid-message": 4117,
+      "commit-in-progress": 4118,
+      "git-missing": GIT_REASON.gitMissing
+    };
     function normalizeCommitInstructions(value) {
       return value.replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").trim().slice(0, MAX_COMMIT_INSTRUCTIONS_LENGTH);
     }
@@ -850,6 +879,19 @@ window.__ModuleLoader__.load({
       );
     }
 
+    // src/modules/git/client/repository-events.ts
+    var CHANGED = "dsh-toolkit-git:repository-changed";
+    function announceRepositoryChange(cwd) {
+      window.dispatchEvent(new window.CustomEvent(CHANGED, { detail: cwd }));
+    }
+    function onRepositoryChange(cwd, callback) {
+      const listener = (event) => {
+        if (event.detail === cwd) callback();
+      };
+      window.addEventListener(CHANGED, listener);
+      return () => window.removeEventListener(CHANGED, listener);
+    }
+
     // src/modules/git/client/model.ts
     var EMPTY_VIEW = { root: "", branch: "", detached: false, dirty: false, branches: [], remotes: [] };
     function strings(value) {
@@ -917,10 +959,11 @@ window.__ModuleLoader__.load({
       return function BranchChip(props) {
         const { sessionId, useSessions, useProjection } = props;
         const hero = props.placement === "hero";
+        const monitor = props.placement === "monitor";
         const blank = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.blank === true) : false;
         const projected = typeof useProjection === "function" ? useProjection("workingDirectory") : void 0;
         const owned = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.cwd) : void 0;
-        const cwd = typeof projected === "string" && projected !== "" ? projected : typeof owned === "string" ? owned : "";
+        const cwd = monitor && typeof props.cwd === "string" ? props.cwd : typeof projected === "string" && projected !== "" ? projected : typeof owned === "string" ? owned : "";
         const [view, setView] = import_react3.default.useState(EMPTY_VIEW);
         const [hidden, setHidden] = import_react3.default.useState(false);
         const [open, setOpen] = import_react3.default.useState(false);
@@ -933,12 +976,15 @@ window.__ModuleLoader__.load({
           setView(toBranchView(payload));
           setHidden(false);
         }, []);
+        const request = import_react3.default.useRef(0);
         const load = import_react3.default.useCallback(async () => {
           if (cwd === "") return;
+          const id = ++request.current;
           setLoading(true);
           try {
             const response = await fetchJson(GIT_BRANCHES_PATH, { json: { cwd } });
             const payload = await response.json().catch(() => null);
+            if (id !== request.current) return;
             if (response.ok) {
               accept(payload);
             } else if (payload?.reason === "not-a-repository" || payload?.reason === "invalid-cwd") {
@@ -947,9 +993,9 @@ window.__ModuleLoader__.load({
               toast.error(t("branchLoadFailed", { reason: reasonOf(payload) }));
             }
           } catch (cause) {
-            toast.error(t("branchLoadFailed", { reason: cause?.message ?? "network" }));
+            if (id === request.current) toast.error(t("branchLoadFailed", { reason: cause?.message ?? "network" }));
           } finally {
-            setLoading(false);
+            if (id === request.current) setLoading(false);
           }
         }, [cwd, t]);
         import_react3.default.useEffect(() => {
@@ -958,7 +1004,16 @@ window.__ModuleLoader__.load({
             return;
           }
           setHidden(false);
+          setView(EMPTY_VIEW);
+          setOpen(false);
+          setPending(null);
+          setCreator(CLOSED_CREATOR);
           void load();
+          const off = onRepositoryChange(cwd, () => void load());
+          return () => {
+            ++request.current;
+            off();
+          };
         }, [cwd, load]);
         const submit = import_react3.default.useCallback(async (name, create) => {
           if (cwd === "" || busy !== "") return;
@@ -968,6 +1023,7 @@ window.__ModuleLoader__.load({
             const payload = await response.json().catch(() => null);
             if (response.ok) {
               accept(payload);
+              announceRepositoryChange(cwd);
               setOpen(false);
               setCreator(CLOSED_CREATOR);
               setPending(null);
@@ -999,24 +1055,27 @@ window.__ModuleLoader__.load({
         }
         const draft = creator.draft;
         const draftValid = isBranchName(draft);
-        if (!showsAt(hero ? "hero" : "composer", blank)) return null;
+        if (!monitor && !showsAt(hero ? "hero" : "composer", blank)) return null;
         if (hidden) return null;
         const label = view.detached || view.branch === "" ? t("branchDetached") : view.branch;
-        const trigger = /* @__PURE__ */ __dshReact.createElement(
+        const triggerProps = {
+          type: "button",
+          "aria-haspopup": Menu === void 0 ? void 0 : "menu",
+          "aria-expanded": Menu === void 0 ? void 0 : open,
+          title: t("branchTrigger"),
+          onClick: () => {
+            if (Menu === void 0) return;
+            const next = !open;
+            setOpen(next);
+            setQuery("");
+            if (next) void load();
+          }
+        };
+        const trigger = monitor ? props.renderTrigger(triggerProps) : /* @__PURE__ */ __dshReact.createElement(
           "button",
           {
-            type: "button",
-            className: hero ? "sk-git-branch__trigger sk-git-branch__trigger--hero" : "sk-git-branch__trigger",
-            "aria-haspopup": Menu === void 0 ? void 0 : "menu",
-            "aria-expanded": Menu === void 0 ? void 0 : open,
-            title: t("branchTrigger"),
-            onClick: () => {
-              if (Menu === void 0) return;
-              const next = !open;
-              setOpen(next);
-              setQuery("");
-              if (next) void load();
-            }
+            ...triggerProps,
+            className: hero ? "sk-git-branch__trigger sk-git-branch__trigger--hero" : "sk-git-branch__trigger"
           },
           BranchIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-git-branch__icon", "aria-hidden": true }, /* @__PURE__ */ __dshReact.createElement(BranchIcon, { size: hero ? 16 : 14 })),
           /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-git-branch__name", "data-detached": view.detached || view.branch === "" ? "true" : void 0 }, label),
@@ -1049,8 +1108,8 @@ window.__ModuleLoader__.load({
             open,
             portal: true,
             dense: true,
-            side: hero ? "bottom" : "top",
-            align: hero ? "end" : "start",
+            side: hero || monitor ? "bottom" : "top",
+            align: hero || monitor ? "end" : "start",
             anchor: trigger,
             onClose: () => setOpen(false)
           },

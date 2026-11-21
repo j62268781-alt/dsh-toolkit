@@ -9,6 +9,7 @@
  * （解析、状态码折射、名字校验的前后顺序）都能在测试里用手写结果覆盖，不需要真的建仓库。
  */
 import { isAbsolute } from 'node:path'
+import { hasCommitInProgress } from './commit-state.js'
 import { runProcess } from '../../../host/process.js'
 import { GIT_TIMEOUT_MS, MAX_BRANCH_LIST, isBranchName, type GitReasonKey } from './constants.js'
 
@@ -26,6 +27,7 @@ export interface BranchSnapshot {
   readonly root: string
   readonly branch: string
   readonly detached: boolean
+  readonly linkedWorktree: boolean
   readonly dirty: boolean
   readonly branches: readonly string[]
   /** 远端跟踪引用（`origin/main` 这种短名）；`origin/HEAD` 是符号引用，不算分支。 */
@@ -271,12 +273,21 @@ export function createRepository(run: GitRunner = defaultRunner) {
     return { ok: true, root, branch: detached ? '' : name, detached, dirty, branches: ordered, remotes }
   }
 
+  async function snapshotOf(cwd: string): Promise<BranchResult> {
+    const current = await branchOf(cwd)
+    if (current.ok !== true) return current
+    // 比较 Git 自己解析出的两个目录，不靠路径名判断；子模块和 separate-git-dir 也可以有 .git 文件。
+    const dirs = await run(cwd, ['rev-parse', '--path-format=absolute', '--git-dir', '--git-common-dir'])
+    const [gitDir, commonDir] = dirs.stdout.trimEnd().split(/\r?\n/)
+    return { ...current, linkedWorktree: dirs.code === 0 && !!gitDir && !!commonDir && gitDir !== commonDir }
+  }
+
   return {
     /** 一次拿全：仓库根、当前分支、是否有未提交改动、本地分支列表。 */
     async snapshot(cwd: unknown): Promise<BranchResult> {
       const resolved = assertDirectory(cwd)
       if (typeof resolved !== 'string') return resolved
-      return branchOf(resolved)
+      return snapshotOf(resolved)
     },
 
     async changes(cwd: unknown): Promise<ChangesResult> {
@@ -301,11 +312,11 @@ export function createRepository(run: GitRunner = defaultRunner) {
           ? await switchTo(run, resolved, short, false)
           : await switchTracking(run, resolved, name, short)
         if (failed !== undefined) return failed
-        return branchOf(resolved)
+        return snapshotOf(resolved)
       }
       const failed = await switchTo(run, resolved, name, false)
       if (failed !== undefined) return failed
-      return branchOf(resolved)
+      return snapshotOf(resolved)
     },
 
     async createBranch(cwd: unknown, name: unknown): Promise<BranchResult> {
@@ -324,7 +335,7 @@ export function createRepository(run: GitRunner = defaultRunner) {
       if (checked.code !== 0) return failure('invalid-branch', firstLine(checked.stderr) || 'git 不接受这个分支名。')
       const failed = await switchTo(run, resolved, name, true)
       if (failed !== undefined) return failed
-      return branchOf(resolved)
+      return snapshotOf(resolved)
     },
 
     /**
@@ -337,7 +348,11 @@ export function createRepository(run: GitRunner = defaultRunner) {
     async commit(
       cwd: unknown,
       message: unknown,
-      options: { readonly all?: boolean, readonly paths?: readonly string[] } = {},
+      options: {
+        readonly all?: boolean,
+        readonly paths?: readonly string[],
+        readonly expected?: { readonly branchRef: string, readonly head: string | null, readonly tree: string },
+      } = {},
     ): Promise<CommandOutcome> {
       const resolved = assertDirectory(cwd)
       if (typeof resolved !== 'string') return resolved
@@ -349,6 +364,9 @@ export function createRepository(run: GitRunner = defaultRunner) {
       const paths = Array.isArray(options.paths)
         ? options.paths.filter((item): item is string => typeof item === 'string' && item !== '')
         : []
+      if (options.expected !== undefined && (paths.length > 0 || options.all === true)) {
+        return failure('commit-failed', '确认后的提交只能使用已暂存的内容。')
+      }
       // 初值用「上一次 add 成功」的退出码：没传 paths/all 时也要走下面那次暂存区检查。
       let staged: GitCommandResult = { code: 0, stdout: '', stderr: '' }
       if (paths.length > 0) {
@@ -373,6 +391,21 @@ export function createRepository(run: GitRunner = defaultRunner) {
           return failure('commit-failed', how)
         }
         if ((check.code ?? 0) > 1) return failure('commit-failed', firstLine(check.stderr) || '读取暂存区失败。')
+      }
+      if (options.expected !== undefined) {
+        const expected = options.expected
+        const gitDir = await run(resolved, ['rev-parse', '--absolute-git-dir'])
+        if (gitDir.code !== 0 || !isAbsolute(gitDir.stdout.trim()) || await hasCommitInProgress(gitDir.stdout.trim())) {
+          return failure('stale-preview', 'Git 操作状态已变更，请重新预览。')
+        }
+        const ref = await run(resolved, ['symbolic-ref', '-q', 'HEAD'])
+        const head = await run(resolved, ['rev-parse', '--verify', 'HEAD'])
+        const tree = await run(resolved, ['write-tree'])
+        if (ref.code !== 0 || ref.stdout.trim() !== expected.branchRef
+          || (head.code === 0 ? head.stdout.trim() : null) !== expected.head
+          || tree.code !== 0 || tree.stdout.trim() !== expected.tree) {
+          return failure('stale-preview', '分支、HEAD 或暂存区已变更，请重新预览。')
+        }
       }
       const argv = ['commit', '-m', message]
       const result = await run(resolved, argv)

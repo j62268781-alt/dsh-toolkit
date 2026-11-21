@@ -28,6 +28,7 @@ import { primitives } from "../../../../../client/ui/primitives.js";
 import { confirmDialog } from "../../../../../client/ui/components/confirm-dialog/index.jsx";
 import { toast } from "../../../../../client/ui/toast.js";
 import { GIT_NS } from "../../locale.js";
+import { announceRepositoryChange, onRepositoryChange } from "../../repository-events.js";
 import {
   DEFAULT_BRANCH_PREFIX,
   GIT_BRANCHES_PATH,
@@ -94,6 +95,7 @@ export function createBranchChip(ctx: any) {
   return function BranchChip(props: any) {
     const { sessionId, useSessions, useProjection } = props;
     const hero = props.placement === "hero";
+    const monitor = props.placement === "monitor";
     // 宿主的 hero 行只在 `summaryBlank` 时渲染；底栏反过来只在非 blank 时显示，
     // 否则新会话页会同时出现顶栏 git 与底栏分支按钮。
     const blank = typeof useSessions === "function"
@@ -104,9 +106,11 @@ export function createBranchChip(ctx: any) {
     const owned = typeof useSessions === "function"
       ? useSessions((snapshot: any) => snapshot?.byId?.[sessionId]?.cwd)
       : undefined;
-    const cwd = typeof projected === "string" && projected !== ""
-      ? projected
-      : (typeof owned === "string" ? owned : "");
+    const cwd = monitor && typeof props.cwd === "string"
+      ? props.cwd
+      : typeof projected === "string" && projected !== ""
+        ? projected
+        : (typeof owned === "string" ? owned : "");
 
     const [view, setView] = React.useState<BranchView>(EMPTY_VIEW);
     const [hidden, setHidden] = React.useState(false);
@@ -124,12 +128,15 @@ export function createBranchChip(ctx: any) {
       setHidden(false);
     }, []);
 
+    const request = React.useRef(0);
     const load = React.useCallback(async () => {
       if (cwd === "") return;
+      const id = ++request.current;
       setLoading(true);
       try {
         const response = await fetchJson(GIT_BRANCHES_PATH, { json: { cwd } });
         const payload = await response.json().catch(() => null);
+        if (id !== request.current) return;
         if (response.ok) {
           accept(payload);
         } else if (payload?.reason === "not-a-repository" || payload?.reason === "invalid-cwd") {
@@ -139,9 +146,9 @@ export function createBranchChip(ctx: any) {
           toast.error(t("branchLoadFailed", { reason: reasonOf(payload) }));
         }
       } catch (cause: any) {
-        toast.error(t("branchLoadFailed", { reason: cause?.message ?? "network" }));
+        if (id === request.current) toast.error(t("branchLoadFailed", { reason: cause?.message ?? "network" }));
       } finally {
-        setLoading(false);
+        if (id === request.current) setLoading(false);
       }
     }, [cwd, t]);
 
@@ -151,7 +158,13 @@ export function createBranchChip(ctx: any) {
         return;
       }
       setHidden(false);
+      setView(EMPTY_VIEW);
+      setOpen(false);
+      setPending(null);
+      setCreator(CLOSED_CREATOR);
       void load();
+      const off = onRepositoryChange(cwd, () => void load());
+      return () => { ++request.current; off(); };
     }, [cwd, load]);
 
     const submit = React.useCallback(async (name: string, create: boolean) => {
@@ -162,6 +175,7 @@ export function createBranchChip(ctx: any) {
         const payload = await response.json().catch(() => null);
         if (response.ok) {
           accept(payload);
+          announceRepositoryChange(cwd);
           setOpen(false);
           setCreator(CLOSED_CREATOR);
           setPending(null);
@@ -200,24 +214,27 @@ export function createBranchChip(ctx: any) {
     const draft = creator.draft;
     const draftValid = isBranchName(draft);
 
-    if (!showsAt(hero ? "hero" : "composer", blank)) return null;
+    if (!monitor && !showsAt(hero ? "hero" : "composer", blank)) return null;
     if (hidden) return null;
 
     const label = view.detached || view.branch === "" ? t("branchDetached") : view.branch;
-    const trigger = (
+    const triggerProps = {
+      type: "button" as const,
+      "aria-haspopup": Menu === undefined ? undefined : "menu" as const,
+      "aria-expanded": Menu === undefined ? undefined : open,
+      title: t("branchTrigger"),
+      onClick: () => {
+        if (Menu === undefined) return;
+        const next = !open;
+        setOpen(next);
+        setQuery("");
+        if (next) void load();
+      },
+    };
+    const trigger = monitor ? props.renderTrigger(triggerProps) : (
       <button
-        type="button"
+        {...triggerProps}
         className={hero ? "sk-git-branch__trigger sk-git-branch__trigger--hero" : "sk-git-branch__trigger"}
-        aria-haspopup={Menu === undefined ? undefined : "menu"}
-        aria-expanded={Menu === undefined ? undefined : open}
-        title={t("branchTrigger")}
-        onClick={() => {
-          if (Menu === undefined) return;
-          const next = !open;
-          setOpen(next);
-          setQuery("");
-          if (next) void load();
-        }}
       >
         {/* 图标必须包一层 flex:none：标签被 max-width 夹住时，裸 <svg> 会被压扁成 5×14。 */}
         {BranchIcon === undefined ? null : (
@@ -284,8 +301,8 @@ export function createBranchChip(ctx: any) {
             open={open}
             portal
             dense
-            side={hero ? "bottom" : "top"}
-            align={hero ? "end" : "start"}
+            side={hero || monitor ? "bottom" : "top"}
+            align={hero || monitor ? "end" : "start"}
             anchor={trigger}
             onClose={() => setOpen(false)}
           >

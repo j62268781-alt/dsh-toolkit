@@ -23,6 +23,9 @@ export const GIT_CREATE_BRANCH_PATH = `${API_PREFIX}/create-branch`
  * 而统计每次面板轮询都会来问，两类读取的代价与频率差了一个量级。
  */
 export const GIT_CHANGES_PATH = `${API_PREFIX}/changes`
+export const GIT_PUBLISH_PREVIEW_PATH = `${API_PREFIX}/publish-preview`
+export const GIT_PUBLISH_ACTION_PATH = `${API_PREFIX}/publish-action`
+export const MAX_PUBLISH_MESSAGE_LENGTH = 4000
 
 /** 一次最多列多少条本地分支：再多也不适合一个弹层，且 `for-each-ref` 的输出要兜住。 */
 export const MAX_BRANCH_LIST = 200
@@ -136,6 +139,22 @@ export const GIT_REASON = {
   gitMissing: 5201,
 } as const
 
+export const GIT_PUBLISH_REASON = {
+  'invalid-cwd': GIT_REASON.invalidCwd,
+  'not-a-repository': GIT_REASON.notRepository,
+  'commit-failed': GIT_REASON.commitFailed,
+  'detached-head': 4110,
+  'nothing-staged': 4111,
+  'stale-preview': 4112,
+  'no-push-destination': 4113,
+  'push-behind': 4114,
+  'push-failed': 4115,
+  'nothing-to-push': 4116,
+  'invalid-message': 4117,
+  'commit-in-progress': 4118,
+  'git-missing': GIT_REASON.gitMissing,
+} as const
+
 /** `GIT_REASON` 反向查：`snapshot` 里给 client 的是稳定的字符串 key。 */
 export type GitReasonKey =
   | 'invalid-cwd'
@@ -147,6 +166,7 @@ export type GitReasonKey =
   | 'sync-failed'
   | 'delete-failed'
   | 'rename-failed'
+  | 'stale-preview'
   | 'git-missing'
 
 /**

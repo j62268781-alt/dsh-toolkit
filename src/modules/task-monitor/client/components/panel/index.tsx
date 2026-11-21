@@ -15,6 +15,9 @@ import { primitives } from "../../../../../client/ui/primitives.js";
 import { showToast } from "../../../../../client/ui/toast.js";
 import { setHasContent } from "../../state/content.js";
 import { GIT_BRANCHES_PATH, GIT_CHANGES_PATH } from "../../../../git/client/constants.js";
+import { onRepositoryChange } from "../../../../git/client/repository-events.js";
+import { createBranchChip } from "../../../../git/client/surfaces/branch-chip/index.jsx";
+import { createGitPublish } from "../../../../git/client/components/publish/index.jsx";
 import { TASK_MONITOR_NS } from "../../locale.js";
 import {
   TASK_MONITOR_POLL_MS,
@@ -27,6 +30,9 @@ import { changesReviewAddress, fileAddressFor, groupSections, hiddenOf, visibleO
 import panelCss from "./style.css";
 
 export const NAME = "panel";
+
+const noDirectorySubscription = () => () => {};
+const noDirectorySnapshot = () => undefined;
 
 const SECTION_COPY: Record<TaskMonitorSectionKind, { title: string, desc: string, empty: string }> = {
   capability: { title: "sectionCapability", desc: "sectionCapabilityDesc", empty: "emptyCapability" },
@@ -45,6 +51,7 @@ interface GitStrip {
   readonly branch: string;
   readonly dirty: boolean;
   readonly detached: boolean;
+  readonly linkedWorktree: boolean;
   /** 工作区增删行数；读不到（不是仓库、没装 git）时为 null，这一行退回「有未提交改动」。 */
   readonly changes: ChangesStat | null;
 }
@@ -79,13 +86,10 @@ function reasonOf(payload: any, fallback: string): string {
   return fallback;
 }
 
-function dirNameOf(cwd: string): string {
-  const parts = cwd.split(/[\\/]/).filter((part) => part !== "");
-  return parts.length === 0 ? "" : parts[parts.length - 1];
-}
-
 export function createTaskMonitorPanel(ctx: any) {
   const t = ctx.locale.bind(TASK_MONITOR_NS);
+  const BranchChip = createBranchChip(ctx);
+  const GitPublish = createGitPublish(ctx, t);
   const ChevronIcon = primitives.IconChevronDownOutlineRegular;
   const BranchIcon = primitives.IconBranchOutlineRegular;
   const ChecklistIcon = primitives.IconChecklistOutlineRegular;
@@ -119,7 +123,16 @@ export function createTaskMonitorPanel(ctx: any) {
     const visible = tab?.visible !== false;
     const actions = props.actions ?? tab?.actions;
     const revision = tab?.navigation?.revision ?? 0;
-    const projected = typeof useProjection === "function" ? useProjection("workingDirectory") : undefined;
+    const slotDirectory = typeof useProjection === "function" ? useProjection("workingDirectory") : undefined;
+    // The root-scoped conversation frame does not receive the session's useProjection hook.
+    const directory = useProjection === undefined && typeof sessionId === "string"
+      ? ctx.get?.("sessions")?.binding?.(sessionId)?.session?.projections?.faceOf?.("workingDirectory")
+      : undefined;
+    const boundDirectory = React.useSyncExternalStore(
+      directory?.subscribe ?? noDirectorySubscription,
+      directory?.getSnapshot ?? noDirectorySnapshot,
+    );
+    const projected = slotDirectory ?? boundDirectory;
     const owned = typeof useSessions === "function"
       ? useSessions((snapshot: any) => snapshot?.byId?.[sessionId]?.cwd)
       : undefined;
@@ -130,7 +143,8 @@ export function createTaskMonitorPanel(ctx: any) {
     const [error, setError] = React.useState("");
     const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
     const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
-    const [git, setGit] = React.useState<GitStrip | null>(null);
+    const [gitSnapshot, setGitSnapshot] = React.useState<{ cwd: string; data: GitStrip } | null>(null);
+    const git = gitSnapshot?.cwd === cwd ? gitSnapshot.data : null;
     const [review, setReview] = React.useState<{ seq: number; turn: number } | null>(null);
 
     const load = React.useCallback(async (quiet: boolean) => {
@@ -153,47 +167,46 @@ export function createTaskMonitorPanel(ctx: any) {
       }
     }, [sessionId]);
 
-    // 新会话没有任何条目时不该显示这条栏：把「有没有内容」报给 state/content，
-    // 会话内右栏和标题行按钮都按它决定是否出现。只认 ready——加载中 / 出错时
-    // 还没结论，保持沉默（那边按 undefined 当成「有内容」处理）。
+    // Git 环境本身就是可用内容，即使新会话还没有监控记录。
+    const hasContent = entries.length > 0 || git !== null;
     React.useEffect(() => {
-      if (phase !== "ready") return;
-      setHasContent(sessionId, entries.length > 0);
-    }, [phase, entries.length, sessionId]);
-
-    const loadGit = React.useCallback(async () => {
-      if (cwd === "") {
-        setGit(null);
-        return;
-      }
-      try {
-        // 分支快照与改动统计各自独立：统计失败不该把分支行一起抹掉（反之亦然）。
-        const [branchResponse, changesResponse] = await Promise.all([
-          fetchJson(GIT_BRANCHES_PATH, { json: { cwd } }),
-          fetchJson(GIT_CHANGES_PATH, { json: { cwd } }).catch(() => null),
-        ]);
-        const payload = await branchResponse.json();
-        if (!branchResponse.ok || payload?.ok !== true) {
-          setGit(null);
-          return;
-        }
-        let changes: ChangesStat | null = null;
-        if (changesResponse?.ok === true) {
-          changes = changesOf(await changesResponse.json().catch(() => null));
-        }
-        setGit({
-          branch: typeof payload.branch === "string" ? payload.branch : "",
-          dirty: payload.dirty === true,
-          detached: payload.detached === true,
-          changes,
-        });
-      } catch {
-        setGit(null);
-      }
-    }, [cwd]);
+      if (phase !== "ready" && !hasContent) return;
+      setHasContent(sessionId, hasContent);
+    }, [phase, hasContent, sessionId]);
 
     React.useEffect(() => { void load(false); }, [load, revision]);
-    React.useEffect(() => { void loadGit(); }, [loadGit]);
+    React.useEffect(() => {
+      if (cwd === "") return undefined;
+      let version = 0;
+      const refresh = async () => {
+        const request = ++version;
+        try {
+          // 只有分支快照能确认仓库；改动统计失败不影响环境信息。
+          const [branchResponse, changesResponse] = await Promise.all([
+            fetchJson(GIT_BRANCHES_PATH, { json: { cwd } }),
+            fetchJson(GIT_CHANGES_PATH, { json: { cwd } }).catch(() => null),
+          ]);
+          const payload = await branchResponse.json();
+          if (request !== version || !branchResponse.ok || payload?.ok !== true) return;
+          const changes = changesResponse?.ok === true
+            ? changesOf(await changesResponse.json().catch(() => null)) : null;
+          // 切目录时，两次请求不一定按发起顺序返回。
+          if (request !== version) return;
+          setGitSnapshot({ cwd, data: {
+            branch: typeof payload.branch === "string" ? payload.branch : "",
+            dirty: payload.dirty === true,
+            detached: payload.detached === true,
+            linkedWorktree: payload.linkedWorktree === true,
+            changes,
+          } });
+        } catch {
+          // 无法确认是 Git 仓库时，不展示这组信息。
+        }
+      };
+      void refresh();
+      const off = onRepositoryChange(cwd, () => void refresh());
+      return () => { ++version; off(); };
+    }, [cwd, revision]);
     React.useEffect(() => {
       if (!visible) return undefined;
       const timer = setInterval(() => { void load(true); }, TASK_MONITOR_POLL_MS);
@@ -315,34 +328,35 @@ export function createTaskMonitorPanel(ctx: any) {
           </span>
         </div>,
       );
-    }
-    envRows.push(
-      <div className="sk-task-monitor__row" data-kind="environment" key="local">
-        <span className="sk-task-monitor__seat" aria-hidden="true">{FolderIcon === undefined ? null : <FolderIcon size={14} />}</span>
-        <span className="sk-task-monitor__txt">
-          <span className="sk-task-monitor__label">{t("envLocal")}</span>
-        </span>
-      </div>,
-    );
-    if (git !== null) {
       envRows.push(
-        <div className="sk-task-monitor__row" data-kind="environment" key="branch" title={git.branch}>
-          <span className="sk-task-monitor__seat" aria-hidden="true">{BranchIcon === undefined ? null : <BranchIcon size={14} />}</span>
+        <div className="sk-task-monitor__row" data-kind="environment" key="local">
+          <span className="sk-task-monitor__seat" aria-hidden="true">{FolderIcon === undefined ? null : <FolderIcon size={14} />}</span>
           <span className="sk-task-monitor__txt">
-            <span className="sk-task-monitor__label">{git.detached ? "HEAD" : git.branch}</span>
+            <span className="sk-task-monitor__label">{t(git.linkedWorktree ? "envWorktree" : "envLocal")}</span>
           </span>
         </div>,
+        <BranchChip
+          key={`branch:${cwd}`}
+          cwd={cwd}
+          placement="monitor"
+          renderTrigger={(trigger: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+            <button {...trigger} className="sk-task-monitor__row" data-kind="environment" data-clickable={trigger["aria-haspopup"] ? true : undefined}>
+              <span className="sk-task-monitor__seat" aria-hidden="true">{BranchIcon === undefined ? null : <BranchIcon size={14} />}</span>
+              <span className="sk-task-monitor__txt">
+                <span className="sk-task-monitor__label">{git.detached ? "HEAD" : git.branch}</span>
+              </span>
+              {trigger["aria-haspopup"] && ChevronIcon ? <ChevronIcon size={12} aria-hidden="true" /> : null}
+            </button>
+          )}
+        />,
       );
-    }
-    const dirName = dirNameOf(cwd);
-    if (dirName !== "") {
       envRows.push(
-        <div className="sk-task-monitor__row" data-kind="environment" key="dir" title={cwd}>
+        <GitPublish key={`publish:${cwd}`} cwd={cwd}>
           <span className="sk-task-monitor__seat" aria-hidden="true">{TreeIcon === undefined ? null : <TreeIcon size={14} />}</span>
           <span className="sk-task-monitor__txt">
-            <span className="sk-task-monitor__label">{dirName}</span>
+            <span className="sk-task-monitor__label">{t("gitPublishTitle")}</span>
           </span>
-        </div>,
+        </GitPublish>,
       );
     }
 
@@ -363,7 +377,7 @@ export function createTaskMonitorPanel(ctx: any) {
     };
 
     return (
-      <div className="sk-task-monitor" data-phase={phase} data-empty={phase === "ready" && entries.length === 0 ? "true" : undefined}>
+      <div className="sk-task-monitor" data-phase={phase} data-empty={phase === "ready" && !hasContent ? "true" : undefined}>
         <style>{panelCss}</style>
         {envRows.length === 0 ? null : (
           <details

@@ -10,7 +10,7 @@ import { build } from 'esbuild'
 import React from 'react'
 import { TASK_MONITOR_COPY } from '../../src/modules/task-monitor/client/locale.ts'
 import { TASK_MONITOR_SNAPSHOT_PATH } from '../../src/modules/task-monitor/host/constants.ts'
-import { GIT_BRANCHES_PATH, GIT_CHANGES_PATH } from '../../src/modules/git/host/constants.ts'
+import { GIT_BRANCHES_PATH, GIT_CHANGES_PATH, GIT_CHECKOUT_PATH } from '../../src/modules/git/host/constants.ts'
 
 const ENTRY = 'src/modules/task-monitor/client/components/panel/index.tsx'
 
@@ -29,9 +29,8 @@ function fakePrimitives() {
   return {
     Button: ({ children, onClick, disabled, variant }) => React.createElement('button', { 'data-variant': variant, onClick, disabled }, children),
     Input: (props) => React.createElement('input', props),
-    Menu: ({ anchor, items, open, onSelect }) => React.createElement('div', { className: 'fake-menu' }, anchor, open
-      ? React.createElement('ul', null, items.map((item) => React.createElement('li', { key: item.id }, React.createElement('button', { onClick: () => onSelect(item.id) }, item.label))))
-      : null),
+    Menu: ({ anchor, open, children }) => React.createElement(React.Fragment, null, anchor, open ? children : null),
+    MenuItemButton: ({ children, onSelect, disabled }) => React.createElement('button', { onClick: onSelect, disabled }, children),
     Modal: ({ title, description, children, footer }) => React.createElement('div', { className: 'fake-modal', role: 'dialog' },
       React.createElement('h3', null, title), React.createElement('p', null, description), children,
       React.createElement('div', { className: 'fake-modal-foot' }, footer)),
@@ -130,7 +129,14 @@ function fakeFetch(state) {
       if (state.failSnapshot) return respond(500, { ok: false, code: 5101, detail: 'store down' })
       return respond(200, { ok: true, sessionId: body.sessionId, updatedAt: 1700000000000, entries: state.entries, review: state.review ?? null })
     }
-    if (url === GIT_BRANCHES_PATH) return respond(200, { ok: true, branch: 'main', dirty: true, detached: false })
+    if (url === GIT_BRANCHES_PATH) {
+      if (state.notRepository) return respond(400, { ok: false, detail: '不是 Git 仓库' })
+      return respond(200, { ok: true, branch: state.branch ?? 'main', branches: ['main', 'topic'], dirty: state.dirty ?? true, detached: false, linkedWorktree: state.linkedWorktree === true })
+    }
+    if (url === GIT_CHECKOUT_PATH) {
+      state.branch = body.name
+      return respond(200, { ok: true, branch: state.branch, branches: ['main', 'topic'], dirty: false, detached: false, linkedWorktree: state.linkedWorktree === true })
+    }
     if (url === GIT_CHANGES_PATH) {
       return respond(200, state.changes ?? { ok: true, files: 0, insertions: 0, deletions: 0, untracked: 0 })
     }
@@ -164,10 +170,20 @@ async function mount(t, dom, state, { host = true, reviewAction = true } = {}) {
   const { createRoot } = await import('react-dom/client')
   const { createTaskMonitorPanel } = await loadEntry(host ? 'host' : 'bare')
   const opened = []
-  const Tab = createTaskMonitorPanel({ locale: { bind: () => translator() } })
+  const directoryListeners = new Set()
+  const directory = {
+    subscribe: (listener) => {
+      directoryListeners.add(listener)
+      return () => directoryListeners.delete(listener)
+    },
+    getSnapshot: () => state.directory,
+  }
+  const Tab = createTaskMonitorPanel({
+    locale: { bind: () => translator() },
+    get: (key) => key === 'sessions' ? { binding: () => ({ session: { projections: { faceOf: () => directory } } }) } : undefined,
+  })
   const props = {
     sessionId: 's1',
-    useProjection: () => 'D:/repo',
     useSessions: (selector) => selector({ byId: { s1: { cwd: 'D:/repo' } } }),
     useTabInfo: () => ({ tab: { visible: true, navigation: { revision: 0 }, actions: {
       openResource: (address) => opened.push(['resource', address]),
@@ -179,7 +195,13 @@ async function mount(t, dom, state, { host = true, reviewAction = true } = {}) {
   await act(async () => root.render(React.createElement(Tab, props)))
   t.after(async () => { await act(async () => root.unmount()) })
   t.after(() => dom.restoreGlobals())
-  return { act, root, opened, calls }
+  const changeDirectory = async (path) => {
+    await act(async () => {
+      state.directory = path
+      for (const listener of directoryListeners) listener()
+    })
+  }
+  return { act, root, opened, calls, changeDirectory }
 }
 
 const query = (dom, selector) => dom.window.document.querySelector(selector)
@@ -226,7 +248,7 @@ test('环境信息 + 四分区渲染：计数、去重后不显示 ×N、失败�
   assert.equal(rowsIn(dom, 'web').length, 2)
   assert.ok(rowsIn(dom, 'web').some((row) => row.querySelector('.sk-task-monitor__failed') !== null))
   const env = rowsIn(dom, 'environment').map((row) => row.querySelector('.sk-task-monitor__label').textContent)
-  assert.deepEqual(env, ['有未提交改动', '本地', 'main', 'repo'])
+  assert.deepEqual(env, ['有未提交改动', '本地', 'main', '提交与推送'])
   // 产出 / 来源只画文件名：目录副标题不再出现在行里（避免两行文本挤成三行）。
   assert.ok(rowsIn(dom, 'artifact')[0].querySelector('.sk-task-monitor__detail') === null, '产出行没有副标题')
   assert.ok(rowsIn(dom, 'source')[0].querySelector('.sk-task-monitor__detail') === null, '来源行没有副标题')
@@ -235,6 +257,36 @@ test('环境信息 + 四分区渲染：计数、去重后不显示 ×N、失败�
   assert.equal(all(dom, '.sk-task-monitor__section[data-kind="knowledge"]').length, 0)
   assert.equal(all(dom, '.sk-task-monitor__add').length, 0)
   assert.equal(all(dom, '.sk-task-monitor__remove').length, 0)
+})
+
+test('工作树标签与分支切换使用实际执行目录，发布先打开确认流程', async (t) => {
+  const dom = withDom(t)
+  const state = { entries: [], dirty: false }
+  const { act, calls, changeDirectory } = await mount(t, dom, state)
+  const env = () => rowsIn(dom, 'environment').slice(0, 4)
+  assert.match(env()[1].textContent, /本地/)
+  assert.equal(query(dom, '.sk-task-monitor').hasAttribute('data-empty'), false, 'Git 环境不依赖历史记录')
+  state.linkedWorktree = true
+  await changeDirectory('D:/linked')
+  assert.match(env()[1].textContent, /工作树/)
+  assert.equal(env()[2].getAttribute('aria-haspopup'), 'menu')
+  await click(dom, act, env()[2])
+  const branch = all(dom, 'button').find((node) => node.textContent.trim() === 'topic')
+  assert.ok(branch, '复用分支选择菜单')
+  await click(dom, act, branch)
+  assert.deepEqual(calls.find(({ url }) => url === GIT_CHECKOUT_PATH)?.body, { cwd: 'D:/linked', name: 'topic' })
+  assert.match(env()[2].textContent, /topic/)
+  const before = calls.length
+  await click(dom, act, env()[3])
+  assert.ok(query(dom, '[role="dialog"]'))
+  assert.equal(calls.length, before, '打开发布对话框不写入 Git')
+})
+
+test('非 Git 工作目录不显示环境信息，任务记录仍正常显示', async (t) => {
+  const dom = withDom(t)
+  await mount(t, dom, { entries: seedEntries(), notRepository: true })
+  assert.ok(query(dom, '.sk-task-monitor__section[data-kind="environment"]') === null)
+  assert.equal(rowsIn(dom, 'web').length, 2)
 })
 
 test('网页查阅只显示完整链接；无链接的搜索记录只显示搜索词', async (t) => {
@@ -254,9 +306,9 @@ test('网页查阅只显示完整链接；无链接的搜索记录只显示搜�
   assert.deepEqual(opened, [['tab', 'browser', { params: { url } }]])
 })
 
-test('新会话没有条目时打上 data-empty，右栏与标题栏按钮据此不出现', async (t) => {
+test('非 Git 新会话没有条目时打上 data-empty，右栏与标题栏按钮据此不出现', async (t) => {
   const dom = withDom(t)
-  await mount(t, dom, { entries: [] })
+  await mount(t, dom, { entries: [], notRepository: true })
   const root = query(dom, '.sk-task-monitor')
   assert.equal(root.getAttribute('data-empty'), 'true')
   // 面板仍然挂载着（轮询要跑），只是由 data-empty 让外层把它藏掉。

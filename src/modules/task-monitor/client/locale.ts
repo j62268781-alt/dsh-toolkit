@@ -1,3 +1,5 @@
+import { GIT_PUBLISH_COPY } from "../../git/client/components/publish/locale.js";
+
 export const TASK_MONITOR_NS = "shell-kit.task-monitor";
 
 /**
@@ -13,7 +15,8 @@ export const TASK_MONITOR_COPY = {
     envClean: "无变更",
     envDirty: "有未提交改动",
     envLocal: "本地",
-    envDir: "目录",
+    envWorktree: "工作树",
+    ...GIT_PUBLISH_COPY.zh,
     sectionCapability: "技能与 MCP",
     sectionCapabilityDesc: "显示任务使用的技能、MCP 和其他运行时能力",
     sectionArtifact: "产出",
@@ -45,7 +48,8 @@ export const TASK_MONITOR_COPY = {
     envClean: "No changes",
     envDirty: "Uncommitted changes",
     envLocal: "Local",
-    envDir: "Folder",
+    envWorktree: "Worktree",
+    ...GIT_PUBLISH_COPY.en,
     sectionCapability: "Skills & MCP",
     sectionCapabilityDesc: "Skills, MCP servers and other runtime capabilities this task used",
     sectionArtifact: "Artifacts",

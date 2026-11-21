@@ -1,0 +1,55 @@
+.sk-git-publish {
+  display: grid;
+  gap: 12px;
+  max-block-size: min(55vh, 32rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
+
+.sk-git-publish__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sk-git-publish :where(p, dl, dd, ul) {
+  margin: 0;
+}
+
+.sk-git-publish__facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  align-items: baseline;
+}
+
+.sk-git-publish__paths {
+  padding-inline-start: 1.25em;
+  white-space: pre-wrap;
+}
+
+.sk-git-publish__message {
+  display: grid;
+  gap: 4px;
+}
+
+.sk-git-publish__message textarea {
+  box-sizing: border-box;
+  min-inline-size: 0;
+  padding: 8px;
+  border: 1px solid var(--dsw-alias-border-l2, GrayText);
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.sk-git-publish__status:empty {
+  position: absolute;
+}
+
+.sk-git-publish__error {
+  white-space: pre-wrap;
+}

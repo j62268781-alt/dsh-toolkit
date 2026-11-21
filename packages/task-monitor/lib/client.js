@@ -57,6 +57,76 @@ window.__ModuleLoader__.load({
       return () => tag.remove();
     }
 
+    // src/modules/git/client/components/publish/locale.ts
+    var GIT_PUBLISH_COPY = {
+      zh: {
+        gitPublishTitle: "提交与推送",
+        gitPublishChoose: "选择一项操作查看预览。提交不会自动推送。",
+        gitPublishPreviewCommit: "预览提交",
+        gitPublishPreviewPush: "预览推送",
+        gitPublishLoading: "正在读取预览…",
+        gitPublishWorkspace: "工作目录",
+        gitPublishBranch: "分支",
+        gitPublishRemote: "远程仓库",
+        gitPublishRef: "目标引用",
+        gitPublishAhead: "领先（本地记录）",
+        gitPublishBehind: "落后（本地记录）",
+        gitPublishUnknown: "未知",
+        gitPublishStagedOnly: "仅提交已暂存的改动；不会暂存其他文件，也不会推送。",
+        gitPublishStagedPaths: "已暂存的文件",
+        gitPublishNothingStaged: "没有已暂存的改动。",
+        gitPublishMessage: "提交说明",
+        gitPublishPushScope: "只推送已提交的历史，不会提交暂存或未暂存的改动。",
+        gitPublishNoDestination: "未找到可用的推送目标。",
+        gitPublishPushBehind: "本地记录显示当前分支落后于远程；请先同步。",
+        gitPublishNothingToPush: "没有待推送的提交。",
+        gitPublishConfirmCommit: "确认提交",
+        gitPublishConfirmPush: "确认推送",
+        gitPublishWorking: "正在执行 Git 操作…",
+        gitPublishCommitDone: "已提交暂存的改动，未推送。",
+        gitPublishPushDone: "推送完成。",
+        gitPublishPreviewFailed: "无法读取 Git 预览。",
+        gitPublishActionFailed: "Git 操作未成功，请重新预览后再确认。",
+        gitPublishStale: "仓库状态已变化或预览已过期，请重新预览。",
+        gitPublishUncertain: "无法确认 Git 操作是否完成。请检查仓库状态（推送时也请检查远程），不要直接重试。",
+        gitPublishCancel: "取消",
+        gitPublishClose: "关闭"
+      },
+      en: {
+        gitPublishTitle: "Commit and push",
+        gitPublishChoose: "Choose an operation to preview. A commit does not push automatically.",
+        gitPublishPreviewCommit: "Preview commit",
+        gitPublishPreviewPush: "Preview push",
+        gitPublishLoading: "Loading preview…",
+        gitPublishWorkspace: "Working directory",
+        gitPublishBranch: "Branch",
+        gitPublishRemote: "Remote",
+        gitPublishRef: "Target ref",
+        gitPublishAhead: "Ahead (local record)",
+        gitPublishBehind: "Behind (local record)",
+        gitPublishUnknown: "Unknown",
+        gitPublishStagedOnly: "Only staged changes will be committed. This does not stage other files or push.",
+        gitPublishStagedPaths: "Staged files",
+        gitPublishNothingStaged: "There are no staged changes.",
+        gitPublishMessage: "Commit message",
+        gitPublishPushScope: "Only committed history will be pushed. This does not commit staged or unstaged changes.",
+        gitPublishNoDestination: "No push destination is available.",
+        gitPublishPushBehind: "The local record shows this branch is behind the remote. Sync first.",
+        gitPublishNothingToPush: "There are no commits to push.",
+        gitPublishConfirmCommit: "Confirm commit",
+        gitPublishConfirmPush: "Confirm push",
+        gitPublishWorking: "Running Git operation…",
+        gitPublishCommitDone: "Staged changes committed. Nothing was pushed.",
+        gitPublishPushDone: "Push complete.",
+        gitPublishPreviewFailed: "Could not load the Git preview.",
+        gitPublishActionFailed: "The Git operation did not succeed. Preview it again before confirming.",
+        gitPublishStale: "The repository changed or the preview expired. Load a new preview.",
+        gitPublishUncertain: "Could not confirm whether the Git operation finished. Check the repository (and the remote for a push) before trying again.",
+        gitPublishCancel: "Cancel",
+        gitPublishClose: "Close"
+      }
+    };
+
     // src/modules/task-monitor/client/locale.ts
     var TASK_MONITOR_NS = "shell-kit.task-monitor";
     var TASK_MONITOR_COPY = {
@@ -67,7 +137,8 @@ window.__ModuleLoader__.load({
         envClean: "无变更",
         envDirty: "有未提交改动",
         envLocal: "本地",
-        envDir: "目录",
+        envWorktree: "工作树",
+        ...GIT_PUBLISH_COPY.zh,
         sectionCapability: "技能与 MCP",
         sectionCapabilityDesc: "显示任务使用的技能、MCP 和其他运行时能力",
         sectionArtifact: "产出",
@@ -99,7 +170,8 @@ window.__ModuleLoader__.load({
         envClean: "No changes",
         envDirty: "Uncommitted changes",
         envLocal: "Local",
-        envDir: "Folder",
+        envWorktree: "Worktree",
+        ...GIT_PUBLISH_COPY.en,
         sectionCapability: "Skills & MCP",
         sectionCapabilityDesc: "Skills, MCP servers and other runtime capabilities this task used",
         sectionArtifact: "Artifacts",
@@ -293,10 +365,10 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/index.tsx
-    var import_react6 = __toESM(require("react"), 1);
+    var import_react8 = __toESM(require("react"), 1);
 
     // src/modules/task-monitor/client/components/panel/index.tsx
-    var import_react5 = __toESM(require("react"), 1);
+    var import_react7 = __toESM(require("react"), 1);
 
     // src/client/http.ts
     var DEFAULT_TIMEOUT_MS = 15e3;
@@ -482,6 +554,12 @@ window.__ModuleLoader__.load({
       while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
       arm(host, entry, holdMs);
     }
+    var toast = {
+      show: showToast,
+      info: (text, options = {}) => showToast(text, { ...options, tone: "info" }),
+      success: (text, options = {}) => showToast(text, { ...options, tone: "success" }),
+      error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
+    };
 
     // src/host/paths.ts
     var PLUGIN_API_ROOT = "/api/plugins/toolkit";
@@ -495,6 +573,629 @@ window.__ModuleLoader__.load({
     var GIT_CHECKOUT_PATH = `${API_PREFIX}/checkout`;
     var GIT_CREATE_BRANCH_PATH = `${API_PREFIX}/create-branch`;
     var GIT_CHANGES_PATH = `${API_PREFIX}/changes`;
+    var GIT_PUBLISH_PREVIEW_PATH = `${API_PREFIX}/publish-preview`;
+    var GIT_PUBLISH_ACTION_PATH = `${API_PREFIX}/publish-action`;
+    var MAX_PUBLISH_MESSAGE_LENGTH = 4e3;
+    var MAX_BRANCH_NAME_LENGTH = 200;
+    var GIT_PUSH_TIMEOUT_MS = 12e4;
+    var DEFAULT_BRANCH_PREFIX = "";
+    function isBranchName(value) {
+      if (value === "" || value.length > MAX_BRANCH_NAME_LENGTH) return false;
+      if (!/^[A-Za-z0-9._/-]+$/.test(value)) return false;
+      if (value.startsWith("-") || value.startsWith("/") || value.endsWith("/")) return false;
+      if (value.includes("..") || value.includes("//") || value.includes("@{")) return false;
+      if (value === "@" || value.endsWith(".")) return false;
+      for (const part of value.split("/")) {
+        if (part === "" || part.startsWith(".") || part.endsWith(".lock")) return false;
+      }
+      return true;
+    }
+    var GIT_REASON = {
+      invalidCwd: 4101,
+      invalidBranch: 4102,
+      notRepository: 4103,
+      checkoutFailed: 4104,
+      createFailed: 4105,
+      commitFailed: 4106,
+      syncFailed: 4107,
+      deleteFailed: 4108,
+      renameFailed: 4109,
+      gitMissing: 5201
+    };
+    var GIT_PUBLISH_REASON = {
+      "invalid-cwd": GIT_REASON.invalidCwd,
+      "not-a-repository": GIT_REASON.notRepository,
+      "commit-failed": GIT_REASON.commitFailed,
+      "detached-head": 4110,
+      "nothing-staged": 4111,
+      "stale-preview": 4112,
+      "no-push-destination": 4113,
+      "push-behind": 4114,
+      "push-failed": 4115,
+      "nothing-to-push": 4116,
+      "invalid-message": 4117,
+      "commit-in-progress": 4118,
+      "git-missing": GIT_REASON.gitMissing
+    };
+
+    // src/modules/git/client/repository-events.ts
+    var CHANGED = "dsh-toolkit-git:repository-changed";
+    function announceRepositoryChange(cwd) {
+      window.dispatchEvent(new window.CustomEvent(CHANGED, { detail: cwd }));
+    }
+    function onRepositoryChange(cwd, callback) {
+      const listener = (event) => {
+        if (event.detail === cwd) callback();
+      };
+      window.addEventListener(CHANGED, listener);
+      return () => window.removeEventListener(CHANGED, listener);
+    }
+
+    // src/modules/git/client/surfaces/branch-chip/index.tsx
+    var import_react5 = __toESM(require("react"), 1);
+
+    // src/client/ime.ts
+    function isComposingEvent(event) {
+      const native = event?.nativeEvent ?? event;
+      return native?.isComposing === true || native?.keyCode === 229;
+    }
+
+    // src/client/config.ts
+    var ROOT_ENTRIES = ["shell-kit", "dsh-toolkit", "dsh-shell-kit"];
+    function moduleEntryId(namespace) {
+      const module2 = { judgement: "judgment", skillsMcp: "skills-mcp" }[namespace] ?? namespace;
+      return `dsh-toolkit-${module2}`;
+    }
+    var EMPTY = Object.freeze({});
+    var forms = /* @__PURE__ */ new WeakMap();
+    function scopeForm(form, namespace) {
+      let namespaces = forms.get(form);
+      if (!namespaces) forms.set(form, namespaces = /* @__PURE__ */ new Map());
+      if (namespaces.has(namespace)) return namespaces.get(namespace);
+      let previous;
+      let projected;
+      const pathOf = (path) => [namespace, ...Array.isArray(path) ? path : [path]];
+      const getSnapshot = () => {
+        const snapshot = form.getSnapshot?.() ?? form.store?.getSnapshot?.() ?? form.snapshot ?? EMPTY;
+        if (snapshot !== previous || projected === void 0) {
+          previous = snapshot;
+          projected = snapshot !== null && typeof snapshot === "object" && "value" in snapshot ? { ...snapshot, value: snapshot.value?.[namespace] ?? EMPTY } : snapshot?.[namespace] ?? EMPTY;
+        }
+        return projected;
+      };
+      const subscribe = (listener) => {
+        if (typeof form.subscribe === "function") return form.subscribe(listener);
+        return form.store?.subscribe?.(listener);
+      };
+      const scoped = { getSnapshot, subscribe };
+      Object.defineProperty(scoped, "snapshot", { get: getSnapshot });
+      scoped.store = { getSnapshot, subscribe };
+      for (const key of ["status", "writable", "revision"]) {
+        Object.defineProperty(scoped, key, { get: () => form[key] });
+      }
+      if (typeof form.mutate === "function") {
+        scoped.set = (path, value, ...args) => form.mutate([{ op: "set", path: pathOf(path), value }], ...args);
+        scoped.unset = (path, ...args) => form.mutate([{ op: "unset", path: pathOf(path) }], ...args);
+        scoped.mutate = (operations, ...args) => form.mutate(operations.map((operation) => ({ ...operation, path: pathOf(operation.path ?? []) })), ...args);
+      }
+      namespaces.set(namespace, scoped);
+      return scoped;
+    }
+    function findScopedForm(ctx, namespace, legacyCandidates = []) {
+      const candidates = [.../* @__PURE__ */ new Set([moduleEntryId(namespace), ...legacyCandidates, ...ROOT_ENTRIES])];
+      for (const entryId of candidates) {
+        try {
+          const form = ctx?.configForms?.get?.(entryId);
+          if (form) return { form: ROOT_ENTRIES.includes(entryId) ? scopeForm(form, namespace) : form, entryId };
+        } catch {
+        }
+      }
+      return { form: void 0, entryId: moduleEntryId(namespace) };
+    }
+
+    // src/client/ui/components/confirm-dialog/index.tsx
+    function confirmDialog({
+      primitives: primitives2,
+      title,
+      description,
+      children,
+      onCancel,
+      onConfirm,
+      pending = false,
+      confirmButton,
+      closeLabel = "关闭",
+      cancelLabel = "取消",
+      confirmLabel = "删除",
+      pendingLabel = "删除中…"
+    }) {
+      const Modal = primitives2?.Modal;
+      if (Modal === void 0) return null;
+      const Button = primitives2.Button ?? "button";
+      const confirm = confirmButton ?? /* @__PURE__ */ __dshReact.createElement(Button, { variant: "primary", key: "ok", onClick: onConfirm, disabled: pending }, pending ? pendingLabel : confirmLabel);
+      return /* @__PURE__ */ __dshReact.createElement(
+        Modal,
+        {
+          open: true,
+          onClose: onCancel,
+          title,
+          closeLabel,
+          description,
+          footer: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(Button, { variant: "outline", key: "cancel", onClick: onCancel, disabled: pending }, cancelLabel), confirm)
+        },
+        children
+      );
+    }
+
+    // src/modules/git/client/locale.ts
+    var GIT_NS = "shell-kit.git";
+
+    // src/modules/git/client/model.ts
+    var EMPTY_VIEW = { root: "", branch: "", detached: false, dirty: false, branches: [], remotes: [] };
+    function strings(value) {
+      return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
+    }
+    function toBranchView(payload) {
+      return {
+        root: typeof payload?.root === "string" ? payload.root : "",
+        branch: typeof payload?.branch === "string" ? payload.branch : "",
+        detached: payload?.detached === true,
+        dirty: payload?.dirty === true,
+        branches: strings(payload?.branches),
+        remotes: strings(payload?.remotes)
+      };
+    }
+    function filterBranches(branches, query) {
+      const tokens = query.toLowerCase().split(/\s+/).filter((token) => token !== "");
+      if (tokens.length === 0) return [...branches];
+      return branches.filter((branch) => {
+        const haystack = branch.toLowerCase();
+        return tokens.every((token) => haystack.includes(token));
+      });
+    }
+    function showsAt(placement, blank) {
+      return placement === "hero" ? blank : !blank;
+    }
+
+    // src/modules/git/client/surfaces/branch-chip/index.tsx
+    var CLOSED_CREATOR = { open: false, draft: "", error: "" };
+    function reasonOf(payload) {
+      if (payload !== null && typeof payload === "object" && typeof payload.detail === "string" && payload.detail !== "") {
+        return payload.detail;
+      }
+      if (payload !== null && typeof payload === "object" && typeof payload.reason === "string") return payload.reason;
+      return "git";
+    }
+    function createBranchChip(ctx) {
+      const t = ctx.locale.bind(GIT_NS);
+      const Menu = primitives.Menu;
+      const Input = primitives.Input;
+      const MenuItemButton = primitives.MenuItemButton;
+      const BranchIcon = primitives.IconBranchOutlineRegular;
+      const ChevronIcon = primitives.IconChevronDownOutlineRegular;
+      const SearchIcon = primitives.IconSearchOutlineRegular;
+      const PlusIcon = primitives.IconPlusOutlineRegular;
+      const CheckIcon = primitives.IconCheckOutlineRegular;
+      function readPrefix() {
+        try {
+          const { form } = findScopedForm(ctx, "git");
+          const snapshot = form?.getSnapshot?.();
+          const value = snapshot?.value ?? snapshot;
+          const prefix = value?.branchPrefix;
+          return typeof prefix === "string" ? prefix : DEFAULT_BRANCH_PREFIX;
+        } catch {
+          return DEFAULT_BRANCH_PREFIX;
+        }
+      }
+      return function BranchChip(props) {
+        const { sessionId, useSessions, useProjection } = props;
+        const hero = props.placement === "hero";
+        const monitor = props.placement === "monitor";
+        const blank = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.blank === true) : false;
+        const projected = typeof useProjection === "function" ? useProjection("workingDirectory") : void 0;
+        const owned = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.cwd) : void 0;
+        const cwd = monitor && typeof props.cwd === "string" ? props.cwd : typeof projected === "string" && projected !== "" ? projected : typeof owned === "string" ? owned : "";
+        const [view, setView] = import_react5.default.useState(EMPTY_VIEW);
+        const [hidden, setHidden] = import_react5.default.useState(false);
+        const [open, setOpen] = import_react5.default.useState(false);
+        const [query, setQuery] = import_react5.default.useState("");
+        const [busy, setBusy] = import_react5.default.useState("");
+        const [pending, setPending] = import_react5.default.useState(null);
+        const [creator, setCreator] = import_react5.default.useState(CLOSED_CREATOR);
+        const [loading, setLoading] = import_react5.default.useState(true);
+        const accept = import_react5.default.useCallback((payload) => {
+          setView(toBranchView(payload));
+          setHidden(false);
+        }, []);
+        const request = import_react5.default.useRef(0);
+        const load = import_react5.default.useCallback(async () => {
+          if (cwd === "") return;
+          const id = ++request.current;
+          setLoading(true);
+          try {
+            const response = await fetchJson(GIT_BRANCHES_PATH, { json: { cwd } });
+            const payload = await response.json().catch(() => null);
+            if (id !== request.current) return;
+            if (response.ok) {
+              accept(payload);
+            } else if (payload?.reason === "not-a-repository" || payload?.reason === "invalid-cwd") {
+              setHidden(true);
+            } else {
+              toast.error(t("branchLoadFailed", { reason: reasonOf(payload) }));
+            }
+          } catch (cause) {
+            if (id === request.current) toast.error(t("branchLoadFailed", { reason: cause?.message ?? "network" }));
+          } finally {
+            if (id === request.current) setLoading(false);
+          }
+        }, [cwd, t]);
+        import_react5.default.useEffect(() => {
+          if (cwd === "") {
+            setHidden(true);
+            return;
+          }
+          setHidden(false);
+          setView(EMPTY_VIEW);
+          setOpen(false);
+          setPending(null);
+          setCreator(CLOSED_CREATOR);
+          void load();
+          const off = onRepositoryChange(cwd, () => void load());
+          return () => {
+            ++request.current;
+            off();
+          };
+        }, [cwd, load]);
+        const submit = import_react5.default.useCallback(async (name, create) => {
+          if (cwd === "" || busy !== "") return;
+          setBusy(create ? "create" : "switch");
+          try {
+            const response = await fetchJson(create ? GIT_CREATE_BRANCH_PATH : GIT_CHECKOUT_PATH, { json: { cwd, name } });
+            const payload = await response.json().catch(() => null);
+            if (response.ok) {
+              accept(payload);
+              announceRepositoryChange(cwd);
+              setOpen(false);
+              setCreator(CLOSED_CREATOR);
+              setPending(null);
+            } else {
+              toast.error(t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: reasonOf(payload) }));
+            }
+          } catch (cause) {
+            toast.error(t(create ? "branchCreateFailed" : "branchSwitchFailed", { reason: cause?.message ?? "network" }));
+          } finally {
+            setBusy("");
+          }
+        }, [accept, busy, cwd, t]);
+        const pick = import_react5.default.useCallback((name) => {
+          if (busy !== "") return;
+          if (name === view.branch) {
+            setOpen(false);
+            return;
+          }
+          if (view.dirty) {
+            setPending({ name });
+            return;
+          }
+          void submit(name, false);
+        }, [busy, submit, view.branch, view.dirty]);
+        function openCreator() {
+          setOpen(false);
+          setQuery("");
+          setCreator({ open: true, draft: readPrefix(), error: "" });
+        }
+        const draft = creator.draft;
+        const draftValid = isBranchName(draft);
+        if (!monitor && !showsAt(hero ? "hero" : "composer", blank)) return null;
+        if (hidden) return null;
+        const label = view.detached || view.branch === "" ? t("branchDetached") : view.branch;
+        const triggerProps = {
+          type: "button",
+          "aria-haspopup": Menu === void 0 ? void 0 : "menu",
+          "aria-expanded": Menu === void 0 ? void 0 : open,
+          title: t("branchTrigger"),
+          onClick: () => {
+            if (Menu === void 0) return;
+            const next = !open;
+            setOpen(next);
+            setQuery("");
+            if (next) void load();
+          }
+        };
+        const trigger = monitor ? props.renderTrigger(triggerProps) : /* @__PURE__ */ __dshReact.createElement(
+          "button",
+          {
+            ...triggerProps,
+            className: hero ? "sk-git-branch__trigger sk-git-branch__trigger--hero" : "sk-git-branch__trigger"
+          },
+          BranchIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-git-branch__icon", "aria-hidden": true }, /* @__PURE__ */ __dshReact.createElement(BranchIcon, { size: hero ? 16 : 14 })),
+          /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-git-branch__name", "data-detached": view.detached || view.branch === "" ? "true" : void 0 }, label),
+          ChevronIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(
+            "span",
+            {
+              className: open ? "sk-git-branch__chevron sk-git-branch__chevron--open" : "sk-git-branch__chevron",
+              "aria-hidden": true
+            },
+            /* @__PURE__ */ __dshReact.createElement(ChevronIcon, { size: hero ? 12 : 14 })
+          )
+        );
+        const visible = filterBranches(view.branches, query);
+        const visibleRemotes = filterBranches(view.remotes, query);
+        const branchItem = (name, current) => /* @__PURE__ */ __dshReact.createElement(
+          MenuItemButton,
+          {
+            key: current ? `local:${name}` : `remote:${name}`,
+            icon: BranchIcon === void 0 ? void 0 : /* @__PURE__ */ __dshReact.createElement(BranchIcon, { size: 14 }),
+            current,
+            disabled: busy !== "",
+            onSelect: () => pick(name)
+          },
+          /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-git-branch__option" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-git-branch__optionName" }, name), current && CheckIcon !== void 0 ? /* @__PURE__ */ __dshReact.createElement(CheckIcon, { size: 14 }) : null)
+        );
+        const list = visible.length === 0 && visibleRemotes.length === 0 ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git-branch__empty", role: "status" }, loading ? t("branchLoading") : view.branches.length === 0 && view.remotes.length === 0 ? t("branchEmpty") : t("branchNoMatch")) : /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, visible.map((name) => branchItem(name, name === view.branch)), visibleRemotes.length === 0 ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git-branch__groupLabel sk-git-branch__groupLabel--nested" }, t("branchRemotes"), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-git-branch__groupHint" }, t("branchTrackHint"))), visibleRemotes.map((name) => branchItem(name, false)));
+        return /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, Menu === void 0 ? trigger : /* @__PURE__ */ __dshReact.createElement(
+          Menu,
+          {
+            open,
+            portal: true,
+            dense: true,
+            side: hero || monitor ? "bottom" : "top",
+            align: hero || monitor ? "end" : "start",
+            anchor: trigger,
+            onClose: () => setOpen(false)
+          },
+          /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git-branch__menu" }, Input === void 0 ? null : /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git-branch__search" }, /* @__PURE__ */ __dshReact.createElement(
+            Input,
+            {
+              icon: SearchIcon === void 0 ? void 0 : /* @__PURE__ */ __dshReact.createElement(SearchIcon, { size: 14 }),
+              value: query,
+              placeholder: t("branchSearch"),
+              "aria-label": t("branchSearch"),
+              onChange: (event) => setQuery(event?.target?.value ?? "")
+            }
+          )), /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git-branch__groupLabel" }, t("branchMenuTitle")), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git-branch__list", role: "group", "aria-label": t("branchMenuTitle") }, list), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git-branch__footer" }, /* @__PURE__ */ __dshReact.createElement(
+            MenuItemButton,
+            {
+              icon: PlusIcon === void 0 ? void 0 : /* @__PURE__ */ __dshReact.createElement(PlusIcon, { size: 14 }),
+              disabled: busy !== "",
+              onSelect: openCreator
+            },
+            t("branchNew")
+          )))
+        ), pending === null ? null : confirmDialog({
+          primitives,
+          title: t("branchTrigger"),
+          description: t("branchDirty"),
+          cancelLabel: t("branchCancel"),
+          confirmLabel: t("branchDirtyConfirm"),
+          pending: busy !== "",
+          pendingLabel: t("branchLoading"),
+          onCancel: () => setPending(null),
+          onConfirm: () => void submit(pending.name, false)
+        }), creator.open ? confirmDialog({
+          primitives,
+          title: t("branchNewTitle"),
+          description: t("branchNewDescription", { branch: view.detached ? "HEAD" : view.branch }),
+          children: /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git-branch__creator" }, Input === void 0 ? /* @__PURE__ */ __dshReact.createElement(
+            "input",
+            {
+              className: "sk-git-branch__fallbackInput",
+              autoFocus: true,
+              value: draft,
+              maxLength: MAX_BRANCH_NAME_LENGTH,
+              placeholder: t("branchNewPlaceholder"),
+              onChange: (event) => setCreator((state) => ({ ...state, draft: event.target.value })),
+              onKeyDown: (event) => {
+                if (isComposingEvent(event)) return;
+                if (event.key !== "Enter" || !draftValid) return;
+                event.preventDefault();
+                void submit(draft, true);
+              }
+            }
+          ) : /* @__PURE__ */ __dshReact.createElement(
+            Input,
+            {
+              autoFocus: true,
+              value: draft,
+              maxLength: MAX_BRANCH_NAME_LENGTH,
+              placeholder: t("branchNewPlaceholder"),
+              "aria-label": t("branchNewTitle"),
+              onChange: (event) => setCreator((state) => ({ ...state, draft: event?.target?.value ?? "" })),
+              onKeyDown: (event) => {
+                if (isComposingEvent(event)) return;
+                if (event?.key === "Enter" && draftValid) {
+                  event.preventDefault();
+                  void submit(draft, true);
+                }
+              }
+            }
+          ), /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git-branch__hint" }, t("branchPrefix"), "：", readPrefix() === "" ? "—" : readPrefix()), creator.error === "" ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git-branch__error", role: "alert" }, creator.error)),
+          cancelLabel: t("branchCancel"),
+          confirmLabel: t("branchNewCreate"),
+          pending: busy === "create",
+          pendingLabel: t("branchNewCreating"),
+          onCancel: () => setCreator(CLOSED_CREATOR),
+          onConfirm: () => {
+            if (!draftValid) {
+              setCreator((state) => ({ ...state, error: t("branchNameInvalid") }));
+              return;
+            }
+            void submit(draft, true);
+          }
+        }) : null);
+      };
+    }
+
+    // src/modules/git/client/components/publish/index.tsx
+    var import_react6 = __toESM(require("react"), 1);
+
+    // src/modules/git/client/components/publish/style.css
+    var style_default = ".sk-git-publish {\n  display: grid;\n  gap: 12px;\n  max-block-size: min(55vh, 32rem);\n  overflow: auto;\n  overscroll-behavior: contain;\n  overflow-wrap: anywhere;\n}\n\n.sk-git-publish__choices {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n}\n\n.sk-git-publish :where(p, dl, dd, ul) {\n  margin: 0;\n}\n\n.sk-git-publish__facts {\n  display: grid;\n  grid-template-columns: auto minmax(0, 1fr);\n  gap: 4px 12px;\n  align-items: baseline;\n}\n\n.sk-git-publish__paths {\n  padding-inline-start: 1.25em;\n  white-space: pre-wrap;\n}\n\n.sk-git-publish__message {\n  display: grid;\n  gap: 4px;\n}\n\n.sk-git-publish__message textarea {\n  box-sizing: border-box;\n  min-inline-size: 0;\n  padding: 8px;\n  border: 1px solid var(--dsw-alias-border-l2, GrayText);\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  resize: vertical;\n}\n\n.sk-git-publish__status:empty {\n  position: absolute;\n}\n\n.sk-git-publish__error {\n  white-space: pre-wrap;\n}\n";
+
+    // src/modules/git/client/components/publish/index.tsx
+    var CHOOSE = { phase: "choose" };
+    var ACTION_TIMEOUT_MS = GIT_PUSH_TIMEOUT_MS + 15e3;
+    var writes = /* @__PURE__ */ new Set();
+    function isPreview(payload, action) {
+      const nullableCount = (n) => n === null || typeof n === "number" && Number.isSafeInteger(n) && n >= 0;
+      return payload?.ok === true && payload.action === action && typeof payload.branch === "string" && payload.branch !== "" && (payload.head === null || typeof payload.head === "string") && Array.isArray(payload.stagedPaths) && payload.stagedPaths.every((path) => typeof path === "string") && (payload.destination === null || typeof payload.destination?.remote === "string" && payload.destination.remote !== "" && typeof payload.destination.ref === "string" && payload.destination.ref !== "" && typeof payload.destination.url === "string") && nullableCount(payload.ahead) && nullableCount(payload.behind) && typeof payload.token === "string" && payload.token !== "";
+    }
+    function blockedReason(preview) {
+      if (preview.action === "commit") return preview.stagedPaths.length === 0 ? "gitPublishNothingStaged" : null;
+      if (!preview.destination) return "gitPublishNoDestination";
+      if (preview.behind !== null && preview.behind > 0) return "gitPublishPushBehind";
+      if (preview.ahead === 0) return "gitPublishNothingToPush";
+      return null;
+    }
+    function matchesFailure(payload, reason) {
+      return payload?.code === GIT_PUBLISH_REASON[reason] || payload?.code == null && payload?.reason === reason;
+    }
+    function payloadFailure(payload, fallback) {
+      const reason = typeof payload?.reason === "string" ? payload.reason : "";
+      const detail = typeof payload?.detail === "string" ? payload.detail : "";
+      const key = matchesFailure(payload, "stale-preview") ? "gitPublishStale" : fallback;
+      const code = typeof payload?.code === "number" ? String(payload.code) : "";
+      return { key, detail: [detail || reason, code].filter(Boolean).join(" · ") };
+    }
+    function createGitPublish(ctx, t = ctx.locale.bind(TASK_MONITOR_NS)) {
+      const Button = primitives.Button ?? "button";
+      function PublishForDirectory({ cwd, children }) {
+        const [open, setOpen] = import_react6.default.useState(false);
+        const [review, setReview] = import_react6.default.useState(CHOOSE);
+        const [message, setMessage] = import_react6.default.useState("");
+        const [pending, setPending] = import_react6.default.useState(false);
+        const alive = import_react6.default.useRef(false);
+        const revision = import_react6.default.useRef(0);
+        const selected = import_react6.default.useRef(null);
+        const messageId = import_react6.default.useId();
+        import_react6.default.useLayoutEffect(() => {
+          alive.current = true;
+          const off = onRepositoryChange(cwd, () => {
+            const action2 = selected.current;
+            if (action2 === null || writes.has(cwd)) return;
+            ++revision.current;
+            setReview({ phase: "error", action: action2, key: "gitPublishStale" });
+          });
+          return () => {
+            alive.current = false;
+            ++revision.current;
+            off();
+          };
+        }, [cwd]);
+        function dismiss2() {
+          if (writes.has(cwd)) return;
+          ++revision.current;
+          selected.current = null;
+          setOpen(false);
+          setReview(CHOOSE);
+          setMessage("");
+        }
+        async function load(action2) {
+          if (writes.has(cwd)) return;
+          const request = ++revision.current;
+          selected.current = action2;
+          setReview({ phase: "loading", action: action2 });
+          try {
+            const response = await fetchJson(GIT_PUBLISH_PREVIEW_PATH, { json: { cwd, action: action2 } });
+            const payload = await response.json();
+            if (request !== revision.current) return;
+            setReview(response.ok && isPreview(payload, action2) ? { phase: "ready", action: action2, preview: payload, revision: request } : { phase: "error", action: action2, ...payloadFailure(payload, "gitPublishPreviewFailed") });
+          } catch {
+            if (request === revision.current) setReview({ phase: "error", action: action2, key: "gitPublishPreviewFailed" });
+          }
+        }
+        async function confirm() {
+          if (!alive.current || review.phase !== "ready" || review.revision !== revision.current || writes.has(cwd)) return;
+          const { action: action2, preview: preview2 } = review;
+          const draft = message.trim();
+          if (blockedReason(preview2) || action2 === "commit" && !draft) return;
+          ++revision.current;
+          writes.add(cwd);
+          setPending(true);
+          let failure = null;
+          try {
+            const response = await fetchJson(GIT_PUBLISH_ACTION_PATH, {
+              json: { cwd, action: action2, token: preview2.token, ...action2 === "commit" ? { message: draft } : {} },
+              timeoutMs: ACTION_TIMEOUT_MS
+            });
+            const payload = await response.json();
+            if (!(response.ok && payload?.ok === true && payload.action === action2)) {
+              const uncertain = payload?.ok !== false || response.status >= 500 && !matchesFailure(payload, "git-missing") || matchesFailure(payload, "commit-failed") || matchesFailure(payload, "push-failed");
+              failure = payloadFailure(payload, uncertain ? "gitPublishUncertain" : "gitPublishActionFailed");
+            }
+          } catch {
+            failure = { key: "gitPublishUncertain" };
+          } finally {
+            writes.delete(cwd);
+            if (alive.current) setPending(false);
+          }
+          if (failure !== null) {
+            if (alive.current) setReview({ phase: "error", action: action2, ...failure });
+            else toast.error([t(failure.key), failure.detail].filter(Boolean).join(" "));
+            return;
+          }
+          if (alive.current) dismiss2();
+          announceRepositoryChange(cwd);
+          toast.success(t(action2 === "commit" ? "gitPublishCommitDone" : "gitPublishPushDone"));
+        }
+        const preview = review.phase === "ready" ? review.preview : null;
+        const blocked = preview ? blockedReason(preview) : null;
+        const action = review.phase === "choose" ? null : review.action;
+        const disabled = !cwd || !primitives.Modal || pending;
+        return /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement(
+          "button",
+          {
+            type: "button",
+            className: "sk-task-monitor__row",
+            "data-kind": "environment",
+            "data-clickable": true,
+            "aria-haspopup": "dialog",
+            disabled,
+            onClick: () => {
+              if (writes.has(cwd)) {
+                toast.info(t("gitPublishWorking"));
+                return;
+              }
+              setOpen(true);
+            }
+          },
+          children ?? t("gitPublishTitle")
+        ), open ? confirmDialog({
+          primitives,
+          title: t("gitPublishTitle"),
+          description: t("gitPublishChoose"),
+          pending,
+          onCancel: dismiss2,
+          cancelLabel: t("gitPublishCancel"),
+          closeLabel: t("gitPublishClose"),
+          confirmButton: action === null ? false : /* @__PURE__ */ __dshReact.createElement(
+            Button,
+            {
+              type: "button",
+              variant: "primary",
+              onClick: confirm,
+              disabled: pending || !preview || !!blocked || action === "commit" && !message.trim()
+            },
+            t(pending ? "gitPublishWorking" : action === "commit" ? "gitPublishConfirmCommit" : "gitPublishConfirmPush")
+          ),
+          children: /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git-publish" }, /* @__PURE__ */ __dshReact.createElement("dl", { className: "sk-git-publish__facts" }, /* @__PURE__ */ __dshReact.createElement("dt", null, t("gitPublishWorkspace")), /* @__PURE__ */ __dshReact.createElement("dd", null, /* @__PURE__ */ __dshReact.createElement("bdi", null, cwd))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git-publish__choices" }, /* @__PURE__ */ __dshReact.createElement(Button, { type: "button", variant: "outline", "aria-pressed": action === "commit", disabled: pending, onClick: () => load("commit") }, t("gitPublishPreviewCommit")), /* @__PURE__ */ __dshReact.createElement(Button, { type: "button", variant: "outline", "aria-pressed": action === "push", disabled: pending, onClick: () => load("push") }, t("gitPublishPreviewPush"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git-publish__status", role: "status" }, pending ? t("gitPublishWorking") : review.phase === "loading" ? t("gitPublishLoading") : ""), review.phase === "error" ? /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git-publish__error", role: "alert" }, t(review.key), review.detail ? `
+    ${review.detail}` : "") : null, preview ? /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("p", null, t(preview.action === "commit" ? "gitPublishStagedOnly" : "gitPublishPushScope")), /* @__PURE__ */ __dshReact.createElement("dl", { className: "sk-git-publish__facts" }, /* @__PURE__ */ __dshReact.createElement("dt", null, t("gitPublishBranch")), /* @__PURE__ */ __dshReact.createElement("dd", null, /* @__PURE__ */ __dshReact.createElement("bdi", null, preview.branch)), preview.action === "push" ? /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("dt", null, t("gitPublishRemote")), /* @__PURE__ */ __dshReact.createElement("dd", null, preview.destination ? /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("bdi", null, preview.destination.remote), " · ", /* @__PURE__ */ __dshReact.createElement("bdi", null, preview.destination.url)) : "—"), /* @__PURE__ */ __dshReact.createElement("dt", null, t("gitPublishRef")), /* @__PURE__ */ __dshReact.createElement("dd", null, /* @__PURE__ */ __dshReact.createElement("bdi", null, preview.destination?.ref ?? "—")), /* @__PURE__ */ __dshReact.createElement("dt", null, t("gitPublishAhead")), /* @__PURE__ */ __dshReact.createElement("dd", null, preview.ahead ?? t("gitPublishUnknown")), /* @__PURE__ */ __dshReact.createElement("dt", null, t("gitPublishBehind")), /* @__PURE__ */ __dshReact.createElement("dd", null, preview.behind ?? t("gitPublishUnknown"))) : null), blocked ? /* @__PURE__ */ __dshReact.createElement("p", null, t(blocked)) : null, preview.action === "commit" && preview.stagedPaths.length > 0 ? /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("div", null, /* @__PURE__ */ __dshReact.createElement("p", null, t("gitPublishStagedPaths"), " (", preview.stagedPaths.length, ")"), /* @__PURE__ */ __dshReact.createElement("ul", { className: "sk-git-publish__paths" }, preview.stagedPaths.map((path) => /* @__PURE__ */ __dshReact.createElement("li", { key: path }, /* @__PURE__ */ __dshReact.createElement("bdi", null, path))))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git-publish__message" }, /* @__PURE__ */ __dshReact.createElement("label", { htmlFor: messageId }, t("gitPublishMessage")), /* @__PURE__ */ __dshReact.createElement(
+            "textarea",
+            {
+              id: messageId,
+              rows: 3,
+              value: message,
+              required: true,
+              maxLength: MAX_PUBLISH_MESSAGE_LENGTH,
+              disabled: pending,
+              onChange: (event) => setMessage(event.currentTarget.value)
+            }
+          ))) : null) : null)
+        }) : null);
+      }
+      return function GitPublish(props) {
+        return /* @__PURE__ */ __dshReact.createElement(PublishForDirectory, { key: props.cwd, ...props });
+      };
+    }
 
     // src/modules/task-monitor/host/constants.ts
     var API_PREFIX2 = pluginApiPath("task-monitor");
@@ -560,9 +1261,12 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/task-monitor/client/components/panel/style.css
-    var style_default = '/*\n * 任务监控右栏 body。只服务面板自身子树，随组件 <style> 注入（§8 判定）。\n * 各分组用原有的颜色区分图标底座，半透明底色跟随宿主深浅主题。\n */\n\n.sk-task-monitor {\n  --skm-capability: #8f7bf9;\n  --skm-artifact: #3fa66a;\n  --skm-web: #4098e0;\n  --skm-source: #d9932f;\n  --skm-danger: #e5534b;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  height: auto;\n  min-height: 0;\n  overflow-y: auto;\n  padding-block: 0 4px;\n  padding-inline: 8px;\n  scrollbar-width: none;\n  color: var(--dsw-alias-label-primary, inherit);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.sk-task-monitor,\n.sk-task-monitor * {\n  box-sizing: border-box;\n}\n\n/* 不画滚动条：卡片窄，条本身会占一列；内容仍可滚（滚轮/触控板）。 */\n.sk-task-monitor::-webkit-scrollbar {\n  display: none;\n}\n\n/* 分区头：原生 <details>/<summary>；内容高度用 ::details-content + interpolate-size 过渡。 */\n\n.sk-task-monitor__section {\n  interpolate-size: allow-keywords;\n}\n\n.sk-task-monitor__section::details-content {\n  block-size: 0;\n  overflow: clip;\n  contain: layout;\n  transition: block-size 0.24s ease, content-visibility 0.24s ease;\n  transition-behavior: allow-discrete;\n}\n\n.sk-task-monitor__section[open]::details-content {\n  block-size: auto;\n}\n\n.sk-task-monitor__trigger {\n  /* 分组头贴住滚动口，底色和宿主会话一致，避免条目从标题后透出来。 */\n  position: sticky;\n  top: 0;\n  z-index: 2;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  min-width: 0;\n  height: 28px;\n  padding: 0 6px;\n  list-style: none;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background-color: var(--dsw-alias-bg-base, Canvas);\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-weight: 600;\n  cursor: pointer;\n  text-align: left;\n}\n\n.sk-task-monitor__trigger::-webkit-details-marker {\n  display: none;\n}\n\n.sk-task-monitor__trigger:focus-visible,\n.sk-task-monitor__more:focus-visible,\n.sk-task-monitor__row:focus-visible {\n  outline: none;\n  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, rgba(80, 140, 255, 0.6));\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__trigger:hover {\n    background-image: linear-gradient(\n      var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12)),\n      var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12))\n    );\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-task-monitor__chevron {\n  display: inline-flex;\n  flex: none;\n  margin-left: auto;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  transform: rotate(-90deg);\n  transition: transform 0.16s;\n}\n\n.sk-task-monitor__section[open] > .sk-task-monitor__trigger > .sk-task-monitor__chevron {\n  transform: rotate(0deg);\n}\n\n.sk-task-monitor__sectionTitle {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-task-monitor__tag {\n  flex: none;\n  min-width: 16px;\n  padding: 0 5px;\n  border-radius: 999px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--dsw-alias-label-secondary, #888) 14%, transparent);\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font-size: 10px;\n  font-weight: 500;\n  line-height: 16px;\n  text-align: center;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__body {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  padding: 0 2px 6px;\n}\n\n/* 条目行：图标 + 两行文本 + 右侧状态；入场延迟由组件传入。 */\n.sk-task-monitor__row {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n  padding: 4px 6px;\n  border-radius: var(--dsw-radius-sm, 6px);\n  animation: sk-task-monitor-rise 0.24s ease both;\n}\n\n.sk-task-monitor__row[data-clickable] {\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  /* 每个条目行都有 hover 底色（分组内的行都在这套样式下）；能不能点由上面的\n     cursor 决定，只读行不该显得可点、但按下前的悬停反馈要一致。 */\n  .sk-task-monitor__row:not([data-unavailable]):hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n  }\n}\n\n.sk-task-monitor__seat {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  flex: none;\n  width: 24px;\n  height: 24px;\n  border-radius: 6px;\n  corner-shape: round;\n}\n\n.sk-task-monitor__row[data-kind="capability"] .sk-task-monitor__seat {\n  color: var(--skm-capability);\n  background: color-mix(in srgb, var(--skm-capability) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="artifact"] .sk-task-monitor__seat {\n  color: var(--skm-artifact);\n  background: color-mix(in srgb, var(--skm-artifact) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="web"] .sk-task-monitor__seat {\n  color: var(--skm-web);\n  background: color-mix(in srgb, var(--skm-web) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="source"] .sk-task-monitor__seat {\n  color: var(--skm-source);\n  background: color-mix(in srgb, var(--skm-source) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="environment"] .sk-task-monitor__seat {\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  background: color-mix(in srgb, var(--dsw-alias-label-secondary, #888) 12%, transparent);\n}\n\n.sk-task-monitor__txt {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-width: 0;\n}\n\n.sk-task-monitor__label {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-primary, inherit);\n}\n\n/* 工作区增删行数：沿用宿主 diff 视图的增删语义色，避免第三套绿/红。 */\n.sk-task-monitor__row[data-unavailable] .sk-task-monitor__label {\n  text-decoration: line-through;\n}\n\n.sk-task-monitor__unavailable {\n  color: var(--dsw-alias-label-secondary, inherit);\n  font-size: 10px;\n  white-space: nowrap;\n}\n\n.sk-task-monitor__delta {\n  display: inline-flex;\n  gap: 6px;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__added {\n  color: var(--dsw-alias-file-diff-added-marker, #1a7f37);\n}\n\n.sk-task-monitor__deleted {\n  color: var(--dsw-alias-file-diff-deleted-marker, #cf222e);\n}\n\n.sk-task-monitor__detail {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 11px;\n  line-height: 16px;\n}\n\n.sk-task-monitor__meta {\n  display: inline-flex;\n  align-items: center;\n  flex: none;\n}\n\n.sk-task-monitor__failed {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-danger) 18%, transparent);\n  color: var(--skm-danger);\n  font-size: 10px;\n  font-weight: 700;\n}\n\n.sk-task-monitor__more {\n  align-self: flex-start;\n  margin: 2px 0 0 6px;\n  padding: 2px 6px;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-size: 11px;\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__more:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-task-monitor__empty {\n  margin: 0;\n  /* 与条目行的图标座左缘对齐（面板 8 + body 2 + row 6 = 16px），空态不缩进成「行内文字」。 */\n  padding: 4px 6px 6px 6px;\n  /* 与「查看更多」同一档文字色：dimmed 在卡片底色上过于虚，读起来像不可用。 */\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font-size: 11px;\n}\n\n/* 首屏骨架：三组微光条，读作「正在长出来」而不是空白。 */\n.sk-task-monitor__skeleton {\n  display: flex;\n  flex-direction: column;\n  gap: 14px;\n  padding: 10px 8px;\n}\n\n.sk-task-monitor__skSection {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.sk-task-monitor__skBar {\n  height: 10px;\n  border-radius: 5px;\n  corner-shape: round;\n  background: linear-gradient(90deg, rgba(128, 128, 128, 0.10), rgba(128, 128, 128, 0.22), rgba(128, 128, 128, 0.10));\n  background-size: 200% 100%;\n  animation: sk-task-monitor-shimmer 1.2s linear infinite;\n}\n\n.sk-task-monitor__skBar--title {\n  width: 40%;\n  height: 12px;\n}\n\n.sk-task-monitor__errorBox {\n  display: flex;\n  flex-direction: column;\n  align-items: flex-start;\n  gap: 8px;\n  margin: 8px 6px;\n  padding: 10px 12px;\n  border: 0.5px solid color-mix(in srgb, var(--skm-danger) 45%, transparent);\n  border-radius: 8px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-danger) 8%, transparent);\n}\n\n.sk-task-monitor__errorBox p {\n  margin: 0;\n  color: var(--dsw-alias-label-primary, inherit);\n  overflow-wrap: anywhere;\n}\n\n@keyframes sk-task-monitor-rise {\n  from {\n    opacity: 0;\n    transform: translateY(4px);\n  }\n  to {\n    opacity: 1;\n    transform: translateY(0);\n  }\n}\n\n@keyframes sk-task-monitor-shimmer {\n  from {\n    background-position: 200% 0;\n  }\n  to {\n    background-position: -200% 0;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .sk-task-monitor__row,\n  .sk-task-monitor__skBar {\n    animation: none;\n  }\n\n  .sk-task-monitor__chevron {\n    transition: none;\n  }\n\n  .sk-task-monitor__section::details-content {\n    transition: none;\n  }\n}';
+    var style_default2 = '/*\n * 任务监控右栏 body。只服务面板自身子树，随组件 <style> 注入（§8 判定）。\n * 各分组用原有的颜色区分图标底座，半透明底色跟随宿主深浅主题。\n */\n\n.sk-task-monitor {\n  --skm-capability: #8f7bf9;\n  --skm-artifact: #3fa66a;\n  --skm-web: #4098e0;\n  --skm-source: #d9932f;\n  --skm-danger: #e5534b;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  height: auto;\n  min-height: 0;\n  overflow-y: auto;\n  padding-block: 0 4px;\n  padding-inline: 8px;\n  scrollbar-width: none;\n  color: var(--dsw-alias-label-primary, inherit);\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.sk-task-monitor,\n.sk-task-monitor * {\n  box-sizing: border-box;\n}\n\n/* 不画滚动条：卡片窄，条本身会占一列；内容仍可滚（滚轮/触控板）。 */\n.sk-task-monitor::-webkit-scrollbar {\n  display: none;\n}\n\n/* 分区头：原生 <details>/<summary>；内容高度用 ::details-content + interpolate-size 过渡。 */\n\n.sk-task-monitor__section {\n  interpolate-size: allow-keywords;\n}\n\n.sk-task-monitor__section::details-content {\n  block-size: 0;\n  overflow: clip;\n  contain: layout;\n  transition: block-size 0.24s ease, content-visibility 0.24s ease;\n  transition-behavior: allow-discrete;\n}\n\n.sk-task-monitor__section[open]::details-content {\n  block-size: auto;\n}\n\n.sk-task-monitor__trigger {\n  /* 分组头贴住滚动口，底色和宿主会话一致，避免条目从标题后透出来。 */\n  position: sticky;\n  top: 0;\n  z-index: 2;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  min-width: 0;\n  height: 28px;\n  padding: 0 6px;\n  list-style: none;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background-color: var(--dsw-alias-bg-base, Canvas);\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-weight: 600;\n  cursor: pointer;\n  text-align: left;\n}\n\n.sk-task-monitor__trigger::-webkit-details-marker {\n  display: none;\n}\n\n.sk-task-monitor__trigger:focus-visible,\n.sk-task-monitor__more:focus-visible,\n.sk-task-monitor__row:focus-visible {\n  outline: none;\n  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, rgba(80, 140, 255, 0.6));\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__trigger:hover {\n    background-image: linear-gradient(\n      var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12)),\n      var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12))\n    );\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-task-monitor__chevron {\n  display: inline-flex;\n  flex: none;\n  margin-left: auto;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  transform: rotate(-90deg);\n  transition: transform 0.16s;\n}\n\n.sk-task-monitor__section[open] > .sk-task-monitor__trigger > .sk-task-monitor__chevron {\n  transform: rotate(0deg);\n}\n\n.sk-task-monitor__sectionTitle {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n.sk-task-monitor__tag {\n  flex: none;\n  min-width: 16px;\n  padding: 0 5px;\n  border-radius: 999px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--dsw-alias-label-secondary, #888) 14%, transparent);\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font-size: 10px;\n  font-weight: 500;\n  line-height: 16px;\n  text-align: center;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__body {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  padding: 0 2px 6px;\n}\n\n/* 条目行：图标 + 两行文本 + 右侧状态；入场延迟由组件传入。 */\n.sk-task-monitor__row {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n  padding: 4px 6px;\n  border-radius: var(--dsw-radius-sm, 6px);\n  animation: sk-task-monitor-rise 0.24s ease both;\n}\n\nbutton.sk-task-monitor__row {\n  border: 0;\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  text-align: start;\n  inline-size: 100%;\n}\n\n.sk-task-monitor__row[data-clickable]:not(:disabled) {\n  cursor: pointer;\n}\n\n.sk-task-monitor__row:focus-visible {\n  outline: 2px solid var(--dsw-alias-accent, currentColor);\n  outline-offset: -2px;\n}\n\n@media (hover: hover) {\n  /* 只读条目也有悬停反馈；指针样式仍只用于可点击行。 */\n  .sk-task-monitor__row:not([data-unavailable]):hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n  }\n}\n\n.sk-task-monitor__seat {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  flex: none;\n  width: 24px;\n  height: 24px;\n  border-radius: 6px;\n  corner-shape: round;\n}\n\n.sk-task-monitor__row[data-kind="capability"] .sk-task-monitor__seat {\n  color: var(--skm-capability);\n  background: color-mix(in srgb, var(--skm-capability) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="artifact"] .sk-task-monitor__seat {\n  color: var(--skm-artifact);\n  background: color-mix(in srgb, var(--skm-artifact) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="web"] .sk-task-monitor__seat {\n  color: var(--skm-web);\n  background: color-mix(in srgb, var(--skm-web) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="source"] .sk-task-monitor__seat {\n  color: var(--skm-source);\n  background: color-mix(in srgb, var(--skm-source) 14%, transparent);\n}\n\n.sk-task-monitor__row[data-kind="environment"] .sk-task-monitor__seat {\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  background: color-mix(in srgb, var(--dsw-alias-label-secondary, #888) 12%, transparent);\n}\n\n.sk-task-monitor__txt {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-width: 0;\n}\n\n.sk-task-monitor__label {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-primary, inherit);\n}\n\n/* 工作区增删行数：沿用宿主 diff 视图的增删语义色，避免第三套绿/红。 */\n.sk-task-monitor__row[data-unavailable] .sk-task-monitor__label {\n  text-decoration: line-through;\n}\n\n.sk-task-monitor__unavailable {\n  color: var(--dsw-alias-label-secondary, inherit);\n  font-size: 10px;\n  white-space: nowrap;\n}\n\n.sk-task-monitor__delta {\n  display: inline-flex;\n  gap: 6px;\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-task-monitor__added {\n  color: var(--dsw-alias-file-diff-added-marker, #1a7f37);\n}\n\n.sk-task-monitor__deleted {\n  color: var(--dsw-alias-file-diff-deleted-marker, #cf222e);\n}\n\n.sk-task-monitor__detail {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  color: var(--dsw-alias-label-caption, rgba(128, 128, 128, 0.7));\n  font-size: 11px;\n  line-height: 16px;\n}\n\n.sk-task-monitor__meta {\n  display: inline-flex;\n  align-items: center;\n  flex: none;\n}\n\n.sk-task-monitor__failed {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-danger) 18%, transparent);\n  color: var(--skm-danger);\n  font-size: 10px;\n  font-weight: 700;\n}\n\n.sk-task-monitor__more {\n  align-self: flex-start;\n  margin: 2px 0 0 6px;\n  padding: 2px 6px;\n  border: none;\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font: inherit;\n  font-size: 11px;\n  cursor: pointer;\n}\n\n@media (hover: hover) {\n  .sk-task-monitor__more:hover {\n    background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12));\n    color: var(--dsw-alias-label-primary, inherit);\n  }\n}\n\n.sk-task-monitor__empty {\n  margin: 0;\n  /* 与条目行的图标座左缘对齐（面板 8 + body 2 + row 6 = 16px），空态不缩进成「行内文字」。 */\n  padding: 4px 6px 6px 6px;\n  /* 与「查看更多」同一档文字色：dimmed 在卡片底色上过于虚，读起来像不可用。 */\n  color: var(--dsw-alias-label-secondary, rgba(128, 128, 128, 0.9));\n  font-size: 11px;\n}\n\n/* 首屏骨架：三组微光条，读作「正在长出来」而不是空白。 */\n.sk-task-monitor__skeleton {\n  display: flex;\n  flex-direction: column;\n  gap: 14px;\n  padding: 10px 8px;\n}\n\n.sk-task-monitor__skSection {\n  display: flex;\n  flex-direction: column;\n  gap: 8px;\n}\n\n.sk-task-monitor__skBar {\n  height: 10px;\n  border-radius: 5px;\n  corner-shape: round;\n  background: linear-gradient(90deg, rgba(128, 128, 128, 0.10), rgba(128, 128, 128, 0.22), rgba(128, 128, 128, 0.10));\n  background-size: 200% 100%;\n  animation: sk-task-monitor-shimmer 1.2s linear infinite;\n}\n\n.sk-task-monitor__skBar--title {\n  width: 40%;\n  height: 12px;\n}\n\n.sk-task-monitor__errorBox {\n  display: flex;\n  flex-direction: column;\n  align-items: flex-start;\n  gap: 8px;\n  margin: 8px 6px;\n  padding: 10px 12px;\n  border: 0.5px solid color-mix(in srgb, var(--skm-danger) 45%, transparent);\n  border-radius: 8px;\n  corner-shape: round;\n  background: color-mix(in srgb, var(--skm-danger) 8%, transparent);\n}\n\n.sk-task-monitor__errorBox p {\n  margin: 0;\n  color: var(--dsw-alias-label-primary, inherit);\n  overflow-wrap: anywhere;\n}\n\n@keyframes sk-task-monitor-rise {\n  from {\n    opacity: 0;\n    transform: translateY(4px);\n  }\n  to {\n    opacity: 1;\n    transform: translateY(0);\n  }\n}\n\n@keyframes sk-task-monitor-shimmer {\n  from {\n    background-position: 200% 0;\n  }\n  to {\n    background-position: -200% 0;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .sk-task-monitor__row,\n  .sk-task-monitor__skBar {\n    animation: none;\n  }\n\n  .sk-task-monitor__chevron {\n    transition: none;\n  }\n\n  .sk-task-monitor__section::details-content {\n    transition: none;\n  }\n}';
 
     // src/modules/task-monitor/client/components/panel/index.tsx
+    var noDirectorySubscription = () => () => {
+    };
+    var noDirectorySnapshot = () => void 0;
     var SECTION_COPY = {
       capability: { title: "sectionCapability", desc: "sectionCapabilityDesc", empty: "emptyCapability" },
       artifact: { title: "sectionArtifact", desc: "sectionArtifactDesc", empty: "emptyArtifact" },
@@ -587,18 +1291,16 @@ window.__ModuleLoader__.load({
       if (typeof turn !== "number" || !Number.isSafeInteger(turn) || turn <= 0) return null;
       return { seq, turn };
     }
-    function reasonOf(payload, fallback) {
+    function reasonOf2(payload, fallback) {
       if (payload !== null && typeof payload === "object" && typeof payload.detail === "string" && payload.detail !== "") {
         return payload.detail;
       }
       return fallback;
     }
-    function dirNameOf(cwd) {
-      const parts = cwd.split(/[\\/]/).filter((part) => part !== "");
-      return parts.length === 0 ? "" : parts[parts.length - 1];
-    }
     function createTaskMonitorPanel(ctx) {
       const t = ctx.locale.bind(TASK_MONITOR_NS);
+      const BranchChip = createBranchChip(ctx);
+      const GitPublish = createGitPublish(ctx, t);
       const ChevronIcon = primitives.IconChevronDownOutlineRegular;
       const BranchIcon = primitives.IconBranchOutlineRegular;
       const ChecklistIcon = primitives.IconChecklistOutlineRegular;
@@ -629,23 +1331,30 @@ window.__ModuleLoader__.load({
         const visible = tab?.visible !== false;
         const actions = props.actions ?? tab?.actions;
         const revision = tab?.navigation?.revision ?? 0;
-        const projected = typeof useProjection === "function" ? useProjection("workingDirectory") : void 0;
+        const slotDirectory = typeof useProjection === "function" ? useProjection("workingDirectory") : void 0;
+        const directory = useProjection === void 0 && typeof sessionId === "string" ? ctx.get?.("sessions")?.binding?.(sessionId)?.session?.projections?.faceOf?.("workingDirectory") : void 0;
+        const boundDirectory = import_react7.default.useSyncExternalStore(
+          directory?.subscribe ?? noDirectorySubscription,
+          directory?.getSnapshot ?? noDirectorySnapshot
+        );
+        const projected = slotDirectory ?? boundDirectory;
         const owned = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.cwd) : void 0;
         const cwd = typeof projected === "string" && projected !== "" ? projected : typeof owned === "string" ? owned : "";
-        const [entries, setEntries] = import_react5.default.useState([]);
-        const [phase, setPhase] = import_react5.default.useState("loading");
-        const [error, setError] = import_react5.default.useState("");
-        const [collapsed, setCollapsed] = import_react5.default.useState({});
-        const [expanded, setExpanded] = import_react5.default.useState({});
-        const [git, setGit] = import_react5.default.useState(null);
-        const [review, setReview] = import_react5.default.useState(null);
-        const load = import_react5.default.useCallback(async (quiet) => {
+        const [entries, setEntries] = import_react7.default.useState([]);
+        const [phase, setPhase] = import_react7.default.useState("loading");
+        const [error, setError] = import_react7.default.useState("");
+        const [collapsed, setCollapsed] = import_react7.default.useState({});
+        const [expanded, setExpanded] = import_react7.default.useState({});
+        const [gitSnapshot, setGitSnapshot] = import_react7.default.useState(null);
+        const git = gitSnapshot?.cwd === cwd ? gitSnapshot.data : null;
+        const [review, setReview] = import_react7.default.useState(null);
+        const load = import_react7.default.useCallback(async (quiet) => {
           if (typeof sessionId !== "string" || sessionId === "") return;
           if (!quiet) setPhase("loading");
           try {
             const response = await fetchJson(TASK_MONITOR_SNAPSHOT_PATH, { json: { sessionId } });
             const payload = await response.json();
-            if (!response.ok || payload?.ok !== true) throw new Error(reasonOf(payload, `HTTP ${response.status}`));
+            if (!response.ok || payload?.ok !== true) throw new Error(reasonOf2(payload, `HTTP ${response.status}`));
             setEntries(Array.isArray(payload.entries) ? payload.entries : []);
             setReview(reviewOf(payload));
             setError("");
@@ -657,55 +1366,55 @@ window.__ModuleLoader__.load({
             }
           }
         }, [sessionId]);
-        import_react5.default.useEffect(() => {
-          if (phase !== "ready") return;
-          setHasContent(sessionId, entries.length > 0);
-        }, [phase, entries.length, sessionId]);
-        const loadGit = import_react5.default.useCallback(async () => {
-          if (cwd === "") {
-            setGit(null);
-            return;
-          }
-          try {
-            const [branchResponse, changesResponse] = await Promise.all([
-              fetchJson(GIT_BRANCHES_PATH, { json: { cwd } }),
-              fetchJson(GIT_CHANGES_PATH, { json: { cwd } }).catch(() => null)
-            ]);
-            const payload = await branchResponse.json();
-            if (!branchResponse.ok || payload?.ok !== true) {
-              setGit(null);
-              return;
-            }
-            let changes = null;
-            if (changesResponse?.ok === true) {
-              changes = changesOf(await changesResponse.json().catch(() => null));
-            }
-            setGit({
-              branch: typeof payload.branch === "string" ? payload.branch : "",
-              dirty: payload.dirty === true,
-              detached: payload.detached === true,
-              changes
-            });
-          } catch {
-            setGit(null);
-          }
-        }, [cwd]);
-        import_react5.default.useEffect(() => {
+        const hasContent = entries.length > 0 || git !== null;
+        import_react7.default.useEffect(() => {
+          if (phase !== "ready" && !hasContent) return;
+          setHasContent(sessionId, hasContent);
+        }, [phase, hasContent, sessionId]);
+        import_react7.default.useEffect(() => {
           void load(false);
         }, [load, revision]);
-        import_react5.default.useEffect(() => {
-          void loadGit();
-        }, [loadGit]);
-        import_react5.default.useEffect(() => {
+        import_react7.default.useEffect(() => {
+          if (cwd === "") return void 0;
+          let version = 0;
+          const refresh = async () => {
+            const request = ++version;
+            try {
+              const [branchResponse, changesResponse] = await Promise.all([
+                fetchJson(GIT_BRANCHES_PATH, { json: { cwd } }),
+                fetchJson(GIT_CHANGES_PATH, { json: { cwd } }).catch(() => null)
+              ]);
+              const payload = await branchResponse.json();
+              if (request !== version || !branchResponse.ok || payload?.ok !== true) return;
+              const changes = changesResponse?.ok === true ? changesOf(await changesResponse.json().catch(() => null)) : null;
+              if (request !== version) return;
+              setGitSnapshot({ cwd, data: {
+                branch: typeof payload.branch === "string" ? payload.branch : "",
+                dirty: payload.dirty === true,
+                detached: payload.detached === true,
+                linkedWorktree: payload.linkedWorktree === true,
+                changes
+              } });
+            } catch {
+            }
+          };
+          void refresh();
+          const off = onRepositoryChange(cwd, () => void refresh());
+          return () => {
+            ++version;
+            off();
+          };
+        }, [cwd, revision]);
+        import_react7.default.useEffect(() => {
           if (!visible) return void 0;
           const timer = setInterval(() => {
             void load(true);
           }, TASK_MONITOR_POLL_MS);
           return () => clearInterval(timer);
         }, [visible, load]);
-        const sections = import_react5.default.useMemo(() => groupSections(entries), [entries]);
-        const seeded = import_react5.default.useRef(null);
-        import_react5.default.useEffect(() => {
+        const sections = import_react7.default.useMemo(() => groupSections(entries), [entries]);
+        const seeded = import_react7.default.useRef(null);
+        import_react7.default.useEffect(() => {
           if (phase !== "ready" || seeded.current === sessionId) return;
           seeded.current = sessionId;
           const seed = {};
@@ -787,19 +1496,20 @@ window.__ModuleLoader__.load({
               /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__txt" }, counted ? /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__label sk-task-monitor__delta" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__added" }, "+", compactCount(stat.insertions)), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__deleted" }, "−", compactCount(stat.deletions))) : /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__label" }, git.dirty || changed ? t("envDirty") : t("envClean")))
             )
           );
-        }
-        envRows.push(
-          /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__row", "data-kind": "environment", key: "local" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__seat", "aria-hidden": "true" }, FolderIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(FolderIcon, { size: 14 })), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__txt" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__label" }, t("envLocal"))))
-        );
-        if (git !== null) {
           envRows.push(
-            /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__row", "data-kind": "environment", key: "branch", title: git.branch }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__seat", "aria-hidden": "true" }, BranchIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(BranchIcon, { size: 14 })), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__txt" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__label" }, git.detached ? "HEAD" : git.branch)))
+            /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__row", "data-kind": "environment", key: "local" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__seat", "aria-hidden": "true" }, FolderIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(FolderIcon, { size: 14 })), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__txt" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__label" }, t(git.linkedWorktree ? "envWorktree" : "envLocal")))),
+            /* @__PURE__ */ __dshReact.createElement(
+              BranchChip,
+              {
+                key: `branch:${cwd}`,
+                cwd,
+                placement: "monitor",
+                renderTrigger: (trigger) => /* @__PURE__ */ __dshReact.createElement("button", { ...trigger, className: "sk-task-monitor__row", "data-kind": "environment", "data-clickable": trigger["aria-haspopup"] ? true : void 0 }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__seat", "aria-hidden": "true" }, BranchIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(BranchIcon, { size: 14 })), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__txt" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__label" }, git.detached ? "HEAD" : git.branch)), trigger["aria-haspopup"] && ChevronIcon ? /* @__PURE__ */ __dshReact.createElement(ChevronIcon, { size: 12, "aria-hidden": "true" }) : null)
+              }
+            )
           );
-        }
-        const dirName = dirNameOf(cwd);
-        if (dirName !== "") {
           envRows.push(
-            /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor__row", "data-kind": "environment", key: "dir", title: cwd }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__seat", "aria-hidden": "true" }, TreeIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(TreeIcon, { size: 14 })), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__txt" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__label" }, dirName)))
+            /* @__PURE__ */ __dshReact.createElement(GitPublish, { key: `publish:${cwd}`, cwd }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__seat", "aria-hidden": "true" }, TreeIcon === void 0 ? null : /* @__PURE__ */ __dshReact.createElement(TreeIcon, { size: 14 })), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__txt" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-task-monitor__label" }, t("gitPublishTitle"))))
           );
         }
         const envCollapsed = collapsed.environment === true;
@@ -808,7 +1518,7 @@ window.__ModuleLoader__.load({
           event.preventDefault();
           setCollapsed((map) => ({ ...map, [key]: !current }));
         };
-        return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor", "data-phase": phase, "data-empty": phase === "ready" && entries.length === 0 ? "true" : void 0 }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default), envRows.length === 0 ? null : /* @__PURE__ */ __dshReact.createElement(
+        return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor", "data-phase": phase, "data-empty": phase === "ready" && !hasContent ? "true" : void 0 }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default2), envRows.length === 0 ? null : /* @__PURE__ */ __dshReact.createElement(
           "details",
           {
             className: "sk-task-monitor__section",
@@ -878,7 +1588,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/style.css
-    var style_default2 = '/* 会话内容区内的左右分栏：左边是宿主原本的消息列，右边是常驻监控栏。 */\n.sk-task-monitor-frame {\n  display: flex;\n  flex: 1;\n  flex-direction: row;\n  min-height: 0;\n  min-width: 0;\n  /* 左侧栏收起时窗口没变，但会话列变宽了。 */\n  container: task-monitor / inline-size;\n}\n\n.sk-task-monitor-column {\n  display: flex;\n  flex: 1;\n  flex-direction: column;\n  min-height: 0;\n  min-width: 0;\n}\n\n/* 复用宿主在滚动容器上实时测得的输入区高度，不改 scrollport 或吸底行为。\n   只缩短主会话的纵向轨道；不支持轨道内缩的浏览器保留宿主样式。 */\n.sk-task-monitor-frame:not([data-slot="sidebar.chat.conversation"] *) > .sk-task-monitor-column > [data-conversation-scroll]::-webkit-scrollbar-track:vertical {\n  margin-bottom: calc(2px + var(--dsh-composer-height, 0px));\n}\n\n.sk-task-monitor-side {\n  box-sizing: border-box;\n  display: flex;\n  flex: 0 0 260px;\n  flex-direction: column;\n  /* 分隔线随会话内容区拉满；内边距只给滚动列表留白。 */\n  align-self: stretch;\n  min-height: 0;\n  min-width: 0;\n  --sk-task-monitor-inset-block: 8px;\n  padding-block: var(--sk-task-monitor-inset-block);\n  margin-inline: 4px 6px;\n  border-inline-start: 1px solid var(--dsw-alias-border-l3, rgba(128, 128, 128, 0.14));\n}\n\n.sk-task-monitor-side > .sk-task-monitor {\n  flex: 0 1 auto;\n  min-height: 0;\n  max-block-size: calc(var(--sk-task-monitor-visible-height) - 2 * var(--sk-task-monitor-inset-block));\n}\n\n/* 宿主轮次导航会按 ≤900px 隐藏。监控栏打开时仍在分栏容器 ≥800px 保留它。 */\n.sk-task-monitor-frame[data-rail="open"] nav:has(button[data-index]) {\n  display: block;\n}\n\n@container task-monitor (max-width: 800px) {\n  .sk-task-monitor-frame[data-rail="open"] nav:has(button[data-index]) {\n    display: none;\n  }\n}\n\n/* 保持组件挂载以拉取快照，但空面板不占位。 */\n.sk-task-monitor-side[data-empty="true"] {\n  display: none;\n}\n\n@container task-monitor (max-width: 850px) {\n  .sk-task-monitor-side {\n    flex-basis: 230px;\n  }\n}\n\n@container task-monitor (max-width: 730px) {\n  .sk-task-monitor-side {\n    /* 窄屏默认收起由 rail 状态决定；手动打开时仍给正文留出大部分宽度。 */\n    flex-basis: min(210px, 40cqi);\n  }\n}\n';
+    var style_default3 = '/* 会话内容区内的左右分栏：左边是宿主原本的消息列，右边是常驻监控栏。 */\n.sk-task-monitor-frame {\n  display: flex;\n  flex: 1;\n  flex-direction: row;\n  min-height: 0;\n  min-width: 0;\n  /* 左侧栏收起时窗口没变，但会话列变宽了。 */\n  container: task-monitor / inline-size;\n}\n\n.sk-task-monitor-column {\n  display: flex;\n  flex: 1;\n  flex-direction: column;\n  min-height: 0;\n  min-width: 0;\n}\n\n/* 复用宿主在滚动容器上实时测得的输入区高度，不改 scrollport 或吸底行为。\n   只缩短主会话的纵向轨道；不支持轨道内缩的浏览器保留宿主样式。 */\n.sk-task-monitor-frame:not([data-slot="sidebar.chat.conversation"] *) > .sk-task-monitor-column > [data-conversation-scroll]::-webkit-scrollbar-track:vertical {\n  margin-bottom: calc(2px + var(--dsh-composer-height, 0px));\n}\n\n.sk-task-monitor-side {\n  box-sizing: border-box;\n  display: flex;\n  flex: 0 0 260px;\n  flex-direction: column;\n  /* 分隔线随会话内容区拉满；内边距只给滚动列表留白。 */\n  align-self: stretch;\n  min-height: 0;\n  min-width: 0;\n  --sk-task-monitor-inset-block: 8px;\n  padding-block: var(--sk-task-monitor-inset-block);\n  margin-inline: 4px 6px;\n  border-inline-start: 1px solid var(--dsw-alias-border-l3, rgba(128, 128, 128, 0.14));\n}\n\n.sk-task-monitor-side > .sk-task-monitor {\n  flex: 0 1 auto;\n  min-height: 0;\n  max-block-size: calc(var(--sk-task-monitor-visible-height) - 2 * var(--sk-task-monitor-inset-block));\n}\n\n/* 宿主轮次导航会按 ≤900px 隐藏。监控栏打开时仍在分栏容器 ≥800px 保留它。 */\n.sk-task-monitor-frame[data-rail="open"] nav:has(button[data-index]) {\n  display: block;\n}\n\n@container task-monitor (max-width: 800px) {\n  .sk-task-monitor-frame[data-rail="open"] nav:has(button[data-index]) {\n    display: none;\n  }\n}\n\n/* 保持组件挂载以拉取快照，但空面板不占位。 */\n.sk-task-monitor-side[data-empty="true"] {\n  display: none;\n}\n\n@container task-monitor (max-width: 850px) {\n  .sk-task-monitor-side {\n    flex-basis: 230px;\n  }\n}\n\n@container task-monitor (max-width: 730px) {\n  .sk-task-monitor-side {\n    /* 窄屏默认收起由 rail 状态决定；手动打开时仍给正文留出大部分宽度。 */\n    flex-basis: min(210px, 40cqi);\n  }\n}\n';
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/index.tsx
     var NAME2 = "conversation-rail";
@@ -920,19 +1630,19 @@ window.__ModuleLoader__.load({
       });
     }
     function RailLayer({ children, useSessions, Panel, actions, label }) {
-      const wrapRef = import_react6.default.useRef(null);
-      const [embedded, setEmbedded] = import_react6.default.useState(false);
-      const [maxHeight, setMaxHeight] = import_react6.default.useState(null);
+      const wrapRef = import_react8.default.useRef(null);
+      const [embedded, setEmbedded] = import_react8.default.useState(false);
+      const [maxHeight, setMaxHeight] = import_react8.default.useState(null);
       const sessionId = activeSessionId(useSessions);
       const choice = useRailChoice(sessionId);
       const narrow2 = useRailNarrow();
       const empty = useHasContent(sessionId) === false;
       const open = !embedded && typeof sessionId === "string" && sessionId !== "" && (choice === "visible" || choice === null && !narrow2);
-      import_react6.default.useEffect(() => {
+      import_react8.default.useEffect(() => {
         const wrap = wrapRef.current;
         setEmbedded(wrap !== null && wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null);
       }, []);
-      import_react6.default.useEffect(() => {
+      import_react8.default.useEffect(() => {
         const wrap = wrapRef.current;
         if (wrap === null || typeof ResizeObserver === "undefined") return void 0;
         if (wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null) return void 0;
@@ -955,7 +1665,7 @@ window.__ModuleLoader__.load({
           setRailNarrow(false);
         };
       }, []);
-      return /* @__PURE__ */ __dshReact.createElement("div", { ref: wrapRef, className: "sk-task-monitor-frame", "data-rail": open ? "open" : "closed" }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default2), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor-column" }, children), open ? /* @__PURE__ */ __dshReact.createElement(
+      return /* @__PURE__ */ __dshReact.createElement("div", { ref: wrapRef, className: "sk-task-monitor-frame", "data-rail": open ? "open" : "closed" }, /* @__PURE__ */ __dshReact.createElement("style", null, style_default3), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-task-monitor-column" }, children), open ? /* @__PURE__ */ __dshReact.createElement(
         "aside",
         {
           className: "sk-task-monitor-side",
@@ -977,13 +1687,13 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/task-monitor/client/surfaces/header-button/style.css
-    var style_default3 = "/* 会话标题行的 icon-only 开关：28px 热区 + 图标，规格对齐宿主 utilities\n   里其它图标按钮（右栏展开、schedule 入口）。挂载点在面板 React 子树外，\n   所以这份样式由 client/index.ts 全局注入。 */\n.sk-task-monitor-button {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 28px;\n  height: 28px;\n  padding: 0;\n  border: 0;\n  border-radius: 28px;\n  background: transparent;\n  color: var(--dsw-alias-label-tertiary);\n  cursor: pointer;\n}\n\n.sk-task-monitor-button:focus-visible {\n  color: var(--dsw-alias-label-secondary);\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n@media (hover: hover) {\n  .sk-task-monitor-button:hover {\n    color: var(--dsw-alias-label-secondary);\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n.sk-task-monitor-button svg {\n  flex: none;\n}\n";
+    var style_default4 = "/* 会话标题行的 icon-only 开关：28px 热区 + 图标，规格对齐宿主 utilities\n   里其它图标按钮（右栏展开、schedule 入口）。挂载点在面板 React 子树外，\n   所以这份样式由 client/index.ts 全局注入。 */\n.sk-task-monitor-button {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 28px;\n  height: 28px;\n  padding: 0;\n  border: 0;\n  border-radius: 28px;\n  background: transparent;\n  color: var(--dsw-alias-label-tertiary);\n  cursor: pointer;\n}\n\n.sk-task-monitor-button:focus-visible {\n  color: var(--dsw-alias-label-secondary);\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n@media (hover: hover) {\n  .sk-task-monitor-button:hover {\n    color: var(--dsw-alias-label-secondary);\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n.sk-task-monitor-button svg {\n  flex: none;\n}\n";
 
     // src/modules/task-monitor/client/index.ts
     var inject = ["slots", "locale"];
     function apply(ctx) {
       installDictionary(ctx, TASK_MONITOR_NS, TASK_MONITOR_COPY);
-      ctx.effect(() => installStylesheet(composeStyles(style_default3), "dsh-toolkit-task-monitor"), "dsh-toolkit-task-monitor:stylesheet");
+      ctx.effect(() => installStylesheet(composeStyles(style_default4, style_default), "dsh-toolkit-task-monitor"), "dsh-toolkit-task-monitor:stylesheet");
       ctx.effect(() => install2(ctx), `dsh-toolkit-task-monitor:${NAME2}`);
       ctx.effect(() => install(ctx), `dsh-toolkit-task-monitor:${NAME}`);
     }

@@ -11,6 +11,7 @@ export interface BranchSnapshot {
     readonly root: string;
     readonly branch: string;
     readonly detached: boolean;
+    readonly linkedWorktree: boolean;
     readonly dirty: boolean;
     readonly branches: readonly string[];
     /** 远端跟踪引用（`origin/main` 这种短名）；`origin/HEAD` 是符号引用，不算分支。 */
@@ -70,6 +71,11 @@ export declare function createRepository(run?: GitRunner): {
     commit(cwd: unknown, message: unknown, options?: {
         readonly all?: boolean;
         readonly paths?: readonly string[];
+        readonly expected?: {
+            readonly branchRef: string;
+            readonly head: string | null;
+            readonly tree: string;
+        };
     }): Promise<CommandOutcome>;
     /**
      * 同步远端：`fetch` 只更新跟踪引用，`pull` 把上游合进来（默认 rebase）。

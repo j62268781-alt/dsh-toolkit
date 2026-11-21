@@ -14,6 +14,8 @@ import { gitPromptText } from './prompt.js'
 import { NAME, PROMPT_ORDER, PROMPT_SECTION } from './constants.js'
 import { createRepository } from './repository.js'
 import { createGitRoutes } from './routes/branches.js'
+import { createGitPublishRoutes } from './routes/publish.js'
+import { createPublishService } from './publish.js'
 import { createGitTools } from './tools.js'
 import { installGitGuard } from './guard.js'
 
@@ -31,10 +33,13 @@ export function apply(ctx: any, config: unknown = {}): void {
   // 工具、守卫、提示词共用同一个读取入口：三处各算一份「当前设置」迟早漂移。
   const settings = (): GitSettings => readSettings(config)
 
-  // 分支按钮的路由与提示词互不影响：先挂路由，再按需挂提示词段。
+  // 工作区路由与提示词互不影响：先挂路由，再按需挂提示词段。
   const repository = createRepository()
   ctx.inject(['webServer', 'connection'], (routeCtx: any) => {
-    registerJsonRoutes(routeCtx, createGitRoutes({ repository }))
+    registerJsonRoutes(routeCtx, [
+      ...createGitRoutes({ repository }),
+      ...createGitPublishRoutes(createPublishService()),
+    ])
   })
 
   // 工具是可选依赖：没有 tools 服务的宿主里，提示词与路由照旧工作。

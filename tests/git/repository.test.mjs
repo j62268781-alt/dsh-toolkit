@@ -51,10 +51,18 @@ test('snapshot：把仓库根、当前分支、脏标记与分支列表一次读
     root: REPO,
     branch: 'main',
     detached: false,
+    linkedWorktree: false,
     dirty: true,
     branches: ['main', 'feat/a', 'fix/b'],
     remotes: [],
   })
+})
+
+test('snapshot：使用 Git 管理目录识别 linked worktree', async () => {
+  const key = 'rev-parse --path-format=absolute --git-dir --git-common-dir'
+  const check = async (stdout) => createRepository(runnerOf(repoTable({ [key]: { stdout } }))).snapshot(REPO)
+  assert.equal((await check(`${REPO}/.git/worktrees/topic\n${REPO}/.git\n`)).linkedWorktree, true)
+  assert.equal((await check(`${REPO}/metadata\n${REPO}/metadata\n`)).linkedWorktree, false)
 })
 
 test('snapshot：detached HEAD 不假装自己是分支，且不打乱列表', async () => {
