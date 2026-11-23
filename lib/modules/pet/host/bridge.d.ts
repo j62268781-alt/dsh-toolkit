@@ -9,4 +9,3 @@ export interface HelperBridge {
 }
 /** Private loopback server: capability never enters the page or public API. */
 export declare function createHelperBridge(snapshot: () => any, action: (value: any) => Promise<any>): Promise<HelperBridge>;
-//# sourceMappingURL=bridge.d.ts.map

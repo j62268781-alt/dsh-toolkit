@@ -81,4 +81,3 @@ export async function purgePairingState({ serverUrl, homeDir } = {}) {
     }
     return { dir, hostOnly, removed };
 }
-//# sourceMappingURL=local-state.js.map

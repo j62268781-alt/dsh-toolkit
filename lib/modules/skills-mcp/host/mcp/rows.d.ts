@@ -7,4 +7,3 @@ export declare const ROWS_PATH: string;
  * **already validated** op.
  */
 export declare function registerRowRoute(ctx: any, { schema, apply }: any): void;
-//# sourceMappingURL=rows.d.ts.map

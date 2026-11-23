@@ -20,4 +20,3 @@ export declare function registerOAuthCallback(ctx: any, options?: any): {
 };
 /** 极小的 HTML 转义：页面里出现的都是服务器名与错误文本，必须挡住注入。 */
 export declare function escapeHtml(value: any): string;
-//# sourceMappingURL=callback.d.ts.map

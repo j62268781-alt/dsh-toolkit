@@ -653,4 +653,3 @@ createApi = createIlinkApi, createStore = createBridgeStore, createConversationM
         },
     };
 }
-//# sourceMappingURL=bridge.js.map

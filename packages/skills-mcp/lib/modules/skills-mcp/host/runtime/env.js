@@ -159,4 +159,3 @@ export function spawnEnv(extra) {
         env.PATH = path;
     return env;
 }
-//# sourceMappingURL=env.js.map

@@ -22,4 +22,3 @@ export declare function createToolCache({ file, warn }?: {
     drop(key: string): Promise<void>;
     flush: () => Promise<void>;
 };
-//# sourceMappingURL=toolCache.d.ts.map

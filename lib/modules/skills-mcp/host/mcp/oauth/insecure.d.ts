@@ -117,4 +117,3 @@ export declare function exchangeInsecureToken({ tokenEndpoint, params, clientId,
  * @returns 令牌对象，或 null（不是合法令牌）。
  */
 export declare function validateTokens(body: any): any;
-//# sourceMappingURL=insecure.d.ts.map

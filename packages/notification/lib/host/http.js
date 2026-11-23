@@ -50,4 +50,3 @@ export function sendJson(res, status, payload) {
     res.setHeader('content-type', 'application/json; charset=utf-8');
     res.end(JSON.stringify(payload));
 }
-//# sourceMappingURL=http.js.map

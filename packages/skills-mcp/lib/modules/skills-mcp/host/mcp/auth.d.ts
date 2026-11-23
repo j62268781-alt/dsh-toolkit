@@ -88,4 +88,3 @@ export declare function classifyAuthChallenge(input: any): {
  * @returns 中文说明文本。
  */
 export declare function authDetailText(kind: any, info: any): string;
-//# sourceMappingURL=auth.d.ts.map

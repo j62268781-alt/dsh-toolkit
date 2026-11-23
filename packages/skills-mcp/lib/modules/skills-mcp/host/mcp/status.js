@@ -218,4 +218,3 @@ export function remainingSeconds(elapsedMs, budgetMs) {
     const left = Math.max(0, Math.round((Number(budgetMs) - Number(elapsedMs)) / 1000));
     return left;
 }
-//# sourceMappingURL=status.js.map

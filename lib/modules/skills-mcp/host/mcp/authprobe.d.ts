@@ -55,4 +55,3 @@ export declare function createAuthProbe(log: any): {
         errorDescription: string;
     }>;
 };
-//# sourceMappingURL=authprobe.d.ts.map

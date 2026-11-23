@@ -15,8 +15,8 @@ cordis.patch.yml                     ← 根补丁：insert 列表，插入十�
 scripts/ tests/ docs/ .cache(gitignored)
 ```
 
-- **不要手改 `lib/`、`packages/*/lib/`**：它们是 `pnpm build` 的产物，但**被 git 跟踪**，
-  所以改完源码必须重新构建并一起提交。
+- **不要手改 `lib/`、`packages/*/lib/`**：运行产物由 `pnpm build` 生成并随源码提交。
+  项目不保留 `.map` 文件；构建不生成、打包不包含源映射。
 - 改名 / 搬文件后若残留旧产物，`build-host` / `build-packages` 会抛
   `Unexpected generated host file: ...; remove the stale output explicitly` —— 手工删掉
   `lib/modules/<m>/host/<旧文件>.js` 与 `packages/<m>/lib/modules/<m>/host/<旧文件>.js` 再构建。

@@ -37,4 +37,3 @@ export declare function createCatalogReader(deps: CatalogReaderDeps): {
     read(_ctx: any, mountConfig: any, options?: CatalogReadOptions): Promise<McpCatalog>;
 };
 export {};
-//# sourceMappingURL=catalog.d.ts.map

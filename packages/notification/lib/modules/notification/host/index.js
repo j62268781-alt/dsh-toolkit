@@ -79,4 +79,3 @@ export function apply(ctx) {
     registerNotificationServiceWorkerRoute(ctx);
 }
 export default { name, inject, apply };
-//# sourceMappingURL=index.js.map

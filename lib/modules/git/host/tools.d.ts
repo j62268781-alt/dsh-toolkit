@@ -22,4 +22,3 @@ export declare function uniqueName(base: string, taken: readonly string[]): stri
  * 所以同一个定义在设置变化后（插件重启）不需要重新编译 schema。
  */
 export declare function createGitTools(options: GitToolsOptions): import("@deepseek-ai/dsh-tools").ToolDefinition[];
-//# sourceMappingURL=tools.d.ts.map

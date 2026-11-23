@@ -47,4 +47,3 @@ export { sleep } from '../../../../../host/time.js';
 /** 毫秒级计时（分项账用）。 */
 export declare const now: () => number;
 export declare function message(error: unknown): string;
-//# sourceMappingURL=utils.d.ts.map

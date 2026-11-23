@@ -141,4 +141,3 @@ export async function dispatch(input) {
     }
     return { status: response.status, body, rawText };
 }
-//# sourceMappingURL=dispatch.js.map

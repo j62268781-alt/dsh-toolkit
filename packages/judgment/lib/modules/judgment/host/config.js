@@ -72,4 +72,3 @@ export const Config = s.object({
         path: s.string().default(''),
     }).default({}).volatile(),
 });
-//# sourceMappingURL=config.js.map

@@ -14,4 +14,3 @@ export declare function createBootScene(assets: BootAssets, config: any, { previ
 }): BootScene;
 export declare function createPreviewDocument(assets: BootAssets, config: any): string;
 export declare function renderBootScript(assets: BootAssets): string;
-//# sourceMappingURL=scene.d.ts.map

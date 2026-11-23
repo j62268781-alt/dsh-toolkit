@@ -22,4 +22,3 @@ export interface ProcessResult {
 }
 /** Run a child with one deadline, bounded combined output, and close-confirmed cancellation. */
 export declare function runProcess(command: string, args?: readonly string[], options?: ProcessOptions): Promise<ProcessResult>;
-//# sourceMappingURL=process.d.ts.map

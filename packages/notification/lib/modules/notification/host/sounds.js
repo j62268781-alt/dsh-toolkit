@@ -171,4 +171,3 @@ export function createSoundService({ platform = process.platform, home = homedir
         },
     };
 }
-//# sourceMappingURL=sounds.js.map

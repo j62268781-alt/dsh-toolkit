@@ -67,4 +67,3 @@ export declare function stripBoundaries(text: string): string;
 export declare function parseExtracted(raw: string): ExtractedPage;
 /** 动作句柄（CSS 选择器）。 */
 export declare function handleOf(index: number): string;
-//# sourceMappingURL=extract.d.ts.map

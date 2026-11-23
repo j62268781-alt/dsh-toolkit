@@ -62,4 +62,3 @@ export function singleEntryDefinition(execute, projections) {
         },
     };
 }
-//# sourceMappingURL=singleEntry.js.map

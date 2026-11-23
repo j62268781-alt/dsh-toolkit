@@ -48,4 +48,3 @@ export declare function setRowDisabled(document: any, entryId: any, disabled: an
  * mount path needs to read.
  */
 export declare function insertRow(document: any, id: any, config: any, options?: any): boolean;
-//# sourceMappingURL=rows.d.ts.map

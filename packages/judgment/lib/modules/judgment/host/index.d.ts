@@ -220,4 +220,3 @@ export declare class JudgmentService extends TypertRemoteService implements Judg
     health(options?: HealthOptions): Promise<JudgeHealth>;
 }
 export default JudgmentService;
-//# sourceMappingURL=index.d.ts.map

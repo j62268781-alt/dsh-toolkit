@@ -378,4 +378,3 @@ export function apply(ctx, config) {
     }, 'desktop pet service');
 }
 export default { name, inject, apply };
-//# sourceMappingURL=index.js.map

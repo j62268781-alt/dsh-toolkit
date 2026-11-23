@@ -72,4 +72,3 @@ export declare function readConfig(config?: any): {
     bridgeRequestTimeoutMs: number;
     bridgeApprovalTimeoutMs: number;
 };
-//# sourceMappingURL=config.d.ts.map

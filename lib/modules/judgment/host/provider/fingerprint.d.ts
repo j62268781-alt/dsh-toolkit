@@ -20,4 +20,3 @@ export interface FingerprintIdentity {
     readonly model: string;
 }
 export declare function fingerprint(identity: FingerprintIdentity, state: JudgmentState, questions: JudgmentQuestions): Fingerprint;
-//# sourceMappingURL=fingerprint.d.ts.map

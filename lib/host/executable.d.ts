@@ -39,4 +39,3 @@ export interface SpawnTarget {
 export declare function resolveSpawnTarget(command: string, args?: readonly string[], platform?: NodeJS.Platform, env?: NodeJS.ProcessEnv): SpawnTarget;
 /** Cache a sync or async locator result and allow explicit invalidation. */
 export declare function createExecutableResolver<T>(locate: () => T | PromiseLike<T>): ExecutableResolver<T>;
-//# sourceMappingURL=executable.d.ts.map

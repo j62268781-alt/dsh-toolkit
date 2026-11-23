@@ -24,4 +24,3 @@ export declare function execute(browser: LoopEngine, candidate: TaskCandidate, s
 }>;
 /** 页面可见正文：`goal_done` 与独立确认的依据。 */
 export declare function visibleText(deps: TaskDeps, snapshot: Snapshot, trace: string[], step: number | undefined): Promise<string>;
-//# sourceMappingURL=actions.d.ts.map

@@ -298,4 +298,3 @@ export function tokenStatus(record, now = Date.now()) {
         expired: expiresAt <= now,
     };
 }
-//# sourceMappingURL=provider.js.map

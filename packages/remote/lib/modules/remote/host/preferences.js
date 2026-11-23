@@ -71,4 +71,3 @@ export async function writePreferences(target, next) {
 export function defaultPreferences(enabled) {
     return { ...EMPTY, wechat: enabled };
 }
-//# sourceMappingURL=preferences.js.map

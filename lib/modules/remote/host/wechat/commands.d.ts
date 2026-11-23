@@ -19,4 +19,3 @@ export declare function parseCommand(text: any): {
 export declare function helpText(): string;
 /** 是否为已知命令（未知命令统一回帮助）。 */
 export declare function isKnownCommand(name: any): boolean;
-//# sourceMappingURL=commands.d.ts.map

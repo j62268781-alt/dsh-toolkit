@@ -21,4 +21,3 @@ export interface DispatchOutput {
 }
 /** 发一封信，拿回状态与 JSON 体；任何失败都抛类型化 `JudgmentError`。 */
 export declare function dispatch(input: DispatchInput): Promise<DispatchOutput>;
-//# sourceMappingURL=dispatch.d.ts.map

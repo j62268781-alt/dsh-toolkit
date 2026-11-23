@@ -61,12 +61,12 @@ importers:
       dsh-toolkit-remote:
         specifier: workspace:^
         version: link:packages/remote
+      dsh-toolkit-session-panel:
+        specifier: workspace:^
+        version: link:packages/session-panel
       dsh-toolkit-skills-mcp:
         specifier: workspace:^
         version: link:packages/skills-mcp
-      dsh-toolkit-task-monitor:
-        specifier: workspace:^
-        version: link:packages/task-monitor
       dsh-toolkit-theme:
         specifier: workspace:^
         version: link:packages/theme
@@ -177,8 +177,6 @@ importers:
 
   packages/git: {}
 
-  packages/git-task-monitor: {}
-
   packages/hooks: {}
 
   packages/judgment:
@@ -226,6 +224,8 @@ importers:
         specifier: ^3.18.5
         version: 3.18.5
 
+  packages/session-panel: {}
+
   packages/skills-mcp:
     dependencies:
       '@deepseek-ai/dsh-atomic-write':
@@ -243,8 +243,6 @@ importers:
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
-
-  packages/task-monitor: {}
 
   packages/theme:
     dependencies:

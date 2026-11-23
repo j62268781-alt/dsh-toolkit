@@ -7,4 +7,3 @@ export declare const LEGACY_NAME = "skills-mcp-panel";
  * 与插件身份分开：身份是 Cordis 的名字，前缀是 HTTP 契约。client 也会求值这个文件。
  */
 export declare const API_PREFIX: string;
-//# sourceMappingURL=identity.d.ts.map

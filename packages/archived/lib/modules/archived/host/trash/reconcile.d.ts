@@ -18,4 +18,3 @@ export declare function pendingDeletions(ctx: any): Promise<string[]>;
  * resurface as an unreadable archived row.
  */
 export declare function pruneArchivedTombstones(ctx: any): Promise<string[]>;
-//# sourceMappingURL=reconcile.d.ts.map

@@ -104,8 +104,8 @@ cordis.patch.yml                     ← 根补丁：insert 列表，插入十�
 scripts/  tests/  docs/  docs/agent/  .cache(gitignored)
 ```
 
-- **不要手改 `lib/`、`packages/*/lib/`**：它们是 `pnpm build` 的产物，但**被 git 跟踪**，
-  改完源码必须重新构建并一起提交。
+- **不要手改 `lib/`、`packages/*/lib/`**：运行产物由 `pnpm build` 生成并跟踪，改完源码必须一起提交；
+  项目不保留 `.map` 文件；构建不生成、打包不包含源映射。
 - 改名 / 搬文件后残留的旧产物会让 `build-host` / `build-packages` 抛
   `Unexpected generated host file: ...; remove the stale output explicitly` —— 手工删掉
   `lib/modules/<m>/host/<旧文件>.js` 与 `packages/<m>/lib/modules/<m>/host/<旧文件>.js` 再构建。
@@ -227,8 +227,8 @@ scripts/  tests/  docs/  docs/agent/  .cache(gitignored)
 
 - 前缀一律 `/api/plugins/toolkit/<module>/…`，由 `src/host/paths.ts` 的 `pluginApiPath()` 派生；
   **不要在 client 里手写路径字符串**。唯一允许覆盖的是 mobile 的 `config.routePrefix`。
-- 注册走 `src/host/routes.ts`；`registerAuthenticatedRoute` 在 handler 前跑
-  `ctx.connection.requestRejection(req)`，**身份拒绝先于读 body**。
+- 注册走 `src/host/routes.ts`；`registerAuthenticatedRoute` 按宿主版本走 `connection.requestRejection(req)`
+  或 WebServer 的已认证 owner Peer，**身份拒绝先于读 body**。
 - **失败只有一个通道**：`throw httpFailure(status, reason)`；不要再
   `Object.assign(new Error(msg), { statusCode })`。`HttpFailure` 同时暴露 `.status` 与 `.statusCode`
   （后者是兼容别名，新代码只用 `.status`）。
@@ -318,7 +318,7 @@ Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" 
 ## 14. 提交必须分批
 
 1. **按「一件事」切分**：一个 commit 只回答一个「为什么改」。
-2. **构建产物跟随源码**：`lib/**`、`packages/*/lib/**` 与产生它们的 `src/` 改动同一个 commit。
+2. **构建产物跟随源码**：已跟踪的 `lib/**`、`packages/*/lib/**` 与产生它们的 `src/` 改动同一个 commit；不提交 `.map`。
 3. **测试跟随被测代码**：改动的 `tests/**` 跟实现同 commit。
 4. **提交前逐条 `git status`**：按功能分组，确认每组自成一体；有疑问就 `git add -p`，不要 `git add -A`。
 5. **commit message 用 `type(scope): 中文短句`**（`feat` / `fix` / `docs` / `refactor` / `chore`），

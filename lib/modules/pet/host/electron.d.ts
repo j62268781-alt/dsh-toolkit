@@ -8,4 +8,3 @@ export interface ResolveElectronOptions {
 /** Download only on explicit preparation or when a desktop surface is enabled. */
 export declare function resolveElectron({ electronPath, download }?: ResolveElectronOptions): Promise<string | undefined>;
 export declare function helperEnvironment(url: string, token: string, env?: NodeJS.ProcessEnv): NodeJS.ProcessEnv;
-//# sourceMappingURL=electron.d.ts.map

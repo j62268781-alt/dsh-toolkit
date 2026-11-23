@@ -15,4 +15,3 @@ export declare const SERVICE_WORKER_PATH: string;
  * 点击通知才有「聚焦已有窗口」这条路（否则只能每次新开一个）。
  */
 export declare const SERVICE_WORKER_SCOPE = "/";
-//# sourceMappingURL=constants.d.ts.map

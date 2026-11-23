@@ -50,4 +50,3 @@ export function installGitGuard(ctx, settings) {
         };
     });
 }
-//# sourceMappingURL=guard.js.map

@@ -59,4 +59,3 @@ export declare function validationOf(error: unknown): ValidationNumbers;
 /** 下一次重采用多少个候选。 */
 export declare function nextJudgeOptionCap(error: unknown, askedCount: number): number;
 export type { JudgmentAnswer };
-//# sourceMappingURL=judge.d.ts.map

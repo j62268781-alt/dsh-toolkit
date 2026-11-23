@@ -5,4 +5,3 @@
  * 所以它不能有 Node 依赖。
  */
 export declare const API_PREFIX: string;
-//# sourceMappingURL=constants.d.ts.map

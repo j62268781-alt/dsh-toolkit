@@ -104,4 +104,3 @@ export function createExecutableResolver(locate) {
         },
     };
 }
-//# sourceMappingURL=executable.js.map

@@ -5,7 +5,8 @@ import { readCharBody, sendJson } from './http.js'
 export interface Route {
   kind?: string
   path: string
-  handler(req: IncomingMessage, res: ServerResponse): unknown
+  auth?: 'required'
+  handler(req: IncomingMessage, res: ServerResponse, peer?: { principal?: { kind?: string }; signal?: AbortSignal }): unknown
 }
 
 /** Register a route in its owning module's effect scope. */
@@ -25,7 +26,22 @@ export function registerRoute(ctx: any, route: Route): unknown {
 /** Ordinary HTTP routes always use the host's identity and origin policy. */
 export function registerAuthenticatedRoute(ctx: any, route: Route): unknown {
   if (typeof ctx.connection?.requestRejection !== 'function') {
-    throw new Error('dsh-toolkit: authenticated route registration requires connection.requestRejection')
+    if (typeof ctx.connection?.admit !== 'function') {
+      throw new Error('dsh-toolkit: authenticated route registration requires connection.requestRejection')
+    }
+    // New hosts authorize the route before passing the admitted Peer to the handler.
+    return registerRoute(ctx, {
+      ...route,
+      auth: 'required',
+      handler(req, res, peer) {
+        if (peer?.principal?.kind !== 'owner' || peer.signal?.aborted !== false) {
+          res.statusCode = peer ? 403 : 401
+          res.end()
+          return
+        }
+        return route.handler(req, res, peer)
+      },
+    })
   }
   return registerRoute(ctx, {
     ...route,

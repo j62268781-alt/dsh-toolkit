@@ -6,4 +6,3 @@ import { pluginApiPath } from "../../../host/paths.js";
  * 所以它不能有 Node 依赖。
  */
 export const API_PREFIX = pluginApiPath("mobile");
-//# sourceMappingURL=constants.js.map

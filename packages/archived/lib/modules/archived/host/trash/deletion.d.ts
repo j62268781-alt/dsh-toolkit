@@ -42,4 +42,3 @@ export declare function deleteArchivedSessions(ctx: any, sessionIds: readonly st
     sessionId: string;
     result: DeletionResult;
 }>>;
-//# sourceMappingURL=deletion.d.ts.map

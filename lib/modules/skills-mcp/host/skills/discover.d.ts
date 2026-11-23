@@ -36,4 +36,3 @@ export declare function discoverSkills(options: any): Promise<{
     source: any;
     scope: any;
 }[]>;
-//# sourceMappingURL=discover.d.ts.map

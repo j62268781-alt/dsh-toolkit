@@ -11,4 +11,3 @@ export declare class Singleflight<K = unknown, V = unknown> {
     invalidate(key: K): void;
     clear(): void;
 }
-//# sourceMappingURL=singleflight.d.ts.map

@@ -64,4 +64,3 @@ export function registerImportRoute(ctx, { schema, scan }) {
         },
     });
 }
-//# sourceMappingURL=route.js.map

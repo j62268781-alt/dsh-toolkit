@@ -58,4 +58,3 @@ export declare function createConnectionProbe(ctx: any, log: any): {
         detail: string;
     }>;
 };
-//# sourceMappingURL=probe.d.ts.map

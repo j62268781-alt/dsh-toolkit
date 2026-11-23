@@ -371,4 +371,3 @@ function facts(row, { liveIds = new Set(), eventLive = new Set(), now = Date.now
         detail: waiting ? stuckQueue ? 'Input queued' : text(goal?.goal?.blockedReason?.message) || (exhausted ? 'Goal round limit reached' : 'Goal paused') : queued ? 'Input queued' : goalStarting ? 'Goal in progress' : runningNow ? 'Working' : 'Turn finished',
         updatedAt: Math.max(row.updatedAt, time(goal?.updatedAt)) };
 }
-//# sourceMappingURL=activity.js.map

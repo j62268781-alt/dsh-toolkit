@@ -1,3 +1,4 @@
+import { RemoteConnectionShape } from "../../../client/ui/components/settings-icon/remote-connection-shape.js";
 import { createQrCode } from './qr.jsx'
 import { pollInterval, toneOf } from './wechat/model.js'
 import { placePopover } from './position.js'
@@ -426,12 +427,7 @@ export function createPanel(React, { t, connection, portal, features }) {
         strokeWidth: 1.3,
         strokeLinecap: 'round',
         strokeLinejoin: 'round',
-      },
-      // 显示器：圆角矩形 + 底座。
-      h('rect', { x: 2.2, y: 3.2, width: 10.6, height: 7.6, rx: 1.6 }),
-      h('path', { d: 'M6.5 13.2h3.4M7.6 10.8v2.4M9.4 10.8v2.4' }),
-      // 手机：压在显示器右下角。
-      h('rect', { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 }))),
+      }, h(RemoteConnectionShape))),
     attention
       ? h('span', { className: 'wc-dot', 'data-state': tone, title: t('dotAttention'), 'aria-label': t('dotAttention') })
       : null)

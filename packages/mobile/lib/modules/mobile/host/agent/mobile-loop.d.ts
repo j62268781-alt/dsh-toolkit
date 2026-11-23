@@ -22,4 +22,3 @@ export declare function runMobileLoop({ client, judge, purpose, device, goal, ma
     signal?: AbortSignal;
 }): Promise<any>;
 export {};
-//# sourceMappingURL=mobile-loop.d.ts.map

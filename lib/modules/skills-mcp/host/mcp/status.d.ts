@@ -123,4 +123,3 @@ export declare function reconnectBudgetMs(raw: any): number;
 export declare function deriveStatus(input: any): "unknown" | "pending" | "failed" | "disabled" | "connected" | "retrying" | "gave-up" | "unmounted" | "lazy-idle" | "needs-auth";
 /** 供界面展示的剩余时间（秒），推导值。 */
 export declare function remainingSeconds(elapsedMs: any, budgetMs: any): number;
-//# sourceMappingURL=status.d.ts.map

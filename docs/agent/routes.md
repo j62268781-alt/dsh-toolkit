@@ -6,8 +6,9 @@
 
 - 前缀一律 `/api/plugins/toolkit/<module>/…`，由 `src/host/paths.ts` 的 `pluginApiPath()` 派生；
   **不要在 client 里手写路径字符串**。唯一允许覆盖的是 mobile 的 `config.routePrefix`。
-- 注册走 `src/host/routes.ts`；`registerAuthenticatedRoute` 在 handler 前跑
-  `ctx.connection.requestRejection(req)`，**身份拒绝先于读 body**（测试断言 `req` 没有 data 监听）。
+- 注册走 `src/host/routes.ts`；`registerAuthenticatedRoute` 在旧宿主调用
+  `ctx.connection.requestRejection(req)`；新版由 WebServer 按 `auth: 'required'` 完成准入，
+  handler 只接受仍有效的 owner Peer。**身份拒绝先于读 body**。
 - `jsonRoute` 的 spec：
 
   ```ts

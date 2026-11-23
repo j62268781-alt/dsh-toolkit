@@ -11,4 +11,3 @@ export const PLUGIN_API_ROOT = '/api/plugins/toolkit';
 export function pluginApiPath(moduleName) {
     return `${PLUGIN_API_ROOT}/${moduleName}`;
 }
-//# sourceMappingURL=paths.js.map

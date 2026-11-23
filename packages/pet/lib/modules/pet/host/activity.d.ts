@@ -22,4 +22,3 @@ export interface ActivityFeed {
 }
 /** `ctx` 是宿主插件上下文（形状由宿主决定），故显式 any。 */
 export declare function createActivityFeed(ctx: any, onChange?: () => void, options?: ActivityOptions): ActivityFeed;
-//# sourceMappingURL=activity.d.ts.map

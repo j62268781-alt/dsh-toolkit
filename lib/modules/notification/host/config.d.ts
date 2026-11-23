@@ -30,4 +30,3 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
     permissionEnabled: s<boolean, boolean, "volatile-defined">;
     permissionSound: s<string, string, "volatile-defined">;
 }>>, "plain">;
-//# sourceMappingURL=config.d.ts.map

@@ -27,4 +27,3 @@ export interface MigrationResult {
  * New module overrides require the matching module bundle to be installed.
  */
 export declare function migratePatch(input: unknown): MigrationResult;
-//# sourceMappingURL=migration.d.ts.map

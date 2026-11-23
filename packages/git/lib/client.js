@@ -56,6 +56,13 @@ window.__ModuleLoader__.load({
 
     // src/client/ui/components/settings-icon/index.tsx
     var import_react = __toESM(require("react"), 1);
+
+    // src/client/ui/components/settings-icon/remote-connection-shape.tsx
+    function RemoteConnectionShape() {
+      return /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: 2.2, y: 3.2, width: 10.6, height: 7.6, rx: 1.6 }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.5 13.2h3.4M7.6 10.8v2.4M9.4 10.8v2.4" }), /* @__PURE__ */ __dshReact.createElement("rect", { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 }));
+    }
+
+    // src/client/ui/components/settings-icon/index.tsx
     globalThis.__dshReact ??= import_react.default;
     var SHAPES = {
       rocket: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "6", r: "1.15" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 10.6 4.7 12.4M9.7 10.6l1.6 1.8M8 12.1v2.2" })),
@@ -70,12 +77,21 @@ window.__ModuleLoader__.load({
       hook: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "5.7", cy: "3.2", r: "1.1" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M5.7 4.3v4.4a2.9 2.9 0 0 0 5.8 0V7.5" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M11.5 7.5 9.7 6.9" })),
       // Git 分支：一条主干带一个分叉端点，与 Qoder 设置页的 git 分支图标同义。
       git: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "4.6", cy: "3.4", r: "1.3" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "4.6", cy: "12.6", r: "1.3" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "11.4", cy: "6.4", r: "1.3" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.6 4.7v6.6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.6 8.6c0-2 1.5-3.5 3.5-3.5h2" })),
-      phone: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: "4.4", y: "2.1", width: "7.2", height: "11.8", rx: "1.6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M7 4h2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M7.3 12.4h1.4" })),
+      "remote-connection": /* @__PURE__ */ __dshReact.createElement(RemoteConnectionShape, null),
       gear: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "4.6" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" }))
     };
-    function createGlyph(key) {
+    var OPTICAL_TRANSFORMS = {
+      bell: "translate(8 8) scale(1.08) translate(-8 -6.8)",
+      paw: "translate(8 8) scale(1.2) translate(-8 -8.075)",
+      plug: "translate(8 8) scale(1.1) translate(-8 -7.8)",
+      hook: "translate(8 8) scale(1.25) translate(-8.05 -6.85)",
+      "remote-connection": "translate(8 8) scale(.92) translate(-9 -9.2)"
+    };
+    function createGlyph(key, NativeIcon) {
       function ToolkitSettingsGlyph({ size = 16, active = false }) {
         const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
+        if (NativeIcon) return /* @__PURE__ */ __dshReact.createElement(NativeIcon, { size: edge });
+        const transform = OPTICAL_TRANSFORMS[key];
         return /* @__PURE__ */ __dshReact.createElement(
           "svg",
           {
@@ -84,7 +100,7 @@ window.__ModuleLoader__.load({
             height: edge,
             fill: "none",
             stroke: "currentColor",
-            strokeWidth: "1.4",
+            strokeWidth: "1.3",
             strokeLinecap: "round",
             strokeLinejoin: "round",
             "aria-hidden": "true",
@@ -92,7 +108,7 @@ window.__ModuleLoader__.load({
             "data-sk-settings-icon": key,
             "data-active": active ? "true" : "false"
           },
-          SHAPES[key]
+          transform ? /* @__PURE__ */ __dshReact.createElement("g", { transform }, SHAPES[key]) : SHAPES[key]
         );
       }
       ToolkitSettingsGlyph.displayName = `ToolkitSettingsGlyph(${key})`;
@@ -101,12 +117,13 @@ window.__ModuleLoader__.load({
     var GLYPH_COMPONENTS = Object.freeze(
       Object.fromEntries(Object.keys(SHAPES).map((key) => [key, createGlyph(key)]))
     );
-    function registerSettingsIcon(ctx, sectionId, iconKey) {
+    function registerSettingsIcon(ctx, sectionId, iconKey, NativeIcon) {
       const slots = ctx?.slots;
       if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return void 0;
       if (typeof sectionId !== "string" || sectionId === "") return void 0;
-      const Glyph = GLYPH_COMPONENTS[iconKey];
-      if (!Glyph) return void 0;
+      const fallback = GLYPH_COMPONENTS[iconKey];
+      if (!fallback) return void 0;
+      const Glyph = NativeIcon ? createGlyph(iconKey, NativeIcon) : fallback;
       try {
         const dispose = slots.inject("settings.section.icon", () => slots.register({
           name: "settings.section.icon",
@@ -160,10 +177,81 @@ window.__ModuleLoader__.load({
       return installSharedStylesheet(SETTINGS_PARTS_CSS, SETTINGS_PARTS_ID);
     }
 
+    // src/modules/git/client/components/publish/locale.ts
+    var GIT_PUBLISH_COPY = {
+      zh: {
+        gitPublishTitle: "提交与推送",
+        gitPublishChoose: "选择一项操作查看预览。提交不会自动推送。",
+        gitPublishPreviewCommit: "预览提交",
+        gitPublishPreviewPush: "预览推送",
+        gitPublishLoading: "正在读取预览…",
+        gitPublishWorkspace: "工作目录",
+        gitPublishBranch: "分支",
+        gitPublishRemote: "远程仓库",
+        gitPublishRef: "目标引用",
+        gitPublishAhead: "领先（本地记录）",
+        gitPublishBehind: "落后（本地记录）",
+        gitPublishUnknown: "未知",
+        gitPublishStagedOnly: "仅提交已暂存的改动；不会暂存其他文件，也不会推送。",
+        gitPublishStagedPaths: "已暂存的文件",
+        gitPublishNothingStaged: "没有已暂存的改动。",
+        gitPublishMessage: "提交说明",
+        gitPublishPushScope: "只推送已提交的历史，不会提交暂存或未暂存的改动。",
+        gitPublishNoDestination: "未找到可用的推送目标。",
+        gitPublishPushBehind: "本地记录显示当前分支落后于远程；请先同步。",
+        gitPublishNothingToPush: "没有待推送的提交。",
+        gitPublishConfirmCommit: "确认提交",
+        gitPublishConfirmPush: "确认推送",
+        gitPublishWorking: "正在执行 Git 操作…",
+        gitPublishCommitDone: "已提交暂存的改动，未推送。",
+        gitPublishPushDone: "推送完成。",
+        gitPublishPreviewFailed: "无法读取 Git 预览。",
+        gitPublishActionFailed: "Git 操作未成功，请重新预览后再确认。",
+        gitPublishStale: "仓库状态已变化或预览已过期，请重新预览。",
+        gitPublishUncertain: "无法确认 Git 操作是否完成。请检查仓库状态（推送时也请检查远程），不要直接重试。",
+        gitPublishCancel: "取消",
+        gitPublishClose: "关闭"
+      },
+      en: {
+        gitPublishTitle: "Commit and push",
+        gitPublishChoose: "Choose an operation to preview. A commit does not push automatically.",
+        gitPublishPreviewCommit: "Preview commit",
+        gitPublishPreviewPush: "Preview push",
+        gitPublishLoading: "Loading preview…",
+        gitPublishWorkspace: "Working directory",
+        gitPublishBranch: "Branch",
+        gitPublishRemote: "Remote",
+        gitPublishRef: "Target ref",
+        gitPublishAhead: "Ahead (local record)",
+        gitPublishBehind: "Behind (local record)",
+        gitPublishUnknown: "Unknown",
+        gitPublishStagedOnly: "Only staged changes will be committed. This does not stage other files or push.",
+        gitPublishStagedPaths: "Staged files",
+        gitPublishNothingStaged: "There are no staged changes.",
+        gitPublishMessage: "Commit message",
+        gitPublishPushScope: "Only committed history will be pushed. This does not commit staged or unstaged changes.",
+        gitPublishNoDestination: "No push destination is available.",
+        gitPublishPushBehind: "The local record shows this branch is behind the remote. Sync first.",
+        gitPublishNothingToPush: "There are no commits to push.",
+        gitPublishConfirmCommit: "Confirm commit",
+        gitPublishConfirmPush: "Confirm push",
+        gitPublishWorking: "Running Git operation…",
+        gitPublishCommitDone: "Staged changes committed. Nothing was pushed.",
+        gitPublishPushDone: "Push complete.",
+        gitPublishPreviewFailed: "Could not load the Git preview.",
+        gitPublishActionFailed: "The Git operation did not succeed. Preview it again before confirming.",
+        gitPublishStale: "The repository changed or the preview expired. Load a new preview.",
+        gitPublishUncertain: "Could not confirm whether the Git operation finished. Check the repository (and the remote for a push) before trying again.",
+        gitPublishCancel: "Cancel",
+        gitPublishClose: "Close"
+      }
+    };
+
     // src/modules/git/client/locale.ts
     var GIT_NS = "shell-kit.git";
     var GIT_COPY = {
       zh: {
+        ...GIT_PUBLISH_COPY.zh,
         nav: "Git",
         title: "Git",
         subtitle: "告诉 agent 在这个仓库里怎么建分支、怎么推送、怎么写提交说明。这些设置会注入系统提示词，并由 git_push / git_branch_create 工具和推送守卫执行。",
@@ -207,6 +295,7 @@ window.__ModuleLoader__.load({
         branchDirtyConfirm: "仍然切换"
       },
       en: {
+        ...GIT_PUBLISH_COPY.en,
         nav: "Git",
         title: "Git",
         subtitle: "Tell the agent how to branch, push and word commit messages in your repositories. They feed the system prompt and are applied by the git_push / git_branch_create tools plus a push guard.",
@@ -513,7 +602,6 @@ window.__ModuleLoader__.load({
     var GIT_BRANCHES_PATH = `${API_PREFIX}/branches`;
     var GIT_CHECKOUT_PATH = `${API_PREFIX}/checkout`;
     var GIT_CREATE_BRANCH_PATH = `${API_PREFIX}/create-branch`;
-    var GIT_CHANGES_PATH = `${API_PREFIX}/changes`;
     var GIT_PUBLISH_PREVIEW_PATH = `${API_PREFIX}/publish-preview`;
     var GIT_PUBLISH_ACTION_PATH = `${API_PREFIX}/publish-action`;
     var MAX_BRANCH_NAME_LENGTH = 200;
@@ -959,11 +1047,10 @@ window.__ModuleLoader__.load({
       return function BranchChip(props) {
         const { sessionId, useSessions, useProjection } = props;
         const hero = props.placement === "hero";
-        const monitor = props.placement === "monitor";
         const blank = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.blank === true) : false;
         const projected = typeof useProjection === "function" ? useProjection("workingDirectory") : void 0;
         const owned = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.cwd) : void 0;
-        const cwd = monitor && typeof props.cwd === "string" ? props.cwd : typeof projected === "string" && projected !== "" ? projected : typeof owned === "string" ? owned : "";
+        const cwd = typeof projected === "string" && projected !== "" ? projected : typeof owned === "string" ? owned : "";
         const [view, setView] = import_react3.default.useState(EMPTY_VIEW);
         const [hidden, setHidden] = import_react3.default.useState(false);
         const [open, setOpen] = import_react3.default.useState(false);
@@ -1055,7 +1142,7 @@ window.__ModuleLoader__.load({
         }
         const draft = creator.draft;
         const draftValid = isBranchName(draft);
-        if (!monitor && !showsAt(hero ? "hero" : "composer", blank)) return null;
+        if (!showsAt(hero ? "hero" : "composer", blank)) return null;
         if (hidden) return null;
         const label = view.detached || view.branch === "" ? t("branchDetached") : view.branch;
         const triggerProps = {
@@ -1071,7 +1158,7 @@ window.__ModuleLoader__.load({
             if (next) void load();
           }
         };
-        const trigger = monitor ? props.renderTrigger(triggerProps) : /* @__PURE__ */ __dshReact.createElement(
+        const trigger = /* @__PURE__ */ __dshReact.createElement(
           "button",
           {
             ...triggerProps,
@@ -1108,8 +1195,8 @@ window.__ModuleLoader__.load({
             open,
             portal: true,
             dense: true,
-            side: hero || monitor ? "bottom" : "top",
-            align: hero || monitor ? "end" : "start",
+            side: hero ? "bottom" : "top",
+            align: hero ? "end" : "start",
             anchor: trigger,
             onClose: () => setOpen(false)
           },

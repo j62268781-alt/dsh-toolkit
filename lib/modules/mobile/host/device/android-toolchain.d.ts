@@ -157,4 +157,3 @@ export declare class AdbProbe {
     /** 清掉缓存（装完 adb、重启 daemon 后调用）。 */
     invalidate(): void;
 }
-//# sourceMappingURL=android-toolchain.d.ts.map

@@ -696,4 +696,3 @@ export function activeClauseOf(goal, candidates, hasPendingField, hasUnsatisfied
     }
     return clauses[clauses.length - 1] ?? goal;
 }
-//# sourceMappingURL=gates.js.map

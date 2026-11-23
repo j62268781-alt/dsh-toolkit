@@ -1,3 +1,5 @@
+import { GIT_PUBLISH_COPY } from "./components/publish/locale.js";
+
 export const GIT_NS = "shell-kit.git";
 
 /**
@@ -6,6 +8,7 @@ export const GIT_NS = "shell-kit.git";
  */
 export const GIT_COPY = {
   zh: {
+    ...GIT_PUBLISH_COPY.zh,
     nav: "Git",
     title: "Git",
     subtitle: "告诉 agent 在这个仓库里怎么建分支、怎么推送、怎么写提交说明。这些设置会注入系统提示词，并由 git_push / git_branch_create 工具和推送守卫执行。",
@@ -49,6 +52,7 @@ export const GIT_COPY = {
     branchDirtyConfirm: "仍然切换",
   },
   en: {
+    ...GIT_PUBLISH_COPY.en,
     nav: "Git",
     title: "Git",
     subtitle: "Tell the agent how to branch, push and word commit messages in your repositories. They feed the system prompt and are applied by the git_push / git_branch_create tools plus a push guard.",

@@ -6,4 +6,3 @@
 export declare const API_PREFIX: string;
 /** 既有导出名，路由表用它拼子路径。 */
 export declare const API_PATH: string;
-//# sourceMappingURL=constants.d.ts.map

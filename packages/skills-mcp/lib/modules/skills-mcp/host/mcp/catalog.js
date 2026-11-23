@@ -193,4 +193,3 @@ export function createCatalogReader(deps) {
         },
     };
 }
-//# sourceMappingURL=catalog.js.map

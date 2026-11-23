@@ -15,4 +15,3 @@ export declare const PROTOCOLS: Readonly<Record<string, ProtocolCodec>>;
 export declare function codecFor(protocol: string): ProtocolCodec | undefined;
 /** 已接归一化层的协议身份（`status()` / 报错信息里用）。 */
 export declare function implementedProtocols(): string[];
-//# sourceMappingURL=protocols.d.ts.map

@@ -100,4 +100,3 @@ export function registerRowRoute(ctx, { schema, apply }) {
         },
     });
 }
-//# sourceMappingURL=rows.js.map

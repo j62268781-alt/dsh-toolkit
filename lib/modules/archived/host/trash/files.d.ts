@@ -20,4 +20,3 @@ export declare function clearPendingDeletion(sessionId: string): Promise<boolean
  * branches on the code and never has to parse that message.
  */
 export declare function deleteSessionFiles(sessionId: string): Promise<DeletionResult>;
-//# sourceMappingURL=files.d.ts.map

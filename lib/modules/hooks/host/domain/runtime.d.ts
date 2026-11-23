@@ -31,4 +31,3 @@ export declare function createHookRuntime(ctx: any, options: HookRuntimeOptions)
     /** 面板的「试跑」：按当前配置里的条目跑一次，不参与决策。 */
     runTest(hook: HookView, payload: Record<string, unknown>): Promise<HookRunResult>;
 };
-//# sourceMappingURL=runtime.d.ts.map

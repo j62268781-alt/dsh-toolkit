@@ -18,4 +18,3 @@ export declare function createOAuthController(ctx: any): {
     installSweep: () => void;
     registerRoutes: ({ invalidateServerCaches, reconnectServer, credentialsChanged }: any) => void;
 };
-//# sourceMappingURL=controller.d.ts.map

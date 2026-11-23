@@ -265,4 +265,3 @@ export const now = () => Number(process.hrtime.bigint() / 1000n) / 1000;
 export function message(error) {
     return error instanceof Error ? error.message : String(error);
 }
-//# sourceMappingURL=utils.js.map

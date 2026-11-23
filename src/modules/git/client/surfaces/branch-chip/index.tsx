@@ -95,7 +95,6 @@ export function createBranchChip(ctx: any) {
   return function BranchChip(props: any) {
     const { sessionId, useSessions, useProjection } = props;
     const hero = props.placement === "hero";
-    const monitor = props.placement === "monitor";
     // 宿主的 hero 行只在 `summaryBlank` 时渲染；底栏反过来只在非 blank 时显示，
     // 否则新会话页会同时出现顶栏 git 与底栏分支按钮。
     const blank = typeof useSessions === "function"
@@ -106,11 +105,7 @@ export function createBranchChip(ctx: any) {
     const owned = typeof useSessions === "function"
       ? useSessions((snapshot: any) => snapshot?.byId?.[sessionId]?.cwd)
       : undefined;
-    const cwd = monitor && typeof props.cwd === "string"
-      ? props.cwd
-      : typeof projected === "string" && projected !== ""
-        ? projected
-        : (typeof owned === "string" ? owned : "");
+    const cwd = typeof projected === "string" && projected !== "" ? projected : (typeof owned === "string" ? owned : "");
 
     const [view, setView] = React.useState<BranchView>(EMPTY_VIEW);
     const [hidden, setHidden] = React.useState(false);
@@ -214,7 +209,7 @@ export function createBranchChip(ctx: any) {
     const draft = creator.draft;
     const draftValid = isBranchName(draft);
 
-    if (!monitor && !showsAt(hero ? "hero" : "composer", blank)) return null;
+    if (!showsAt(hero ? "hero" : "composer", blank)) return null;
     if (hidden) return null;
 
     const label = view.detached || view.branch === "" ? t("branchDetached") : view.branch;
@@ -231,7 +226,7 @@ export function createBranchChip(ctx: any) {
         if (next) void load();
       },
     };
-    const trigger = monitor ? props.renderTrigger(triggerProps) : (
+    const trigger = (
       <button
         {...triggerProps}
         className={hero ? "sk-git-branch__trigger sk-git-branch__trigger--hero" : "sk-git-branch__trigger"}
@@ -301,8 +296,8 @@ export function createBranchChip(ctx: any) {
             open={open}
             portal
             dense
-            side={hero || monitor ? "bottom" : "top"}
-            align={hero || monitor ? "end" : "start"}
+            side={hero ? "bottom" : "top"}
+            align={hero ? "end" : "start"}
             anchor={trigger}
             onClose={() => setOpen(false)}
           >

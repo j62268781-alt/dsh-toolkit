@@ -67,4 +67,3 @@ export declare function readCredential(status: any): {
 };
 /** redirect_host 只接受主机名（可带端口），绝不允许带协议或路径。 */
 export declare function redirectBaseUrl(host: any): string;
-//# sourceMappingURL=ilink.d.ts.map

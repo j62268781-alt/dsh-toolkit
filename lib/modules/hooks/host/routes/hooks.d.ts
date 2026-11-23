@@ -18,4 +18,3 @@ export interface HookRouteDeps {
 /** 试跑载荷：字段名沿用 Claude Code 的 hook 输入，让现成脚本不改就能测。 */
 export declare function syntheticPayload(event: string): Record<string, unknown>;
 export declare function createHookRoutes(deps: HookRouteDeps): JsonRouteSpec[];
-//# sourceMappingURL=hooks.d.ts.map

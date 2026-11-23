@@ -22,8 +22,7 @@ import esbuild from "esbuild";
 globalThis.__dshReact = React;
 
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-const CACHE = join(ROOT, "node_modules", ".cache", "settings-icons-test");
-const ENTRY = join(ROOT, "src", "client", "ui", "components", "settings-icon", "index.tsx");
+const CACHE = join(ROOT, "node_modules", ".cache", `settings-icons-test-${process.pid}`);
 
 /** One row per module that owns a settings page. */
 const MODULES = [
@@ -35,6 +34,7 @@ const MODULES = [
   { name: "archived", entry: "src/modules/archived/client/index.ts", section: "archived-chats", icon: "archive" },
   { name: "skills-mcp", entry: "src/modules/skills-mcp/client/client.ts", section: "skills-mcp", icon: "plug", factory: true },
   { name: "git", entry: "src/modules/git/client/index.ts", section: "git", icon: "git" },
+  { name: "mobile", entry: "src/modules/mobile/client/index.tsx", section: "mobile", icon: "remote-connection", factory: true },
 ];
 
 /** A slots registry that records only the icon registrations we care about. */
@@ -76,6 +76,7 @@ function createCtx(slots) {
     remote: { $mount: async () => {}, credentials: undefined },
     get: () => undefined,
     on: () => () => {},
+    inject: () => {},
     effect(run, label) {
       if (typeof label === "string" && label.endsWith(":settings-icon")) {
         const dispose = run();
@@ -91,6 +92,7 @@ function createCtx(slots) {
 
 const requireShim = (id) => {
   if (id === "react") return React;
+  if (id === "@deepseek-ai/dsh-client-ui-primitives") return {};
   throw new Error(`unexpected require(${id})`);
 };
 
@@ -109,6 +111,7 @@ async function buildBundle(entry) {
     external: ["react", "react/*", "@deepseek-ai/*"],
     jsxFactory: "__dshReact.createElement",
     jsxFragment: "__dshReact.Fragment",
+    define: { __CLIENT_CSS__: '""' },
     // `.webp` 跟 shipped client build 一样走 dataurl：面板插图是二进制资源，
     // 不配置 loader 时 esbuild 会直接报 "No loader is configured"。
     loader: {  ".ts": "ts", ".tsx": "tsx",".js": "jsx", ".css": "text", ".html": "text", ".svg": "text", ".webp": "dataurl" },
@@ -128,12 +131,12 @@ async function load(entry) {
 }
 
 /** Apply one module client with the recording ctx. */
-async function mount(module) {
+async function mount(module, requireRuntime = requireShim) {
   const loaded = await load(module.entry);
   const slots = recordingSlots();
   const ctx = createCtx(slots);
   if (module.factory) {
-    const plugin = loaded.default(requireShim);
+    const plugin = loaded.default(requireRuntime);
     await plugin.apply(ctx);
   } else {
     await loaded.apply(ctx);
@@ -176,6 +179,22 @@ test("the shared helper tolerates a missing or throwing slots API", async () => 
     assert.equal(result, undefined);
   });
 });
+
+test('Mobile uses the same native glyph as Remote Connection when available', async () => {
+  const IconRemoteConnectionOutlineMedium = ({ size }) => createElement('svg', {
+    width: size,
+    height: size,
+    'data-icon': 'dsw-icon-remote-connection-outline-medium',
+  })
+  const mobile = MODULES.find(({ section }) => section === 'mobile')
+  const { slots } = await mount(mobile, (id) => id === '@deepseek-ai/dsh-client-ui-primitives'
+    ? { IconRemoteConnectionOutlineMedium }
+    : requireShim(id))
+  const { Component } = slots.records[0]
+  const mobileMarkup = renderToStaticMarkup(createElement(Component, { size: 16, active: true }))
+  const officialMarkup = renderToStaticMarkup(createElement(IconRemoteConnectionOutlineMedium, { size: 16 }))
+  assert.equal(mobileMarkup, officialMarkup)
+})
 
 for (const module of MODULES) {
   test(`${module.name} client registers its own icon exactly once`, async () => {

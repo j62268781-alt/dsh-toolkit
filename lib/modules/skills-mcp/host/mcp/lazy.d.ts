@@ -30,4 +30,3 @@ export declare function createLazyRuntime(deps: any): {
     snapshot(): any;
     dispose(): void;
 };
-//# sourceMappingURL=lazy.d.ts.map

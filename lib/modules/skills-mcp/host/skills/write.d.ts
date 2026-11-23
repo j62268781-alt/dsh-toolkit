@@ -73,4 +73,3 @@ export declare function deleteSkill({ dir, name }: any): Promise<{
  * preserved. (`discover.bodyOf` adds the 4 KB cap for the projection; this one does not.)
  */
 export declare function stripFrontmatter(markdown: any): string;
-//# sourceMappingURL=write.d.ts.map

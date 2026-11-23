@@ -106,4 +106,3 @@ export declare function installShadow(ctx: any, decide: any, log: any, hiddenOwn
  * another plugin's tools.
  */
 export declare function liveToolNames(ctx: any): string[];
-//# sourceMappingURL=filter.d.ts.map

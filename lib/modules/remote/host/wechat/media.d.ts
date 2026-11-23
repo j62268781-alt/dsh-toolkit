@@ -53,4 +53,3 @@ export declare function md5Hex(data: any): string;
  * @throws 无法识别时抛出可读错误（不猜扩展名）
  */
 export declare function detectImageMediaType(data: any): "image/webp" | "image/png" | "image/jpeg" | "image/gif";
-//# sourceMappingURL=media.d.ts.map

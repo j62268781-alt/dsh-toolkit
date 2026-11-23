@@ -57,4 +57,3 @@ export declare function createLoginManager({ credentials, credentialRef, logger,
     dispose(): void;
 };
 export { STALE_TOKEN_CODE };
-//# sourceMappingURL=login.d.ts.map

@@ -104,4 +104,3 @@ export declare function createBridge({ ctx, settings, getCredential, logger, cre
         set: (value: any) => void;
     };
 };
-//# sourceMappingURL=bridge.d.ts.map

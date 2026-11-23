@@ -35,4 +35,3 @@ export declare function addToCartTarget(goal: string, candidates: readonly TaskC
  */
 export declare function withActionCandidates(base: readonly TaskCandidate[], goal: string, step: number, trace: string[]): TaskCandidate[];
 export {};
-//# sourceMappingURL=candidates.d.ts.map

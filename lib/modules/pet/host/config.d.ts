@@ -49,4 +49,3 @@ export declare function readField(config: any, key: string): any;
 /** 显式指定的桌面运行时二进制路径；空字符串表示按缓存/下载解析。 */
 export declare function readElectronPath(config: any): string;
 export declare function readSettings(config?: any): PetSettings;
-//# sourceMappingURL=config.d.ts.map

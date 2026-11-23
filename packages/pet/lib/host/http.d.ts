@@ -15,4 +15,3 @@ export declare function readBody(req: IncomingMessage, maxBytes: number): Promis
 export declare function readCharBody(req: IncomingMessage, maxChars: number, onBody: (raw: string) => void): void;
 /** Send the JSON receipt used by the toolkit's command routes. */
 export declare function sendJson(res: ServerResponse, status: number, payload: unknown): void;
-//# sourceMappingURL=http.d.ts.map

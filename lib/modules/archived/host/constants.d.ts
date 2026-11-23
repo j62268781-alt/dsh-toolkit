@@ -35,4 +35,3 @@ export declare const DELETION_CODE: {
 export type DeletionCode = (typeof DELETION_CODE)[keyof typeof DELETION_CODE];
 export type DeletionSuccessCode = typeof DELETION_CODE.deleted | typeof DELETION_CODE.retained;
 export type DeletionFailureCode = Exclude<DeletionCode, DeletionSuccessCode>;
-//# sourceMappingURL=constants.d.ts.map

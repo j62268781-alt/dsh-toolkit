@@ -23,4 +23,3 @@ export function dshHome(env = process.env, home = homedir()) {
     const fromEnv = typeof env?.DSH_HOME === 'string' ? env.DSH_HOME.trim() : '';
     return fromEnv === '' ? join(home, '.dsh') : fromEnv;
 }
-//# sourceMappingURL=dsh-home.js.map

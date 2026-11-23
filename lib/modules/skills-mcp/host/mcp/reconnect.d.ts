@@ -8,4 +8,3 @@ export declare const RECONNECT_PATH: string;
  * command's duration, not a queue delay.
  */
 export declare function registerReconnectRoute(ctx: any, { schema, run }: any): void;
-//# sourceMappingURL=reconnect.d.ts.map

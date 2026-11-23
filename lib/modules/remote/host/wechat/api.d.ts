@@ -49,4 +49,3 @@ export declare function createIlinkApi({ baseUrl, token, cdnBaseUrl, timeoutMs, 
     /** 长轮询收消息（透传 ilink.getUpdates，方便一处注入 token/baseUrl）。 */
     getUpdates(cursor: any, timeout: any, signal: any): Promise<any>;
 };
-//# sourceMappingURL=api.d.ts.map

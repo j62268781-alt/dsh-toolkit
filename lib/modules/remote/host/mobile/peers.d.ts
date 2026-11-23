@@ -34,4 +34,3 @@ export declare function readTrustedPeers({ serverUrl, homeDir }?: any): Promise<
     path: string;
     peers: any;
 }>;
-//# sourceMappingURL=peers.d.ts.map

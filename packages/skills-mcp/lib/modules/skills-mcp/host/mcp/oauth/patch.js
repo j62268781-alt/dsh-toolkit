@@ -245,4 +245,3 @@ export function patchReasonText(reason) {
             return 'OAuth 支持未安装';
     }
 }
-//# sourceMappingURL=patch.js.map

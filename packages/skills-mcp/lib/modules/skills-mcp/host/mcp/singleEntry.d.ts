@@ -42,4 +42,3 @@ export declare function singleEntryDefinition(execute: (args: any, exec: any) =>
     execute: (args: any, exec: any) => Promise<unknown>;
     projectContent(exec: object, result: any): any;
 };
-//# sourceMappingURL=singleEntry.d.ts.map

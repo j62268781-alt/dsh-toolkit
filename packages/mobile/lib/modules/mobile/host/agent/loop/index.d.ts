@@ -27,4 +27,3 @@ export * from './gates.js';
 export * from './judge.js';
 export * from './actions.js';
 export * from './loop.js';
-//# sourceMappingURL=index.d.ts.map

@@ -32,4 +32,3 @@ export interface SoundService {
 }
 export declare function createSoundService({ platform, home, env, directories, execFile, tempDirectory, }?: SoundServiceOptions): SoundService;
 export {};
-//# sourceMappingURL=sounds.d.ts.map

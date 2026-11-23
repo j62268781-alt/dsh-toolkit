@@ -7,4 +7,3 @@ export declare const IMPORT_PATH: string;
  * dropped request the panel would wait for forever.
  */
 export declare function registerImportRoute(ctx: any, { schema, scan }: any): void;
-//# sourceMappingURL=route.d.ts.map

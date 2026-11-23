@@ -124,7 +124,7 @@ host 与 client 是两个 tsc 程序：只跑 `typecheck` 会漏掉整个 `clien
 
 ## 7. 常见坑
 
-- **忘记 `pnpm build`**：`lib/` 与 `packages/<m>/lib/` 是产物但入库，没构建的提交会让 `build:check` 红。
+- **忘记 `pnpm build`**：`lib/` 与 `packages/<m>/lib/` 的运行产物入库（`.map` 除外），没构建的提交会让 `build:check` 红。
 - **搬/改文件名后残留旧产物**：`build-host` 抛 `Unexpected generated host file` —— 手工删
   `lib/modules/<m>/host/<旧文件>.js` 与 `packages/<m>/lib/modules/<m>/host/<旧文件>.js`。
 - **client 里手写路由字符串**：会被 `pluginApiPath()` 与 client 常量的双份来源坑一把，一律从

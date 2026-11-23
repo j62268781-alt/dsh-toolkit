@@ -22,4 +22,3 @@
 export declare const AUTH_CHANNEL = "dsh-toolkit-skills-mcp/oauth";
 /** 回调页发、面板收的信号。只有一个含义：授权流程刚刚走完了。 */
 export declare const AUTH_DONE = "authorized";
-//# sourceMappingURL=channel.d.ts.map

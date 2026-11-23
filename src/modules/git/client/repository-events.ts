@@ -1,6 +1,6 @@
 const CHANGED = "dsh-toolkit-git:repository-changed";
 
-// Standalone Git and task-monitor bundles do not share a module instance.
+// Refresh other Git surfaces when a local operation changes this directory.
 export function announceRepositoryChange(cwd: string): void {
   window.dispatchEvent(new window.CustomEvent(CHANGED, { detail: cwd }));
 }

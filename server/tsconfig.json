@@ -5,8 +5,6 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,

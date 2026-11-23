@@ -231,4 +231,3 @@ export function createMonitor({ getCredential, onMessage, logger, onStateChange 
         },
     };
 }
-//# sourceMappingURL=monitor.js.map

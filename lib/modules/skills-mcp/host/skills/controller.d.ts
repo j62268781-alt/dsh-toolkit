@@ -6,4 +6,3 @@ export declare function createSkillsController(ctx: any, { agents, lastBeat, ref
     installScan: () => void;
     registerRoutes: () => void;
 };
-//# sourceMappingURL=controller.d.ts.map

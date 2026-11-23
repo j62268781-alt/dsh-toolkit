@@ -64,4 +64,3 @@ export declare function loadBundledSkill(): {
  * @returns {() => void} disposer（无 skills 服务时是空操作）
  */
 export declare function registerSkills(ctx: any, log?: (level: string, message: string) => void): () => void;
-//# sourceMappingURL=skills.d.ts.map

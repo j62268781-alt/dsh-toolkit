@@ -21,7 +21,7 @@ const run = (args, env = process.env, stdio = 'inherit') => new Promise((resolve
 
 const testFiles = []
 const uiFiles = []
-for (const group of ['judgment', 'hooks', 'git', 'skills-mcp', 'notification', 'pet', 'remote', 'task-monitor', 'integration']) {
+for (const group of ['judgment', 'hooks', 'git', 'skills-mcp', 'notification', 'pet', 'remote', 'session-panel', 'integration']) {
   for (const name of (await readdir(join(root, 'tests', group))).sort()) {
     if (!name.endsWith('.test.mjs')) continue
     const file = `tests/${group}/${name}`

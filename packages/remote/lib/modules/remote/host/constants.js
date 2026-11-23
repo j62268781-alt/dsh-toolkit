@@ -7,4 +7,3 @@ import { pluginApiPath } from '../../../host/paths.js';
 export const API_PREFIX = pluginApiPath('remote');
 /** 既有导出名，路由表用它拼子路径。 */
 export const API_PATH = API_PREFIX;
-//# sourceMappingURL=constants.js.map

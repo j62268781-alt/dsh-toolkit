@@ -44,41 +44,6 @@ export interface BranchFailure {
 export type BranchResult = BranchSnapshot | BranchFailure
 
 /**
- * 工作区改动统计：`git diff --numstat HEAD` 的合计 + 未跟踪文件数。
- *
- * 只给数字，不下发逐文件列表：面板一行只有 12px 的宽度可用，逐文件差异属于
- * 审查视图的事，而宿主目前没有「工作区」级的审查面（只有按回合的 `changes-review`）。
- */
-export interface ChangesSnapshot {
-  readonly ok: true
-  /** 改动文件数（含未跟踪）。 */
-  readonly files: number
-  readonly insertions: number
-  readonly deletions: number
-  readonly untracked: number
-}
-
-export type ChangesResult = ChangesSnapshot | BranchFailure
-
-/** `--numstat` 的一行是 `新增\t删除\t路径`；二进制文件的行数位是 `-`，只计入文件数。 */
-function parseNumstat(output: string): { insertions: number, deletions: number, files: number } {
-  let insertions = 0
-  let deletions = 0
-  let files = 0
-  for (const line of output.split('\n')) {
-    if (line.trim() === '') continue
-    const fields = line.split('\t')
-    if (fields.length < 3) continue
-    files += 1
-    const added = Number(fields[0])
-    const removed = Number(fields[1])
-    if (Number.isSafeInteger(added)) insertions += added
-    if (Number.isSafeInteger(removed)) deletions += removed
-  }
-  return { insertions, deletions, files }
-}
-
-/**
  * 「执行一条会改动仓库状态的命令」的结果。
  *
  * 与 `BranchResult` 分开：切完/建完要回读快照给面板，而这些命令（提交、同步、删/改分支）
@@ -201,43 +166,6 @@ export async function upstreamOf(run: GitRunner, cwd: string, branch: string): P
   return result.code === 0 ? result.stdout.trim() : ''
 }
 
-/**
- * 读工作区统计。
- *
- * 有 HEAD 时 `git diff --numstat HEAD` 一次覆盖「已暂存 + 未暂存」；刚 `git init` 还没有提交的
- * 仓库没有 HEAD 可比，退回「工作区 diff + 暂存区 diff」两段，结果和前者口径一致。
- * 未跟踪文件不计行数：要数它们得逐文件 diff（或写索引），代价远超这一行的价值，
- * 所以只报个数，面板把「有新文件」单独说。
- */
-async function changesOf(run: GitRunner, cwd: string): Promise<ChangesResult> {
-  const inside = await run(cwd, ['rev-parse', '--is-inside-work-tree'])
-  if (inside.spawnError !== undefined) return failure('git-missing', '找不到 git 可执行文件。')
-  if (inside.code !== 0 || inside.stdout.trim() !== 'true') {
-    return failure('not-a-repository', firstLine(inside.stderr) || '这里不是 Git 仓库。')
-  }
-  const head = await run(cwd, ['rev-parse', '--verify', '--quiet', 'HEAD'])
-  const commands = head.code === 0
-    ? [['diff', '--numstat', 'HEAD']]
-    : [['diff', '--numstat'], ['diff', '--cached', '--numstat']]
-  let insertions = 0
-  let deletions = 0
-  let files = 0
-  for (const args of commands) {
-    const result = await run(cwd, args)
-    // 单个子命令失败（子模块、路径权限）不该让整行统计消失：跳过它，报剩下的。
-    if (result.code !== 0) continue
-    const parsed = parseNumstat(result.stdout)
-    insertions += parsed.insertions
-    deletions += parsed.deletions
-    files += parsed.files
-  }
-  const untrackedList = await run(cwd, ['ls-files', '--others', '--exclude-standard', '-z'])
-  const untracked = untrackedList.code === 0
-    ? untrackedList.stdout.split('\0').filter((name) => name !== '').length
-    : 0
-  return { ok: true, files: files + untracked, insertions, deletions, untracked }
-}
-
 export function createRepository(run: GitRunner = defaultRunner) {
   /** 当前分支：detached HEAD 时 git 回的是字面量 `HEAD`，那是「没有分支」而不是分支名。 */
   async function branchOf(cwd: string): Promise<{ ok: true, root: string, branch: string, detached: boolean, dirty: boolean, branches: string[], remotes: string[] } | BranchFailure> {
@@ -288,12 +216,6 @@ export function createRepository(run: GitRunner = defaultRunner) {
       const resolved = assertDirectory(cwd)
       if (typeof resolved !== 'string') return resolved
       return snapshotOf(resolved)
-    },
-
-    async changes(cwd: unknown): Promise<ChangesResult> {
-      const resolved = assertDirectory(cwd)
-      if (typeof resolved !== 'string') return resolved
-      return changesOf(run, resolved)
     },
 
     async checkout(cwd: unknown, name: unknown): Promise<BranchResult> {

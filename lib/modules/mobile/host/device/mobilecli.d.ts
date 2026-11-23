@@ -143,4 +143,3 @@ export declare class Mobilecli {
     /** 停掉 daemon。插件卸载或需要把设备让给别的工具时调用。 */
     daemonStop(): Promise<any>;
 }
-//# sourceMappingURL=mobilecli.d.ts.map

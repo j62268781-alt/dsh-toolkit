@@ -76,4 +76,3 @@ export function createPreviewStore({ root, fetchImpl = globalThis.fetch, baseUrl
         },
     };
 }
-//# sourceMappingURL=preview.js.map

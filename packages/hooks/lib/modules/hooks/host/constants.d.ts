@@ -38,4 +38,3 @@ export declare const HOOK_REASON: {
     readonly badHookId: "bad-hook-id";
     readonly unsupportedEvent: "unsupported-event";
 };
-//# sourceMappingURL=constants.d.ts.map

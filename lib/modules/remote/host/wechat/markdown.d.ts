@@ -20,4 +20,3 @@ export declare function filterMarkdownForWeixin(text: any): string;
 export declare function truncateUtf8(text: any, maxBytes?: number): string;
 /** 出站前的标准整形：过滤标记 + 截断。 */
 export declare function prepareOutboundText(text: any, maxBytes?: number): string;
-//# sourceMappingURL=markdown.d.ts.map

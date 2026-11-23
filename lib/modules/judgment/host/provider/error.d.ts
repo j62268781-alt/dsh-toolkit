@@ -23,4 +23,3 @@ export declare class JudgmentError extends Error implements JudgmentErrorShape {
 export declare function isJudgmentError(value: unknown): value is JudgmentError;
 /** 把任意抛出物收敛成契约的失败形状；非类型化失败一律归到 `internal`。 */
 export declare function failureOf(error: unknown): JudgmentFailure;
-//# sourceMappingURL=error.d.ts.map

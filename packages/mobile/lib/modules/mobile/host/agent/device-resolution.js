@@ -18,4 +18,3 @@ export async function resolveDevice(client, deviceId, toolName, { signal } = {})
     }
     return online[0];
 }
-//# sourceMappingURL=device-resolution.js.map

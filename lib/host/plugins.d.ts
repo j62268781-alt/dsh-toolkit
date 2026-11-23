@@ -18,4 +18,3 @@ export interface ConfiguredServiceClass<T extends new (...args: any[]) => object
 export declare function configuredService<T extends new (...args: any[]) => object>(Service: T): ConfiguredServiceClass<T>;
 /** Keep a function plugin's dependencies while skipping duplicate validation. */
 export declare function configuredPlugin<P extends PluginShape>(plugin: P): P;
-//# sourceMappingURL=plugins.d.ts.map

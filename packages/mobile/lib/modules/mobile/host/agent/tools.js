@@ -876,4 +876,3 @@ async function statFile(path) {
     const info = await stat(path);
     return { size: info.size };
 }
-//# sourceMappingURL=tools.js.map

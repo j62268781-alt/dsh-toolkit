@@ -322,4 +322,3 @@ export async function removePet(root, slug) {
         return false;
     }
 }
-//# sourceMappingURL=petdex.js.map

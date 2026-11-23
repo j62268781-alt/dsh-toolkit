@@ -36,4 +36,3 @@ export type { DecodedResponse, DecodedUsage };
 export declare function encodeBody(model: string, state: JudgmentState, questions: JudgmentQuestions): Record<string, unknown>;
 /** 严格解码一整批答案：任何结构问题都整批拒绝。 */
 export declare function decodeResponse(raw: unknown, questions: JudgmentQuestions, expectedModel: string): DecodedResponse;
-//# sourceMappingURL=system-one.d.ts.map

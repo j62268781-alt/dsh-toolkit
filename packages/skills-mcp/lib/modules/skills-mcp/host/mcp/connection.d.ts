@@ -78,4 +78,3 @@ export declare function connectionFields(source: any): any;
  * file cannot disagree.
  */
 export declare function connectionDraftOf(config: any): any;
-//# sourceMappingURL=connection.d.ts.map

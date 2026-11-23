@@ -15,7 +15,22 @@ export function registerRoute(ctx, route) {
 /** Ordinary HTTP routes always use the host's identity and origin policy. */
 export function registerAuthenticatedRoute(ctx, route) {
     if (typeof ctx.connection?.requestRejection !== 'function') {
-        throw new Error('dsh-toolkit: authenticated route registration requires connection.requestRejection');
+        if (typeof ctx.connection?.admit !== 'function') {
+            throw new Error('dsh-toolkit: authenticated route registration requires connection.requestRejection');
+        }
+        // New hosts authorize the route before passing the admitted Peer to the handler.
+        return registerRoute(ctx, {
+            ...route,
+            auth: 'required',
+            handler(req, res, peer) {
+                if (peer?.principal?.kind !== 'owner' || peer.signal?.aborted !== false) {
+                    res.statusCode = peer ? 403 : 401;
+                    res.end();
+                    return;
+                }
+                return route.handler(req, res, peer);
+            },
+        });
     }
     return registerRoute(ctx, {
         ...route,
@@ -158,4 +173,3 @@ function once(dispose) {
         return dispose();
     };
 }
-//# sourceMappingURL=routes.js.map

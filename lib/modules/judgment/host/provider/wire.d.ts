@@ -77,4 +77,3 @@ export declare function decodeUsage(value: unknown): DecodedUsage | undefined;
  * `knownUsage` 纪律——拒绝响应时仍保留 usage）。
  */
 export declare function knownUsage(raw: unknown): DecodedUsage | undefined;
-//# sourceMappingURL=wire.d.ts.map

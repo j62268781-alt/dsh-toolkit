@@ -13,4 +13,3 @@ export declare function createOAuthStore({ dshHome, log }?: any): {
     write: (serverName: any, record: any) => Promise<any>;
     remove: (serverName: any) => Promise<any>;
 };
-//# sourceMappingURL=store.d.ts.map

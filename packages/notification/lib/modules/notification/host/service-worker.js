@@ -87,4 +87,3 @@ export function registerNotificationServiceWorkerRoute(ctx) {
         },
     });
 }
-//# sourceMappingURL=service-worker.js.map
