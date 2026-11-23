@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import vm from 'node:vm'
-import { readFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import { build } from 'esbuild'
 import { JSDOM } from 'jsdom'
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -9,6 +10,17 @@ import { ARCH_COPY } from '../../src/modules/archived/client/locale.ts'
 import { DELETION_CODE } from '../../src/modules/archived/host/constants.ts'
 
 const h = React.createElement
+
+const { outputFiles: [{ text: archivedClient }] } = await build({
+  entryPoints: [fileURLToPath(new URL('../../src/modules/archived/client/index.ts', import.meta.url))],
+  bundle: true,
+  format: 'cjs',
+  external: ['react', '@deepseek-ai/dsh-client-ui-primitives'],
+  jsxFactory: 'React.createElement',
+  jsxFragment: 'React.Fragment',
+  loader: { '.css': 'text', '.svg': 'text' },
+  write: false,
+})
 
 function primitivesFor() {
   return {
@@ -44,19 +56,21 @@ async function boot(t, options = {}) {
   // A page reads its startup snapshot (which ids were already deleted) as soon as the
   // client installs, so a reload test has to seed the transport before this point.
   let fetchImpl = options.fetch ?? (async () => ({ ok: true, status: 200, json: async () => ({ ok: true }) }))
-  let spec
-  // 沙箱只补「浏览器有、vm 上下文没有」的那些全局：`fetchJson` 现在给每个请求套
-  // `AbortSignal.timeout()`，缺了它请求根本发不出去（表现为 posts=0 + 对话框不关）。
-  vm.runInNewContext(await readFile(new URL('../../lib/modules/archived/client.js', import.meta.url), 'utf8'), {
-    window: { __ModuleLoader__: { load(value) { spec = value } } }, document: dom.window.document, Headers,
+  const module = { exports: {} }
+  // Test the current source regardless of when the distributable was last built.
+  vm.runInNewContext(archivedClient, {
+    module, React, window: dom.window, document: dom.window.document, Headers,
     AbortSignal, AbortController,
+    setTimeout: dom.window.setTimeout.bind(dom.window),
+    clearTimeout: dom.window.clearTimeout.bind(dom.window),
     fetch: (...args) => fetchImpl(...args),
+    require(id) {
+      if (id === 'react') return React
+      if (id === '@deepseek-ai/dsh-client-ui-primitives') return primitives
+      throw Error(id)
+    },
   })
-  const client = spec.factory((id) => {
-    if (id === 'react') return React
-    if (id === '@deepseek-ai/dsh-client-ui-primitives') return primitives
-    throw Error(id)
-  })
+  const client = module.exports
 
   const workspace = { items: [], archivedSessionIds: [] }
   const sessions = { byId: {} }
@@ -112,6 +126,7 @@ async function boot(t, options = {}) {
     sections, menuItem, removalDialog, archiveDialog, overlay, render, click,
     setFetch(impl) { fetchImpl = impl },
     text: () => dom.window.document.body.textContent,
+    toasts: (tone) => [...dom.window.document.querySelectorAll(`.sk-toast[data-tone="${tone}"] .sk-toast__text`)].map((node) => node.textContent),
     dialog: () => dom.window.document.querySelector('[role="dialog"]'),
   }
 }
@@ -225,6 +240,7 @@ test('bulk delete sends one batch request, retries failures, and never touches w
   })
   await app.click('全部删除')
   await app.click('永久删除')
+  assert.deepEqual(app.toasts('success'), [], 'a partial batch is not a success')
   assert.equal(batches.length, 1, 'one round trip for the whole page')
   assert.match(String(batches[0]), /archived\/delete-sessions$/)
   assert.match(app.dom.window.document.querySelector('[role="alert"]').textContent, /第二条: dsh 仍持有这个会话/)
@@ -247,6 +263,68 @@ test('bulk delete sends one batch request, retries failures, and never touches w
   assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 0)
 })
 
+test('single permanent delete toasts only on success', async (t) => {
+  const app = await boot(t)
+  seed(app.workspace, app.sessions)
+  await app.render(app.overlay(h(app.sections)))
+
+  let reply
+  app.setFetch(async (input, options) => {
+    if (options.method === 'GET') return { ok: true, status: 200, json: async () => ({ sessionIds: [] }) }
+    assert.match(String(input), /archived\/delete-session$/)
+    return new Promise((resolve) => { reply = resolve })
+  })
+  await app.click('删除')
+  await app.click('取消')
+  assert.deepEqual(app.toasts('success'), [])
+  await app.click('删除')
+  await app.click('永久删除')
+  assert.deepEqual(app.toasts('success'), [])
+  await act(async () => reply({ ok: false, status: 409, json: async () => ({ code: DELETION_CODE.sessionBusy }) }))
+  assert.match(app.dialog().textContent, /这个会话还在运行/)
+  assert.deepEqual(app.toasts('success'), [])
+
+  await app.click('永久删除')
+  await act(async () => reply({ ok: true, status: 200, json: async () => ({ ok: true, code: DELETION_CODE.deleted }) }))
+  assertClosed(app)
+  assert.deepEqual(app.toasts('success'), ['已永久删除归档会话'])
+})
+
+test('single permanent delete does not toast success if archive cleanup rejects', async (t) => {
+  const app = await boot(t)
+  seed(app.workspace, app.sessions)
+  app.ctx.workspaces.unarchiveSession = async () => { throw new Error('cleanup failed') }
+  app.setFetch(async () => ({ ok: true, status: 200, json: async () => ({ ok: true, code: DELETION_CODE.deleted }) }))
+  await app.render(app.overlay(h(app.sections)))
+
+  await app.click('删除')
+  await app.click('永久删除')
+  assertClosed(app)
+  assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 3, 'the deleted file stays removed')
+  assert.deepEqual(app.toasts('success'), [])
+})
+
+test('restore waits for unarchive and never toasts success on rejection', async (t) => {
+  const app = await boot(t)
+  seed(app.workspace, app.sessions)
+  await app.render(app.overlay(h(app.sections)))
+
+  let settle
+  app.ctx.workspaces.unarchiveSession = (id) => {
+    assert.equal(id, 'a1')
+    return new Promise((resolve, reject) => { settle = { resolve, reject } })
+  }
+  await app.click('恢复')
+  assert.deepEqual(app.toasts('success'), [])
+  await act(async () => settle.reject(new Error('failed')))
+  assert.deepEqual(app.toasts('error'), ['恢复失败：failed'])
+  assert.deepEqual(app.toasts('success'), [])
+  await app.click('恢复')
+  assert.deepEqual(app.toasts('success'), [])
+  await act(async () => settle.resolve())
+  assert.deepEqual(app.toasts('success'), ['已恢复归档会话'])
+})
+
 test('confirming a bulk delete closes the dialog at once and loads the button instead', async (t) => {
   const app = await boot(t)
   seed(app.workspace, app.sessions)
@@ -254,6 +332,13 @@ test('confirming a bulk delete closes the dialog at once and loads the button in
   // The host round trip is held open, so the in-flight state is observable instead
   // of being over by the time the click handler returns.
   const gates = []
+  let finishUnarchive
+  const unarchived = new Promise((resolve) => { finishUnarchive = resolve })
+  const unarchive = app.ctx.workspaces.unarchiveSession
+  app.ctx.workspaces.unarchiveSession = async () => {
+    await unarchive()
+    await unarchived
+  }
   let lookups = 0
   let posts = 0
   app.setFetch(async (_input, options) => {
@@ -292,7 +377,12 @@ test('confirming a bulk delete closes the dialog at once and loads the button in
   assert.equal(posts, 1, 'the whole page is one request')
   assert.equal(removeAll.disabled, false, 'a working button is busy, not disabled')
 
+  assert.deepEqual(app.toasts('success'), [], 'no success while the host is deleting')
   await act(async () => gates.shift()())
+  assert.equal(app.calls.unarchive, 4)
+  assert.deepEqual(app.toasts('success'), [], 'no success while archive metadata is being cleared')
+  await act(async () => finishUnarchive())
+  assert.deepEqual(app.toasts('success'), ['已永久删除 4 个归档会话'])
   assertClosed(app)
   assert.equal(document.querySelector('.sk-arch__spinner'), null, 'the ring clears with the batch')
   assert.equal(document.querySelector('.sk-arch__removeAll').getAttribute('aria-busy'), null)
@@ -329,8 +419,9 @@ test('a session the host still holds keeps its archive entry until the restart c
 
   assert.equal(app.calls.unarchive, 3, 'a retained deletion must not be unarchived')
   assert.equal(app.calls.unpin, 3)
-  const status = app.dom.window.document.querySelector('[role="status"]')
+  const status = app.dom.window.document.querySelector('.sk-arch__note[role="status"]')
   assert.match(status.textContent, /已删除 1 个会话的文件/)
+  assert.deepEqual(app.toasts('success'), ['已永久删除 4 个归档会话'])
   // The row is gone from view even though the registration is still there.
   assert.equal(app.dom.window.document.querySelectorAll('.sk-arch__row').length, 0)
 })

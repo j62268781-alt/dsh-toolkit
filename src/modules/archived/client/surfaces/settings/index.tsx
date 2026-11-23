@@ -115,6 +115,7 @@ function createArchivedSection(ctx, removal) {
       setBusyId(id);
       try {
         await ctx.workspaces.unarchiveSession(id);
+        toast.success(t("restoreDone"));
       } catch (reason) {
         // 这一页的行是分组列表：以前这行错误会插在列表上方，收/放都让整页跳一下。
         toast.error(t("restoreFailed").replace("{reason}", String(reason?.message ?? reason)));

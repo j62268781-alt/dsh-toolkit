@@ -3,6 +3,7 @@ import { readPendingDeletions, removeSessionViaHost, removeSessionsViaHost } fro
 import { failureText } from "../model.js";
 import { DELETION_CODE } from "../constants.js";
 import { createStore } from "../../../../client/ui/store.js";
+import { toast } from "../../../../client/ui/toast.js";
 
 /** A queued removal: `all` is the page batch, `one` a single row. */
 export interface RemovalRequest {
@@ -123,7 +124,7 @@ export function createRemoval(ctx) {
       // These metadata commands remain valid after the session files are gone.
       // Retained rows keep their registration on purpose: it is the tombstone that
       // hides a session the host still holds (see host/trash/deletion.js).
-      await Promise.allSettled(doneIds
+      const cleanup = await Promise.allSettled(doneIds
         .filter((id) => !retainedIds.has(id))
         .flatMap((id) => [
           Promise.resolve().then(() => ctx.workspaces.unarchiveSession(id)),
@@ -156,6 +157,11 @@ export function createRemoval(ctx) {
         request: failed.length === 0 ? null : { kind: request.kind, rows: failed },
         error: errors.join("；"),
       });
+      if (failed.length === 0 && cleanup.every((result) => result.status === "fulfilled")) {
+        toast.success(request.kind === "all"
+          ? t("deleteAllDone").replace("{t}", String(doneIds.length))
+          : t("deleteOneDone"));
+      }
       // The markers the host wrote for this batch: another page opened later has to
       // hide the same rows, and this page may have missed a receipt the markers know.
       void syncTombstones();
