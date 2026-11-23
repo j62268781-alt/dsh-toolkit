@@ -239,16 +239,12 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
 
     // 横幅走 data URL，重新创建 <img> 会让浏览器重新解码一次；渲染一次就固定下来，
     // 这样切换开关时不会因为整块子树重建而闪一下。
-    const hero = React.useMemo(() => h(
-      'div',
-      { className: 'mbm-heroFrame' },
-      h('img', {
-        className: 'mbm-hero',
-        src: heroUrl,
-        alt: 'dsh-go：把 DeepSeek Harness 装进口袋，手机本机运行，也能遥控你的电脑',
-        draggable: false,
-      }),
-    ), [])
+    const hero = React.useMemo(() => h('img', {
+      className: 'mbm-hero',
+      src: heroUrl,
+      alt: 'dsh-go：把 DeepSeek Harness 装进口袋，手机本机运行，也能遥控你的电脑',
+      draggable: false,
+    }), [])
 
     const enabled = features.phone || features.wechat
     return (
@@ -260,7 +256,7 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
         />
         <CardSection
           className="mbm-group"
-          cardClassName="mbm-download"
+          bare
           title="下载移动端"
           hint={(
             <a className="mbm-link" href={DOWNLOAD_URL} target="_blank" rel="noreferrer">下载</a>

@@ -111,6 +111,17 @@ function fakeSwitch() {
   }
 }
 
+test('the download banner renders without a bordered or clipping wrapper', async () => {
+  const view = await mount({})
+  try {
+    const section = view.dom.window.document.querySelector('section[aria-label="下载移动端"]')
+    assert.ok(section?.querySelector(':scope > img.mbm-hero'))
+    assert.equal(section.querySelector('a')?.textContent, '下载')
+  } finally {
+    await view.unmount()
+  }
+})
+
 async function mount(replies) {
   const { createMobileSettings } = await loadPanel()
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
