@@ -25,4 +25,3 @@ export function codecFor(protocol) {
 export function implementedProtocols() {
     return Object.keys(PROTOCOLS);
 }
-//# sourceMappingURL=protocols.js.map

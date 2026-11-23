@@ -28,4 +28,3 @@ export function registerRuntimeRoute(ctx, readRuntime) {
         },
     });
 }
-//# sourceMappingURL=runtime.js.map

@@ -96,4 +96,3 @@ export declare function ordinalWidgetTargetOf(goal: string, candidates: readonly
  * 动态提取当前尚未完成的活动子句（activeClause），供 `rankByGoal` 聚焦当前阶段候选。
  */
 export declare function activeClauseOf(goal: string, candidates: readonly TaskCandidate[], hasPendingField: boolean, hasUnsatisfiedTargetToggle: boolean): string;
-//# sourceMappingURL=gates.d.ts.map

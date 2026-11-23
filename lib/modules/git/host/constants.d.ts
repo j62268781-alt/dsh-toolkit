@@ -112,4 +112,3 @@ export type GitReasonKey = 'invalid-cwd' | 'invalid-branch' | 'not-a-repository'
  * 它最终会进系统提示词，控制字符（尤其是 `\u001b`）只会让提示词变成噪声。
  */
 export declare function normalizeCommitInstructions(value: string): string;
-//# sourceMappingURL=constants.d.ts.map

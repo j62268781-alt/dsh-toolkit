@@ -170,4 +170,3 @@ export declare function loadSdk(hostUrl: any, options?: any): Promise<{
 }>;
 /** 面向面板的一句话。缺 SDK 时用户看到的应该是「怎么修」，不是一段堆栈。 */
 export declare function oauthSdkReasonText(result: any): string;
-//# sourceMappingURL=sdk.d.ts.map

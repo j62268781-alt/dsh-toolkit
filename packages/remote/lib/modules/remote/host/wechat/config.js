@@ -68,4 +68,3 @@ export function readConfig(config = {}) {
         bridgeApprovalTimeoutMs: Number.isFinite(approvalTimeout) && approvalTimeout > 0 ? approvalTimeout : 120_000,
     };
 }
-//# sourceMappingURL=config.js.map

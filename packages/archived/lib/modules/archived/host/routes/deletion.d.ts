@@ -8,4 +8,3 @@ import type { JsonRouteSpec } from "../../../../host/routes.js";
  * that cannot go (loaded, running, half-moved) fails alone and the rest completes.
  */
 export declare function createDeletionRoutes(): JsonRouteSpec[];
-//# sourceMappingURL=deletion.d.ts.map

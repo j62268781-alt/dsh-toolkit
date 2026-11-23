@@ -41,4 +41,3 @@ export declare function createPublishService(run?: GitRunner, pushRun?: GitRunne
     confirm(request: PublishConfirmation): Promise<PublishActionResult>;
 };
 export {};
-//# sourceMappingURL=publish.d.ts.map

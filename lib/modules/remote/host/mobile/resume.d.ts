@@ -74,4 +74,3 @@ export declare function hasLocalBinding({ service, homeDir }: {
  * 会立刻收尾，不再发任何请求——插件可能在连接完成前就被卸载。
  */
 export declare function createStartupResume(options: StartupResumeOptions): StartupResume;
-//# sourceMappingURL=resume.d.ts.map

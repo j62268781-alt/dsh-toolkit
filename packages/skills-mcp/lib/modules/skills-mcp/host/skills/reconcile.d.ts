@@ -23,4 +23,3 @@ export declare function readState(): Promise<any>;
  * config read path is proven stable.
  */
 export declare function reconcileSkills(ctx: any, skills: any): Promise<any>;
-//# sourceMappingURL=reconcile.d.ts.map

@@ -42,4 +42,3 @@ export declare function purgePairingState({ serverUrl, homeDir }?: any): Promise
     hostOnly: boolean;
     removed: string[];
 }>;
-//# sourceMappingURL=local-state.d.ts.map

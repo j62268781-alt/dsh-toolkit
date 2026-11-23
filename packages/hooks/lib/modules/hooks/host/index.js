@@ -84,4 +84,3 @@ export function apply(ctx, config = {}) {
     });
 }
 export default { name, inject, Config, apply };
-//# sourceMappingURL=index.js.map

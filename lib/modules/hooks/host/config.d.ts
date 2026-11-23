@@ -39,4 +39,3 @@ export interface HooksSettings {
     maxHistory: number;
 }
 export declare function readSettings(config?: any): HooksSettings;
-//# sourceMappingURL=config.d.ts.map

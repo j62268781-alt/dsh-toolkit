@@ -197,4 +197,3 @@ export function createPublishService(run = git, pushRun = (cwd, args) => git(cwd
         },
     };
 }
-//# sourceMappingURL=publish.js.map

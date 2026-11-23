@@ -654,4 +654,3 @@ export interface Judge {
      */
     health(options?: HealthOptions): Promise<JudgeHealth>;
 }
-//# sourceMappingURL=index.d.ts.map

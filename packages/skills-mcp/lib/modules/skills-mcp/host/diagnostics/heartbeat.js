@@ -17,4 +17,3 @@ export async function beat(payload) {
     }
 }
 /** Create or update every enabled skill, then delete files this plugin owned before. */
-//# sourceMappingURL=heartbeat.js.map

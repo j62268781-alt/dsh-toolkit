@@ -16,4 +16,3 @@ export declare function singleParams(searchParams: any): {
     error: any;
     errorDescription: any;
 };
-//# sourceMappingURL=state.d.ts.map

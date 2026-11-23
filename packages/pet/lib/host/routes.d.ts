@@ -77,4 +77,3 @@ export declare function jsonRoute(ctx: any, spec: JsonRouteSpec): Route;
  * callback), where the host identity check would reject the caller that must reach it.
  */
 export declare function registerJsonRoutes(ctx: any, specs: readonly JsonRouteSpec[]): unknown[];
-//# sourceMappingURL=routes.d.ts.map

@@ -100,4 +100,3 @@ export declare function createConversations({ ctx, settings, workspaceCwd, logge
     dispose(): void;
     replyTimeoutMs: number;
 };
-//# sourceMappingURL=conversation.d.ts.map

@@ -16,4 +16,3 @@ export declare function readBootConfig(config: any): {
     showWordmark: boolean;
     allowSkip: boolean;
 };
-//# sourceMappingURL=config.d.ts.map

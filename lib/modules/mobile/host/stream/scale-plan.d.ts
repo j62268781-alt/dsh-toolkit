@@ -53,4 +53,3 @@ export declare const MIN_SCALE = 0.35;
  * @returns {number} 要传给 `mobilecli --scale` 的比例
  */
 export declare function exactScale(wanted: unknown, deviceWidth: unknown): number;
-//# sourceMappingURL=scale-plan.d.ts.map

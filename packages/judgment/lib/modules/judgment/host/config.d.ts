@@ -205,4 +205,3 @@ export type PurposeConfig = Purposes[string];
 /** 逐小时配额。 */
 export type QuotaConfig = ConnectionConfig['quota'];
 export {};
-//# sourceMappingURL=config.d.ts.map

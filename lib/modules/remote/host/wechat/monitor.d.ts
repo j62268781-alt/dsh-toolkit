@@ -50,4 +50,3 @@ export declare function createMonitor({ getCredential, onMessage, logger, onStat
     }>;
     dispose(): void;
 };
-//# sourceMappingURL=monitor.d.ts.map

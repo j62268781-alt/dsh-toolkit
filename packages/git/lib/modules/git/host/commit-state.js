@@ -15,4 +15,3 @@ export async function hasCommitInProgress(gitDir) {
     }));
     return present.some(Boolean);
 }
-//# sourceMappingURL=commit-state.js.map

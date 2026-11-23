@@ -125,4 +125,3 @@ export declare function installTransportPatch({ sdk, lookup, log }?: any): {
 };
 /** 补丁不可用时的中文说明。缺什么就说什么，不给一句泛泛的「不支持」。 */
 export declare function patchReasonText(reason: any): "MCP SDK 里没有 StreamableHTTPClientTransport，OAuth 不可用" | "MCP SDK 的 transport 结构与预期不同（start 缺失），OAuth 不可用" | "MCP SDK 的 transport 结构与预期不同（请求头构造缺失），OAuth 不可用" | "MCP SDK 的 transport 原型不可扩展，OAuth 不可用" | "OAuth provider 注入后验证失败（SDK 版本可能已变），OAuth 不可用" | "OAuth 支持未安装";
-//# sourceMappingURL=patch.d.ts.map

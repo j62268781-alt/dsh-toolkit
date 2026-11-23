@@ -9,4 +9,3 @@ export interface DshHomeEnv {
  * @param home 家目录，默认 `os.homedir()`；测试用它避开真实 profile
  */
 export declare function dshHome(env?: DshHomeEnv, home?: string): string;
-//# sourceMappingURL=dsh-home.d.ts.map

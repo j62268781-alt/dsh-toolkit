@@ -26,4 +26,3 @@ export declare function createTaskMonitorStore(options: TaskMonitorStoreOptions)
     dispose(): Promise<void>;
 };
 export type TaskMonitorStore = ReturnType<typeof createTaskMonitorStore>;
-//# sourceMappingURL=store.d.ts.map

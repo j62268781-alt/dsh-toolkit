@@ -99,4 +99,3 @@ export async function deleteSessionFiles(sessionId) {
     }
     return { ok: true, code: DELETION_CODE.deleted, moved: trashPath };
 }
-//# sourceMappingURL=files.js.map

@@ -31,4 +31,3 @@ export interface RaiseWindowOptions {
     versions?: Record<string, string | undefined>;
 }
 export declare function raiseWindow(options?: RaiseWindowOptions): boolean;
-//# sourceMappingURL=raise.d.ts.map

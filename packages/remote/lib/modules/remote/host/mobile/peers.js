@@ -87,4 +87,3 @@ export async function readTrustedPeers({ serverUrl, homeDir } = {}) {
         .sort((a, b) => b.trustedAt - a.trustedAt);
     return { path, peers };
 }
-//# sourceMappingURL=peers.js.map

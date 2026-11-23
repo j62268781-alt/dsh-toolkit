@@ -8,4 +8,3 @@ export interface StarPoint {
  * 一条机械的虚线；`random` 由调用方注入，同一 seed 必得同一张星图。
  */
 export declare function sampleMarkOutline(d: string, count: number, random: () => number): StarPoint[];
-//# sourceMappingURL=constellation.d.ts.map

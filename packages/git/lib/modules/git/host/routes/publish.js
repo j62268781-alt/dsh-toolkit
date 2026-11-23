@@ -34,4 +34,3 @@ export function createGitPublishRoutes(publish) {
         },
     ];
 }
-//# sourceMappingURL=publish.js.map

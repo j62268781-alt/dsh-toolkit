@@ -139,4 +139,3 @@ function objectDistribution(value, id) {
         reject('distribution-complete', `答案 "${id}" 没有完整概率分布`, id);
     return new Map(Object.entries(value));
 }
-//# sourceMappingURL=system-one.js.map

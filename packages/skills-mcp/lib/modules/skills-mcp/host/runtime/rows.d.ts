@@ -76,4 +76,3 @@ export declare function configuredMcpRows(ctx: any): {
  * per-project).
  */
 export declare function configuredServerNames(ctx: any, memoryServers?: any): unknown[];
-//# sourceMappingURL=rows.d.ts.map

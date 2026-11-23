@@ -7,4 +7,3 @@ export declare const OAUTH_PATH: string;
  * @param options.run - `(op) => Promise<object>`，已校验的命令交给它执行。
  */
 export declare function registerOAuthRoute(ctx: any, { schema, run }: any): void;
-//# sourceMappingURL=route.d.ts.map

@@ -17,4 +17,3 @@ export declare function commandText(args: any): string;
 export declare function bareForcePush(command: string): string;
 /** 装上 `tools/pre-execute` 监听；`settings` 每次询问，改配置后不需要重装。 */
 export declare function installGitGuard(ctx: any, settings: () => GitSettings): void;
-//# sourceMappingURL=guard.d.ts.map

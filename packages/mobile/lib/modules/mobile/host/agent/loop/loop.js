@@ -1455,4 +1455,3 @@ export async function runSubgoals(goal, subgoals, deps) {
     }
     return finish(lastResult?.status ?? 'budget', lastResult?.reason ?? '没有可执行的子目标');
 }
-//# sourceMappingURL=loop.js.map

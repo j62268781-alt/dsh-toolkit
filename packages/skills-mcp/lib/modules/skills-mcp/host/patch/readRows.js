@@ -101,4 +101,3 @@ export async function readMcpRowsFromPatch(path) {
         return { ok: false, reason: String(error?.message ?? error) };
     }
 }
-//# sourceMappingURL=readRows.js.map

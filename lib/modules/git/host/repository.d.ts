@@ -90,4 +90,3 @@ export declare function createRepository(run?: GitRunner): {
     /** 重命名本地分支：`from` 省略时改当前分支。改名不会动远端，也不自动改上游名。 */
     renameBranch(cwd: unknown, from: unknown, to: unknown): Promise<CommandOutcome>;
 };
-//# sourceMappingURL=repository.d.ts.map

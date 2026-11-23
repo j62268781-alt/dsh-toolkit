@@ -79,4 +79,3 @@ export declare function openExternalUrl({ url, platform, spawn, log }?: any): {
     text: string;
     command?: undefined;
 };
-//# sourceMappingURL=browser.d.ts.map

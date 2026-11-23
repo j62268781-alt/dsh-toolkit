@@ -77,4 +77,3 @@ export interface TaskMonitorFailure {
     readonly detail: string;
 }
 export type TaskMonitorResult = TaskMonitorSnapshot | TaskMonitorFailure;
-//# sourceMappingURL=constants.d.ts.map

@@ -295,4 +295,3 @@ export async function describeAllSessions({ ctx, currentSessionId } = {}) {
 export function isAllRef(ref) {
     return typeof ref === 'string' && ref.trim().toLowerCase() === 'all';
 }
-//# sourceMappingURL=inspect.js.map

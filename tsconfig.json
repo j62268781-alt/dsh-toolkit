@@ -10,8 +10,6 @@
     "noImplicitOverride": true,
     "verbatimModuleSyntax": true,
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
     "outDir": "lib",
     "rootDir": "src",
     "skipLibCheck": true

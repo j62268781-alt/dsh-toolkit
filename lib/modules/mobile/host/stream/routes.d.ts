@@ -198,4 +198,3 @@ export declare function mountRoutes(ctx: any, routes: any, prefix: string): any;
  */
 export declare function matchRouteName(url: string, prefix: string): string | null;
 export {};
-//# sourceMappingURL=routes.d.ts.map

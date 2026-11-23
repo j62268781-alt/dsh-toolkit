@@ -22,4 +22,3 @@ declare const _default: {
     apply: typeof apply;
 };
 export default _default;
-//# sourceMappingURL=index.d.ts.map

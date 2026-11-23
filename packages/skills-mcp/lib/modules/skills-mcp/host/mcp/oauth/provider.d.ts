@@ -115,4 +115,3 @@ export declare function tokenStatus(record: any, now?: number): {
     expiresAt: string;
     expired: boolean;
 };
-//# sourceMappingURL=provider.d.ts.map

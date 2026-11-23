@@ -158,4 +158,3 @@ export declare class DaemonRpc {
     }): Promise<any>;
     dispose(): void;
 }
-//# sourceMappingURL=daemon-rpc.d.ts.map

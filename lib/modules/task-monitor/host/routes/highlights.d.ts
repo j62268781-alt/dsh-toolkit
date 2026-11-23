@@ -9,4 +9,3 @@ import type { TaskMonitorStore } from '../domain/store.js';
 export declare function createTaskMonitorRoutes({ store }: {
     store: TaskMonitorStore;
 }): JsonRouteSpec[];
-//# sourceMappingURL=highlights.d.ts.map

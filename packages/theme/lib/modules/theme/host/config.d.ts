@@ -10,4 +10,3 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
 export declare function readThemeConfig(config: any): {
     palette: any;
 };
-//# sourceMappingURL=config.d.ts.map

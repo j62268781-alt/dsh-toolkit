@@ -13,4 +13,3 @@ export declare function createOperation({ timeoutMs, signal: parentSignal }?: {
     timeoutMs?: number;
     signal?: AbortSignal;
 }): Operation;
-//# sourceMappingURL=operation.d.ts.map

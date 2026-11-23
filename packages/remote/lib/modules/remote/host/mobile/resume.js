@@ -182,4 +182,3 @@ export function createStartupResume(options) {
         },
     };
 }
-//# sourceMappingURL=resume.js.map

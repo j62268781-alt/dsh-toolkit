@@ -180,4 +180,3 @@ export interface ValidationNumbers {
 export type { Snapshot };
 /** 结束状态 → 交回宿主的下一步提示。 */
 export declare const NEXT_HINTS: Readonly<Record<TaskStatus, string>>;
-//# sourceMappingURL=types.d.ts.map

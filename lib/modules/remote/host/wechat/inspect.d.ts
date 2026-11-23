@@ -43,4 +43,3 @@ export declare function describeWorkspaceSessions({ ctx, workspace, currentSessi
 export declare function describeAllSessions({ ctx, currentSessionId }?: any): Promise<string>;
 /** 判断 /sessions 的参数是不是 "all"。 */
 export declare function isAllRef(ref: any): boolean;
-//# sourceMappingURL=inspect.d.ts.map

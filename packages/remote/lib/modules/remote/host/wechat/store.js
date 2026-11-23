@@ -255,4 +255,3 @@ export function createBridgeStore({ filePath, logger } = {}) {
         },
     };
 }
-//# sourceMappingURL=store.js.map

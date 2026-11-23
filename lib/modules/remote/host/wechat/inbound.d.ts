@@ -22,4 +22,3 @@ export declare function buildInboundContent({ message, api, attachments, workspa
     content: any[];
     text: string;
 }>;
-//# sourceMappingURL=inbound.d.ts.map

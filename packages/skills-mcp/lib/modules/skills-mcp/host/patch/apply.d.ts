@@ -115,4 +115,3 @@ export declare function applyRowOp(ctx: any, op: any): Promise<any>;
  * @returns `{ migrated, ids }` — the number of rows written and their entry ids.
  */
 export declare function migrateServerEntries(ctx: any, entries: any): Promise<any>;
-//# sourceMappingURL=apply.d.ts.map

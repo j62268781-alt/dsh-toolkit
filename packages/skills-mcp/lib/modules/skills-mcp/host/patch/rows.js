@@ -156,4 +156,3 @@ export function insertRow(document, id, config, options = {}) {
     document.contents = document.createNode([{ insert: [row] }]);
     return true;
 }
-//# sourceMappingURL=rows.js.map

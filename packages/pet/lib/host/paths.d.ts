@@ -9,4 +9,3 @@
 export declare const PLUGIN_API_ROOT = "/api/plugins/toolkit";
 /** 某个模块自己的路由前缀。 */
 export declare function pluginApiPath(moduleName: string): string;
-//# sourceMappingURL=paths.d.ts.map

@@ -4,4 +4,3 @@ export declare function absoluteArtifact(seed: ClassifiedSeed, cwd: unknown): Cl
 export declare function workspaceArtifacts(summary: any): ClassifiedSeed[];
 /** Live disk metadata belongs in the snapshot, not the persisted event ledger. */
 export declare function withArtifactMetadata(entry: TaskMonitorEntry, cwd: unknown): Promise<TaskMonitorEntry>;
-//# sourceMappingURL=artifacts.d.ts.map

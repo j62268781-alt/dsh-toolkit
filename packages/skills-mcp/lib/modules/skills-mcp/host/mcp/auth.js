@@ -128,4 +128,3 @@ export function authDetailText(kind, info) {
         return `${base}：${described}`;
     return scope === '' ? base : `${base}：需要 ${scope} 范围`;
 }
-//# sourceMappingURL=auth.js.map

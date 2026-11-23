@@ -44,4 +44,3 @@ export function readSettings(config = {}) {
             : DEFAULT_COMMIT_INSTRUCTIONS,
     };
 }
-//# sourceMappingURL=config.js.map

@@ -59,4 +59,3 @@ export function createHookRoutes(deps) {
         },
     ];
 }
-//# sourceMappingURL=hooks.js.map

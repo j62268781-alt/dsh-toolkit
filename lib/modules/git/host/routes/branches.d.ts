@@ -16,4 +16,3 @@ export declare function createGitRoutes({ repository }: {
     repository: Repository;
 }): JsonRouteSpec[];
 export {};
-//# sourceMappingURL=branches.d.ts.map

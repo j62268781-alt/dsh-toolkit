@@ -100,4 +100,3 @@ export declare class Ledger {
     /** 从文件尾部回读窗口内的记录，把计数播进内存。 */
     private seed;
 }
-//# sourceMappingURL=ledger.d.ts.map

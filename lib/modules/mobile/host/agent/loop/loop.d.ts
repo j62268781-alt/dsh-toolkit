@@ -13,4 +13,3 @@ import { type TaskDeps, type TaskResult, type TaskSubgoal } from './types.js';
 export declare function runTask(goal: string, deps: TaskDeps): Promise<TaskResult>;
 /** 顺序执行调用方明确给出的子目标。 */
 export declare function runSubgoals(goal: string, subgoals: readonly TaskSubgoal[], deps: TaskDeps): Promise<TaskResult>;
-//# sourceMappingURL=loop.d.ts.map

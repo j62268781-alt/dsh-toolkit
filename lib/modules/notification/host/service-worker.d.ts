@@ -19,4 +19,3 @@ export declare const SERVICE_WORKER_SOURCE = "/* dsh-toolkit notification click 
  * @param ctx - 宿主上下文。
  */
 export declare function registerNotificationServiceWorkerRoute(ctx: any): void;
-//# sourceMappingURL=service-worker.d.ts.map

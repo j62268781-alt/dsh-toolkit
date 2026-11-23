@@ -72,4 +72,3 @@ export declare function toolsByServer(ctx: any, serverNames: any, scope?: any): 
     reason?: undefined;
     detail?: undefined;
 };
-//# sourceMappingURL=tools.d.ts.map

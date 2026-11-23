@@ -527,4 +527,3 @@ export function createOAuthController(ctx) {
         registerRoutes,
     };
 }
-//# sourceMappingURL=controller.js.map

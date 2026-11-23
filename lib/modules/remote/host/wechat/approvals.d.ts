@@ -43,4 +43,3 @@ export declare function createApprovals({ notify, logger, timeoutMs, onSettled }
     /** 模块卸载：所有挂起请求按取消处理。 */
     dispose(): void;
 };
-//# sourceMappingURL=approvals.d.ts.map

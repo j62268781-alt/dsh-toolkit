@@ -82,4 +82,3 @@ export interface MobilePluginConfig {
  */
 export declare function apply(ctx: any, config?: MobilePluginConfig): void;
 export { TOOL_NAMES, resolveBinary };
-//# sourceMappingURL=index.d.ts.map

@@ -15,4 +15,3 @@ export interface PreviewOptions {
 export declare function createPreviewStore({ root, fetchImpl, baseUrl, timeoutMs, maxBytes }?: PreviewOptions): {
     get(slug: string): Promise<Buffer | null>;
 };
-//# sourceMappingURL=preview.d.ts.map

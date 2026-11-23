@@ -146,4 +146,3 @@ export function createPreviewDocument(assets, config) {
 export function renderBootScript(assets) {
     return assets.script;
 }
-//# sourceMappingURL=scene.js.map

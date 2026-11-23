@@ -25,4 +25,3 @@ export interface HookHistory {
     clear(): void;
 }
 export declare function createHookHistory(limit: number): HookHistory;
-//# sourceMappingURL=history.d.ts.map

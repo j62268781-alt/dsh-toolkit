@@ -57,21 +57,6 @@ function resolveDependency(owner, dependency, hostOutputs) {
   return resolved
 }
 
-/** Keep compiler maps useful after extraction without relying on repository source files. */
-async function portableMap(path, content) {
-  const map = JSON.parse(textOf(content))
-  if (!Array.isArray(map.sources)) return content
-  const sources = map.sources.map((source) => posix.normalize(posix.join(posix.dirname(path), map.sourceRoot ?? '', source)))
-  map.sourcesContent = await Promise.all(sources.map(async (source, index) => {
-    if (map.sourcesContent?.[index] !== undefined) return map.sourcesContent[index]
-    if (!source.startsWith('src/')) throw new Error(`Source map escapes source tree: ${path} -> ${source}`)
-    return readFile(resolve(ROOT, source), 'utf8')
-  }))
-  map.sources = sources.map((source) => `toolkit:///${source}`)
-  delete map.sourceRoot
-  return `${JSON.stringify(map)}\n`
-}
-
 /** A module's own Host tree plus only the shared/type dependency closure it imports. */
 export async function collectPackageHostOutputs(hostOutputs = undefined) {
   hostOutputs ??= await collectHostOutputs()
@@ -96,15 +81,13 @@ export async function collectPackageHostOutputs(hostOutputs = undefined) {
       if (content === undefined) throw new Error(`Missing generated Host dependency: ${path}`)
       if (/\.(?:js|mjs|cjs|ts)$/.test(path)) {
         for (const dependency of dependencies(path, content)) queue.push(resolveDependency(path, dependency, hostOutputs))
-        // Preserve declaration faces and maps only for included implementation/type files.
-        for (const companion of [`${path}.map`, path.replace(/\.js$/, '.d.ts')]) {
-          if (companion !== path && hostOutputs.has(companion)) queue.push(companion)
-        }
+        // Keep the declaration alongside its JavaScript.
+        const declaration = path.replace(/\.js$/, '.d.ts')
+        if (declaration !== path && hostOutputs.has(declaration)) queue.push(declaration)
       }
     }
     for (const path of [...included].sort()) {
-      const content = hostOutputs.get(path)
-      outputs.set(`packages/${module.name}/${path}`, path.endsWith('.map') ? await portableMap(path, content) : content)
+      outputs.set(`packages/${module.name}/${path}`, hostOutputs.get(path))
     }
     for (const skill of module.skills) {
       const source = join(ROOT, 'skills', skill)

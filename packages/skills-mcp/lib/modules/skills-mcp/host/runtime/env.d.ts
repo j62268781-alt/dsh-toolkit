@@ -35,4 +35,3 @@ export declare function splitArgs(text: any): string[];
  * front of the login PATH makes such a row work with no host-side patching.
  */
 export declare function spawnEnv(extra: any): any;
-//# sourceMappingURL=env.d.ts.map

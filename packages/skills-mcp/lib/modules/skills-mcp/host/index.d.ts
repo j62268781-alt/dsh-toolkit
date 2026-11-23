@@ -16,4 +16,3 @@ export { Config } from './config.js';
  * at `agent/created`, which is how the shipped client scopes tools per agent.
  */
 export declare function apply(ctx: any, config: any): void;
-//# sourceMappingURL=index.d.ts.map

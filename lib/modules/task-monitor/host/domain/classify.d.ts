@@ -24,4 +24,3 @@ export declare function normalizePath(path: string): string;
 export declare function artifactSeed(path: string): ClassifiedSeed;
 /** 一次调用可能产出多条种子（present 的 files 数组）；归不了类的调用返回空数组。 */
 export declare function classifyCall(name: unknown, args: unknown): ClassifiedSeed[];
-//# sourceMappingURL=classify.d.ts.map

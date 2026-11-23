@@ -15,4 +15,3 @@ export interface TaskMonitorSettings {
 }
 /** 启动路径上不能抛错：坏字段退回默认值。 */
 export declare function readSettings(config?: any): TaskMonitorSettings;
-//# sourceMappingURL=config.d.ts.map

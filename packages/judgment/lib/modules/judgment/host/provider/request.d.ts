@@ -21,4 +21,3 @@ export declare const LIMITS: {
 };
 /** 校验一批问题；返回第一个失败，全部通过则返回 undefined。 */
 export declare function validateRequest(state: JudgmentState, questions: JudgmentQuestions): ValidationFailure | undefined;
-//# sourceMappingURL=request.d.ts.map

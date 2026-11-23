@@ -33,4 +33,3 @@ export interface GitSettings {
  * （一个坏字段会让整个模块加载失败），只能退回到「空前缀 / 默认值」。
  */
 export declare function readSettings(config?: any): GitSettings;
-//# sourceMappingURL=config.d.ts.map

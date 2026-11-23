@@ -11,4 +11,3 @@ export declare function createScreenSizeLookup({ client, rpc, signal, ttlMs, tim
     timeoutMs?: number;
 }): (deviceId: string) => Promise<ScreenSize | null>;
 export {};
-//# sourceMappingURL=screen-size.d.ts.map

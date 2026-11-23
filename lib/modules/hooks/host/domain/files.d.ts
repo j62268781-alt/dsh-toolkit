@@ -110,4 +110,3 @@ export interface HookStore {
 }
 export declare function createHookStore(options: HookStoreOptions): HookStore;
 export {};
-//# sourceMappingURL=files.d.ts.map

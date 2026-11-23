@@ -23,4 +23,3 @@ export declare function readMcpRowsFromPatch(path: any): Promise<{
     mtimeMs: number;
     reason?: undefined;
 }>;
-//# sourceMappingURL=readRows.d.ts.map

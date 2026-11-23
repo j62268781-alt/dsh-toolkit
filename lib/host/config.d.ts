@@ -520,4 +520,3 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         enabled: s<boolean, boolean, "defined">;
     }>>, "defined">;
 }>>, "plain">;
-//# sourceMappingURL=config.d.ts.map

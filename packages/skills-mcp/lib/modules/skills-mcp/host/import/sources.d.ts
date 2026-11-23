@@ -37,4 +37,3 @@ export declare function adaptImportedEntry(name: any, spec: any, shape: any): an
  * Scan one tool's project files. Returns what exists, what parsed, what the
  * panel would import (as project-scoped panel entries) and why anything failed.
  */
-//# sourceMappingURL=sources.d.ts.map

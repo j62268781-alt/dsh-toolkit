@@ -31,4 +31,3 @@
  * 只有一份，只换 judge（§13.3 第 3 层）。
  */
 export {};
-//# sourceMappingURL=index.js.map

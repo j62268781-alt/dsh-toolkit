@@ -5,4 +5,3 @@ export declare function centerOf(rect: any): {
     x: number;
     y: number;
 };
-//# sourceMappingURL=ui-tree.d.ts.map

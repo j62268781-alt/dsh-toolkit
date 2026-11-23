@@ -73,4 +73,3 @@ export declare function createBridgeStore({ filePath, logger }?: any): {
     /** 立即落盘（停止监听/退出时调用）。 */
     flush(): Promise<void>;
 };
-//# sourceMappingURL=store.d.ts.map

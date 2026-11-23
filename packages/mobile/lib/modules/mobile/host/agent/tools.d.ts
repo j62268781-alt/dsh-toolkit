@@ -140,4 +140,3 @@ export declare function createMobileLoopTool({ client, getJudge, purpose, perfor
     purpose?: string;
     performTap?: TapAt | null;
 }): Record<string, any>;
-//# sourceMappingURL=tools.d.ts.map

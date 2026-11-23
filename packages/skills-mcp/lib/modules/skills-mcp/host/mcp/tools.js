@@ -112,4 +112,3 @@ export function toolsByServer(ctx, serverNames, scope = undefined) {
     });
     return { ok: true, servers, total: schemas.length };
 }
-//# sourceMappingURL=tools.js.map

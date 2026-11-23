@@ -52,4 +52,3 @@ export declare class StreamAccessController {
         expiresAt: number;
     };
 }
-//# sourceMappingURL=access.d.ts.map

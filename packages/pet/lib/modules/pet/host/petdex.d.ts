@@ -101,4 +101,3 @@ export declare function listInstalled(root: string): Promise<{
     skipped: SkippedPet[];
 }>;
 export declare function removePet(root: string, slug: any): Promise<boolean>;
-//# sourceMappingURL=petdex.d.ts.map

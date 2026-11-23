@@ -8,4 +8,3 @@ export declare const SKILLS_PATH: string;
  * produces, so the client handles both identically.
  */
 export declare function registerSkillRoute(ctx: any, { schema, apply }: any): void;
-//# sourceMappingURL=route.d.ts.map

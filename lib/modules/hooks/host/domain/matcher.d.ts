@@ -5,4 +5,3 @@ export interface MatcherCheck {
     error?: string;
 }
 export declare function checkMatcher(matcher: string, subject: string): MatcherCheck;
-//# sourceMappingURL=matcher.d.ts.map

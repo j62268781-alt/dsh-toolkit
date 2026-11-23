@@ -62,4 +62,3 @@ export function helpText() {
 export function isKnownCommand(name) {
     return KNOWN_COMMANDS.includes(name);
 }
-//# sourceMappingURL=commands.js.map

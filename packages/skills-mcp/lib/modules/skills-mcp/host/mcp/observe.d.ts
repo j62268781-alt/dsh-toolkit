@@ -39,4 +39,3 @@ export declare function createServerObserver(ctx: any, { agents: readAgents, ser
         }[];
     };
 };
-//# sourceMappingURL=observe.d.ts.map

@@ -55,4 +55,3 @@ export declare function decodeResponse(raw: unknown, questions: JudgmentQuestion
  * 另一处**刻意不跟**的地方：promptfoo 用自己的 ±1pp 容差做客户端校验，
  * 我们按契约统一用 0.02（`bridge.mjs:95` 的源码级数值）。容差属于契约，不随第三方实现漂移。
  */
-//# sourceMappingURL=openai-decisions.d.ts.map

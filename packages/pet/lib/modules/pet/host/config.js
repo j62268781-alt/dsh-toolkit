@@ -61,4 +61,3 @@ export function readSettings(config = {}) {
         islandHeight: number('islandHeight', 100, 75, 150),
     };
 }
-//# sourceMappingURL=config.js.map

@@ -203,4 +203,3 @@ export function createSkillsController(ctx, { agents, lastBeat, refresh }) {
         registerRoutes,
     };
 }
-//# sourceMappingURL=controller.js.map

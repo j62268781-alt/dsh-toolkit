@@ -45,4 +45,3 @@ export interface MergedHookOutcome {
 }
 /** 多条 hook 的决策合并：拒绝 > 询问 > 放行，上下文按顺序拼接。 */
 export declare function mergeHookOutcomes(runs: readonly HookRunResult[]): MergedHookOutcome;
-//# sourceMappingURL=exec.d.ts.map

@@ -21,4 +21,3 @@ export function createHookHistory(limit) {
         },
     };
 }
-//# sourceMappingURL=history.js.map

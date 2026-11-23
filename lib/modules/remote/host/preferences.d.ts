@@ -47,4 +47,3 @@ export declare function writePreferences(target: PreferenceTarget, next: RemoteP
  * 老版本没有这个字段的偏好文件读出来也是开，行为跟以前一致。
  */
 export declare function defaultPreferences(enabled: boolean): RemotePreferences;
-//# sourceMappingURL=preferences.d.ts.map
