@@ -18,7 +18,9 @@ function readBootAssets(): BootAssets {
 
 export function apply(ctx: any, config: any = {}): void {
   ctx.on("webserver/index-inject", (table: any[]) => {
-    const scene = createBootScene(readBootAssets(), readBootConfig(config));
+    const settings = readBootConfig(config);
+    if (!settings.enabled) return;
+    const scene = createBootScene(readBootAssets(), settings);
     table.push(
       { kind: "style", text: scene.css },
       { kind: "html", placement: "body", html: scene.html },

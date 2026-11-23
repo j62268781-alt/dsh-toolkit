@@ -17,7 +17,7 @@ import { installSettingsParts } from '../../../client/ui/components/settings-par
 export const inject = ['slots', 'configForms']
 // 面板样式 = 跨面板共用的设置页规则（按 `boot-` 前缀裁剪）+ 本模块自己的规则。
 const panelCss = `${settingsStyles('boot')}\n${panelStyles}`
-const DEFAULTS = Object.freeze({ animation: 'draw', theme: 'auto', showWordmark: true, allowSkip: true })
+const DEFAULTS = Object.freeze({ enabled: true, animation: 'draw', theme: 'auto', showWordmark: true, allowSkip: true })
 const FIELDS = Object.keys(DEFAULTS)
 const MODES = [
   { id: 'draw', name: '经典描摹', caption: '笔尖微光，勾勒启程', detail: '描边勾勒鲸标，填充成形，字标随后浮现' },
@@ -135,6 +135,7 @@ export function BootPanel({ form }) {
       />)}</OptionGrid>
     </CardSection>
     <CardSection title="显示设置" aria-label="显示设置">
+      <label className="boot-row"><span className="boot-row-text"><span>开启启动画面</span><small>下次加载应用时生效，不影响下方设置和动画预览</small></span><span className="boot-switch boot-switch--checkbox"><input type="checkbox" role="switch" aria-label="开启启动画面" checked={current.enabled} disabled={!writable} onChange={(event) => write('enabled', event.currentTarget.checked)} /><span className="boot-switch-thumb" aria-hidden="true" /></span></label>
       <label className="boot-row"><span className="boot-row-text"><span>画面配色</span><small>独立设置启动画面的明暗</small></span><select className="boot-select" disabled={!writable} value={current.theme} onChange={(event) => write('theme', event.target.value)}><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
       <div className="boot-row"><span className="boot-row-text"><span>显示文字标识</span><small>在鲸标下方显示 DEEPSEEK HARNESS</small></span><Toggle label="显示文字标识" checked={current.showWordmark} disabled={!writable} onChange={(value) => write('showWordmark', value)} /></div>
     </CardSection>

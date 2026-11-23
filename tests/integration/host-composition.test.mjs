@@ -102,9 +102,10 @@ test('root schema preserves module defaults and existing volatile boundaries', (
   assert.equal(config.mobile.enabled, false)
   assert.equal(config.mobile.routePrefix, '/custom-mobile')
   assert.equal(isVolatile(config.boot), false)
-  for (const field of ['animation', 'theme', 'showWordmark', 'allowSkip']) {
+  for (const field of ['enabled', 'animation', 'theme', 'showWordmark', 'allowSkip']) {
     assert.equal(isVolatile(config.boot[field]), true, `boot.${field} must stay volatile`)
   }
+  assert.equal(config.boot.enabled.get(), true)
   assert.equal(config.boot.animation.get(), 'draw')
   assert.equal(Object.hasOwn(config.boot, 'durationMs'), false)
   assert.equal(config.boot.theme.get(), 'auto')

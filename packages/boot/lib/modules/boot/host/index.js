@@ -13,7 +13,10 @@ function readBootAssets() {
 }
 export function apply(ctx, config = {}) {
     ctx.on("webserver/index-inject", (table) => {
-        const scene = createBootScene(readBootAssets(), readBootConfig(config));
+        const settings = readBootConfig(config);
+        if (!settings.enabled)
+            return;
+        const scene = createBootScene(readBootAssets(), settings);
         table.push({ kind: "style", text: scene.css }, { kind: "html", placement: "body", html: scene.html }, { kind: "script", placement: "body", text: scene.script });
     });
 }

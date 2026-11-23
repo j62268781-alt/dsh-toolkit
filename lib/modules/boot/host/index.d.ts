@@ -7,11 +7,13 @@ declare const _default: {
     name: string;
     inject: string[];
     Config: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+        enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
         animation: import("@deepseek-ai/schemastery").default<"draw" | "water" | "abyss", "draw" | "water" | "abyss", "volatile-defined">;
         theme: import("@deepseek-ai/schemastery").default<"auto" | "light" | "dark", "auto" | "light" | "dark", "volatile-defined">;
         showWordmark: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
         allowSkip: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
     }>>, Schemastery.ObjectT<NoInfer<{
+        enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
         animation: import("@deepseek-ai/schemastery").default<"draw" | "water" | "abyss", "draw" | "water" | "abyss", "volatile-defined">;
         theme: import("@deepseek-ai/schemastery").default<"auto" | "light" | "dark", "auto" | "light" | "dark", "volatile-defined">;
         showWordmark: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;

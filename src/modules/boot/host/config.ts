@@ -1,6 +1,7 @@
 import s from '@deepseek-ai/schemastery'
 
 export const Config = s.object({
+  enabled: s.boolean().default(true).volatile(),
   animation: s.union(['draw', 'water', 'abyss']).default('draw').volatile(),
   theme: s.union(['auto', 'light', 'dark']).default('auto').volatile(),
   showWordmark: s.boolean().default(true).volatile(),
@@ -18,6 +19,7 @@ export function readBootConfig(config: any) {
   const showWordmark = read('showWordmark')
   const allowSkip = read('allowSkip')
   return {
+    enabled: read('enabled') !== false,
     animation: ['draw', 'water', 'abyss'].includes(animation) ? animation : 'draw',
     theme: ['auto', 'light', 'dark'].includes(theme) ? theme : 'auto',
     showWordmark: showWordmark !== false,

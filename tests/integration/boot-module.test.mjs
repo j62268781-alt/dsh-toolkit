@@ -58,6 +58,18 @@ test('host reads every volatile config leaf on each index injection', async () =
   assert.ok(Object.entries(reads).filter(([field]) => field !== 'durationMs').every(([, count]) => count === 2))
 })
 
+test('disabled startup screen skips injection until enabled again', () => {
+  let enabled = false
+  let inject
+  applyHost({ on(_event, callback) { inject = callback } }, { enabled: { get: () => enabled } })
+  const table = [{ kind: 'html', html: 'another plugin' }]
+  inject(table)
+  assert.deepEqual(table, [{ kind: 'html', html: 'another plugin' }])
+  enabled = true
+  inject(table)
+  assert.deepEqual(table.slice(1).map(({ kind }) => kind), ['style', 'html', 'script'])
+})
+
 test('persisted keys map to the three requested scenes without config markup injection', () => {
   const draw = createBootScene(sourceAssets, { animation: 'draw' })
   const water = createBootScene(sourceAssets, { animation: 'water' })
@@ -291,6 +303,26 @@ test('settings panel previews above choices and writes every control through the
   // Re-picking the active animation only replays the preview, never rewrites.
   await choose('代码降落')
   assert.equal(writes.length, 3)
+})
+
+test('the first display setting defaults on and toggles startup without changing the preview', async (t) => {
+  const { form, writes, value } = makeForm({})
+  const { dom } = await mountPanel(t, form)
+  const { document } = dom.window
+  const row = document.querySelector('[aria-label="显示设置"] .boot-row')
+  const toggle = row.querySelector('input[type="checkbox"][role="switch"]')
+  const frame = document.querySelector('.boot-preview')
+  const preview = frame.srcdoc
+  assert.equal(toggle.getAttribute('aria-label'), '开启启动画面')
+  assert.equal(toggle.checked, true)
+  await act(async () => toggle.click())
+  assert.deepEqual(writes, [['enabled', false]])
+  assert.equal(value().enabled, false)
+  assert.equal(toggle.checked, false)
+  assert.equal(frame.srcdoc, preview)
+  await act(async () => toggle.click())
+  assert.deepEqual(writes, [['enabled', false], ['enabled', true]])
+  assert.equal(toggle.checked, true)
 })
 
 test('mode cards reuse the desktop whale and toggles match General Settings geometry and tokens', async (t) => {

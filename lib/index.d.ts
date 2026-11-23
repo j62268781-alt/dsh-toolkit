@@ -9,11 +9,13 @@ declare const _default: {
     Config: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
         shell: import("@deepseek-ai/schemastery").default<any, any, "defined">;
         boot: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
             animation: import("@deepseek-ai/schemastery").default<"draw" | "water" | "abyss", "draw" | "water" | "abyss", "volatile-defined">;
             theme: import("@deepseek-ai/schemastery").default<"auto" | "light" | "dark", "auto" | "light" | "dark", "volatile-defined">;
             showWordmark: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
             allowSkip: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
         }>>, Schemastery.ObjectT<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
             animation: import("@deepseek-ai/schemastery").default<"draw" | "water" | "abyss", "draw" | "water" | "abyss", "volatile-defined">;
             theme: import("@deepseek-ai/schemastery").default<"auto" | "light" | "dark", "auto" | "light" | "dark", "volatile-defined">;
             showWordmark: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
@@ -269,11 +271,13 @@ declare const _default: {
     }>>, Schemastery.ObjectT<NoInfer<{
         shell: import("@deepseek-ai/schemastery").default<any, any, "defined">;
         boot: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
             animation: import("@deepseek-ai/schemastery").default<"draw" | "water" | "abyss", "draw" | "water" | "abyss", "volatile-defined">;
             theme: import("@deepseek-ai/schemastery").default<"auto" | "light" | "dark", "auto" | "light" | "dark", "volatile-defined">;
             showWordmark: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
             allowSkip: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
         }>>, Schemastery.ObjectT<NoInfer<{
+            enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
             animation: import("@deepseek-ai/schemastery").default<"draw" | "water" | "abyss", "draw" | "water" | "abyss", "volatile-defined">;
             theme: import("@deepseek-ai/schemastery").default<"auto" | "light" | "dark", "auto" | "light" | "dark", "volatile-defined">;
             showWordmark: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
