@@ -140,6 +140,33 @@ test('authenticated routes reject before business and preserve host request bind
   await fiber.dispose()
 })
 
+test('modern routes require an admitted live owner before entering the handler', async () => {
+  let mounted, calls = 0
+  const ctx = host(value => { mounted = value }, {
+    admit() { throw new Error('WebServer owns admission') },
+  })
+  const fiber = ctx.plugin(child => {
+    registerAuthenticatedRoute(child, route(() => { calls++; return 'accepted' }))
+  })
+  await fiber
+  assert.equal(mounted.auth, 'required')
+  const signal = new AbortController().signal
+  for (const [peer, status] of [
+    [undefined, 401],
+    [{ principal: { kind: 'api' }, signal }, 403],
+    [{ principal: { kind: 'owner' }, signal: AbortSignal.abort() }, 403],
+  ]) {
+    const response = { end() { this.ended = true } }
+    await mounted.handler({}, response, peer)
+    assert.equal(response.statusCode, status)
+    assert.equal(response.ended, true)
+  }
+  assert.equal(calls, 0)
+  assert.equal(await mounted.handler({}, {}, { principal: { kind: 'owner' }, signal }), 'accepted')
+  assert.equal(calls, 1)
+  await fiber.dispose()
+})
+
 test('a failing host guard never enters the business handler', async () => {
   let mounted, calls = 0
   const failure = new Error('identity service unavailable')

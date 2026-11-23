@@ -227,8 +227,8 @@ scripts/  tests/  docs/  docs/agent/  .cache(gitignored)
 
 - 前缀一律 `/api/plugins/toolkit/<module>/…`，由 `src/host/paths.ts` 的 `pluginApiPath()` 派生；
   **不要在 client 里手写路径字符串**。唯一允许覆盖的是 mobile 的 `config.routePrefix`。
-- 注册走 `src/host/routes.ts`；`registerAuthenticatedRoute` 在 handler 前跑
-  `ctx.connection.requestRejection(req)`，**身份拒绝先于读 body**。
+- 注册走 `src/host/routes.ts`；`registerAuthenticatedRoute` 按宿主版本走 `connection.requestRejection(req)`
+  或 WebServer 的已认证 owner Peer，**身份拒绝先于读 body**。
 - **失败只有一个通道**：`throw httpFailure(status, reason)`；不要再
   `Object.assign(new Error(msg), { statusCode })`。`HttpFailure` 同时暴露 `.status` 与 `.statusCode`
   （后者是兼容别名，新代码只用 `.status`）。
