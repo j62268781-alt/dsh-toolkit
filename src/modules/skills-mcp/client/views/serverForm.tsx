@@ -1,8 +1,8 @@
 import { CONNECTION_DRAFT_DEFAULTS } from '../../host/mcp/connection.js'
 import { field } from '../components/field.jsx'
 import {
-  HINTS, fieldControlId, fieldEdited, fieldErrorId, serverDraftIssues, showFieldIssues,
-  syncAriaInvalid, validateServerDraft,
+  HINTS, clearFieldIssue, fieldControlId, fieldEdited, fieldErrorId, serverDraftIssues, showFieldIssues,
+  syncAriaInvalid,
 } from '../components/form.js'
 import { hasInjectedPath } from '../components/card.jsx'
 
@@ -12,14 +12,35 @@ const PREFIX = 'smp-server'
 export function serverFormView({
   tier, editing, draft, setDraft, scopeDraft, setScopeDraft, projectChoices,
   error, busy, switchControl, onSave, onCancel,
+  compact = false, pending = false, primitives = undefined,
 }) {
   if (!editing || editing.kind !== "mcp" || editing.tier !== tier.tier) return null
   const profileEntry = typeof editing.profile === "string" && editing.profile !== "" ? editing.profile : null
   const stdio = (draft.transport ?? "streamable-http") === "stdio"
-  return (
-    <li className="smp-card" key="form" data-wide="true">
-      <div className="smp-cardDetails" key="body">
-        <div className="smp-formGrid" key="grid">
+  const Modal = compact ? primitives?.Modal : undefined
+  const secretField = (key: "headers" | "env") => field(
+    key === "env" ? "环境变量（KEY=VALUE，每行一个）" : "请求头（KEY=VALUE，每行一个）",
+    <textarea
+      className="smp-textarea" rows={3} placeholder={HINTS[key]}
+      value={draft[key] ?? ""}
+      onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+    />,
+    true,
+  )
+  const save = () => {
+    if (busy || pending) return
+    const issues = serverDraftIssues(draft)
+    if (compact && scopeDraft.custom && !scopeDraft.value.trim()) {
+      issues.push({ key: "scope", message: "请填写工作区路径" })
+    }
+    if (issues.length > 0) {
+      showFieldIssues(PREFIX, issues)
+      return
+    }
+    onSave()
+  }
+  const fields = (
+    <div className="smp-formGrid" key="grid">
           {field("名称（serverName）", (
             <>
               <input
@@ -29,7 +50,7 @@ export function serverFormView({
                 value={draft.serverName ?? ""}
                 // The Host enforces the same shape; say it natively too, so the browser can
                 // flag it while typing instead of only after a blocked save.
-                required maxLength={32} pattern="[A-Za-z0-9_-]{1,32}"
+                autoFocus={compact && Modal === undefined} data-modal-autofocus={compact ? "" : undefined} required maxLength={32} pattern="[A-Za-z0-9_\-]{1,32}"
                 aria-invalid="false" aria-describedby={fieldErrorId(PREFIX, "serverName")}
                 onChange={(e) => { fieldEdited(PREFIX, "serverName", e.currentTarget); setDraft({ ...draft, serverName: e.target.value }) }}
                 onBlur={(e) => syncAriaInvalid(e.currentTarget)}
@@ -70,9 +91,11 @@ export function serverFormView({
               <select
                 className="smp-select"
                 key="sel"
+                aria-label={compact ? "作用域（哪个工作区可用）" : undefined}
                 value={scopeDraft.custom ? "__custom__" : (scopeDraft.value || "global")}
                 onChange={(e) => {
                   const value = e.target.value
+                  if (compact) clearFieldIssue(PREFIX, "scope")
                   if (value === "__custom__") { setScopeDraft({ value: '', custom: true }); return }
                   setScopeDraft({ value: value === 'global' ? '' : value, custom: false })
                 }}
@@ -84,13 +107,20 @@ export function serverFormView({
               {scopeDraft.custom ? (
                 <input
                   className="smp-input" key="custom"
-                  placeholder="项目绝对路径"
+                  id={fieldControlId(PREFIX, "scope")}
+                  placeholder="项目绝对路径" aria-label="项目绝对路径"
+                  required={compact} aria-describedby={fieldErrorId(PREFIX, "scope")}
                   value={scopeDraft.value}
-                  onChange={(e) => setScopeDraft({ ...scopeDraft, value: e.target.value })}
+                  onChange={(e) => {
+                    if (compact) fieldEdited(PREFIX, "scope", e.currentTarget)
+                    setScopeDraft({ ...scopeDraft, value: e.target.value })
+                  }}
                 />
               ) : null}
+              {compact ? <span className="smp-fieldError" id={fieldErrorId(PREFIX, "scope")} hidden /> : null}
             </div>
-          ))}
+          ), compact)}
+          {!compact && <>
           {/*
             启动方式。这是**挂载归属**的开关，不是连接参数：开启后这一行的 Loader 会被停用，
             改由插件在第一次调用它的工具时挂载 `mcp-client`，工具清单来自本地缓存 —— 于是
@@ -147,6 +177,7 @@ export function serverFormView({
               </span>
             </div>
           ), true) : null}
+          </>}
           {stdio
             ? field("命令", (
                 <>
@@ -178,15 +209,7 @@ export function serverFormView({
               ))}
           {/* http 的鉴权头：host 端按 KEY=VALUE 解析（parseEnv），所以提示也用等号。
               此前这个字段只在 form.js 里声明、从未渲染，等于没有写入入口。 */}
-          {stdio
-            ? null
-            : field("请求头（KEY=VALUE，每行一个）", (
-                <textarea
-                  className="smp-textarea" rows={3} placeholder={HINTS.headers}
-                  value={draft.headers ?? ""}
-                  onChange={(e) => setDraft({ ...draft, headers: e.target.value })}
-                />
-              ), true)}
+          {!compact && !stdio ? secretField("headers") : null}
           {stdio
             ? field("参数（空格分隔）", (
                 <input
@@ -196,6 +219,12 @@ export function serverFormView({
                 />
               ))
             : null}
+          {compact ? (
+            <details className="smp-addServerExtras" key={stdio ? "stdio-extras" : "http-extras"}>
+              <summary>{stdio ? "环境变量" : "认证请求头"}</summary>
+              {secretField(stdio ? "env" : "headers")}
+            </details>
+          ) : <>
           {stdio
             ? field("运行时", (
               /**
@@ -323,8 +352,41 @@ export function serverFormView({
               onChange={(e) => setDraft({ ...draft, reconnectMaxAttempts: e.target.value })}
             />
           ))}
-        </div>
-        {error ? <div className="smp-error" key="err" style={{ marginTop: 8 }}>{error}</div> : null}
+          </>}
+    </div>
+  )
+  if (Modal !== undefined) {
+    const Button = primitives.Button ?? "button"
+    return (
+      <Modal key="add-server" open title="添加服务器" closeLabel="关闭"
+        className="smp-addServerDialog" contentClassName="smp-addServerContent"
+        onClose={(event) => {
+          // The host shares onClose between the backdrop, close button and Escape.
+          // Only the backdrop is aria-hidden; don't discard an unfinished draft on a stray click.
+          if (event?.currentTarget?.getAttribute("aria-hidden") !== "true") onCancel()
+        }}
+        footer={<>
+          <Button variant="outline" onClick={onCancel} disabled={pending}>取消</Button>
+          <Button variant="primary" onClick={save} disabled={busy || pending}>
+            {pending ? "保存中…" : "保存"}
+          </Button>
+        </>}
+      >
+        <form className="smp-addServerBody" noValidate onSubmit={(event) => { event.preventDefault(); save() }}>
+          <fieldset disabled={pending}>
+            {fields}
+            <button type="submit" hidden aria-hidden="true" />
+          </fieldset>
+          {error ? <p className="smp-error" role="alert">{error}</p> : null}
+        </form>
+      </Modal>
+    )
+  }
+  return (
+    <li className="smp-card" key="form" data-wide="true">
+      <div className="smp-cardDetails" key="body">
+        {fields}
+        {error ? <div className="smp-error" role={compact ? "alert" : undefined} key="err" style={{ marginTop: 8 }}>{error}</div> : null}
         {profileEntry !== null ? (
           <p className="smp-note" key="note" style={{ marginTop: 8 }}>
             {`改的是配置文件行 ${profileEntry.replace(/^include:/, "")}，Host 会写回 profile patch（自动备份）。`}
@@ -333,16 +395,8 @@ export function serverFormView({
         <div className="smp-actionsRow" key="actions">
           <button
             className="smp-button" data-variant="primary" key="save"
-            disabled={busy || !draft.serverName}
-            onClick={() => {
-              // Block the write here rather than letting the Host reject it: the message then
-              // lands under the offending field instead of in the card's single error line.
-              if (validateServerDraft(draft) !== null) {
-                showFieldIssues(PREFIX, serverDraftIssues(draft))
-                return
-              }
-              onSave()
-            }}
+            disabled={busy || pending || (!compact && !draft.serverName)}
+            onClick={save}
           >
             {profileEntry !== null ? "保存到配置行" : "保存"}
           </button>

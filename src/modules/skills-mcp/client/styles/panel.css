@@ -34,6 +34,17 @@
 .smp-cardActions .smp-button{box-sizing:border-box;height:28px;padding:0 10px;font-size:12px;line-height:18px;border-radius:var(--dsw-radius-sm)}
 .smp-cardDescription{color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}
 .smp-formGrid:first-child{margin-top:0}
+/* The portal overlay already supplies gutters. Use its available width, not the viewport width. */
+.smp-addServerDialog[role=dialog]{inline-size:100%;max-inline-size:var(--smp-add-server-max-width,560px);min-inline-size:0;max-block-size:100%}
+.smp-addServerDialog .smp-addServerContent{min-block-size:0;overflow:auto;overscroll-behavior:contain}
+.smp-addServerBody{container:smp-add-server / inline-size}
+.smp-addServerBody fieldset{border:0;margin:0;padding:2px;min-inline-size:0}
+.smp-addServerBody :is(.smp-input,.smp-select){inline-size:100%;min-inline-size:0}
+.smp-addServerExtras{grid-column:1 / -1;border-top:.5px solid var(--dsw-alias-border-l2);padding-block-start:8px}
+.smp-addServerExtras summary{cursor:pointer;font-size:13px;color:var(--dsw-alias-label-secondary);padding-block:4px}
+.smp-addServerExtras > label{margin-block-start:8px}
+.smp-addServerBody .smp-error{margin-block:10px 0;overflow-wrap:anywhere}
+@container smp-add-server (inline-size < 400px){.smp-addServerBody .smp-formGrid{grid-template-columns:minmax(0,1fr)}}
 .smp-cardDetails .smp-details{margin:0}
 .smp-details{grid-template-columns:76px minmax(0,1fr);gap:6px 10px;margin:8px 0 0;display:grid;font-size:12px;line-height:18px}
 .smp-detailsKey{color:var(--dsw-alias-label-tertiary)}

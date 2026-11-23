@@ -69,6 +69,9 @@ export function createPanel(React, primitives) {
     const [scopeDraft, setScopeDraft] = useState({ value: '', custom: false })
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState('')
+    const [addError, setAddError] = useState('')
+    const [addPending, setAddPending] = useState(false)
+    const addPendingRef = useRef(false)
     const [confirming, setConfirming] = useState('')
     const [deleteDialog, setDeleteDialog] = useState(null)
     const [reconnectState, setReconnectState] = useState({})
@@ -489,14 +492,14 @@ export function createPanel(React, primitives) {
     // Confirmed optimistic rows remain until the runtime projection catches up.
     const commandRowOp = (op, entryId) => {
       const key = inflightKeyForRow(entryId)
-      void sendRowOp(op).then((result) => {
+      return sendRowOp(op).then((result) => {
         if (result.ok) {
           setInflight((m) => (m[key] === undefined ? m : { ...m, [key]: { ...m[key], confirmed: true } }))
           if (Array.isArray(result.servers)) {
             setRuntime((current) => ({ ...current, servers: result.servers }))
           }
           bumpRefresh()
-          return
+          return result
         }
         setInflight((m) => {
           const next = { ...m }
@@ -504,6 +507,7 @@ export function createPanel(React, primitives) {
           return next
         })
         fail(result.reason)
+        return result
       })
     }
 
@@ -583,10 +587,14 @@ export function createPanel(React, primitives) {
       <button
         className="smp-button" data-variant="primary" key="add" disabled={busy}
         onClick={() => {
+          if (addPendingRef.current) return
+          setAddError("")
           setEditing({ kind: "mcp", tier: "global", id: undefined })
           setDraft({
             transport: "streamable-http",
             command: HINTS.command,
+            lazy: true,
+            singleMcpEntry: true,
             ...CONNECTION_DRAFT_DEFAULTS,
           })
           setScopeDraft({ value: defaultWorkspace(), custom: false })
@@ -841,9 +849,15 @@ export function createPanel(React, primitives) {
 
     function serverForm(tier) {
       const profileEntry = typeof editing?.profile === 'string' && editing.profile !== '' ? editing.profile : null
+      const compact = profileEntry === null
       return serverFormView({
         tier, editing, draft, setDraft, scopeDraft, setScopeDraft, projectChoices,
-        error, busy, switchControl, onCancel: () => { editBodyTaskRef.current.invalidate(); setEditBodyPending(false); setEditBodyNonce(""); setEditing(null) },
+        error: compact ? addError : error, busy, switchControl, compact, primitives,
+        pending: compact && addPending,
+        onCancel: () => {
+          if (compact && addPendingRef.current) return
+          editBodyTaskRef.current.invalidate(); setEditBodyPending(false); setEditBodyNonce(""); setEditing(null)
+        },
         onSave: () => {
           const transport = draft.transport ?? "streamable-http"
           if (profileEntry !== null) {
@@ -858,6 +872,10 @@ export function createPanel(React, primitives) {
               headers: transport === "stdio" ? "" : String(draft.headers ?? ""),
             }, editing.original), profileEntry)
           } else {
+            if (addPendingRef.current) return
+            addPendingRef.current = true
+            setAddPending(true)
+            setAddError("")
             const optimisticKey = inflightKeyForRow(rowEntryId(draft.serverName))
             setInflight((m) => ({
               ...m,
@@ -876,7 +894,13 @@ export function createPanel(React, primitives) {
               headers: transport === "stdio" ? "" : String(draft.headers ?? ""),
               scope: scopeDraft.value,
               scopeChanged: true,
-            }), optimisticKey)
+            }), optimisticKey).then((result) => {
+              addPendingRef.current = false
+              setAddPending(false)
+              if (result.ok) setEditing(null)
+              else setAddError(result.reason)
+            })
+            return
           }
           setEditing(null)
         },
@@ -1181,10 +1205,12 @@ export function createPanel(React, primitives) {
 
     const mcpSummary = `共 ${mcpRows.length} 个 · 作用域见卡片上的工作区标签 · 增删改都会写回 cordis.patch.yml（自动备份）`
 
+    const addingServer = editing?.kind === "mcp" && editing.id === undefined
+    const addServerForm = addingServer ? serverForm({ tier: editing.tier }) : null
     const mcpSections = [
       <ul className="smp-cards" key="import">{importCard(importScope)}</ul>,
-      editing?.kind === "mcp" && editing.id === undefined ? (
-        <ul className="smp-cards" key="formWrap">{serverForm({ tier: editing.tier })}</ul>
+      primitives?.Modal === undefined && addingServer ? (
+        <ul className="smp-cards" key="formWrap">{addServerForm}</ul>
       ) : null,
       mcpList,
     ]
@@ -1211,6 +1237,7 @@ export function createPanel(React, primitives) {
         {confirmDeleteDialog}
         {skillPreviewDialogView}
         {skillDialogElement}
+        {tab === "mcp" && primitives?.Modal !== undefined ? addServerForm : null}
         {tab === "mcp" ? mcpSections : skillsSections}
         {debugOn ? (
           <section className="smp-group" key="debug">

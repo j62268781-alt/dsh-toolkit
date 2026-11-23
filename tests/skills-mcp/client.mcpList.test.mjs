@@ -5,14 +5,13 @@
  * 后续维护里被无意恢复：
  *   · 只有一份列表，卡片自己说明作用域（全局 / 某个工作区）
  *   · 工具栏不再有「筛选项目」——作用域是服务器的属性，在添加/编辑表单里选
- *   · 「添加服务器」在**导入卡片下方**，不在工具栏、也不在列表末尾
- *     （工具栏按钮配上列表底部的表单，会让「点了没反应，还要往下滚」）
+ *   · 「添加服务器」打开列表外的宿主弹窗，不在列表内插入表单
  *   · 列表同时含全局与项目级，且不重复
  *   · 顺序为 全局 → 工作区（按工作区顺序），组内保持创建顺序
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { bootPanel, emptyDoc, skipWithoutBundle, textOf } from './helpers/client-harness.mjs'
+import { bootPanel, emptyDoc, skipWithoutBundle, textOf, visit } from './helpers/client-harness.mjs'
 
 const row = (entryId, serverName, scope, target = `https://${serverName}.invalid/mcp`) => ({
   entryId, serverName, scope, transport: 'streamable-http', target,
@@ -111,38 +110,28 @@ test('MCP：工具栏不再有项目筛选，位置让给「添加服务器」',
   }
 })
 
-test('MCP：添加表单位于导入卡片下方、列表上方（不是列表末尾）', { skip: skipWithoutBundle() }, async () => {
+const isAddModal = (node) => node.props?.['data-modal'] === '添加服务器'
+const isCards = (node) => String(node.props?.className ?? '').split(/\s+/).includes('smp-cards')
+
+test('MCP：添加服务器打开列表外的宿主弹窗，不插入内联表单', { skip: skipWithoutBundle() }, async () => {
   const panel = await boot()
   try {
-    // 渲染顺序：导入卡片 → 服务器列表。
-    const dump = []
-    const walk = (node) => {
-      if (Array.isArray(node)) { node.forEach(walk); return }
-      if (node === null || node === undefined || typeof node !== 'object' || node.element !== true) return
-      const tokens = String(node.props?.className ?? '').split(/\s+/)
-      if (tokens.includes('smp-cards')) dump.push(node.key)
-      if (typeof node.type === 'function') { walk(node.type({ ...node.props, children: node.children })); return }
-      walk(node.children)
-    }
-    walk(panel.runtime.tree)
-    assert.deepEqual(dump, ['import', 'cards'], `未打开表单时顺序不对：${JSON.stringify(dump)}`)
+    const cardGroups = () => panel.findAll(isCards)
+    assert.deepEqual(cardGroups().map((node) => node.key), ['import', 'cards'])
+    assert.ok(panel.find(isAddModal) === null, '初始不应打开弹窗')
 
-    const add = panel.findAll((node) => (
-      String(node.props?.className ?? '').includes('smp-button') && textOf(node).trim() === '添加服务器'))
-    panel.click(add[0])
-
-    const after = []
-    const walk2 = (node) => {
-      if (Array.isArray(node)) { node.forEach(walk2); return }
-      if (node === null || node === undefined || typeof node !== 'object' || node.element !== true) return
-      const tokens = String(node.props?.className ?? '').split(/\s+/)
-      if (tokens.includes('smp-cards')) after.push(node.key)
-      if (typeof node.type === 'function') { walk2(node.type({ ...node.props, children: node.children })); return }
-      walk2(node.children)
+    panel.click(panel.byText('添加服务器'))
+    assert.equal(panel.findAll(isAddModal).length, 1, '应打开一个标题为「添加服务器」的宿主 Modal')
+    assert.deepEqual(cardGroups().map((node) => node.key), ['import', 'cards'], '不应插入 formWrap')
+    for (const group of cardGroups()) {
+      visit(group, (node) => {
+        assert.ok(!isAddModal(node), 'Modal 不应嵌在卡片列表中')
+        assert.notEqual(node.props?.placeholder, '例如 test，最多 32 字符', '新增表单不在卡片列表中')
+      })
     }
-    walk2(panel.runtime.tree)
-    assert.deepEqual(after, ['import', 'formWrap', 'cards'],
-      `表单应夹在导入卡片与列表之间，而不是列表末尾：${JSON.stringify(after)}`)
+
+    panel.click(panel.byText('取消'))
+    assert.ok(panel.find(isAddModal) === null, '取消应关闭新增弹窗')
   } finally {
     panel.restore()
   }
@@ -182,10 +171,15 @@ test('MCP：添加表单带作用域选择（原项目筛选的功能搬到这�
       String(node.props?.className ?? '').includes('smp-button') && textOf(node).trim() === '添加服务器'))
     panel.click(add[0])
 
-    assert.ok(texts(panel).some((x) => String(x).includes('作用域（')), '表单里没有作用域字段')
+    const modal = panel.find(isAddModal)
+    assert.match(textOf(modal), /作用域（哪个工作区可用）/)
 
-    const scopeSelect = panel.findAll((node) => node.type === 'select'
-      && (node.children ?? []).flat(4).some((o) => o?.props?.value === '__custom__'))
+    const scopeSelect = []
+    visit(modal, (node) => {
+      if (node.type === 'select' && (node.children ?? []).flat(4).some((o) => o?.props?.value === '__custom__')) {
+        scopeSelect.push(node)
+      }
+    })
     assert.equal(scopeSelect.length, 1, '表单里应有且仅有一个作用域下拉')
 
     const values = (scopeSelect[0].children ?? []).flat(4).filter(Boolean).map((o) => o.props?.value)
