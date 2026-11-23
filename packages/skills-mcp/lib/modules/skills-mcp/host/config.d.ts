@@ -66,6 +66,14 @@ export declare const RowOp: z<Schemastery.ObjectS<NoInfer<{
     lazy: z<boolean, boolean, "defined">;
     /** update: whether the user actually changed the launch mode (blank = leave it alone). */
     lazyChanged: z<boolean, boolean, "defined">;
+    /** Keep this server's cached tool list until the user requests a refresh. */
+    manualToolCache: z<boolean, boolean, "defined">;
+    /** update: only touch the cache policy when the user changed it. */
+    manualToolCacheChanged: z<boolean, boolean, "defined">;
+    /** Expose one tool entry for this server while lazy loading is enabled. */
+    singleMcpEntry: z<boolean, boolean, "defined">;
+    /** Update only when the form explicitly changed the preference. */
+    singleMcpEntryChanged: z<boolean, boolean, "defined">;
     /**
      * add/update: the row's tier. `global` (or empty) leaves the key off, which is what a
      * row without a `scope` already means — so existing rows stay valid untouched.
@@ -139,6 +147,14 @@ export declare const RowOp: z<Schemastery.ObjectS<NoInfer<{
     lazy: z<boolean, boolean, "defined">;
     /** update: whether the user actually changed the launch mode (blank = leave it alone). */
     lazyChanged: z<boolean, boolean, "defined">;
+    /** Keep this server's cached tool list until the user requests a refresh. */
+    manualToolCache: z<boolean, boolean, "defined">;
+    /** update: only touch the cache policy when the user changed it. */
+    manualToolCacheChanged: z<boolean, boolean, "defined">;
+    /** Expose one tool entry for this server while lazy loading is enabled. */
+    singleMcpEntry: z<boolean, boolean, "defined">;
+    /** Update only when the form explicitly changed the preference. */
+    singleMcpEntryChanged: z<boolean, boolean, "defined">;
     /**
      * add/update: the row's tier. `global` (or empty) leaves the key off, which is what a
      * row without a `scope` already means — so existing rows stay valid untouched.

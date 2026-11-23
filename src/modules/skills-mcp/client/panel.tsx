@@ -456,29 +456,30 @@ export function createPanel(React, primitives) {
       )
     }
 
-    const reconnectAction = (serverName, tier, scope) => {
+    const reconnectAction = (serverName, tier, scope, lazyEnabled) => {
       const item = statusFor(serverName, tier, scope)
       const RECONNECTABLE = new Set(['gave-up', 'failed', 'retrying', 'pending'])
-      if (item === null || !RECONNECTABLE.has(item.status)) return null
-      const state = reconnectState[serverName] ?? {}
+      if (!lazyEnabled && (item === null || !RECONNECTABLE.has(item.status))) return null
+      const key = JSON.stringify([tier, scope, serverName]);
+      const state = reconnectState[key] ?? {}
       const waiting = state.pending === true
       const failure = String(state.error ?? '')
       return {
         node: (
           <button
-            className="smp-menuItem" key="reconnect" disabled={busy || waiting}
+            type="button" className="smp-menuItem" key="reconnect" disabled={busy || waiting}
             onClick={() => {
-              setReconnectState((current) => ({ ...current, [serverName]: { pending: true, error: '' } }))
+              setReconnectState((current) => ({ ...current, [key]: { pending: true, error: '' } }))
               void sendReconnect({ tier, serverName, scope: scope ?? '' }).then((result) => {
                 setReconnectState((current) => ({
                   ...current,
-                  [serverName]: { pending: false, error: result.ok ? '' : String(result.reason ?? '重连失败') },
+                  [key]: { pending: false, error: result.ok ? '' : String(result.reason ?? (lazyEnabled ? "刷新工具清单失败" : "重连失败")) },
                 }))
                 if (result.ok) bumpRefresh()
               })
             }}
           >
-            {waiting ? '重连中…' : '重连'}
+            {lazyEnabled ? (waiting ? "刷新工具清单中…" : "刷新工具清单") : (waiting ? "重连中…" : "重连")}
           </button>
         ),
         failure,
@@ -704,7 +705,7 @@ export function createPanel(React, primitives) {
       const inflightInfo = inflight[inflightKeyForRow(row.entryId)]
       const spinning = inflightInfo !== undefined && inflightInfo.confirmed !== true && inflightInfo.kind !== 'toggle'
       const pending = pendingOf(row.entryId) !== null || spinning
-      const reconnect = reconnectAction(row.serverName, tier, rowStatusScope)
+      const reconnect = reconnectAction(row.serverName, tier, rowStatusScope, row.lazy === true && row.enabled !== false);
       const oauthCredentials = oauthServerState(row.serverName)
       const oauthRowStatus = statusFor(row.serverName, tier, rowStatusScope)
       const oauthWorthOffering = oauthCredentials.present === true

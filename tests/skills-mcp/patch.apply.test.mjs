@@ -7,7 +7,8 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
-import { applyRowOp, migrateServerEntries, setPatchIO } from '../../src/modules/skills-mcp/host/patch/apply.ts'
+import { applyRowOp, migrateServerEntries, setPatchIO } from '../../src/modules/skills-mcp/host/patch/apply.js'
+import { configuredMcpRows, configuredServers, refreshPatchRows } from '../../src/modules/skills-mcp/host/runtime/rows.js'
 
 const PATCH = `- insert:
     - id: mcp-context7
@@ -30,6 +31,57 @@ const fresh = async () => {
   const ctx = { get: (n) => (n === 'profileContext' ? { dir } : undefined), logger: { warn() {}, info() {}, error() {} } }
   return { dir, ctx, text: () => readFile(join(dir, 'cordis.patch.yml'), 'utf8') }
 }
+
+test('手动更新工具清单：逐行保存、回读、保留未编辑值并恢复默认', async () => {
+  const { dir, ctx, text } = await fresh()
+  const alpha = { entryId: 'mcp-alpha', serverName: 'alpha', transport: 'streamable-http', url: 'https://alpha.invalid/mcp' }
+  const readFlags = async () => {
+    const loaded = await refreshPatchRows(join(dir, 'cordis.patch.yml'), { force: true })
+    assert.equal(loaded.ok, true)
+    for (const rows of [configuredServers(ctx), configuredMcpRows(ctx).rows]) {
+      assert.equal(rows.find((row) => row.serverName === 'alpha').lazy, true)
+      assert.equal(rows.find((row) => row.serverName === 'context7').manualToolCache, false)
+    }
+    return configuredMcpRows(ctx).rows.find((row) => row.serverName === 'alpha').manualToolCache
+  }
+  await applyRowOp(ctx, { op: 'add', ...alpha, lazy: true, manualToolCache: true })
+  assert.match(await text(), /manualToolCache: true/)
+  assert.equal(await readFlags(), true)
+  await applyRowOp(ctx, { op: 'update', ...alpha, url: 'https://alpha.invalid/mcp-v2', manualToolCache: false })
+  assert.equal(await readFlags(), true)
+  await applyRowOp(ctx, { op: 'update', ...alpha, manualToolCache: false, manualToolCacheChanged: true })
+  assert.doesNotMatch(await text(), /manualToolCache:/)
+  assert.equal(await readFlags(), false)
+  await applyRowOp(ctx, { op: 'update', ...alpha, manualToolCache: true, manualToolCacheChanged: true })
+  assert.equal(await readFlags(), true)
+})
+
+test('单一 MCP 入口：新增保存、补丁回读，只在明确关闭时移除设置', async () => {
+  const { dir, ctx, text } = await fresh()
+  const alpha = { entryId: 'mcp-alpha', serverName: 'alpha', transport: 'streamable-http', url: 'https://alpha.invalid/mcp' }
+  const readFlags = async (lazy, singleMcpEntry) => {
+    const loaded = await refreshPatchRows(join(dir, 'cordis.patch.yml'), { force: true })
+    assert.equal(loaded.ok, true)
+    for (const rows of [configuredServers(ctx), configuredMcpRows(ctx).rows]) {
+      const row = rows.find((row) => row.serverName === 'alpha')
+      assert.equal(row.lazy, lazy)
+      assert.equal(row.singleMcpEntry, singleMcpEntry)
+      assert.equal(rows.find((row) => row.serverName === 'context7').singleMcpEntry, false)
+    }
+  }
+  await applyRowOp(ctx, { op: 'add', ...alpha, lazy: true, singleMcpEntry: true })
+  assert.match(await text(), /singleMcpEntry: true/)
+  await readFlags(true, true)
+  await applyRowOp(ctx, { op: 'update', ...alpha, lazy: false, lazyChanged: true })
+  await readFlags(false, true)
+  await applyRowOp(ctx, { op: 'update', ...alpha, lazy: true, lazyChanged: true })
+  await readFlags(true, true)
+  await applyRowOp(ctx, { op: 'update', ...alpha, singleMcpEntry: false, singleMcpEntryChanged: true })
+  assert.doesNotMatch(await text(), /singleMcpEntry:/)
+  await readFlags(true, false)
+  await applyRowOp(ctx, { op: 'update', ...alpha, singleMcpEntry: true, singleMcpEntryChanged: true })
+  await readFlags(true, true)
+})
 
 test('同一 profile 的补丁操作共用串行文件锁', async () => {
   const { ctx } = await fresh()

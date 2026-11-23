@@ -301,7 +301,7 @@ export function createOAuthController(ctx: any) {
    */
 
   /** OAuth commands over HTTP (see `src/mcp/oauth/route.js` for why not the settings queue). */
-  const runOAuthCommand = async (op: any) => {
+  const runOAuthCommand = async (op: any, credentialsChanged: (url: string) => void) => {
     await oauthBootstrapped
     const action = String(op?.action ?? '')
     const serverName = String(op?.serverName ?? '')
@@ -330,6 +330,7 @@ export function createOAuthController(ctx: any) {
       }
       oauthResultCache.set(serverName, { ...result, opened, at: new Date().toISOString() })
       kickProjection()
+      if (result.kind === 'authorized') credentialsChanged(String(server.url ?? ''))
       const finished = result.kind === 'redirect' || result.kind === 'authorized'
       return {
         ok: finished,
@@ -341,6 +342,7 @@ export function createOAuthController(ctx: any) {
     }
     if (action === 'logout') {
       const result = await oauthFlow.logout(serverName)
+      credentialsChanged(String(server.url ?? ''))
       oauthResultCache.set(serverName, { ok: true, kind: 'logout', reason: '', text: result.text, detail: '', at: new Date().toISOString() })
       kickProjection()
       return { ok: true, reason: '', ...result }
@@ -440,7 +442,7 @@ export function createOAuthController(ctx: any) {
     }, 'dsh-toolkit-skills-mcp.oauth-sweep')
   }
 
-  const registerRoutes = ({ invalidateServerCaches, reconnectServer }: any) => {
+  const registerRoutes = ({ invalidateServerCaches, reconnectServer, credentialsChanged }: any) => {
     // ── OAuth: command route + browser callback ─────────────────────────────────────────
     //
     // Registered on the same `webServer` service the row/skill routes use. The callback is
@@ -452,7 +454,7 @@ export function createOAuthController(ctx: any) {
       registerOAuthRoute(oauthRouteCtx, {
         // Only the action and the target are accepted; everything else is ours to decide.
         schema: (payload: any) => OAuthCommand(payload),
-        run: runOAuthCommand,
+        run: (op: any) => runOAuthCommand(op, credentialsChanged),
       })
       const registered = registerOAuthCallback(oauthRouteCtx, {
         servers: () => candidateServers(),
@@ -478,7 +480,9 @@ export function createOAuthController(ctx: any) {
           invalidateServerCaches(serverName)
           const target = candidateServers().find((entry) => entry.serverName === serverName)
           const tier = target !== undefined && String(target.scope ?? '') === 'global' ? 'global' : 'project'
-          void reconnectServer({ tier, serverName }).catch((error: any) => {
+          credentialsChanged(String(target?.url ?? ''))
+          if (target?.lazy === true) return
+          void reconnectServer({ tier, serverName, scope: target?.scope }).catch((error: any) => {
             ctx.logger.warn('dsh-toolkit-skills-mcp: reconnect after OAuth failed: %s', String(error?.message ?? error))
           })
         },
@@ -494,6 +498,12 @@ export function createOAuthController(ctx: any) {
   }
 
   return {
+    async catalogAuth(url: string) {
+      await oauthBootstrapped
+      const auth = oauthLookup(url)?.provider
+      const token = await auth?.token()
+      return token ? { token: async () => token } : null
+    },
     statusCache: oauthStatusCache,
     invalidateStatus: (serverName: any) => oauthStatusFlights.invalidate(serverName),
     get ready() { return oauthReady },

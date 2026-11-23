@@ -1,6 +1,9 @@
 /** Observe live MCP connections without blocking the runtime read path. */
 export declare function createServerObserver(ctx: any, { agents: readAgents, servers: readServers }: any): {
     oauth: {
+        catalogAuth(url: string): Promise<{
+            token: () => Promise<any>;
+        }>;
         statusCache: Map<any, any>;
         invalidateStatus: (serverName: any) => void;
         readonly ready: {
@@ -14,7 +17,7 @@ export declare function createServerObserver(ctx: any, { agents: readAgents, ser
         redirectUri: () => string;
         refreshStatus: (serverName: any, url: any) => void;
         installSweep: () => void;
-        registerRoutes: ({ invalidateServerCaches, reconnectServer }: any) => void;
+        registerRoutes: ({ invalidateServerCaches, reconnectServer, credentialsChanged }: any) => void;
     };
     recordMount: (serverName: any, fiber: any) => void;
     computeServerStatus: ({ rows, entries, toolCounts }: any) => {

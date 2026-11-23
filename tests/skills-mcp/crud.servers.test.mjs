@@ -30,6 +30,35 @@ test('updateServerOp：沿用原行 id', () => {
   assert.equal(op.transport, 'stdio')
 })
 
+test('手动更新工具清单：新增默认关闭，编辑回填并仅在切换时标记改动', () => {
+  const row = { serverName: 'x', transport: 'streamable-http', lazy: true, manualToolCache: true }
+  const draft = draftFromRow(row)
+  assert.equal(addServerOp({ serverName: 'x' }).manualToolCache, false)
+  assert.equal(addServerOp(draft).manualToolCache, true)
+  assert.equal(draftFromRow({ serverName: 'other' }).manualToolCache, false)
+  assert.equal(updateServerOp('mcp-x', { ...draft, url: 'https://x.invalid' }, row).manualToolCacheChanged, false)
+  const off = updateServerOp('mcp-x', { ...draft, manualToolCache: false }, row)
+  assert.equal(off.manualToolCacheChanged, true)
+  assert.equal(off.manualToolCache, false)
+  assert.equal(updateServerOp('mcp-x', draft, {}).manualToolCacheChanged, true)
+  assert.equal(updateServerOp('mcp-x', draft).manualToolCacheChanged, false)
+})
+
+test('单一 MCP 入口：默认关闭，只在明确编辑时发送改动标记', () => {
+  const row = { serverName: 'x', transport: 'streamable-http', lazy: true, singleMcpEntry: true }
+  const draft = draftFromRow(row)
+  assert.equal(addServerOp({ serverName: 'other' }).singleMcpEntry, false)
+  assert.equal(draftFromRow({ serverName: 'other' }).singleMcpEntry, false)
+  assert.equal(addServerOp(draft).singleMcpEntry, true)
+  assert.equal(updateServerOp('mcp-x', draft).singleMcpEntryChanged, false)
+  const eager = updateServerOp('mcp-x', { ...draft, lazy: false }, row)
+  assert.equal(eager.singleMcpEntry, true)
+  assert.equal(eager.singleMcpEntryChanged, false)
+  const off = updateServerOp('mcp-x', { ...draft, singleMcpEntry: false }, row)
+  assert.equal(off.singleMcpEntry, false)
+  assert.equal(off.singleMcpEntryChanged, true)
+})
+
 test('toggleServerOp / deleteServerOp：只带必要字段', () => {
   assert.deepEqual(toggleServerOp('mcp-x', false), { op: 'toggle', entryId: 'mcp-x', enabled: false })
   assert.deepEqual(deleteServerOp('mcp-x'), { op: 'delete', entryId: 'mcp-x' })

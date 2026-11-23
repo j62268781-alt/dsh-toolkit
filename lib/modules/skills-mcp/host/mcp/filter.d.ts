@@ -93,7 +93,7 @@ export declare function judge(name: any, rules: any, serverNames: any): {
  * @returns `{ installed, restore, reason }`; `installed` is false when the service
  *   is absent or its `register` cannot be shadowed (a frozen or sealed provider).
  */
-export declare function installShadow(ctx: any, decide: any, log: any): {
+export declare function installShadow(ctx: any, decide: any, log: any, hiddenOwners?: WeakMap<object, Map<string, any>>): {
     installed: boolean;
     restore: () => void;
     reason: string;

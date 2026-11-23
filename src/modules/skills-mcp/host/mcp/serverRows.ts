@@ -104,6 +104,8 @@ export function serverFromRow(entry: any) {
     // 绝对不能意外地打开它。
     allowInsecureTokenEndpoint: row.allowInsecureTokenEndpoint === true,
     lazy,
+    manualToolCache: row.manualToolCache === true,
+    singleMcpEntry: row.singleMcpEntry === true,
     enabled: userEnabled(row, entry, scope, lazy),
     /**
      * stdio 用哪个 npm 家族。
@@ -234,6 +236,8 @@ export function serverSetKey(servers: any) {
     toolCallTimeoutMs: server.toolCallTimeoutMs,
     allowInsecureTokenEndpoint: server.allowInsecureTokenEndpoint === true,
     lazy: server.lazy === true,
+    manualToolCache: server.manualToolCache === true,
+    singleMcpEntry: server.lazy === true && server.singleMcpEntry === true,
     enabled: server.enabled,
   })))
 }

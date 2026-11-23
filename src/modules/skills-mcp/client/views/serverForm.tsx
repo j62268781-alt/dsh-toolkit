@@ -101,7 +101,7 @@ export function serverFormView({
               <span className="smp-switchRowText">
                 {"按需启动（懒加载）"}
                 <span className="smp-switchRowHint">
-                  开启后 DSH 启动时不会连接这台服务器，第一次调用它的工具时才连；工具清单会缓存到本地，所以模型照旧看得到工具
+                  有可用清单时，首次调用工具才建立常驻连接；没有可用清单时会先读取工具清单。
                 </span>
               </span>
               <span className="smp-switchSlot" key="slot">
@@ -113,6 +113,40 @@ export function serverFormView({
               </span>
             </div>
           ), true)}
+          {draft.lazy === true ? field("工具清单", (
+            <div className="smp-switchRow" key="manualToolCache">
+              <span className="smp-switchRowText">
+                {"手动更新工具清单"}
+                <span className="smp-switchRowHint">
+                  默认按服务器声明的有效期复用。开启后不按时间过期；需要更新时，选择「刷新工具清单」。
+                </span>
+              </span>
+              <span className="smp-switchSlot" key="slot">
+                {switchControl(
+                  draft.manualToolCache === true,
+                  (next) => setDraft({ ...draft, manualToolCache: next }),
+                  "手动更新工具清单",
+                )}
+              </span>
+            </div>
+          ), true) : null}
+          {draft.lazy === true ? field("工具入口", (
+            <div className="smp-switchRow" key="singleMcpEntry">
+              <span className="smp-switchRowText">
+                {"合并为单一 MCP 入口"}
+                <span className="smp-switchRowHint">
+                  开启后，模型通过一个入口查看和调用此服务器的工具，而不是逐个看到这些工具。
+                </span>
+              </span>
+              <span className="smp-switchSlot" key="slot">
+                {switchControl(
+                  draft.singleMcpEntry === true,
+                  (next) => setDraft({ ...draft, singleMcpEntry: next }),
+                  "合并为单一 MCP 入口",
+                )}
+              </span>
+            </div>
+          ), true) : null}
           {stdio
             ? field("命令", (
                 <>

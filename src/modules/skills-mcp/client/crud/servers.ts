@@ -103,6 +103,8 @@ function commonFields(draft) {
     transport: draft.transport ?? 'streamable-http',
     // 按需启动：开启后 Host 会把这一行标记为懒（Loader 不再实例化），第一次调用工具时才连接。
     lazy: draft.lazy === true,
+    manualToolCache: draft.manualToolCache === true,
+    singleMcpEntry: draft.singleMcpEntry === true,
     command: draft.command ?? '',
     args: typeof draft.args === 'string' ? draft.args : '',
     env: typeof draft.env === 'string' ? draft.env : '',
@@ -162,6 +164,10 @@ export function updateServerOp(entryId, draft, original) {
     ...scopeFields(draft),
     connectionChanged: connectionChanged(draft, original),
     lazyChanged: lazyChanged(draft, original),
+    manualToolCacheChanged: original != null
+      && (draft.manualToolCache === true) !== (original.manualToolCache === true),
+    singleMcpEntryChanged: original != null
+      && (draft.singleMcpEntry === true) !== (original.singleMcpEntry === true),
     envChanged: envChanged(draft, original),
     headersChanged: headersChanged(draft, original),
   }
@@ -227,6 +233,8 @@ export function draftFromRow(row) {
     runtime: row.runtime === 'auto' ? 'auto' : 'system',
     // 回填启动方式：见 `lazyChanged` —— 不回填就等于「保存一次就关掉懒加载」。
     lazy: row.lazy === true,
+    manualToolCache: row.manualToolCache === true,
+    singleMcpEntry: row.singleMcpEntry === true,
     ...connectionDraft(row),
   }
 }

@@ -10,9 +10,8 @@
  * 内核没有懒加载开关（Config 里没有 lazy / onDemand 这类字段），所以「开着但不启动」只能在
  * 上层做，而能做到的前提是两件事：
  *
- *   1. **工具清单可以缓存**：`tools/list` 的结果（名字 / 描述 / 入参 schema）落盘，下次启动直接
- *      用它把**同名代理工具**注册进工具注册表 —— 模型看到的工具和真连上时一模一样，也不需要
- *      进程活着；
+ *   1. **工具清单可以缓存**：身份可确认且仍新鲜的清单能跨重启复用；否则先按作用域获取清单。
+ *      清单只用于注册同名代理，所有执行仍由真实 MCP 客户端负责；
  *   2. **工具注册可以在运行时增删**：`ctx.tools.register()` 返回的 disposer 是 `ctx.effect` 层，
  *      随时撤掉都不影响当前这一步已经快照过的执行。
  *
@@ -29,9 +28,8 @@
  * ## 有缓存才懒，没缓存先连一次
  *
  * 第一次见到的服务器没有清单，代理就成了空壳：模型看不到任何工具，也就永远不会触发「首次调用」。
- * 所以没有缓存条目的服务器在 attach 时**预热一次**（连上、抓清单），之后按 idle 超时断开、转入
- * 代理模式。配置指纹（URL / headers / command / args / env）变了则视为**缓存过期**：仍然用旧清单
- * 起代理（工具名与 schema 通常没变），但标记 `stale`，第一次调用时用新配置重连并刷新。
+ * 缓存未命中时先读一次短连接的清单；不支持等价短连接的服务器走真实客户端预热。配置或授权变化
+ * 会撤掉旧代理。只在当前作用域把过期清单保留为发现提示；代理的执行总是重新查找真实工具。
  *
  * ## 已知取舍
  *
@@ -43,29 +41,12 @@
  * @module dsh-toolkit-skills-mcp/mcp/lazy
  */
 import { createHash } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
-import { dshHome } from '../runtime/env.js'
+import { isDeepStrictEqual } from 'node:util'
+import { catalogFresh, type CachedTool, type CatalogSnapshot } from './toolCache.js'
+import type { McpCatalog } from './catalog.js'
+import { SINGLE_ENTRY, singleEntryDefinition } from './singleEntry.js'
 
-/** 缓存文件里一台服务器的工具描述。`parameters` 是原样的 JSON Schema。 */
-export interface CachedTool {
-  name: string
-  description: string
-  parameters: any
-}
-
-/** 一台服务器的清单条目。 */
-export interface CacheEntry {
-  /** 抓取时那台服务器的连接配置指纹；与当前不一致即「过期」。 */
-  fingerprint: string
-  capturedAt: string
-  tools: CachedTool[]
-}
-
-/** 缓存文件的默认位置：与 heartbeat 同级，都是本插件的诊断/状态文件。 */
-export function cacheFile() {
-  return join(dshHome(), 'dsh-toolkit-skills-mcp.tool-cache.json')
-}
+export { createToolCache, cacheFile } from './toolCache.js'
 
 /**
  * 一台服务器的连接配置指纹。
@@ -87,80 +68,6 @@ export function fingerprintOf(server: any) {
   return createHash('sha256').update(material).digest('hex').slice(0, 16)
 }
 
-/** 工具清单缓存：内存读写 + 落盘（写盘失败只记日志，绝不让一次连接失败）。 */
-export function createToolCache(options: any = {}) {
-  const file = typeof options.file === 'string' && options.file !== '' ? options.file : cacheFile()
-  const warn = typeof options.warn === 'function' ? options.warn : () => {}
-  let entries: Record<string, CacheEntry> = {}
-  let loaded = false
-  let writing: Promise<void> = Promise.resolve()
-
-  const persist = () => {
-    writing = writing.then(async () => {
-      try {
-        await mkdir(dirname(file), { recursive: true })
-        await writeFile(file, `${JSON.stringify(entries, null, 2)}\n`, 'utf8')
-      } catch (error: any) {
-        warn(`tool cache write failed: ${String(error?.message ?? error)}`)
-      }
-    })
-    return writing
-  }
-
-  return {
-    file,
-    /** 读一次磁盘。坏文件按「没有缓存」处理，并把它留着给人看。 */
-    async load() {
-      if (loaded) return
-      loaded = true
-      try {
-        const text = await readFile(file, 'utf8')
-        const parsed = JSON.parse(text)
-        entries = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
-      } catch (error: any) {
-        if (error?.code !== 'ENOENT') warn(`tool cache unreadable: ${String(error?.message ?? error)}`)
-        entries = {}
-      }
-    },
-    /** 一台服务器的缓存；`null` = 从来没有抓到过。 */
-    get(serverName: any, fingerprint: string) {
-      const entry = entries[String(serverName ?? '')]
-      if (entry === undefined || entry === null) return null
-      const tools = Array.isArray(entry.tools) ? entry.tools.filter((tool: any) => typeof tool?.name === 'string' && tool.name !== '') : []
-      return { tools, capturedAt: String(entry.capturedAt ?? ''), stale: entry.fingerprint !== fingerprint }
-    },
-    /** 写入一次抓取结果。 */
-    put(serverName: any, fingerprint: string, tools: CachedTool[]) {
-      entries[String(serverName ?? '')] = {
-        fingerprint,
-        capturedAt: new Date().toISOString(),
-        tools: (Array.isArray(tools) ? tools : []).map((tool) => ({
-          name: String(tool.name),
-          description: String(tool.description ?? ''),
-          parameters: tool.parameters ?? { type: 'object' },
-        })),
-      }
-      return persist()
-    },
-    drop(serverName: any) {
-      delete entries[String(serverName ?? '')]
-      return persist()
-    },
-    /** 面板要展示的全部缓存摘要。 */
-    summary() {
-      const out: any = {}
-      for (const [name, entry] of Object.entries(entries)) {
-        out[name] = { tools: Array.isArray(entry?.tools) ? entry.tools.length : 0, capturedAt: String(entry?.capturedAt ?? '') }
-      }
-      return out
-    },
-    /** 等待队列里的写盘完成（测试用）。 */
-    async flush() {
-      await writing
-    },
-  }
-}
-
 /** 一个 scope（全局或某个 agent）里的一台懒服务器的运行时状态。 */
 interface LazyState {
   server: any
@@ -175,10 +82,32 @@ interface LazyState {
   pending: Promise<void> | null
   lastUsedAt: number
   error: string
+  key: string
+  epoch: number
+  alive: boolean
+  catalog: CatalogSnapshot | null
+  attempted: boolean
+  abort: AbortController | null
+  admissions: WeakMap<object, Promise<void>>
+  protocolCatalog: boolean
+  hidden: Map<string, any> | undefined
+  activeCalls: number
 }
 
 /** 全局 scope 的键（agent 对象本身作为其它 scope 的键）。 */
 const ROOT = Symbol('root')
+
+// Mirrors the installed host's deterministic DeepSeek public-name contract.
+function publicToolName(serverName: string, rawName: string) {
+  const joined = `mcp__${serverName}__${rawName}`
+  const normalized = joined.replace(/[^A-Za-z0-9_-]/g, '_')
+  if (normalized === joined && normalized.length <= 64) return normalized
+  return `${normalized.slice(0, 51)}_${createHash('sha256').update(`${serverName}\0${rawName}`).digest('hex').slice(0, 12)}`
+}
+
+function normalizedUrl(value: unknown) {
+  try { return new URL(String(value)).href } catch { return null }
+}
 
 const toolPrefix = (serverName: any) => `mcp__${String(serverName ?? '')}__`
 
@@ -203,13 +132,17 @@ export function createLazyRuntime(deps: any) {
    */
   const createToolDefinition = typeof deps.createToolDefinition === 'function' ? deps.createToolDefinition : null
   const now = typeof deps.now === 'function' ? deps.now : () => Date.now()
-  const idleMs = Number.isFinite(deps.idleMs) && deps.idleMs > 0 ? deps.idleMs : 10 * 60_000
+  const idleMs = deps.idleMs > 0 ? deps.idleMs : 10 * 60_000
   const startupTimeoutMs = Number.isFinite(deps.startupTimeoutMs) && deps.startupTimeoutMs > 0 ? deps.startupTimeoutMs : 30_000
   const sleepMs = Number.isFinite(deps.sleepMs) && deps.sleepMs > 0 ? deps.sleepMs : 40
 
   /** scope → serverName → state。 */
   const scopes = new Map<any, Map<string, LazyState>>()
   let disposed = false
+  let stopEntry: (() => void) | undefined
+  let warnedEntry = false
+  const single = (server: any) => server.singleMcpEntry === true && typeof deps.singleDispatch === 'function'
+  const projections = new WeakMap<object, any>()
 
   const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
@@ -256,9 +189,14 @@ export function createLazyRuntime(deps: any) {
   }
 
   const teardown = (state: LazyState) => {
+    state.epoch++
+    state.abort?.abort()
+    state.abort = null
     const stop = state.stop
     state.stop = null
     state.fiber = null
+    state.hidden?.clear()
+    state.hidden = undefined
     state.status = 'idle'
     state.pending = null
     if (stop !== null) {
@@ -272,8 +210,8 @@ export function createLazyRuntime(deps: any) {
 
   /** 用缓存把同名代理注册回来。没有缓存就什么都不做（等预热）。 */
   const registerProxies = (state: LazyState) => {
-    if (disposed) return 0
-    const cached = cache.get(state.server?.serverName, state.fingerprint)
+    if (disposed || !state.alive || single(state.server)) return 0
+    const cached = state.catalog
     if (cached === null || cached.tools.length === 0) return 0
     if (createToolDefinition === null) {
       // 宿主没提供工厂（旧版本 / 测试替身）：没有代理就没有工具，但绝不能因此中断 apply。
@@ -298,14 +236,15 @@ export function createLazyRuntime(deps: any) {
       // 渲染时（execute 之后）getter 会换成真实定义的那一份。
       const fallback = createToolDefinition(host, {
         name: tool.name,
-        rawName: tool.name.startsWith(toolPrefix(state.server?.serverName))
+        rawName: tool.rawName ?? (tool.name.startsWith(toolPrefix(state.server?.serverName))
           ? tool.name.slice(toolPrefix(state.server?.serverName).length)
-          : tool.name,
+          : tool.name),
         description: tool.description ?? '',
         inputSchema: tool.parameters ?? { type: 'object' },
         call: async () => ({ content: [{ type: 'text', text: 'lazy proxy placeholder' }] }),
       })
       let live: any = null
+      const epoch = state.epoch
       const proxy: any = {
         name: tool.name,
         description: tool.description ?? '',
@@ -314,6 +253,7 @@ export function createLazyRuntime(deps: any) {
           return live?.output ?? fallback.output
         },
         execute: async (args: any, exec: any) => {
+          if (!state.alive || state.epoch !== epoch) throw new Error('MCP configuration changed; retry with the current tool list')
           const target = await ensure(state, tool.name, exec, (definition: any) => {
             live = definition
           })
@@ -322,7 +262,22 @@ export function createLazyRuntime(deps: any) {
         projectContent: (exec: any, result: any) => live?.projectContent?.(exec, result),
       }
       try {
-        state.stops.set(tool.name, registry.register(proxy))
+        state.stops.set(tool.name, registry.register(proxy, {
+          when: async (step: object) => {
+            if (!state.alive || state.epoch !== epoch) return false
+            if (state.protocolCatalog && state.catalog && !catalogFresh(state.catalog, state.server.manualToolCache === true, now())) {
+              let job = state.admissions.get(step)
+              if (!job) {
+                job = state.pending ?? warm(state, true)
+                state.admissions.set(step, job)
+              }
+              try { await withAbort(job, (step as any).signal) } catch { return false }
+            }
+            // The host snapshots registrations before testing conditions. New or changed
+            // definitions become visible next step, not through a stale definition here.
+            return state.alive && state.epoch === epoch && liveDefinition(state, tool.name) === proxy
+          },
+        }))
         count += 1
       } catch (error: any) {
         warn(`cannot register the lazy proxy ${tool.name}: ${String(error?.message ?? error)}`)
@@ -333,6 +288,8 @@ export function createLazyRuntime(deps: any) {
 
   /** 等一次连接（single-flight）：期间所有调用共用同一个 promise。 */
   const ensure = async (state: LazyState, toolName: string, exec: any, onLive?: (definition: any) => void) => {
+    if (!state.alive || disposed) throw new Error('This lazy MCP tool is no longer configured')
+    const epoch = state.epoch
     if (state.status === 'connected') {
       const live = liveDefinition(state, toolName)
       if (live !== undefined) {
@@ -352,6 +309,7 @@ export function createLazyRuntime(deps: any) {
       void run.then(settle, settle)
     }
     await withAbort(state.pending, exec?.signal)
+    if (!state.alive || state.epoch !== epoch) throw new Error('MCP configuration changed while connecting')
     const live = liveDefinition(state, toolName)
     if (live === undefined) {
       throw new Error(`mcp-server "${state.server?.serverName}" started but did not register tool "${toolName}"`)
@@ -361,75 +319,122 @@ export function createLazyRuntime(deps: any) {
     return live
   }
 
-  /** 真的连一次：撤代理 → 挂载 → 等激活 → 刷缓存。 */
+  const liveTools = (state: LazyState) => (state.hidden ? [...state.hidden.values()] : schemasOf(state.agent))
+    .filter((schema: any) => typeof schema?.name === 'string' && schema.name.startsWith(toolPrefix(state.server.serverName)))
+    .map((schema: any): CachedTool => ({ name: schema.name, description: String(schema.description ?? ''), parameters: schema.parameters ?? { type: 'object' } }))
+
+  const saveLive = (state: LazyState, tools: CachedTool[]) => {
+    const previous = state.catalog
+    const byName = (entries: CachedTool[]) => new Map(entries.map((tool) => [tool.name, tool]))
+    const old = byName(previous?.tools ?? [])
+    if (previous !== null && old.size === tools.length && tools.every((tool) => {
+      const before = old.get(tool.name)
+      return before?.description === tool.description && isDeepStrictEqual(before.parameters, tool.parameters)
+    })) return
+    // The registry shows definitions, not protocol TTL. A live list change supersedes the disk snapshot.
+    state.protocolCatalog = false
+    state.catalog = { tools, capturedAt: now(), ttlMs: null, cacheScope: null }
+    void cache.drop(state.key)
+  }
+
   const connect = async (state: LazyState) => {
-    if (disposed) throw new Error('lazy MCP runtime is disposed')
-    if (state.status === 'connected') return
-    if (state.status === 'starting') return
+    if (disposed || !state.alive) throw new Error('lazy MCP runtime is disposed')
     const serverName = String(state.server?.serverName ?? '')
+    const epoch = state.epoch
     state.status = 'starting'
     state.error = ''
     disposeProxies(state)
     try {
-      const handle = mount(state.server, state.agent)
+      if (single(state.server)) state.hidden = new Map()
+      const handle = mount(state.server, state.agent, state.hidden)
       state.stop = handle?.stop ?? (typeof handle === 'function' ? handle : null)
       state.fiber = handle?.fiber ?? null
+      const deadline = now() + startupTimeoutMs
+      while (now() < deadline) {
+        if (!state.alive || state.epoch !== epoch) throw new Error('MCP connection superseded')
+        const phase = fiberPhase(state.fiber)
+        if (phase === 3) throw new Error(`mcp-server "${serverName}" failed to activate`)
+        const tools = liveTools(state)
+        if (phase === 2 || (phase === undefined && tools.length > 0)) {
+          saveLive(state, tools)
+          state.status = 'connected'
+          state.lastUsedAt = now()
+          info(`mcp server ${serverName}: connected on demand (${tools.length ? `${tools.length} tools` : 'no tools'})`)
+          return
+        }
+        await sleep(sleepMs)
+      }
+      throw new Error(`mcp-server "${serverName}" did not finish connecting within ${startupTimeoutMs}ms`)
     } catch (error: any) {
-      state.status = 'idle'
-      state.error = String(error?.message ?? error)
-      registerProxies(state)
-      throw new Error(`mcp-server "${serverName}" could not be mounted: ${state.error}`)
-    }
-    info(`mcp server ${serverName}: connecting on demand`)
-    const prefix = toolPrefix(serverName)
-    const deadline = now() + startupTimeoutMs
-    while (now() < deadline) {
-      const phase = fiberPhase(state.fiber)
-      const mine = schemasOf(state.agent)
-        .filter((schema: any) => typeof schema?.name === 'string' && schema.name.startsWith(prefix))
-        .map((schema: any) => ({ name: schema.name, description: String(schema.description ?? ''), parameters: schema.parameters ?? { type: 'object' } }))
-      if (mine.length > 0) {
-        await cache.put(serverName, state.fingerprint, mine)
-        state.status = 'connected'
-        state.lastUsedAt = now()
-        info(`mcp server ${serverName}: connected on demand (${mine.length} tool(s))`)
-        return
-      }
-      if (phase === 2) {
-        // 激活但一个工具都没有：连接是成功的，缓存记一条空清单，别再无限等。
-        await cache.put(serverName, state.fingerprint, [])
-        state.status = 'connected'
-        state.lastUsedAt = now()
-        info(`mcp server ${serverName}: connected on demand (no tools)`)
-        return
-      }
-      if (phase === 3) {
-        const failure = `mcp-server "${serverName}" failed to activate`
+      if (state.epoch === epoch) {
         teardown(state)
+        state.error = String(error?.message ?? error)
         registerProxies(state)
-        state.error = failure
-        throw new Error(failure)
       }
-      await sleep(sleepMs)
+      throw new Error(`mcp-server "${serverName}" could not be mounted: ${String(error?.message ?? error)}`)
     }
-    const timeout = `mcp-server "${serverName}" did not finish connecting within ${startupTimeoutMs}ms`
-    teardown(state)
-    registerProxies(state)
-    state.error = timeout
-    throw new Error(timeout)
   }
 
-  /** 预热：没有缓存的服务器先连一次把清单建起来（策略：有缓存才懒）。 */
-  const warm = (state: LazyState) => {
-    if (state.status !== 'idle' || state.pending !== null) return
-    const run = connect(state).catch((error: any) => {
-      warn(`mcp server ${state.server?.serverName}: warm-up failed: ${String(error?.message ?? error)}`)
+  const warm = (state: LazyState, refresh = false) => {
+    const epoch = state.epoch
+    const abort = new AbortController()
+    state.abort = abort
+    state.attempted = true
+    state.status = 'starting'
+    state.error = ''
+    const current = () => state.alive && state.epoch === epoch
+    const manual = state.server.manualToolCache === true
+    const run = Promise.resolve().then(async () => {
+      try {
+        const auth = await deps.catalogAuth?.(state.server)
+        if (!current()) return
+        const identity = deps.catalogIdentity?.(state.server, auth) ?? null
+        const hit = refresh ? null : cache.get(state.key, state.fingerprint, identity, manual, now())
+        if (hit !== null) state.catalog = hit
+        else if (typeof deps.readCatalog === 'function') {
+          const raw: McpCatalog = await deps.readCatalog(state.server, state.agent, auth, abort.signal)
+          if (!current()) return
+          const next = {
+            capturedAt: raw.capturedAt, ttlMs: raw.ttlMs, cacheScope: raw.cacheScope,
+            tools: raw.tools.map((tool) => ({
+              name: publicToolName(state.server.serverName, tool.name), rawName: tool.name,
+              description: typeof tool.description === 'string' ? tool.description : '', parameters: tool.inputSchema,
+            })),
+          }
+          const nextTools = new Map(next.tools.map((tool) => [tool.name, tool]))
+          for (const tool of state.catalog?.tools ?? []) {
+            if (isDeepStrictEqual(tool, nextTools.get(tool.name))) continue
+            state.stops.get(tool.name)?.()
+            state.stops.delete(tool.name)
+          }
+          state.catalog = next
+          void cache.put(state.key, state.fingerprint, identity === raw.authorizationIdentity ? identity : null, next, manual)
+        }
+        if (!current()) return
+        if (state.catalog !== null) {
+          state.status = 'idle'
+          state.protocolCatalog = true
+          registerProxies(state)
+          return
+        }
+      } catch {
+        if (!current()) return
+      }
+      state.protocolCatalog = false
+      state.catalog = null
+      void cache.drop(state.key)
+      await connect(state)
     })
     state.pending = run
     const settle = () => {
       if (state.pending === run) state.pending = null
+      if (state.abort === abort) state.abort = null
     }
-    void run.then(settle, settle)
+    void run.then(settle, (error: unknown) => {
+      settle()
+      if (current() || state.error) warn(`mcp server ${state.server.serverName}: warm-up failed: ${String(error)}`)
+    })
+    return run
   }
 
   const stateFor = (scopeKey: any, server: any) => {
@@ -444,10 +449,121 @@ export function createLazyRuntime(deps: any) {
       state = {
         server, agent: scopeKey === ROOT ? null : scopeKey, fingerprint: '', status: 'idle',
         stops: new Map(), stop: null, fiber: null, pending: null, lastUsedAt: 0, error: '',
+        key: '', epoch: 0, alive: true, catalog: null, attempted: false, abort: null,
+        admissions: new WeakMap(), protocolCatalog: false, hidden: undefined, activeCalls: 0,
       }
       map.set(serverName, state)
     }
     return state
+  }
+
+  const reset = (state: LazyState) => {
+    teardown(state)
+    disposeProxies(state)
+    state.catalog = null
+    state.protocolCatalog = false
+    state.attempted = false
+    void cache.drop(state.key)
+  }
+
+  const visibleStates = (agent: any) => {
+    const visible = new Map(scopes.get(ROOT))
+    for (const [name, state] of scopes.get(agent) ?? []) visible.set(name, state)
+    return [...visible.values()].filter((state) => state.alive && single(state.server))
+  }
+
+  const allowed = (state: LazyState, name: string) => deps.admitSingleTool?.(state.server, name) === true
+
+  const discover = async (state: LazyState, signal: AbortSignal): Promise<CachedTool[]> => {
+    const epoch = state.epoch
+    if (state.pending) await withAbort(state.pending, signal)
+    else if (state.status !== 'connected' && (!state.catalog || !catalogFresh(state.catalog, state.server.manualToolCache === true, now()))) {
+      await withAbort(warm(state, state.attempted), signal)
+    }
+    signal.throwIfAborted()
+    if (!state.alive || state.epoch !== epoch) throw new Error('MCP configuration changed; retry discovery')
+    return (state.status === 'connected' ? liveTools(state) : state.catalog?.tools ?? []).filter((tool) => allowed(state, tool.name))
+  }
+
+  const executeEntry = async (args: any, exec: any) => {
+    exec.signal.throwIfAborted()
+    const states = visibleStates(exec.agent)
+    const requested = typeof args?.server === 'string' ? args.server : undefined
+    const selected = requested === undefined ? states : states.filter((state) => state.server.serverName === requested)
+    if (requested !== undefined && selected.length === 0) throw new Error('MCP server is not available in this scope')
+    if (args?.action === 'search') {
+      const query = typeof args.query === 'string' ? args.query.slice(0, 200).trim().toLowerCase() : ''
+      const tools = []
+      const unavailable: string[] = []
+      for (const state of selected) {
+        let catalog: CachedTool[]
+        try { catalog = await discover(state, exec.signal) } catch {
+          exec.signal.throwIfAborted()
+          unavailable.push(state.server.serverName)
+          continue
+        }
+        for (const tool of catalog) {
+          const server = state.server.serverName
+          if (!`${server} ${tool.name} ${tool.description}`.toLowerCase().includes(query)) continue
+          tools.push({ server, tool: tool.name, description: tool.description.slice(0, 300) })
+          if (tools.length === 30) return { tools, unavailable, truncated: true }
+        }
+      }
+      return { tools, unavailable }
+    }
+    const state = requested !== undefined ? selected[0] : undefined
+    const name = typeof args?.tool === 'string' ? args.tool : ''
+    if (!state || !name || (args?.action !== 'describe' && args?.action !== 'call')) throw new Error('Use search or supply server and tool for describe/call')
+    if (!allowed(state, name)) throw new Error('MCP tool is not available in this scope')
+    const listed = (await discover(state, exec.signal)).find((tool) => tool.name === name)
+    if (!listed || !visibleStates(exec.agent).includes(state)) throw new Error('MCP tool is not available in this scope')
+    if (args.action === 'describe') return { server: requested, tool: name, description: listed.description, parameters: listed.parameters }
+    const epoch = state.epoch
+    const current = () => state.alive && state.epoch === epoch && visibleStates(exec.agent).includes(state) && allowed(state, name)
+    if (!current()) throw new Error('MCP tool is not available in this scope')
+    state.activeCalls++
+    try {
+      if (state.status !== 'connected') {
+        if (state.pending === null) {
+          const run = connect(state)
+          state.pending = run
+          const settle = () => { if (state.pending === run) state.pending = null }
+          void run.then(settle, settle)
+        }
+        await withAbort(state.pending, exec.signal)
+      }
+      exec.signal.throwIfAborted()
+      const definition = state.hidden?.get(name)
+      const resolve = () => current() && state.hidden?.get(name) === definition
+        && toolsOf(exec.agent)?.get(name, exec.agent) === definition ? definition : undefined
+      if (!definition || resolve() !== definition) throw new Error('MCP tool is not available in this scope')
+      const result = await deps.singleDispatch(definition, args.args ?? {}, exec, resolve)
+      if (result.content !== undefined) projections.set(exec, result)
+      return result.value
+    } finally {
+      state.activeCalls--
+      state.lastUsedAt = now()
+    }
+  }
+
+  const reconcileEntry = () => {
+    const wanted = [...scopes.values()].some((map) => [...map.values()].some((state) => single(state.server)))
+    if (!wanted) {
+      stopEntry?.()
+      stopEntry = undefined
+      return
+    }
+    if (stopEntry) return
+    try {
+      const registry = toolsOf(null)
+      if (!registry || registry.get?.(SINGLE_ENTRY) !== undefined) throw new Error('mcp is already registered or the tool registry is unavailable')
+      stopEntry = registry.register(singleEntryDefinition(executeEntry, projections), {
+        when: (step: any) => visibleStates(step?.agent).length > 0,
+      })
+    } catch (error: any) {
+      if (!warnedEntry) warn(`cannot register single MCP entry: ${String(error?.message ?? error)}`)
+      warnedEntry = true
+    }
   }
 
   return {
@@ -472,28 +588,58 @@ export function createLazyRuntime(deps: any) {
         wanted.add(serverName)
         const state = stateFor(scopeKey, server)
         const fingerprint = fingerprintOf(server)
-        const changed = state.fingerprint !== '' && state.fingerprint !== fingerprint
+        const namespace = typeof deps.namespace === 'function' ? deps.namespace() : deps.namespace
+        const key = JSON.stringify([namespace ?? '', server.scope ?? 'global', server.entryId ?? '', serverName])
+        const changed = state.fingerprint !== '' && (state.fingerprint !== fingerprint || state.key !== key
+          || single(state.server) !== single(server)
+          || (state.server.manualToolCache === true && server.manualToolCache !== true))
+        if (changed) reset(state)
         state.server = server
         state.fingerprint = fingerprint
-        if (changed) {
-          // 配置变了：连接中的旧实例按旧配置在跑，直接断掉，回到代理（清单可能过期，标 stale）。
-          if (state.status === 'connected' || state.status === 'starting') teardown(state)
-          disposeProxies(state)
+        state.key = key
+        if (server.singleMcpEntry === true && !single(server) && !warnedEntry) {
+          warn('single MCP entry is unavailable on this Host; using ordinary lazy tools')
+          warnedEntry = true
         }
-        if (state.status === 'idle') {
-          const cached = cache.get(serverName, fingerprint)
-          if (cached === null) warm(state)
-          // 每轮都试一次：上轮可能因为「名字还被 Loader 的旧客户端占着」而跳过。
+        if (state.status === 'idle' && !single(server)) {
+          if (!state.attempted) void warm(state)
           else registerProxies(state)
         }
       }
       for (const [serverName, state] of [...map.entries()]) {
         if (wanted.has(serverName)) continue
+        state.alive = false
         teardown(state)
         disposeProxies(state)
         map.delete(serverName)
       }
       if (map.size === 0) scopes.delete(scopeKey)
+      reconcileEntry()
+    },
+
+    async refresh(serverName: string, project?: boolean, projectScope?: string) {
+      const jobs: Promise<void>[] = []
+      for (const [scope, map] of scopes) {
+        if (project !== undefined && project !== (scope !== ROOT)) continue
+        const state = map.get(serverName)
+        if (!state || (project && projectScope && state.server.scope !== projectScope)) continue
+        reset(state)
+        jobs.push(warm(state))
+      }
+      await Promise.all(jobs)
+      return jobs.length
+    },
+
+    authorizationChanged(url: string) {
+      const endpoint = normalizedUrl(url)
+      if (endpoint === null) return
+      for (const map of scopes.values()) {
+        for (const state of map.values()) {
+          if (state.server.transport === 'stdio' || normalizedUrl(state.server.url) !== endpoint) continue
+          reset(state)
+          if (!single(state.server)) void warm(state)
+        }
+      }
     },
 
     /** 丢掉一个 agent 的全部懒状态（会话结束）。 */
@@ -501,10 +647,12 @@ export function createLazyRuntime(deps: any) {
       const map = scopes.get(agent)
       if (map === undefined) return
       for (const state of map.values()) {
+        state.alive = false
         teardown(state)
         disposeProxies(state)
       }
       scopes.delete(agent)
+      reconcileEntry()
     },
 
     /** 回收空闲连接。由宿主的慢 tick 调用。 */
@@ -514,8 +662,9 @@ export function createLazyRuntime(deps: any) {
       let closed = 0
       for (const map of scopes.values()) {
         for (const state of map.values()) {
-          if (state.status !== 'connected') continue
+          if (state.status !== 'connected' || state.activeCalls > 0) continue
           if (at - state.lastUsedAt < idleMs) continue
+          saveLive(state, liveTools(state))
           teardown(state)
           disposeProxies(state)
           registerProxies(state)
@@ -545,11 +694,11 @@ export function createLazyRuntime(deps: any) {
             lastUsedAt: state.lastUsedAt === 0 ? '' : new Date(state.lastUsedAt).toISOString(),
             error: state.error,
           }
-          const cached = cache.get(serverName, state.fingerprint)
+          const cached = state.catalog
           if (cached !== null) {
             entry.cachedTools = cached.tools.length
-            entry.capturedAt = cached.capturedAt
-            entry.stale = cached.stale
+            entry.capturedAt = new Date(cached.capturedAt).toISOString()
+            entry.stale = !catalogFresh(cached, state.server.manualToolCache === true, now())
           }
           if (current === undefined || (rank[entry.state] ?? 0) > (rank[current.state] ?? 0)) out[serverName] = entry
         }
@@ -561,11 +710,13 @@ export function createLazyRuntime(deps: any) {
       disposed = true
       for (const map of scopes.values()) {
         for (const state of map.values()) {
+          state.alive = false
           teardown(state)
           disposeProxies(state)
         }
       }
       scopes.clear()
+      reconcileEntry()
     },
   }
 }

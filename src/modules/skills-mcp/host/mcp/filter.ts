@@ -145,7 +145,7 @@ export function judge(name: any, rules: any, serverNames: any) {
  * @returns `{ installed, restore, reason }`; `installed` is false when the service
  *   is absent or its `register` cannot be shadowed (a frozen or sealed provider).
  */
-export function installShadow(ctx: any, decide: any, log: any) {
+export function installShadow(ctx: any, decide: any, log: any, hiddenOwners = new WeakMap<object, Map<string, any>>()) {
   let view = null
   try {
     view = ctx.get?.('tools') ?? null
@@ -176,7 +176,18 @@ export function installShadow(ctx: any, decide: any, log: any) {
     return { installed: false, restore: () => {}, reason: 'register is not a function' }
   }
   const hadOwn = Object.hasOwn(underlying, 'register')
-  const shadowed = function (this: any, definition: any) {
+  const shadowed = function (this: any, definition: any, ...options: any[]) {
+    // Match the exact mcp-client fiber, never another server sharing a prefix.
+    const owner = this.ctx?.fiber
+    const hidden = owner && hiddenOwners.get(owner)
+    if (hidden) {
+      const stop = original.call(this, definition, { when: () => false })
+      hidden.set(definition.name, definition)
+      return () => {
+        if (hidden.get(definition.name) === definition) hidden.delete(definition.name)
+        stop()
+      }
+    }
     let verdict
     try {
       verdict = decide(definition === null || definition === undefined ? undefined : definition.name)
@@ -187,7 +198,7 @@ export function installShadow(ctx: any, decide: any, log: any) {
     // The forwarded call is deliberately outside the catch above: a duplicate-name
     // or reserved-name error from the registry belongs to the registry, and
     // swallowing it would turn a real conflict into a silent no-op.
-    if (verdict.admit) return original.call(this, definition)
+    if (verdict.admit) return original.call(this, definition, ...options)
     // The caller keeps this disposer in a map and calls it on the next sync, so it
     // must exist and must be harmless: there is nothing to undo, and throwing here
     // would take down a re-sync.

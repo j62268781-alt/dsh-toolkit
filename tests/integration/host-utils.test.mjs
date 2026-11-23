@@ -267,10 +267,11 @@ test('Skills host split activates routes, adopts agents, reconnects projects and
   const cleanups = []
   const installed = []
   const disposed = []
+  let lazyOutcome
   const workspace = join(dir, 'project')
   const agent = {
     session: { cwd: workspace },
-    ctx: { plugin(_plugin, config) {
+    ctx: { tools: { schemas() { return [] } }, plugin(_plugin, config) {
       installed.push(config)
       return { state: 2, dispose() { disposed.push(config.serverName) } }
     } },
@@ -297,7 +298,11 @@ test('Skills host split activates routes, adopts agents, reconnects projects and
   }
   const ctx = {
     ...services,
-    logger: { info() {}, warn() {}, error() {} },
+    logger: { info(_format, message) {
+      if (message === 'mcp server lazy-project: connected on demand (no tools)') lazyOutcome = 'connected'
+    }, warn(_format, message) {
+      if (message?.startsWith?.('mcp server lazy-project: warm-up failed:')) lazyOutcome = message
+    }, error() {} },
     get(name) { return services[name] },
     effect(fn) { const dispose = fn(); if (typeof dispose === 'function') cleanups.push(dispose); return dispose },
     inject(names, callback) { if (names.every((name) => services[name] !== undefined)) return callback(ctx) },
@@ -338,10 +343,27 @@ test('Skills host split activates routes, adopts agents, reconnects projects and
   assert.deepEqual(reconnect.res.json(), { ok: true, reason: '' })
   assert.equal(installed.length, 2)
   assert.deepEqual(disposed, ['project'])
+
+  rows.push({
+    id: 'lazy-project-mcp', disabled: true,
+    options: { name: '@deepseek-ai/dsh-mcp-client', config: {
+      serverName: 'lazy-project', scope: workspace, lazy: true,
+      transport: 'streamable-http', url: 'https://example.invalid/lazy-mcp',
+    } },
+  })
+  reconcile.callback()
+  reconcile.callback()
+  // A forced reconciliation runs after the first read of the initially empty tool cache.
+  const deadline = Date.now() + 1000
+  while (lazyOutcome === undefined && Date.now() < deadline) {
+    await new Promise(setImmediate)
+  }
+  assert.equal(lazyOutcome, 'connected')
+  assert.deepEqual(installed.map(({ serverName }) => serverName), ['project', 'project', 'lazy-project'])
   dispose()
   assert.equal(routes.size, 0)
   assert.equal(listeners.size, 0)
   assert.equal(timers.size, 0)
   assert.equal(tools.register, originalRegister)
-  assert.deepEqual(disposed, ['project', 'project'])
+  assert.deepEqual(disposed, ['project', 'project', 'lazy-project'])
 })

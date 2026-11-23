@@ -62,6 +62,18 @@ test('SkillRequest 声明 path，且字段集合完整', () => {
   assert.deepEqual(names, ['body', 'description', 'id', 'name', 'nonce', 'op', 'path', 'prevName', 'project', 'scope'])
 })
 
+test('RowOp：手动更新工具清单及其改动标记默认关闭', () => {
+  const block = declarationOf('RowOp')
+  assert.match(block, /^\s+manualToolCache: z\.boolean\(\)\.default\(false\),$/m)
+  assert.match(block, /^\s+manualToolCacheChanged: z\.boolean\(\)\.default\(false\),$/m)
+})
+
+test('RowOp：单一 MCP 入口及其改动标记默认关闭', () => {
+  const block = declarationOf('RowOp')
+  assert.match(block, /^\s+singleMcpEntry: z\.boolean\(\)\.default\(false\),$/m)
+  assert.match(block, /^\s+singleMcpEntryChanged: z\.boolean\(\)\.default\(false\),$/m)
+})
+
 test('命令路由的请求 schema 都是纯校验器（没有 .volatile()）', () => {
   for (const name of ['RowOp', 'ReconnectRequest', 'ImportRequest', 'OAuthCommand']) {
     const block = declarationOf(name)

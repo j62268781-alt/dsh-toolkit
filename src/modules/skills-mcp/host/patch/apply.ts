@@ -383,6 +383,8 @@ export async function applyRowOp(ctx: any, op: any) {
        */
       const lazy = op.lazy === true
       if (lazy) config.lazy = true
+      if (op.manualToolCache === true) config.manualToolCache = true
+      if (op.singleMcpEntry === true) config.singleMcpEntry = true
       /**
        * An add of an id that is already there rewrites that row instead of appending a second.
        *
@@ -505,6 +507,12 @@ export async function applyRowOp(ctx: any, op: any) {
       if (op.scopeChanged === true) {
         const scope = op.scope === '' || op.scope === 'global' ? null : op.scope
         fields.scope = scope
+      }
+      if (op.manualToolCacheChanged === true) {
+        fields.manualToolCache = op.manualToolCache === true ? true : null
+      }
+      if (op.singleMcpEntryChanged === true) {
+        fields.singleMcpEntry = op.singleMcpEntry === true ? true : null
       }
       for (const [field, value] of Object.entries(fields)) {
         changed = setRowConfigField(document, op.entryId, field, value) || changed

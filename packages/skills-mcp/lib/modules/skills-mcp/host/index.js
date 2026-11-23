@@ -30,7 +30,10 @@ import { agentsHome } from './skills/reconcile.js';
 import { createSkillsController } from './skills/controller.js';
 import { serverMountConfig, setMountClient, workingDirectoryOf } from './project/mount.js';
 import { GLOBAL_SCOPE, lazyProjectServersFor, projectServersFor, serverRows, serverSetKey } from './mcp/serverRows.js';
-import { createLazyRuntime, createToolCache } from './mcp/lazy.js';
+import { createLazyRuntime } from './mcp/lazy.js';
+import { createSingleDispatch } from './mcp/singleEntry.js';
+import { createToolCache } from './mcp/toolCache.js';
+import { catalogAuthorizationIdentity, createCatalogReader } from './mcp/catalog.js';
 import { toolsByServer } from './mcp/tools.js';
 import { registerRuntimeRoute } from './mcp/runtime.js';
 import { registerRowRoute } from './mcp/rows.js';
@@ -121,6 +124,7 @@ export function apply(ctx, config) {
         filterServerNames = configuredServerNames(ctx, memoryServers);
     };
     refreshFilterServers(readServers());
+    const hiddenOwners = new WeakMap();
     const shadow = installShadow(ctx, (name) => {
         const verdict = judge(name, readFilters(), filterServerNames);
         if (!verdict.admit && typeof name === 'string' && droppedNames.length < 512 && !droppedNames.includes(name)) {
@@ -128,7 +132,7 @@ export function apply(ctx, config) {
             filterState.dropped = [...droppedNames];
         }
         return verdict;
-    }, { warn: (message) => ctx.logger.warn(message) });
+    }, { warn: (message) => ctx.logger.warn(message) }, hiddenOwners);
     filterState.installed = shadow.installed;
     filterState.reason = shadow.reason;
     if (shadow.installed) {
@@ -185,19 +189,36 @@ export function apply(ctx, config) {
     let cacheLoaded = false;
     const cacheReady = toolCache.load().then(() => { cacheLoaded = true; }, () => { cacheLoaded = true; });
     const idleMinutes = Number(config?.lazyIdleMinutes ?? 10);
+    const catalogReader = createCatalogReader({
+        get hostUrl() { return import.meta.resolve('@deepseek-ai/dsh-mcp-client'); },
+        normalizeConfig: mcpClient.Config,
+    });
     const lazy = createLazyRuntime({
         ctx,
         cache: toolCache,
+        namespace: () => patchFileOf(ctx),
+        catalogAuth: (server) => server.transport === 'stdio' ? undefined : oauth.catalogAuth(server.url),
+        catalogIdentity: (server, auth) => catalogAuthorizationIdentity(serverMountConfig(server), { auth }),
+        readCatalog: (server, agent, auth, signal) => catalogReader.read(agent?.ctx ?? ctx, serverMountConfig(server), { auth, signal }),
         createToolDefinition: mcpClient.createMcpToolDefinition,
+        singleDispatch: shadow.installed ? createSingleDispatch(ctx) : undefined,
+        admitSingleTool: (server, name) => judge(name, readFilters(), [server.serverName]).admit,
         warn: (message) => ctx.logger.warn('dsh-toolkit-skills-mcp: %s', message),
         info: (message) => ctx.logger.info('dsh-toolkit-skills-mcp: %s', message),
         idleMs: Number.isFinite(idleMinutes) && idleMinutes > 0 ? idleMinutes * 60_000 : Number.POSITIVE_INFINITY,
-        mount: (server, agent) => {
+        mount: (server, agent, hidden) => {
             const mountConfig = serverMountConfig(server);
             if (mountConfig === null)
                 throw new Error(`server ${server.id} has no name/${server.transport === 'stdio' ? 'command' : 'url'}`);
-            const host = agent ?? ctx;
-            const fiber = host.plugin(mcpPlugin, mountConfig);
+            const host = agent == null ? ctx : agent.ctx;
+            const plugin = hidden ? {
+                ...mcpPlugin,
+                apply(clientCtx, config) {
+                    hiddenOwners.set(clientCtx.fiber, hidden);
+                    return mcpPlugin.apply(clientCtx, config);
+                },
+            } : mcpPlugin;
+            const fiber = host.plugin(plugin, mountConfig);
             recordMount(server.serverName, fiber);
             ctx.logger.info('dsh-toolkit-skills-mcp: mounted lazy mcp server %s (%s) on demand', server.serverName, mountConfig.transport);
             return { fiber, stop: typeof fiber === 'function' ? fiber : () => fiber?.dispose?.() };
@@ -598,6 +619,17 @@ export function apply(ctx, config) {
         if (serverName === '')
             return { ok: false, reason: '请求里没有服务器名' };
         try {
+            const lazyRow = configuredMcpRows(ctx).rows.find((row) => row.serverName === serverName && row.lazy === true
+                && (row.scope === GLOBAL_SCOPE) === (tier !== 'project') && (tier !== 'project' || !request?.scope || row.scope === request.scope));
+            if (lazyRow) {
+                if (lazyRow.enabled === false)
+                    return { ok: false, reason: `服务器 ${serverName} 处于停用状态，先在面板里启用它` };
+                await cacheReady;
+                tick({ force: true });
+                invalidateServerCaches(serverName);
+                const touched = await lazy.refresh(serverName, tier === 'project', request?.scope);
+                return touched ? { ok: true, reason: '' } : { ok: false, reason: `没有会话正在使用项目级服务器 ${serverName}` };
+            }
             if (tier === 'project') {
                 const touched = remountProject(serverName);
                 // 「连接断开」这条探测结论在重新挂载后也过期了。
@@ -651,7 +683,7 @@ export function apply(ctx, config) {
     }));
     oauth.installSweep();
     skills.registerRoutes();
-    oauth.registerRoutes({ invalidateServerCaches, reconnectServer });
+    oauth.registerRoutes({ invalidateServerCaches, reconnectServer, credentialsChanged: lazy.authorizationChanged });
     // ── MCP import: scan on request, answer with the preview ───────────────────────────
     //
     // A scan is a read of other tools' config files. It used to travel through settings

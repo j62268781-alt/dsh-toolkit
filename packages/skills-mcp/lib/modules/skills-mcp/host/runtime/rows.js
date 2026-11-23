@@ -192,6 +192,9 @@ export function configuredMcpRows(ctx) {
             ...connectionDraftOf(server),
             // 面板要能读回当前值，否则「编辑」永远显示默认，用户改过的看不出效果。
             runtime: server.runtime,
+            lazy: server.lazy,
+            manualToolCache: server.manualToolCache,
+            singleMcpEntry: server.singleMcpEntry,
             enabled: server.enabled,
             phase: server.phase,
         }));

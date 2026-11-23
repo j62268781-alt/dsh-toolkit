@@ -1,5 +1,8 @@
 /** OAuth state, transport patch, commands and refresh lifecycle for one plugin scope. */
 export declare function createOAuthController(ctx: any): {
+    catalogAuth(url: string): Promise<{
+        token: () => Promise<any>;
+    }>;
     statusCache: Map<any, any>;
     invalidateStatus: (serverName: any) => void;
     readonly ready: {
@@ -13,6 +16,6 @@ export declare function createOAuthController(ctx: any): {
     redirectUri: () => string;
     refreshStatus: (serverName: any, url: any) => void;
     installSweep: () => void;
-    registerRoutes: ({ invalidateServerCaches, reconnectServer }: any) => void;
+    registerRoutes: ({ invalidateServerCaches, reconnectServer, credentialsChanged }: any) => void;
 };
 //# sourceMappingURL=controller.d.ts.map

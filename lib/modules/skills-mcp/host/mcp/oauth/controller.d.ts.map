@@ -1,1 +1,1 @@
-{"version":3,"file":"controller.d.ts","sourceRoot":"","sources":["../../../../../../src/modules/skills-mcp/host/mcp/oauth/controller.ts"],"names":[],"mappings":"AAcA,yFAAyF;AACzF,wBAAgB,qBAAqB,CAAC,GAAG,EAAE,GAAG;;mCAkeX,GAAG;;;;;;;;;;gCA5HI,GAAG,OAAO,GAAG;;kEAqEgB,GAAG;EAgEzE"}
+{"version":3,"file":"controller.d.ts","sourceRoot":"","sources":["../../../../../../src/modules/skills-mcp/host/mcp/oauth/controller.ts"],"names":[],"mappings":"AAcA,yFAAyF;AACzF,wBAAgB,qBAAqB,CAAC,GAAG,EAAE,GAAG;qBAqenB,MAAM;;;;mCAOE,GAAG;;;;;;;;;;gCApII,GAAG,OAAO,GAAG;;sFAqEoC,GAAG;EAwE7F"}

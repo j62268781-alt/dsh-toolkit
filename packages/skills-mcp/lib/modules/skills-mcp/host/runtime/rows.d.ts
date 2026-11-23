@@ -40,6 +40,8 @@ export declare function configuredServers(ctx: any): {
     toolCallTimeoutMs: any;
     allowInsecureTokenEndpoint: boolean;
     lazy: boolean;
+    manualToolCache: boolean;
+    singleMcpEntry: boolean;
     enabled: boolean;
     runtime: string;
     phase: string;

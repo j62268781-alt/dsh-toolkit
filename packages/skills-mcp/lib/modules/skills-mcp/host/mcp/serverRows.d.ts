@@ -68,6 +68,8 @@ export declare function serverFromRow(entry: any): {
     toolCallTimeoutMs: any;
     allowInsecureTokenEndpoint: boolean;
     lazy: boolean;
+    manualToolCache: boolean;
+    singleMcpEntry: boolean;
     enabled: boolean;
     /**
      * stdio 用哪个 npm 家族。
@@ -125,6 +127,8 @@ export declare function serverRows(ctxLoaderEntries: any): {
     toolCallTimeoutMs: any;
     allowInsecureTokenEndpoint: boolean;
     lazy: boolean;
+    manualToolCache: boolean;
+    singleMcpEntry: boolean;
     enabled: boolean;
     /**
      * stdio 用哪个 npm 家族。

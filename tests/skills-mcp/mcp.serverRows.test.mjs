@@ -135,6 +135,19 @@ test('serverSetKey：忽略 phase，但配置变化必须改变它', () => {
   assert.notEqual(serverSetKey([base]), serverSetKey([{ ...base, enabled: false }]), '停用必须触发')
   assert.notEqual(serverSetKey([base]), serverSetKey([{ ...base, scope: '/p/a' }]), '换作用域必须触发')
   assert.notEqual(serverSetKey([base]), serverSetKey([]), '删行必须触发')
+  const manual = serverFromRow(httpRow('mcp-a', 'alpha', undefined, { manualToolCache: true }))
+  assert.equal(base.manualToolCache, false)
+  assert.equal(manual.manualToolCache, true)
+  assert.notEqual(serverSetKey([base]), serverSetKey([manual]), '缓存策略变化必须更新运行态')
+})
+
+test('serverSetKey：单一 MCP 入口只在按需启动时影响运行态', () => {
+  const base = serverFromRow(httpRow('mcp-a', 'alpha'))
+  const single = serverFromRow(httpRow('mcp-a', 'alpha', undefined, { singleMcpEntry: true }))
+  assert.equal(base.singleMcpEntry, false)
+  assert.equal(single.singleMcpEntry, true, '即使不按需启动，也要保留设置供表单回填')
+  assert.equal(serverSetKey([base]), serverSetKey([single]))
+  assert.notEqual(serverSetKey([{ ...base, lazy: true }]), serverSetKey([{ ...single, lazy: true }]))
 })
 
 test('端到端：同一条行，两档只差 scope —— 这正是改造要证明的事', () => {
