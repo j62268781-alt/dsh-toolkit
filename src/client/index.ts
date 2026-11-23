@@ -10,7 +10,7 @@ import createRemote from '../modules/remote/client/index.jsx'
 import * as boot from '../modules/boot/client/index.jsx'
 import * as hooks from '../modules/hooks/client/index.js'
 import * as git from '../modules/git/client/index.js'
-import * as taskMonitor from '../modules/task-monitor/client/index.js'
+import * as taskMonitor from '../modules/session-panel/client/index.js'
 
 export const inject: readonly string[] = []
 
@@ -27,5 +27,5 @@ export function apply(ctx: any): void {
   ctx.plugin({ name: 'dsh-toolkit-remote-client', ...createRemote(require) })
   ctx.plugin({ name: 'dsh-toolkit-hooks-client', ...hooks })
   ctx.plugin({ name: 'dsh-toolkit-git-client', ...git })
-  ctx.plugin({ name: 'dsh-toolkit-task-monitor-client', ...taskMonitor })
+  ctx.plugin({ name: 'dsh-toolkit-session-panel-client', ...taskMonitor })
 }

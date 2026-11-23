@@ -1,4 +1,4 @@
-import { GIT_BRANCHES_PATH, GIT_CHANGES_PATH, GIT_CHECKOUT_PATH, GIT_CREATE_BRANCH_PATH } from '../constants.js';
+import { GIT_BRANCHES_PATH, GIT_CHECKOUT_PATH, GIT_CREATE_BRANCH_PATH } from '../constants.js';
 /** 一次请求的 body 只有 `{cwd, name?}`，1 KiB 足够；`name` 的上限另有域层校验。 */
 const LIMIT = 1024;
 /** 领域结果 → HTTP。`5xxx` 是环境坏了（重试无用），其余 4xxx 都还能靠改输入/换状态解决。 */
@@ -34,14 +34,6 @@ export function createGitRoutes({ repository }) {
             run: async (_ctx, cwd) => reply(await repository.snapshot(cwd)),
         },
         {
-            path: GIT_CHANGES_PATH,
-            limit: LIMIT,
-            pick: cwdOf,
-            check: isString,
-            reason: 'cwd 必须是字符串',
-            run: async (_ctx, cwd) => reply(await repository.changes(cwd)),
-        },
-        {
             path: GIT_CHECKOUT_PATH,
             limit: LIMIT,
             pick: pairOf,
@@ -59,4 +51,3 @@ export function createGitRoutes({ repository }) {
         },
     ];
 }
-//# sourceMappingURL=branches.js.map

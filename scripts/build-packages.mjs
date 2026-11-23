@@ -100,32 +100,11 @@ export async function collectPackageHostOutputs(hostOutputs = undefined) {
   return outputs
 }
 
-const COMBO = 'git-task-monitor'
-const COMBO_MODULES = ['git', 'task-monitor']
-
-/** DSH finds each file-based row's web client via its nearest named manifest. */
-async function addComboOutputs(outputs) {
-  for (const name of COMBO_MODULES) {
-    const source = `packages/${name}/`
-    const target = `packages/${COMBO}/lib/${name}/`
-    const manifest = JSON.parse(await readFile(join(ROOT, source, 'package.json'), 'utf8'))
-    // Keep the standalone client identity and wiring, but no nested installable bundle.
-    const { name: packageName, type, exports, dsh: { client } } = manifest
-    outputs.set(`${target}package.json`, `${JSON.stringify({ name: packageName, type, exports, dsh: { client } }, null, 2)}\n`)
-    outputs.set(`${target}index.js`, await readFile(join(ROOT, source, 'index.js')))
-    for (const [path, content] of outputs) {
-      if (path.startsWith(`${source}lib/`)) outputs.set(`${target}${path.slice(source.length)}`, content)
-    }
-  }
-}
-
 /** --check compares every expected byte and rejects unexpected generated files. */
 export async function buildPackages({ check = false, hostOutputs } = {}) {
   const outputs = await collectPackageHostOutputs(hostOutputs)
   for (const [path, content] of await collectPackageClientOutputs()) outputs.set(path, content)
-  await addComboOutputs(outputs)
-  // These are wholly generated directories, so stale files are errors rather than shipped baggage.
-  for (const name of [...PACKAGE_MODULES.map((module) => module.name), COMBO]) {
+  for (const { name } of PACKAGE_MODULES) {
     const packageRoot = join(ROOT, 'packages', name)
     for (const directory of ['lib', 'skills']) {
       for (const path of await walk(join(packageRoot, directory))) {
@@ -147,7 +126,7 @@ export async function buildPackages({ check = false, hostOutputs } = {}) {
       await writeFile(absolute, content)
     }
   }
-  console.log(`Packages ${check ? 'checked' : 'built'}: ${PACKAGE_MODULES.length} standalone modules and ${COMBO}, ${outputs.size} files`)
+  console.log(`Packages ${check ? 'checked' : 'built'}: ${PACKAGE_MODULES.length} standalone modules, ${outputs.size} files`)
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

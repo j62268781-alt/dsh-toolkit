@@ -1,18 +1,18 @@
 /**
- * 分支按钮与工作区统计的四条路由：读快照、读改动统计、切分支、建分支。
+ * 分支按钮的三条路由：读快照、切分支、建分支。
  *
  * 状态码只在这一层决定：领域层给 `{ok:false, reason}`，这里按「改输入能解决」和
  * 「当前状态不允许」分成 400 / 409。client 只认 `reason` 字符串，不解析文案。
  */
 import type { JsonRouteSpec } from '../../../../host/routes.js'
-import { GIT_BRANCHES_PATH, GIT_CHANGES_PATH, GIT_CHECKOUT_PATH, GIT_CREATE_BRANCH_PATH } from '../constants.js'
-import type { BranchResult, ChangesResult } from '../repository.js'
+import { GIT_BRANCHES_PATH, GIT_CHECKOUT_PATH, GIT_CREATE_BRANCH_PATH } from '../constants.js'
+import type { BranchResult } from '../repository.js'
 
 /** 一次请求的 body 只有 `{cwd, name?}`，1 KiB 足够；`name` 的上限另有域层校验。 */
 const LIMIT = 1024
 
 /** 领域结果 → HTTP。`5xxx` 是环境坏了（重试无用），其余 4xxx 都还能靠改输入/换状态解决。 */
-function reply(result: BranchResult | ChangesResult): [number, unknown] {
+function reply(result: BranchResult): [number, unknown] {
   if (result.ok === true) return [200, result]
   switch (result.reason) {
     case 'invalid-cwd':
@@ -31,7 +31,6 @@ function reply(result: BranchResult | ChangesResult): [number, unknown] {
 
 interface Repository {
   snapshot(cwd: unknown): Promise<BranchResult>
-  changes(cwd: unknown): Promise<ChangesResult>
   checkout(cwd: unknown, name: unknown): Promise<BranchResult>
   createBranch(cwd: unknown, name: unknown): Promise<BranchResult>
 }
@@ -51,14 +50,6 @@ export function createGitRoutes({ repository }: { repository: Repository }): Jso
       check: isString,
       reason: 'cwd 必须是字符串',
       run: async (_ctx: any, cwd: string) => reply(await repository.snapshot(cwd)),
-    },
-    {
-      path: GIT_CHANGES_PATH,
-      limit: LIMIT,
-      pick: cwdOf,
-      check: isString,
-      reason: 'cwd 必须是字符串',
-      run: async (_ctx: any, cwd: string) => reply(await repository.changes(cwd)),
     },
     {
       path: GIT_CHECKOUT_PATH,

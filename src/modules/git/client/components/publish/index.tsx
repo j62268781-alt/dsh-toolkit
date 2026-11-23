@@ -3,7 +3,7 @@ import { fetchJson } from "../../../../../client/http.js";
 import { confirmDialog } from "../../../../../client/ui/components/confirm-dialog/index.jsx";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { toast } from "../../../../../client/ui/toast.js";
-import { TASK_MONITOR_NS } from "../../../../task-monitor/client/locale.js";
+import { GIT_NS } from "../../locale.js";
 import {
   GIT_PUBLISH_ACTION_PATH,
   GIT_PUBLISH_PREVIEW_PATH,
@@ -82,7 +82,7 @@ function payloadFailure(payload: any, fallback: CopyKey): Failure {
   return { key, detail: [detail || reason, code].filter(Boolean).join(" · ") };
 }
 
-export function createGitPublish(ctx: any, t: Translate = ctx.locale.bind(TASK_MONITOR_NS)) {
+export function createGitPublish(ctx: any, t: Translate = ctx.locale.bind(GIT_NS)) {
   const Button = primitives.Button ?? "button";
 
   function PublishForDirectory({ cwd, children }: PublishProps) {

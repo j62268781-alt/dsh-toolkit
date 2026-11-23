@@ -40,7 +40,7 @@ async function setup(t) {
   const app = document.getElementById('root')
   const root = createRoot(app)
   const Publish = createGitPublish({ locale: { bind: (ns) => {
-    assert.equal(ns, 'shell-kit.task-monitor')
+    assert.equal(ns, 'shell-kit.git')
     return (key) => en[key]
   } } })
   t.after(async () => {

@@ -67,8 +67,9 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 将 `web` 替换为你的 CLI profile 名称。安装后重启对应 DSH 实例并刷新页面。
 
 只需要单个模块时，也可将已构建的 `packages/<module>` 目录作为独立 bundle 安装，包名见下表。
+如需独立包的 tarball，在仓库根运行 `pnpm --filter dsh-toolkit-session-panel pack`（替换为目标包名）。构建和打包均不生成源码映射。
 
-只需要 **Git 约定和任务监控** 时，可一次安装 `dsh-toolkit-git-task-monitor`。它保留两个模块的 ID、设置和历史；与这两个独立包以及聚合包互斥。已有安装请先阅读[组合包切换步骤](packages/git-task-monitor/README.md#安装或切换)。
+旧 `dsh-toolkit-task-monitor` 已改名为 `dsh-toolkit-session-panel`，旧 `dsh-toolkit-git-task-monitor` 组合包不再提供。切换时先从 profile 移除旧 bundle，再启用新版聚合包，或分别安装 `dsh-toolkit-git` 和 `dsh-toolkit-session-panel`。如有以 `dsh-toolkit-task-monitor` 为目标的 profile 覆盖，请将目标 ID 改为 `dsh-toolkit-session-panel`；历史记录不需要移动。
 
 ### 已经安装了十一个独立模块？
 
@@ -91,6 +92,7 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 | 会话通知 | 设置 → 通知 | `dsh-toolkit-notification` |
 | 桌面宠物 | 设置 → 桌面宠物 | `dsh-toolkit-pet` |
 | Git 约定 | 设置 → Git | `dsh-toolkit-git` |
+| 会话面板增强 | 官方会话面板 → 技能与 MCP、网页查阅、产出、来源 | `dsh-toolkit-session-panel` |
 
 ### 启动动画与外观
 
