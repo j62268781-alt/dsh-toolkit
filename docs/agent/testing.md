@@ -5,8 +5,8 @@
 ## 10. 测试
 
 - `tests/<group>/*.test.mjs`，runner 是 `node:test`，DOM 用 `jsdom`（`pretendToBeVisual: true`）。
-- **UI 用例单独跑**：`pnpm test:ui`。它们一个文件就要几百 MB（jsdom + React + esbuild），
-  `pnpm test` 默认跳过；真实交互优先起 `dsh web` 在浏览器里点，见 10.1。
+- **UI 用例单独跑**：`pnpm test:ui`。`pnpm test` 默认跳过 jsdom；两者默认串行，堆上限 1 GB，单文件 RSS 上限 1.5 GB，可用 `DSH_TEST_CONCURRENCY` / `DSH_TEST_HEAP_MB` / `DSH_TEST_RSS_MB` 调节。
+- **页面调试、交互验证和截图统一用 `/ego-browser`**：用 `skill` 加载 `ego-browser`，操作前运行 `ego-browser skill` 并按当前版本的指南执行。不要单独启动 Chrome 或 Chrome Headless；技能不可用就说明阻塞，不用 Chrome 替代。
 - 测试 import 源码时写 `.js` / `.jsx`（`jsx-hooks` 负责解析到 `.ts` / `.tsx`）；但**把路径当字符串**用的地方
   （esbuild `entryPoints`、`readFileSync`、`loadClientEntry`）必须写真实扩展名。
 - 断言要抓真问题：状态映射 / 降级路径 / 卸载清理 / 迟到响应，而不是只跑通 happy path。
@@ -49,8 +49,8 @@ dsh web: http://127.0.0.1:<port>/?token=<base64url>
   # stdout: dsh web: http://127.0.0.1:6180/?token=...
   ```
 
-  抓到 URL 后**先用它访问一次**（换 cookie），再回 `./`；脚本里用 cookie jar（`curl -c/-b`）或持久化
-  浏览器 profile，别每次重新抓 token。cookie 绑定 authority（`host:port`）：换端口 / 换主机名立刻回到 401，
+  抓到 URL 后**用 `/ego-browser` 打开完整登录 URL**（换 cookie），再调试页面；纯 HTTP 自检可用下面的 `curl`，不代替页面验证。
+  cookie 绑定 authority（`host:port`）：换端口 / 换主机名立刻回到 401，
   重新抓那一行即可；进程重启 token 会变，但 cookie 仍然有效（直到 `cookieMaxAgeDays`）。
 - 起来之后的自检（三步的期望值是 **401 → 303 → 200**，都不是失败）：
 
@@ -74,8 +74,7 @@ dsh web: http://127.0.0.1:<port>/?token=<base64url>
 
 - 优先在联调页面验证并截图；如需独立复现，用宿主的真实 DOM 和样式配合改动的 CSS，不依赖未入库的实验脚本。
 - 修前和修后保持同一视口、缩放比例、主题和交互状态。
-- 需要真实 `:hover` 时用指针移动（例如 CDP `Input.dispatchMouseEvent`），不要加假类名。
-- 浏览器、截图脚本和裁图工具的本机路径只记在仓库根目录的 `AGENTS.local.md`。
+- 用 `/ego-browser` 移动指针触发真实 `:hover`，不要加假类名。
 
 ---
 

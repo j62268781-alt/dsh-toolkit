@@ -5,13 +5,12 @@
 ## 4. 仓库结构与产物边界
 
 ```
-src/modules/<module>/{host,client}/  ← 唯一源码位置（boot theme archived judgment mobile
-                                       skills-mcp notification pet hooks remote git）
+src/modules/<module>/{host,client}/  ← 模块源码（含 task-monitor）
 src/host/                            ← 跨模块 host 公共层
 src/client/                          ← 跨模块 client 公共层（含 ui/components）
 packages/<module>/                   ← 每个模块的独立包（index.js + package.json + lib/）
 lib/                                 ← 聚合包的构建产物
-cordis.patch.yml                     ← 根补丁：insert 列表，插入十一个模块 id
+cordis.patch.yml                     ← 根补丁：insert 列表，插入独立模块 id
 scripts/ tests/ docs/ .cache(gitignored)
 ```
 
@@ -126,7 +125,7 @@ for (const surface of SURFACES) ctx.effect(() => surface.install(ctx, host), `ds
 | `paths.ts` | `PLUGIN_API_ROOT = '/api/plugins/toolkit'` + `pluginApiPath(module)`；**路由前缀的唯一来源**（无 Node 依赖，client 也会求值） |
 | `dsh-home.ts` | `dshHome(env = process.env, home = homedir())`；**`$DSH_HOME` 的唯一解析点**（`DSH_HOME` 非空即用、两端裁空白，否则 `~/.dsh`；每次调用重读环境）。带 `node:os`/`node:path`，只能 host 用 |
 | `http.ts` | `readBody`（按**字节**限流）、`readCharBody`（按**解码字符**限流，超限静默 destroy）、`sendJson` |
-| `config.ts` | 根 Config 聚合（十一个模块的 `Config` 拼成宿主配置表单） |
+| `config.ts` | 根 Config 聚合（模块的 `Config` 拼成宿主配置表单） |
 | `serial.ts` / `singleflight.ts` / `operation.ts` | 队列、去重、超时与取消 |
 | `process.ts` / `executable.ts` | `runProcess`（deadline、输出上限）；`findExecutableOnPath`（只认原生映像）/ `findCommandOnPath`（Windows 连 `.cmd`/`.bat` 一起认）/ `resolveSpawnTarget`（把 shim 翻成 `cmd.exe /d /s /c`） |
 | `plugins.ts` / `migration.ts` / `time.ts` | 插件配置助手、补丁迁移、时钟 |
