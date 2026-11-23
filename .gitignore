@@ -18,3 +18,6 @@ __pycache__/
 
 # 本地技能与 DSH 运行时生成的 git worktree，只留本地，不入库
 .agents/
+
+# 本机 Agent 配置，不依赖开发者的全局 gitignore
+/AGENTS.local.md

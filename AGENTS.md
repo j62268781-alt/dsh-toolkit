@@ -21,19 +21,15 @@
   MCP 的路径 scope）：照样加载技能、按它的判定标准执行，但用 `grep` / `read` 做等价步骤，并明确告诉
   用户「本会话没有 X MCP，改用源码检索」；不要假装走过图谱，也不要因为缺工具就跳过分析或放弃。
 
-本机的技能目录位置、各技能依赖哪些 MCP：见 `AGENTS.local.md`。
+本机路径、profile、工具位置和 MCP 配置只记在 `AGENTS.local.md`（可选、不入库），不在共享文档里重复。
 
 ---
 
-## 0. Windows 上必须用 PowerShell 7（`pwsh`）
+## 0. 跨平台编辑约定
 
-| 命令 | 实际执行 | 结论 |
-| --- | --- | --- |
-| `pwsh` | `C:\Program Files\PowerShell\7\pwsh.exe` | **用这个** |
-| `powershell` | `C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe` | 5.1，不要用来跑构建或处理文本 |
-
-- 改源码/文档用编辑工具，**不要** `Set-Content` 重定向；必须用 shell 读时 `Get-Content -Raw -Encoding utf8`。
-- 命令输出含中文时先 `[Console]::OutputEncoding = [Text.Encoding]::UTF8`。
+- Windows 上跑构建或处理文本用 PowerShell 7（`pwsh`），不要用 Windows PowerShell 5.1（`powershell`）。
+- 改源码/文档用编辑工具，不用 shell 重定向；在 PowerShell 中必须用 shell 读文本时，用 `Get-Content -Raw -Encoding utf8`。
+- 命令输出含中文时，PowerShell 可先设 `[Console]::OutputEncoding = [Text.Encoding]::UTF8`。
 - 复杂引号嵌套不要硬拼：写 `.cache/*.mjs` 再 `node` 执行（`.cache/` 已 gitignore）。
 - `.gitattributes` 强制 `eol=lf`，不要引入 CRLF（会让 `build:check` 报产物不同步）。
 - **大文件不要读进上下文**：`src/client/ui/components/dsh-logo/index.ts` 是单行 base64（约 58K 字符）。
@@ -255,8 +251,8 @@ scripts/  tests/  docs/  docs/agent/  .cache(gitignored)
 - **`vm.runInNewContext` 的沙箱要补齐浏览器全局**：新上下文只有 ECMAScript 内建，没有
   `AbortSignal` / `AbortController` / `Headers` / `fetch`。`fetchJson` 现在给每个请求套
   `AbortSignal.timeout()`，漏一个就表现为「请求没发出 + 对话框不关」。
-- 已知本机失败（Windows，别当回归）：`tests/pet/service.test.mjs:75` 的 `assetDir.startsWith('/')`
-  是 POSIX-only；`tests/judgment/ledger.test.mjs` 的并发 ask 在全量并行下偶发，单跑再判。
+- 已知测试限制：`tests/pet/service.test.mjs` 的 `assetDir.startsWith('/')` 只适用于 POSIX；
+  `tests/judgment/ledger.test.mjs` 的并发 ask 在全量并行下偶发，单跑再判。
 - 测试 import 源码写 `.js` / `.jsx`；但**把路径当字符串**用的地方（esbuild `entryPoints`、
   `readFileSync`、`loadClientEntry`）必须写真实扩展名。
 
@@ -267,32 +263,15 @@ scripts/  tests/  docs/  docs/agent/  .cache(gitignored)
 
 - **401 `dsh web authentication required; …` 是「服务活着、只是没身份」，不是启动失败。**
   真失败是 `EADDRINUSE`、TLS 材料读不了、前端 dist 没建。
-- token 拿不到就无法自动登录（桌面端那份也不写盘）。要自动点 UI，必须**自己拥有**那个 `dsh web`
-  进程：后台起、从 stdout 抓 `^dsh web: `，`dsh --profile web --no-open --port 6180`。
+- 自动验证用自己启动的联调进程，从 stdout 取登录 URL；不要把正在使用的桌面端口当作自动化测试目标。
 - 自检期望 **401 → 303 → 200**：裸根 401；`?token=…` 303 + `set-cookie`；带 cookie 200。
-  抓一次就持久化 cookie jar：cookie 绑 `host:port`，换端口 / 主机名即失效。
-- 本仓库 UI 只在 desktop profile；`--profile web` 只有 base + web-app + sidebar-mobile。
-  桌面端 61678 **不能当测试靶子**（token 不可读，只有用户浏览器里那份 cookie）。
-- 起法、cookie jar、干净 `DSH_HOME` 首次启动耗时等细节见
-  [docs/agent/testing.md](docs/agent/testing.md)。
+- 测本仓库 UI 前确认目标 profile 已加载 `dsh-toolkit`。启动和认证细节见 [docs/agent/testing.md](docs/agent/testing.md)。
 
 ---
 
 ## 11. 视觉/样式改动怎么验证
 
-```powershell
-# 1) 生成还原 DSH DOM 的页面（抽 .cache/bundles 的真实 CSS + 源码 CSS）
-node .cache/x/build2.mjs demo-available.html available windows
-# 2) 截图（& 抓不到 stdout，必须 Start-Process 重定向）
-Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" `
-  -ArgumentList @("--headless=new","--disable-gpu","--hide-scrollbars",
-    "--force-device-scale-factor=2","--window-size=1280,900","--virtual-time-budget=1200",
-    "--screenshot=D:\项目\dsh-toolkit\.cache\x\shot.png",
-    "file:///D:/项目/dsh-toolkit/.cache/x/demo-available.html") -Wait -NoNewWindow
-```
-
-真实 `:hover` 用 CDP 派发 `Input.dispatchMouseEvent`，不要加假类名；图片裁切用外置 Python。
-详见 [docs/agent/testing.md](docs/agent/testing.md)。
+优先在联调页面验证并截图；需要还原页面时使用宿主的真实 DOM 和样式。真实 `:hover` 用指针事件触发，不加假类名。详见 [docs/agent/testing.md](docs/agent/testing.md)。
 
 ---
 
@@ -301,8 +280,7 @@ Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" 
 - 只改 client → `pnpm build` 后按 **Ctrl+R**。
 - 改 host（含 `cordis.patch.yml`、`src/index.ts`）→ **重启 DSH**：bundles 只在进程启动时读一次。
   重启会中断当前会话回合，**自己不要重启**，交给用户。
-- 本机 `DSH_HOME`、profile 名、`link:` 安装与 `app.asar` 反查：见 [docs/agent/env.md](docs/agent/env.md)。
-  这三样随机器而变，不要写进本文件。
+- 通用的 `link:` 安装与宿主源码查找：见 [docs/agent/env.md](docs/agent/env.md)。本机 `DSH_HOME`、profile 和绝对路径只记在 `AGENTS.local.md`。
 
 ---
 

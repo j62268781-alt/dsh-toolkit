@@ -226,11 +226,12 @@ P0 三条 + `AbortSignal.timeout/any` + `Promise.withResolvers` + `structuredClo
 
 ## 8. 怎么复跑这份审计
 
-```powershell
-$cli = 'D:\DeepSeekHarness-home\skills\modern-web-guidance\modern-web.mjs'
-node $cli legacy-scan . --json            # 静态规则（约 20% 语料）
-node $cli search "anchor position tooltip"  # 找 guide
-node $cli retrieve "menu,dialog"            # 读全文（含兼容性与回退要求）
+将 `<CLI 路径>` 替换为本机 `modern-web.mjs` 的实际路径（如已记录，见仓库根目录的 `AGENTS.local.md`）。
+
+```sh
+node "<CLI 路径>" legacy-scan . --json            # 静态规则（约 20% 语料）
+node "<CLI 路径>" search "anchor position tooltip"  # 找 guide
+node "<CLI 路径>" retrieve "menu,dialog"            # 读全文（含兼容性与回退要求）
 ```
 
 > 本地安装版直接吃 `guides/` 目录（210 篇），离线、约 0.4s/次；`npx -y modern-web-guidance@latest` 每次要联网取包。两者内容一致，`update` 走 npx。

@@ -39,8 +39,8 @@ dsh web: http://127.0.0.1:<port>/?token=<base64url>
 
 - **这条 401 是「服务活着、只是没身份」，不是启动失败。** 别据此换端口、改代码或重启；
   真正的启动失败是 `EADDRINUSE`（端口被占）、TLS 材料读不了、前端 dist 没建（checkout 里先 `pnpm run build`）。
-- **token 拿不到就别想"自动登录"**：它只在进程内存里，桌面端那份也不写盘；`DSH_WEB_URL`（以及 agent
-  运行时上下文里的 `http://127.0.0.1:61678`）是*公告地址*，按设计永远不带凭据。所以能自动点 UI 的前提是
+- **token 拿不到就别想"自动登录"**：它只在进程内存里，桌面端那份也不写盘；`DSH_WEB_URL` 和 agent
+  运行时上下文里的 Web GUI 地址是*公告地址*，不带凭据。所以能自动点 UI 的前提是
   **你自己拥有那个 `dsh web` 进程**——把它当后台任务起、从 stdout 抓 `^dsh web: ` 那一行。
 - 常用起法（`--no-open` 免得抢用户浏览器；端口自选）：
 
@@ -65,29 +65,17 @@ dsh web: http://127.0.0.1:<port>/?token=<base64url>
 - 干净 `DSH_HOME` 上第一次 `--profile web` 会先把模板落进 `$DSH_HOME/profiles/web`，实测 1 分钟内就打印
   URL；这期间出现 `skipping profile bundle "…"` 只是某个可选 bundle 没装（`dsh plugin --profile <name> install`），
   不影响服务起来。
-- **本仓库的 UI 只在 desktop profile 里**（§12 的 `link:` 安装）；`--profile web` 只装了
-  `@deepseek-ai/dsh-base` + `dsh-web-app` + `sidebar-mobile`，直接起 web 看到的是没有 dsh-toolkit 的界面。
-  要验本仓库的页面，先把仓库 link 进 web profile（步骤同 §12），再按上面起。
-- 已经跑着的桌面端（61678）**不适合当测试靶子**：它的 token 不可读，只有用户浏览器里那份 cookie；
-  用一个干净的浏览器去开它必然 401。
+- 测本仓库 UI 前确认联调 profile 已加载 `dsh-toolkit`，否则看到的只是宿主界面。需要 link 仓库时，见 [env.md](env.md)。
+- 不把用户正在使用的桌面端当作自动化测试目标：其启动 token 不可读，干净浏览器没有现有会话 cookie。
 
 ---
 
 ## 11. 视觉/样式改动怎么验证
 
-```powershell
-# 1) 生成还原 DSH DOM 的页面（抽 .cache/bundles 的真实 CSS + 源码 CSS）
-node .cache/x/build2.mjs demo-available.html available windows
-# 2) 截图（& 抓不到 stdout，必须 Start-Process 重定向）
-Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" `
-  -ArgumentList @("--headless=new","--disable-gpu","--hide-scrollbars",
-    "--force-device-scale-factor=2","--window-size=1280,900","--virtual-time-budget=1200",
-    "--screenshot=D:\项目\dsh-toolkit\.cache\x\shot.png",
-    "file:///D:/项目/dsh-toolkit/.cache/x/demo-available.html") -Wait -NoNewWindow
-```
-
-- 需要真实 `:hover` 时用 CDP 派发 `Input.dispatchMouseEvent`（`.cache/x/hover.mjs`），不要加假类名。
-- 图片裁切/拼接用外置 Python：`D:\DeepSeekHarness-home\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe`。
+- 优先在联调页面验证并截图；如需独立复现，用宿主的真实 DOM 和样式配合改动的 CSS，不依赖未入库的实验脚本。
+- 修前和修后保持同一视口、缩放比例、主题和交互状态。
+- 需要真实 `:hover` 时用指针移动（例如 CDP `Input.dispatchMouseEvent`），不要加假类名。
+- 浏览器、截图脚本和裁图工具的本机路径只记在仓库根目录的 `AGENTS.local.md`。
 
 ---
 
