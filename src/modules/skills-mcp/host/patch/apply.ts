@@ -381,7 +381,9 @@ export async function applyRowOp(ctx: any, op: any) {
        * 关键副作用：懒行的 Loader 必须 `disabled: true`。否则启动时 Loader 会照常实例化它，
        * 进程起来了、「按需启动」就只是个说法。真正的挂载交给本插件（见 `mcp/lazy.ts`）。
        */
-      const lazy = op.lazy === true
+      const rowId = op.entryId !== '' ? op.entryId : `mcp-${op.serverName}`
+      const existing = locateRow(document, rowId)
+      const lazy = op.lazy ?? (existing === null || rowConfigValue(document, rowId, 'lazy') === true)
       if (lazy) config.lazy = true
       if (op.manualToolCache === true) config.manualToolCache = true
       if (op.singleMcpEntry === true) config.singleMcpEntry = true
@@ -398,8 +400,6 @@ export async function applyRowOp(ctx: any, op: any) {
        * "Already there" is judged by row id, which the panel derives from the server name, so
        * re-sending the same add is the same row by construction.
        */
-      const rowId = op.entryId !== '' ? op.entryId : `mcp-${op.serverName}`
-      const existing = locateRow(document, rowId)
       if (existing !== null) {
         // Replace the config wholesale so a retry converges on exactly the requested state,
         // rather than merging into whatever the first attempt left behind.

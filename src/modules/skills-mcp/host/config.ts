@@ -2,7 +2,7 @@ import z from '@deepseek-ai/schemastery'
 
 /** One queued change against a row the profile itself configures. */
 export const RowOp = z.object({
-  op: z.union(['add', 'delete', 'update', 'toggle']),
+  op: z.union(['add', 'delete', 'update', 'toggle', 'lazy']),
   /** delete/update: the row to touch; add: the id for the new row (blank = derive). */
   entryId: z.string().default(''),
   serverName: z.string().default(''),
@@ -58,13 +58,10 @@ export const RowOp = z.object({
   /** toggle: the desired enabled state of the row. */
   enabled: z.boolean().default(true),
   /**
-   * add/lazy: 这台服务器是否**按需启动**（懒加载）。
-   *
-   * 开启后 Loader 不再实例化这一行（行上会写 `disabled: true`），改由本插件在第一次调用它的
-   * 工具时才挂载 `mcp-client`；工具清单来自 `~/.dsh` 下的缓存，所以启动时既不起进程、也能让
-   * 模型看到工具。见 `src/mcp/lazy.js`。
+   * 按需启动时由本插件管理挂载，Loader 不实例化这一行。
+   * 保留缺省值：只有新建行默认开启，已有行仍按存量配置处理。
    */
-  lazy: z.boolean().default(false),
+  lazy: z.boolean(),
   /** update: whether the user actually changed the launch mode (blank = leave it alone). */
   lazyChanged: z.boolean().default(false),
   /** Keep this server's cached tool list until the user requests a refresh. */

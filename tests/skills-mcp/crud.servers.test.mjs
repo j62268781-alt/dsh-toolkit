@@ -23,6 +23,15 @@ test('addServerOp：补默认传输、参数按字符串透传', () => {
   assert.equal(op.env, '')
 })
 
+test('新增默认按需启动，显式关闭和旧行回填不受默认值影响', () => {
+  assert.equal(addServerOp({ serverName: 'new' }).lazy, true)
+  assert.equal(addServerOp({ serverName: 'new', lazy: false }).lazy, false)
+  const original = { serverName: 'old' }
+  const draft = draftFromRow(original)
+  assert.equal(draft.lazy, false)
+  assert.equal(updateServerOp('mcp-old', draft, original).lazyChanged, false)
+})
+
 test('updateServerOp：沿用原行 id', () => {
   const op = updateServerOp('include:mcp-x', { serverName: 'x2', transport: 'stdio', command: 'node' })
   assert.equal(op.op, 'update')

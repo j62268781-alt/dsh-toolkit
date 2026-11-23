@@ -126,7 +126,9 @@ test('导入：http 行的 url 与 headers 正确落进 yml', async () => {
   assert.equal(row.config.url, 'https://api.example/mcp')
   assert.deepEqual(row.config.headers, { Authorization: 'Bearer t', 'X-Trace': 'on' },
     `headers 不能丢（收到 ${JSON.stringify(row.config.headers)}）`)
-  assert.equal(row.disabled, undefined, '全局行不该有 disabled')
+  assert.equal(row.config.lazy, true, '全局导入也应默认按需启动')
+  assert.notEqual(row.config.enabled, false, '默认按需启动不等于停用服务器')
+  assert.equal(row.disabled, true, '由插件按需挂载，Loader 不应重复连接')
   assert.equal(row.config.scope, undefined, 'global 不写 scope 键（缺省即全局）')
 })
 

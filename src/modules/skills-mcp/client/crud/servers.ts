@@ -125,7 +125,7 @@ function commonFields(draft) {
 
 /** Op that creates a new global row. */
 export function addServerOp(draft, entryId = rowEntryId(draft.serverName)) {
-  return { op: 'add', entryId, ...commonFields(draft), ...scopeFields(draft) }
+  return { op: 'add', entryId, ...commonFields(draft), ...scopeFields(draft), lazy: draft.lazy ?? true }
 }
 
 /**

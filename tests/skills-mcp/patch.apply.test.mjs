@@ -9,6 +9,8 @@ import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { applyRowOp, migrateServerEntries, setPatchIO } from '../../src/modules/skills-mcp/host/patch/apply.js'
 import { configuredMcpRows, configuredServers, refreshPatchRows } from '../../src/modules/skills-mcp/host/runtime/rows.js'
+import { RowOp } from '../../src/modules/skills-mcp/host/config.js'
+import { parse } from 'yaml'
 
 const PATCH = `- insert:
     - id: mcp-context7
@@ -31,6 +33,30 @@ const fresh = async () => {
   const ctx = { get: (n) => (n === 'profileContext' ? { dir } : undefined), logger: { warn() {}, info() {}, error() {} } }
   return { dir, ctx, text: () => readFile(join(dir, 'cordis.patch.yml'), 'utf8') }
 }
+
+test('新增默认懒加载，显式关闭和已有行原值不受影响', async () => {
+  const { ctx, text } = await fresh()
+  const add = (serverName, fields = {}) => applyRowOp(ctx, RowOp({
+    op: 'add', serverName, url: `https://${serverName}.invalid/mcp`, ...fields,
+  }))
+  const row = async (name) => parse(await text()).flatMap((entry) => entry.insert ?? [])
+    .find((entry) => entry.id === `mcp-${name}`)
+
+  await add('new')
+  assert.equal((await row('new')).config.lazy, true)
+  assert.equal((await row('new')).disabled, true)
+  await add('eager', { lazy: false })
+  assert.equal((await row('eager')).config.lazy, undefined)
+  assert.equal((await row('eager')).disabled, undefined)
+  await add('context7')
+  assert.equal((await row('context7')).config.lazy, undefined)
+  await add('new')
+  assert.equal((await row('new')).config.lazy, true)
+
+  await applyRowOp(ctx, RowOp({ op: 'lazy', entryId: 'mcp-new', lazy: false }))
+  assert.equal((await row('new')).config.lazy, undefined)
+  assert.equal((await row('new')).disabled, undefined)
+})
 
 test('手动更新工具清单：逐行保存、回读、保留未编辑值并恢复默认', async () => {
   const { dir, ctx, text } = await fresh()
