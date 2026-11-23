@@ -159,3 +159,34 @@
 .sk-git__switch[aria-checked="true"] .sk-git__switchThumb {
   transform: translateX(16px);
 }
+
+.sk-git__worktreeActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.sk-git__worktreeButton {
+  padding: 2px 8px;
+  border: 1px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-md);
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-layer-1);
+  font: inherit;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.sk-git__worktreeButton:not(:disabled) {
+  cursor: pointer;
+}
+
+.sk-git__worktreeButton:disabled {
+  opacity: .6;
+}
+
+.sk-git__worktreeButton:focus-visible {
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, currentColor);
+  outline-offset: 2px;
+}

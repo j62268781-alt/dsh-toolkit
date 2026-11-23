@@ -94,13 +94,13 @@ function fakeForm(initial, { writable = true, reject = false } = {}) {
   }
 }
 
-async function mount(dom, form) {
+async function mount(dom, form, props = {}) {
   const { act } = React
   const { createRoot } = await import('react-dom/client')
   const { createGitSection } = await loadEntry()
   const Section = createGitSection({ locale: { bind: () => translator() } })
   const root = createRoot(dom.window.document.getElementById('root'))
-  await act(async () => root.render(React.createElement(Section, { form })))
+  await act(async () => root.render(React.createElement(Section, { form, ...props })))
   return { act, root }
 }
 
@@ -221,4 +221,37 @@ test('只读文档：整页禁用并说明原因', async (t) => {
   assert.equal(query(dom, '.sk-git__textarea').disabled, true)
   assert.equal(query(dom, '[role="switch"]').disabled, true)
   assert.match(query(dom, '.sk-git__note').textContent, /只读/)
+})
+
+test('工作树设置：原生保留开关独立，目录保存冲突后可重新读取', async (t) => {
+  const dom = withDom(t)
+  let directory = '.agents/worktrees'
+  let submitted
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.match(url, /\/worktree-config$/)
+    if (options.method === 'POST') {
+      submitted = JSON.parse(options.body)
+      directory = '.agents/changed-elsewhere'
+      return Response.json({ ok: false, reason: 'worktree-config-conflict' }, { status: 409 })
+    }
+    return Response.json({ ok: true, directory, namePrefix: 'dsh-' })
+  })
+  const worktreeForm = fakeForm({ retainOnArchive: false })
+  const { act, root } = await mount(dom, fakeForm(), { worktreeForm })
+  assert.doesNotMatch(dom.window.document.body.textContent, /当前仓库的工作树/)
+  const input = query(dom, '[name="directory"]')
+  const retain = query(dom, 'input[type="checkbox"]')
+  assert.equal(input.value, '.agents/worktrees')
+  assert.equal(retain.checked, false)
+  await act(async () => retain.click())
+  assert.deepEqual(worktreeForm.writes, [{ path: 'retainOnArchive', next: true }])
+  await setValue(dom, act, input, '.agents/custom')
+  await act(async () => query(dom, 'button[type="submit"]').click())
+  assert.deepEqual(submitted, { expected: { directory: '.agents/worktrees', namePrefix: 'dsh-' }, directory: '.agents/custom', namePrefix: 'dsh-' })
+  assert.equal(input.value, '.agents/custom')
+  assert.equal(input.disabled, true)
+  const reload = [...dom.window.document.querySelectorAll('button')].find(button => button.textContent === '重新读取')
+  await act(async () => reload.click())
+  assert.equal(input.value, '.agents/changed-elsewhere')
+  await act(async () => root.unmount())
 })

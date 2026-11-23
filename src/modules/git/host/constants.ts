@@ -12,6 +12,7 @@ export const NAME = 'dsh-toolkit-git'
 
 /** 分支面板的三条路由：与设置面板无关，它们服务 composer 里的分支按钮。 */
 const API_PREFIX = pluginApiPath('git')
+export const GIT_WORKTREE_CONFIG_PATH = `${API_PREFIX}/worktree-config`
 export const GIT_BRANCHES_PATH = `${API_PREFIX}/branches`
 export const GIT_CHECKOUT_PATH = `${API_PREFIX}/checkout`
 export const GIT_CREATE_BRANCH_PATH = `${API_PREFIX}/create-branch`
