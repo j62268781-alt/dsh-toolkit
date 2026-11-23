@@ -143,6 +143,33 @@ test('会话失败：用 failed 类型与错误信息，正文不冒充最终回
   assert.equal(app.stub.instances[0].options.body, '这一轮执行失败，请打开会话查看详情。')
 })
 
+test('Alpha 状态服务可晚到和卸载；不补发旧交互，也不阻塞完成通知', async (t) => {
+  const question = (key) => ({ s1: { pendingInteraction: { kind: 'question', key } } })
+  const app = await boot({
+    splitSessionStatus: true,
+    sessions: { s1: { id: 's1', displayTitle: 'Alpha 会话', running: true } },
+    chats: { s1: chatSnapshot({ reply: '已完成兼容性验证，并补上回归测试。' }) },
+  })
+  t.after(() => app.dispose())
+
+  app.runtime.setRunning('s1', false)
+  await flush()
+  assert.deepEqual(app.stub.instances.map(({ options }) => options.body), ['已完成这一轮回复。'])
+
+  app.runtime.setStatuses(question('old'))
+  app.runtime.mountStatusService()
+  app.runtime.setStatuses(question('old'))
+  assert.equal(app.stub.instances.length, 1)
+  app.runtime.setStatuses(question('new'))
+  await flush()
+  assert.deepEqual(app.stub.instances.map(({ options }) => options.body), ['已完成这一轮回复。', '正在等待你的回答。'])
+
+  app.runtime.unmountStatusService()
+  app.runtime.setStatuses(question('after-unmount'))
+  await flush()
+  assert.equal(app.stub.instances.length, 2)
+})
+
 test('等待回答：待交互出现时提醒一次，正文是固定短句', async (t) => {
   const app = await boot({
     sessions: { s1: { id: 's1', displayTitle: '需要你回答', running: false } },

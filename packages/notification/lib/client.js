@@ -2341,8 +2341,7 @@ window.__ModuleLoader__.load({
             }
             return off;
           }, "dsh-toolkit-notification:sessions");
-          install(() => {
-            const status = ctx.uiSession?.sessionStatus;
+          const observePendingStatus = (status) => {
             if (typeof status?.subscribe !== "function" || typeof status?.getSnapshot !== "function") return void 0;
             const off = status.subscribe(() => {
               try {
@@ -2355,7 +2354,20 @@ window.__ModuleLoader__.load({
               engine.seedPending(pendingFactsOf(status.getSnapshot()));
             } catch {
             }
-            return off;
+            return () => {
+              off?.();
+              engine.pendingKeys.clear();
+            };
+          };
+          install(() => {
+            const uiSession = ctx.uiSession;
+            if (uiSession && Object.hasOwn(uiSession, "sessionStatus")) {
+              return observePendingStatus(uiSession.sessionStatus);
+            }
+            ctx.inject?.(["uiSession", "uiSession.sessionStatus"], (scope) => {
+              scope.effect(() => observePendingStatus(scope.uiSession.sessionStatus), "pending-status");
+            });
+            return void 0;
           }, "dsh-toolkit-notification:pending");
           install(() => {
             if (typeof window === "undefined") return void 0;

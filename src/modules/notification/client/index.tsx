@@ -574,8 +574,7 @@ export default function createNotification(require) {
         return off
       }, 'dsh-toolkit-notification:sessions')
 
-      install(() => {
-        const status = ctx.uiSession?.sessionStatus
+      const observePendingStatus = (status) => {
         if (typeof status?.subscribe !== 'function' || typeof status?.getSnapshot !== 'function') return undefined
         const off = status.subscribe(() => {
           try {
@@ -590,7 +589,22 @@ export default function createNotification(require) {
         } catch {
           // 初始快照读失败不影响后续订阅。
         }
-        return off
+        return () => {
+          off?.()
+          engine.pendingKeys.clear()
+        }
+      }
+      install(() => {
+        // 旧 Desktop 把状态源放在 uiSession 实例上；Alpha 将它拆成需要单独注入的服务。
+        // 只给待交互订阅加依赖，服务缺席时不阻塞完成通知和设置页。
+        const uiSession = ctx.uiSession
+        if (uiSession && Object.hasOwn(uiSession, 'sessionStatus')) {
+          return observePendingStatus(uiSession.sessionStatus)
+        }
+        ctx.inject?.(['uiSession', 'uiSession.sessionStatus'], (scope) => {
+          scope.effect(() => observePendingStatus(scope.uiSession.sessionStatus), 'pending-status')
+        })
+        return undefined
       }, 'dsh-toolkit-notification:pending')
 
       // 首次手势解锁 AudioContext：提醒常在没有用户手势的时候触发（后台会话刚跑完），

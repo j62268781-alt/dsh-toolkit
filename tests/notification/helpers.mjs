@@ -8,6 +8,7 @@
  *  3. 一个「够真」的假 ctx：effect/locale/slots/configForms + sessions/uiSession/
  *     uiConversation/uiWorkspace 的可观察 store，用来跑注册契约与端到端通知链路。
  */
+import assert from 'node:assert/strict'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { JSDOM } from 'jsdom'
 import { build } from 'esbuild'
@@ -306,20 +307,23 @@ export function createFakeContext(options = {}) {
     using: async (id, _options, operation) => operation({ sessionId: id, binding: bindingFor(id), release() {} }),
   }
 
-  const uiSession = {
-    sessionStatus: {
-      getSnapshot: () => new Map([...statusById].map(([id, status]) => [id, {
-        running: status.running,
-        pendingInteraction: status.pendingInteraction,
-        completionUnread: status.completionUnread === true,
-      }])),
-      subscribe(listener) {
-        if (typeof listener !== 'function') return () => {}
-        statusListeners.add(listener)
-        return () => statusListeners.delete(listener)
-      },
+  const statusSource = {
+    getSnapshot: () => new Map([...statusById].map(([id, status]) => [id, {
+      running: status.running,
+      pendingInteraction: status.pendingInteraction,
+      completionUnread: status.completionUnread === true,
+    }])),
+    subscribe(listener) {
+      if (typeof listener !== 'function') return () => {}
+      statusListeners.add(listener)
+      return () => statusListeners.delete(listener)
     },
   }
+  const uiSession = options.splitSessionStatus ? Object.create({
+    get sessionStatus() { throw new Error('cannot get uiSession.sessionStatus without inject') },
+  }) : { sessionStatus: statusSource }
+  let activateStatus
+  let disposeStatus
 
   const uiConversation = {
     binding(source) {
@@ -351,6 +355,13 @@ export function createFakeContext(options = {}) {
 
   /* ── ctx ─────────────────────────────────────────────────────────── */
   const ctx = {
+    inject(names, run) {
+      assert.deepEqual(Array.from(names), ['uiSession', 'uiSession.sessionStatus'])
+      activateStatus = () => run({
+        uiSession: { sessionStatus: statusSource },
+        effect(install) { disposeStatus = install() },
+      })
+    },
     effect(run, label) {
       effects.push(label)
       const teardown = run()
@@ -430,6 +441,13 @@ export function createFakeContext(options = {}) {
       summaryById.set(id, { id, ...summary })
       notifyList()
     },
+    mountStatusService() {
+      activateStatus()
+    },
+    unmountStatusService() {
+      disposeStatus?.()
+      disposeStatus = undefined
+    },
     /** 覆盖待交互集合并发布。 */
     setStatuses(next) {
       statusById.clear()
@@ -438,6 +456,8 @@ export function createFakeContext(options = {}) {
     },
     /** 卸载所有 effect（逆序）。 */
     dispose() {
+      disposeStatus?.()
+      disposeStatus = undefined
       for (const teardown of [...cleanups].reverse()) {
         try {
           teardown()
