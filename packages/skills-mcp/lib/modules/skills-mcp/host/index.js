@@ -761,6 +761,8 @@ export function apply(ctx, config) {
         if (firstTick || serversChanged) {
             firstTick = false;
             const mountedCount = [...agents.values()].reduce((total, entry) => total + stopsOf(entry).length, 0);
+            // Cordis 4.2 uses the root symbol; reading the legacy property there throws in plugin contexts.
+            const root = ctx[Symbol.for('cordis.root')] ?? ctx.root;
             lastBeat = {
                 at: new Date().toISOString(),
                 observed: { servers: servers.map((s) => s.serverName) },
@@ -768,7 +770,7 @@ export function apply(ctx, config) {
                 // Only the project tier is mounted by this plugin now: global rows are connected by
                 // the Loader, so counting them here would double-count what the Loader already owns.
                 mounted: mountedCount,
-                rootScope: Boolean(ctx.root && ctx.root !== ctx),
+                rootScope: Boolean(root && root !== ctx),
                 agents: [...agents.values()].map((entry) => ({ cwd: entry.cwd, mounted: stopsOf(entry).length })),
                 migration: { ...serverMigrationState },
                 discovery: skills.discoveryInfo,
