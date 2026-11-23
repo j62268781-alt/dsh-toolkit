@@ -46,14 +46,14 @@ function buildScrim() {
   return scrim;
 }
 
-function buildBackButton() {
+function buildBackButton(onClick: () => void) {
   const back = document.createElement("button");
   back.type = "button";
   back.className = "sk-setnav__back";
   back.setAttribute("aria-label", "返回应用");
   back.title = "返回应用";
   back.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3 5 8l5 5M5 8h8"/></svg>';
-  back.addEventListener("click", closeSettings);
+  back.addEventListener("click", onClick);
   return back;
 }
 
@@ -196,6 +196,7 @@ export function installSettingsNav(ctx: any = {}) {
   let panel = null;
   let overlay = null;
   let block = null;
+  let toolbar: HTMLDivElement | null = null;
   let back = null;
   let toggle = null;
   let scrim = null;
@@ -203,15 +204,15 @@ export function installSettingsNav(ctx: any = {}) {
   let grouped = null;
   let actions = null;
   let narrow = false;
-  let navOpen = false;
+  let navOpen = true;
   let ownsNavId = false;
   const motion = createSettingsMotion();
   const applyViewport = () => {
     if (!panel) return;
-    panel.setAttribute("data-sk-settings-nav", narrow ? (navOpen ? "open" : "collapsed") : "wide");
+    panel.setAttribute("data-sk-settings-nav", narrow ? (navOpen ? "open" : "collapsed") : (navOpen ? "wide" : "wide-collapsed"));
     if (toggle) {
-      toggle.setAttribute("aria-expanded", String(narrow && navOpen));
-      const label = narrow && navOpen ? "收起设置导航" : "展开设置导航";
+      toggle.setAttribute("aria-expanded", String(navOpen));
+      const label = navOpen ? "收起设置导航" : "展开设置导航";
       if (toggle.getAttribute("aria-label") !== label) toggle.setAttribute("aria-label", label);
       if (toggle.title !== label) toggle.title = label;
     }
@@ -219,19 +220,18 @@ export function installSettingsNav(ctx: any = {}) {
   };
   const syncViewport = () => {
     const next = (window.innerWidth || 0) < SHELL_MIN_WIDTH;
-    // The host drops a manual narrow override whenever the window crosses the
-    // collapse breakpoint, so a wide window always shows the inline rail again.
     if (next !== narrow) {
       narrow = next;
-      navOpen = false;
+      if (narrow && nav?.contains(document.activeElement)) toggle?.focus();
+      navOpen = !narrow;
     }
     applyViewport();
   };
   const openNav = () => {
-    if (!narrow || navOpen) return;
+    if (navOpen) return;
     navOpen = true;
     applyViewport();
-    block?.querySelector("input")?.focus();
+    if (narrow) block?.querySelector("input")?.focus();
   };
   const closeNav = (restoreFocus = false) => {
     if (!navOpen) return;
@@ -246,7 +246,7 @@ export function installSettingsNav(ctx: any = {}) {
     closeNav(true);
   };
   const onEscape = (event) => {
-    if (!navOpen || event.key !== "Escape") return;
+    if (!narrow || !navOpen || event.key !== "Escape") return;
     // Escape closes the drawer before the native modal sees it and closes settings.
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -264,8 +264,8 @@ export function installSettingsNav(ctx: any = {}) {
     panel?.removeAttribute("data-sk-settings-nav");
     overlay?.removeAttribute("data-sk-settings-overlay");
     block?.remove();
-    back?.remove();
-    toggle?.remove();
+    toolbar?.remove();
+    toolbar = null;
     scrim?.remove();
     panel = overlay = block = back = toggle = scrim = nav = grouped = actions = null;
     ownsNavId = false;
@@ -289,31 +289,33 @@ export function installSettingsNav(ctx: any = {}) {
       if (ownsNavId) nav.id = NAV_ID;
       // A cloned panel (motion exit copy or a native remount) can carry our
       // nodes; remove them before installing a fresh set.
-      for (const stale of next.querySelectorAll(":scope > .sk-setnav__back, :scope > .sk-setnav__toggle, :scope > .sk-setnav__scrim")) stale.remove();
+      for (const stale of next.querySelectorAll(":scope > .sk-setnav__toolbar, :scope > .sk-setnav__scrim")) stale.remove();
       block = buildBlock(() => grouped?.sync());
-      back = buildBackButton();
+      back = buildBackButton(() => {
+        if (narrow) closeNav();
+        closeSettings();
+      });
       toggle = buildNavToggle();
       toggle.setAttribute("aria-controls", nav.id);
       scrim = buildScrim();
       nav.prepend(block);
       // Keep the titlebar controls inside the native modal's focus trap.
-      panel.prepend(back);
-      back.after(toggle);
+      toolbar = document.createElement("div");
+      toolbar.className = "sk-setnav__toolbar";
+      toolbar.append(back, toggle);
+      panel.prepend(toolbar);
       panel.append(scrim);
-      toggle.addEventListener("click", () => {
-        if (!narrow) return;
-        if (navOpen) closeNav(true);
-        else openNav();
-      });
+      toggle.addEventListener("click", () => navOpen ? closeNav(true) : openNav());
       scrim.addEventListener("click", () => closeNav(true));
       nav.addEventListener("click", onNavClick);
       window.addEventListener("resize", onResize);
       window.addEventListener("keydown", onEscape, true);
-      navOpen = false;
-      syncViewport();
+      narrow = (window.innerWidth || 0) < SHELL_MIN_WIDTH;
+      navOpen = !narrow;
+      applyViewport();
       panel.setAttribute("data-sk-settings-toolbar", "");
       grouped = installGroupedMenu(ctx, nav, block.querySelector("input"));
-      actions = installSettingsActions(panel);
+      actions = installSettingsActions(panel, toolbar);
       motion.enter(panel);
     }
     grouped.sync();

@@ -1,185 +1,44 @@
-/** Keep configuration and the public desktop update flow in the settings menu. */
-import { CAN_POPOVER, hideMenu, menuKeydown, showMenu } from '../../../client/ui/components/menu/index.js'
-
-export function installSettingsActions(panel) {
-  const more = document.createElement('button');
-  more.type = 'button';
-  more.className = 'sk-setnav__more';
-  more.setAttribute('aria-label', '更多设置操作');
-  more.setAttribute('aria-haspopup', 'menu');
-  more.setAttribute('aria-expanded', 'false');
-  more.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="8" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="13" cy="8" r="1"/></svg>';
-  const menu = document.createElement('div');
-  menu.className = 'sk-setnav__actions';
-  menu.setAttribute('role', 'menu');
-  menu.setAttribute('aria-label', '设置操作');
-  // 原生 popover：进 top layer，Esc 与点外关闭交给浏览器；兜底路径仍用 hidden。
-  if (CAN_POPOVER) menu.setAttribute('popover', 'auto');
-  else menu.hidden = true;
-  menu.addEventListener('keydown', (event) => { menuKeydown(event, menu); });
-  menu.addEventListener('toggle', (event) => {
-    if (event.newState === 'closed') more.setAttribute('aria-expanded', 'false');
-  });
-  const action = document.createElement('button');
-  action.type = 'button';
-  action.setAttribute('role', 'menuitem');
-  const error = document.createElement('div');
-  error.className = 'sk-setnav__action-error';
-  error.setAttribute('role', 'alert');
+/** Project the native configuration action without moving its React-owned node. */
+export function installSettingsActions(panel: HTMLElement, toolbar: HTMLElement) {
+  const action = document.createElement("button");
+  action.type = "button";
+  action.className = "sk-setnav__config";
+  action.hidden = true;
+  action.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.75h4.5L12.5 6v7a1.25 1.25 0 0 1-1.25 1.25h-6.5A1.25 1.25 0 0 1 3.5 13V3A1.25 1.25 0 0 1 4.75 1.75M8.5 2v4h4M6 9h4m-4 2.5h4"/></svg>';
+  const error = document.createElement("div");
+  error.className = "sk-setnav__action-error";
+  error.setAttribute("role", "alert");
   error.hidden = true;
-  const update = document.createElement('button');
-  update.type = 'button';
-  update.setAttribute('role', 'menuitem');
-  update.dataset.skSettingsUpdate = '';
-  const updateError = document.createElement('div');
-  updateError.className = 'sk-setnav__action-error';
-  updateError.setAttribute('role', 'alert');
-  updateError.hidden = true;
-  menu.append(action, error, update, updateError);
-  panel.prepend(more, menu);
-  let original = null;
-  let owner = null;
-  let disposed = false;
-  let pending = false;
-  let presentation = null;
-  let revision = 0;
-  // The desktop host injects `dshDesktop` on the window at runtime; there is no
-  // ambient type for it in the client program.
-  const updates = (window as any).dshDesktop?.updates;
-  const available = typeof updates?.open === 'function';
-  const showUpdateError = (message) => {
-    if (disposed) return;
-    updateError.textContent = message;
-    updateError.hidden = !message;
-  };
-  const syncUpdate = () => {
-    if (disposed) return;
-    const labels = {
-      checking: '正在检查更新…', available: '下载更新…',
-      downloading: '正在下载更新…', ready: '安装更新…', installing: '正在安装更新…',
-    };
-    const retryLabels = {
-      check: '重新检查更新', 'check-network': '重新检查更新',
-      download: '重试下载更新…', 'download-network': '重试下载更新…',
-      install: '重试安装更新…', 'install-network': '重试安装更新…',
-      'stop-failed': '重试安装更新…', 'tasks-changed': '重试安装更新…', 'tasks-unavailable': '重试安装更新…',
-    };
-    // The public presentation exposes `failure`, not main's `failedOperation`.
-    const label = presentation?.phase === 'error' ? retryLabels[presentation.failure] ?? '重试更新…'
-      : labels[presentation?.phase] ?? (pending ? '正在处理更新…' : '检查更新');
-    if (update.textContent !== label) update.textContent = label;
-    const disabled = !available || pending || ['checking', 'downloading', 'installing'].includes(presentation?.phase);
-    if (update.disabled !== disabled) update.disabled = disabled;
-    update.title = available ? '' : '请在 DeepSeek Harness 桌面应用中检查更新';
-  };
-  const close = (focus = false) => {
-    if (CAN_POPOVER) hideMenu(menu);
-    else menu.hidden = true;
-    more.setAttribute('aria-expanded', 'false');
-    if (focus) more.focus();
-  };
-  const enabledActions = (): HTMLButtonElement[] => [...menu.querySelectorAll('button')].filter((button) => !button.hidden && !button.disabled);
-  // popover 的开关状态不在 `hidden` 上：showPopover/hidePopover 只动 top layer，
-  // `hidden` 始终是 false。展开判据只认这一个函数，否则点「更多」永远走 close()、
-  // 菜单的 window 捕获监听器也会把每一次 Escape 都吞掉（返回按钮靠派发 Escape
-  // 关闭设置，于是跟着失效）。
-  const isOpen = () => CAN_POPOVER ? menu.matches(':popover-open') : !menu.hidden;
-  const open = () => {
-    if (CAN_POPOVER) showMenu(menu);
-    else menu.hidden = false;
-    more.setAttribute('aria-expanded', 'true');
-    (enabledActions()[0] ?? more).focus();
-  };
-  more.addEventListener('click', () => isOpen() ? close(true) : open());
-  more.addEventListener('keydown', (event) => {
-    if (event.key === 'ArrowDown') { event.preventDefault(); open(); }
-  });
-  action.addEventListener('click', () => {
-    if (original && !original.disabled) original.click();
-  });
-  update.addEventListener('click', async () => {
-    if (update.disabled || disposed) return;
-    pending = true;
-    showUpdateError('');
-    syncUpdate();
-    try {
-      // This public preload API owns native checks, progress, and update dialogs.
-      await updates.open();
-    } catch (reason) {
-      showUpdateError(`无法打开更新：${reason instanceof Error ? reason.message : String(reason)}`);
-    } finally {
-      pending = false;
-      syncUpdate();
-    }
-  });
-  const onPointer = (event) => { if (!menu.contains(event.target) && !more.contains(event.target)) close(); };
-  const onKey = (event) => {
-    if (!isOpen()) return;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      close(true);
-    } else if (event.key === 'Tab') close();
-    else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-      event.preventDefault();
-      const buttons = enabledActions();
-      const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
-      const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
-        : (index + (event.key === 'ArrowUp' ? -1 : 1) + buttons.length) % buttons.length;
-      buttons[next]?.focus();
-    }
-  };
-  document.addEventListener('pointerdown', onPointer, true);
-  // Escape dismisses this menu before the native modal's document handler runs.
-  window.addEventListener('keydown', onKey, true);
-  let offUpdates;
-  syncUpdate();
-  if (available) {
-    const initialRevision = revision;
-    try {
-      offUpdates = updates.subscribe?.((state) => {
-        revision++;
-        presentation = state;
-        syncUpdate();
-      });
-      Promise.resolve(updates.status?.()).then((state) => {
-        if (disposed || revision !== initialRevision) return;
-        presentation = state;
-        syncUpdate();
-      }).catch((reason) => showUpdateError(`无法读取更新状态：${reason instanceof Error ? reason.message : String(reason)}`));
-    } catch (reason) {
-      showUpdateError(`无法读取更新状态：${reason instanceof Error ? reason.message : String(reason)}`);
-    }
-  }
+  toolbar.append(action, error);
+
+  let owner: Element | null = null;
+  let original: HTMLButtonElement | null = null;
+  action.addEventListener("click", () => original?.click());
+
   return {
     sync() {
-      // Build-specific hashes change between releases; find the header action
-      // seat structurally and take the contribution that owns a button.
+      // Build-specific hashes change; locate the host's header action structurally.
       const actions = panel.querySelector(':scope > [class*="_header"] > [class*="_actions"], :scope > [class*="_content"] > [class*="_header"] > [class*="_actions"]');
-      const nextOwner = [...(actions?.children ?? [])].find((child) => child.querySelector('button'))
-        ?? actions?.firstElementChild
-        ?? null;
-      if (owner !== nextOwner) owner?.removeAttribute('data-sk-config-original');
+      const nextOwner = [...(actions?.children ?? [])].find((child) => child.querySelector("button")) ?? null;
+      if (owner !== nextOwner) owner?.removeAttribute("data-sk-config-original");
       owner = nextOwner;
-      original = owner?.querySelector('button') ?? null;
+      original = owner?.querySelector("button") ?? null;
       action.hidden = !original;
       if (original) {
-        owner.setAttribute('data-sk-config-original', '');
-        const label = original.textContent.trim();
-        if (action.textContent !== label) action.textContent = label;
+        owner.setAttribute("data-sk-config-original", "");
+        const label = original.textContent.trim() || "打开配置文件";
+        action.setAttribute("aria-label", label);
+        action.title = label;
         if (action.disabled !== original.disabled) action.disabled = original.disabled;
       }
-      const message = owner?.querySelector('[role="alert"]')?.textContent ?? '';
+      const message = owner?.querySelector('[role="alert"]')?.textContent ?? "";
       if (error.textContent !== message) error.textContent = message;
       error.hidden = !message;
     },
     dispose() {
-      disposed = true;
-      offUpdates?.();
-      owner?.removeAttribute('data-sk-config-original');
-      document.removeEventListener('pointerdown', onPointer, true);
-      window.removeEventListener('keydown', onKey, true);
-      more.remove(); menu.remove();
+      owner?.removeAttribute("data-sk-config-original");
+      action.remove();
+      error.remove();
     },
   };
 }

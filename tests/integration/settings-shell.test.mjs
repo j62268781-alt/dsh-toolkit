@@ -10,8 +10,8 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { JSDOM } from 'jsdom'
-import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.ts'
-import { createSettingsMotion } from '../../src/modules/theme/client/settings-motion.ts'
+import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.js'
+import { createSettingsMotion } from '../../src/modules/theme/client/settings-motion.js'
 
 const THEME_CLIENT = fileURLToPath(new URL('../../src/modules/theme/client/', import.meta.url))
 
@@ -101,7 +101,7 @@ test('settings shell binds to the current native dialog by structure and keeps W
   assert.ok(overlay.hasAttribute('data-sk-settings-overlay'), 'the shell marker is installed on the portal root')
   assert.ok(panel.hasAttribute('data-sk-settings-toolbar'))
   assert.equal(nav.firstElementChild, nav.querySelector('[data-sk-setnav]'), 'navigation block still precedes native rows')
-  assert.equal(panel.querySelector('.sk-setnav__back').parentElement, panel)
+  assert.ok(panel.querySelector(':scope > div.sk-setnav__toolbar > button.sk-setnav__back'))
   // Content column keeps matching the suffix-based native selectors.
   assert.equal(panel.querySelector('._AnXs9G_content').matches('[class*="_content"]'), true)
   assert.ok(document.querySelector('._AnXs9G_header').matches('[class*="_header"]'))
@@ -158,11 +158,16 @@ test(`settings header action works with ${directHeader ? 'direct grid' : 'legacy
   original.addEventListener('click', () => opened++)
   const dispose = installSettingsNav(ctx)
   await flush()
-  assert.equal(document.querySelector('.sk-setnav__more').hidden, false, 'the action button is projected into the titlebar')
+  const config = document.querySelector('.sk-setnav__toolbar > button.sk-setnav__config')
+  assert.ok(config, 'the action button is projected directly into the titlebar')
+  assert.equal(config.hidden, false)
+  assert.equal(config.textContent.trim(), '', 'the toolbar button is icon only')
+  assert.ok(config.querySelector('svg[aria-hidden="true"]'))
+  assert.equal(config.getAttribute('aria-label'), '打开配置文件')
+  assert.equal(config.title, '打开配置文件')
   assert.ok(document.querySelector('.anything').hasAttribute('data-sk-config-original'))
-  document.querySelector('.sk-setnav__more').click()
-  document.querySelector('.sk-setnav__actions button').click()
-  assert.equal(opened, 1, 'the proxy invokes the native action')
+  config.click()
+  assert.equal(opened, 1, 'the proxy directly invokes the native action')
   if (directHeader) {
     const panel = document.querySelector('[data-shortcut-modal="settings"]')
     assert.equal(panel.querySelector('#settings-title').parentElement, panel, 'the native accessible title stays mounted')
@@ -208,110 +213,35 @@ test('settings exit copy keeps the shell marker after native markers are strippe
   assert.equal(document.querySelector('[data-sk-settings-exit]'), null, 'dispose removes a pending copy')
 })
 
-test('persistent updates action calls the desktop bridge once and follows native progress', async (t) => {
-  const { window, document, ctx, flush } = page(t, WINDOWS_HTML)
-  let opens = 0
-  let listener
-  let unsubscribed = 0
-  let finish
-  let initialStatus
+test('settings toolbar does not render an action menu or call the desktop updates bridge', async (t) => {
+  const { window, document, ctx, flush, onCleanup } = page(t, WINDOWS_HTML)
+  const calls = []
   window.dshDesktop = { updates: {
-    status() { return new Promise((resolve) => { initialStatus = resolve }) },
-    subscribe(callback) { listener = callback; return () => { unsubscribed++ } },
-    open() { opens++; return new Promise((resolve) => { finish = resolve }) },
+    async status() { calls.push('status'); return { phase: 'idle' } },
+    subscribe() { calls.push('subscribe'); return () => calls.push('unsubscribe') },
+    async open() { calls.push('open') },
   } }
   const dispose = installSettingsNav(ctx)
+  onCleanup(dispose)
   await flush()
-  const more = document.querySelector('.sk-setnav__more')
-  const update = document.querySelector('[data-sk-settings-update]')
-  assert.equal(more.hidden, false, 'the update entry exists even without a header contribution')
-  assert.equal(update.textContent, '检查更新')
-  assert.equal(update.disabled, false)
-  more.click()
-  update.click()
-  update.click()
-  assert.equal(opens, 1, 'a pending native flow cannot be opened twice')
-  assert.equal(update.disabled, true)
-  listener({ phase: 'downloading', percent: 23 })
-  initialStatus({ phase: 'idle' })
-  await flush()
-  assert.equal(update.textContent, '正在下载更新…', 'a late initial status cannot overwrite live progress')
-  finish()
-  await flush()
-  assert.equal(update.disabled, true, 'native downloading state keeps the action disabled')
-  listener({ phase: 'ready', version: '0.2.3' })
-  await flush()
-  assert.equal(update.textContent, '安装更新…', 'the entry explains the next native action')
-  assert.equal(update.disabled, false)
-  dispose()
-  assert.equal(unsubscribed, 1)
-  assert.equal(document.querySelector('[data-sk-settings-update]'), null)
-  listener({ phase: 'idle' })
-  assert.equal(update.textContent, '安装更新…', 'late native events cannot mutate a disposed view')
-})
 
-test('updates bridge failures surface in the menu and allow retry', async (t) => {
-  const { window, document, ctx, flush } = page(t, WINDOWS_HTML)
-  let opens = 0
-  window.dshDesktop = { updates: {
-    status: async () => ({ phase: 'idle' }),
-    subscribe: () => () => {},
-    async open() { opens++; throw new Error('desktop unavailable') },
-  } }
-  const dispose = installSettingsNav(ctx)
-  await flush()
-  document.querySelector('.sk-setnav__more').click()
-  const update = document.querySelector('[data-sk-settings-update]')
-  update.click()
-  await flush()
-  assert.equal(opens, 1)
-  assert.equal(update.disabled, false)
-  const alert = [...document.querySelectorAll('.sk-setnav__actions [role="alert"]')].find((node) => !node.hidden)
-  assert.match(alert.textContent, /desktop unavailable/)
-  update.click()
-  await flush()
-  assert.equal(opens, 2, 'retry invokes the same public native flow')
-  dispose()
-})
+  const panel = document.querySelector('[data-shortcut-modal="settings"]')
+  const toolbar = panel.querySelector(':scope > div.sk-setnav__toolbar')
+  assert.ok(toolbar)
+  assert.equal(toolbar.querySelector('button.sk-setnav__config').hidden, true, 'no configuration contribution is present yet')
+  assert.ok(panel.querySelector('.sk-setnav__more, .sk-setnav__actions, [data-sk-settings-update], [popover], [role="menu"]') === null)
 
-test('updates errors name the actual native retry instead of promising a check', async (t) => {
-  const { window, document, ctx, flush } = page(t, WINDOWS_HTML)
-  let listener
-  let opens = 0
-  window.dshDesktop = { updates: {
-    status: async () => ({ phase: 'error', failure: 'install', version: '0.2.3' }),
-    subscribe(callback) { listener = callback; return () => {} },
-    async open() { opens++ },
-  } }
-  const dispose = installSettingsNav(ctx)
+  const header = panel.querySelector('._AnXs9G_header')
+  header.insertAdjacentHTML('afterbegin', '<div class="_x_actions"><div><button>打开配置文件</button></div></div>')
+  let opened = 0
+  header.querySelector('._x_actions button').addEventListener('click', () => opened++)
   await flush()
-  const update = document.querySelector('[data-sk-settings-update]')
-  assert.equal(update.textContent, '重试安装更新…', 'failed installation must not be labeled as an update check')
-  for (const [failure, label] of [
-    ['install-network', '重试安装更新…'], ['stop-failed', '重试安装更新…'],
-    ['tasks-changed', '重试安装更新…'], ['tasks-unavailable', '重试安装更新…'],
-    ['download', '重试下载更新…'], ['download-network', '重试下载更新…'],
-    ['check', '重新检查更新'], ['check-network', '重新检查更新'],
-  ]) {
-    listener({ phase: 'error', failure })
-    await flush()
-    assert.equal(update.textContent, label)
-    assert.equal(update.disabled, false)
-  }
-  assert.equal(opens, 0, 'rendering a failure never retries installation or downloading automatically')
+  toolbar.querySelector('button.sk-setnav__config').click()
+  assert.equal(opened, 1)
+  assert.ok(panel.querySelector('.sk-setnav__more, .sk-setnav__actions, [data-sk-settings-update], [popover], [role="menu"]') === null)
   dispose()
-})
-
-test('browser update entry explains desktop availability without pretending to check', async (t) => {
-  const { document, ctx, flush } = page(t, WINDOWS_HTML)
-  const dispose = installSettingsNav(ctx)
   await flush()
-  const update = document.querySelector('[data-sk-settings-update]')
-  assert.equal(update.textContent, '检查更新')
-  assert.equal(update.disabled, true)
-  assert.match(update.title, /桌面应用/)
-  assert.equal([...document.querySelectorAll('.sk-setnav__actions [role="alert"]')].some((node) => !node.hidden), false)
-  dispose()
+  assert.deepEqual(calls, [], 'mount, config activation and disposal never use desktop updates')
 })
 
 test('theme shell CSS uses structural selectors and reserves the Windows caption band', async () => {
@@ -319,10 +249,22 @@ test('theme shell CSS uses structural selectors and reserves the Windows caption
   assert.match(css, /\[role="presentation"\]:has\(> \[data-shortcut-modal="settings"\]\)/)
   assert.match(css, /\[data-shortcut-modal="settings"\]/)
   assert.match(css, /\[aria-hidden="true"\]/)
-  assert.match(css, /--sk-settings-band-h:\s*max\(32px, var\(--cx-band-h, 0px\), var\(--dsh-frame-chrome-top, var\(--dsh-frame-top-clearance, 0px\)\)\)/)
-  assert.match(css, /html\[data-windows-titlebar\]\s*\{\s*--sk-wco-width:\s*138px;/)
-  assert.match(css, /html\[data-windows-titlebar\]:not\(\[data-fullscreen\]\) \.sk-setnav__more\s*\{[^}]*right:\s*calc\(var\(--sk-wco-width\) \+ 12px\)/)
-  assert.match(css, /html\[data-windows-titlebar\]:not\(\[data-fullscreen\]\) \.sk-setnav__actions\s*\{[^}]*top:\s*calc\(var\(--sk-settings-band-h\) \+ 4px\)/)
+  const windowsBand = css.match(/html\[data-windows-titlebar\]:not\(\[data-fullscreen\]\)[^{]+\{([^}]*)\}/)?.[1]
+  assert.ok(windowsBand, 'the fallback is for native Windows caption mode, not Web or fullscreen')
+  assert.match(windowsBand, /--sk-settings-min-band-h:\s*max\(var\(--dsh-windows-titlebar-height, 40px\), env\(titlebar-area-height, 0px\)\)/)
+  assert.match(css, /html\[data-windows-titlebar\] body:has\(\[data-shortcut-modal="settings"\], \[data-sk-settings-exit\]\) > \[data-windows-menu\]\s*\{\s*display:\s*none;/)
+  assert.match(windowsBand, /--sk-settings-drag-left:\s*env\(titlebar-area-x, 0px\)/)
+  assert.match(windowsBand, /--sk-settings-drag-right:\s*calc\(100% - var\(--sk-settings-drag-left\) - env\(titlebar-area-width, 100%\)\)/)
+  assert.match(css, /--sk-settings-band-h:\s*max\(var\(--sk-settings-min-band-h, 32px\), var\(--cx-band-h, 0px\), var\(--dsh-frame-chrome-top, var\(--dsh-frame-top-clearance, 0px\)\)\)/)
+  assert.match(css, /inset:\s*0 var\(--sk-settings-drag-right, 0px\) auto var\(--sk-settings-drag-left, 0px\);[^}]*-webkit-app-region:\s*drag/)
+  assert.match(css, /padding:\s*var\(--sk-settings-band-h\)/)
+  const toolbar = css.match(/\.sk-setnav__toolbar\s*\{([^}]*)\}/)?.[1]
+  assert.ok(toolbar)
+  assert.match(toolbar, /top:\s*calc\(\(var\(--sk-settings-band-h\) - 28px\) \/ 2\)/)
+  assert.match(toolbar, /left:\s*max\(var\(--cx-toggle-x, 12px\), var\(--sk-settings-drag-left, 0px\)\)/)
+  assert.match(toolbar, /display:\s*flex\s*;/)
+  assert.match(toolbar, /-webkit-app-region:\s*no-drag/)
+  assert.match(css, /\.sk-setnav__toolbar > button\s*\{[^}]*-webkit-app-region:\s*no-drag/)
 
   // Build hashes are never stable across releases; no theme source may select on them.
   const offenders = []
@@ -339,11 +281,12 @@ test('theme shell CSS uses structural selectors and reserves the Windows caption
   assert.deepEqual(offenders, [], 'theme sources must not select CSS module hashes')
 })
 
-test('narrow windows turn the settings rail into a titlebar-controlled drawer', async () => {
+test('shell CSS styles the narrow drawer and wide collapsed rail without hiding the toggle', async () => {
   const css = await readFile(join(THEME_CLIENT, 'styles/settings-shell.css'), 'utf8')
   assert.match(css, /\[data-sk-settings-nav="collapsed"\]/)
   assert.match(css, /\[data-sk-settings-nav="open"\]/)
-  assert.match(css, /\.sk-setnav__toggle\s*\{[^}]*display:\s*none/)
+  assert.match(css, /\[data-sk-settings-nav="wide-collapsed"\] > nav\s*\{[^}]*display:\s*none/)
+  assert.doesNotMatch(css, /\.sk-setnav__toggle\s*\{[^}]*display:\s*none/)
   assert.match(css, /\.sk-setnav__scrim\s*\{[^}]*position:\s*absolute/)
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/)
 })

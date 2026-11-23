@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { JSDOM } from 'jsdom'
-import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.ts'
+import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.js'
 
 function page(t, html) {
   const dom = new JSDOM(html)
@@ -91,8 +91,11 @@ test('settings nav block inserts above the native rows and filters them', async 
   const block = nav.querySelector('[data-sk-setnav]')
   assert.ok(block, 'the block is inserted into the native nav')
   assert.equal(nav.firstElementChild, block, 'it sits above the native title and rows')
-  const back = panel.querySelector('.sk-setnav__back')
-  assert.equal(back.parentElement, panel, 'the titlebar button stays inside the modal focus trap')
+  const toolbar = panel.querySelector(':scope > div.sk-setnav__toolbar')
+  assert.ok(toolbar, 'the toolbar stays inside the modal focus trap')
+  const back = toolbar.querySelector(':scope > button.sk-setnav__back')
+  assert.ok(back)
+  assert.ok(toolbar.querySelector(':scope > button.sk-setnav__toggle'))
   assert.equal(back.getAttribute('aria-label'), '返回应用')
   assert.equal(back.textContent.trim(), '', 'the toolbar button is icon only')
   assert.ok(back.querySelector('svg[aria-hidden="true"]'))
@@ -124,23 +127,28 @@ test('settings nav block inserts above the native rows and filters them', async 
   assert.equal(empty.hidden, true)
 })
 
-test('settings nav back button uses the native Escape close path and teardown is clean', async (t) => {
-  const { document, flush, onCleanup } = page(t, PANEL_HTML)
-  const keys = []
-  document.addEventListener('keydown', (event) => keys.push(event.key))
+test('settings back reaches native Escape even when the narrow drawer is open', async (t) => {
+  const { window, document, flush, onCleanup } = page(t, PANEL_HTML)
+  window.innerWidth = 900
+  const nativeStates = []
+  const panel = document.querySelector('[data-shortcut-modal="settings"]')
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') nativeStates.push(panel.getAttribute('data-sk-settings-nav'))
+  })
   const dispose = installSettingsNav()
   onCleanup(dispose)
   await flush()
 
-  document.querySelector('.sk-setnav__back').click()
-  assert.deepEqual(keys, ['Escape'], 'the back row closes through the native shortcut, not a custom callback')
+  panel.querySelector('.sk-setnav__toggle').click()
+  assert.equal(panel.getAttribute('data-sk-settings-nav'), 'open')
+  panel.querySelector('.sk-setnav__back').click()
+  assert.deepEqual(nativeStates, ['collapsed'], 'back closes the drawer before forwarding Escape once to native settings')
 
-  const nav = document.querySelector('[data-shortcut-modal="settings"] nav')
-  assert.ok(nav.querySelector('[data-sk-setnav]'))
+  assert.ok(panel.querySelector('[data-sk-setnav]'))
   dispose()
-  assert.equal(document.querySelector('[data-sk-setnav]'), null, 'disposing removes the injected block')
-  assert.equal(document.querySelector('.sk-setnav__back'), null, 'disposing removes the toolbar button')
-  assert.equal(document.querySelector('[data-sk-settings-toolbar]'), null, 'native close can return after teardown')
+  assert.ok(panel.querySelector('[data-sk-setnav]') === null, 'disposing removes the injected block')
+  assert.ok(panel.querySelector('.sk-setnav__toolbar') === null, 'disposing removes the toolbar')
+  assert.equal(panel.hasAttribute('data-sk-settings-toolbar'), false, 'native close can return after teardown')
 })
 
 test('settings toolbar remounts once after a native panel is replaced', async (t) => {
@@ -150,15 +158,17 @@ test('settings toolbar remounts once after a native panel is replaced', async (t
   const previous = document.querySelector('[data-shortcut-modal="settings"]')
   const next = previous.cloneNode(true)
   next.querySelector('[data-sk-setnav]').remove()
-  next.querySelector('.sk-setnav__back').remove()
   next.querySelectorAll('.sk-setnav__groups, .sk-setnav__empty').forEach((node) => node.remove())
+  const staleToolbar = next.querySelector('.sk-setnav__toolbar')
   previous.replaceWith(next)
   await flush()
-  assert.equal(document.querySelectorAll('.sk-setnav__back').length, 1)
-  assert.equal(document.querySelectorAll('[data-sk-setnav]').length, 1)
-  assert.equal(document.querySelectorAll('.sk-setnav__toggle').length, 1, 'the cloned panel does not keep a stale toggle')
-  assert.equal(document.querySelectorAll('.sk-setnav__scrim').length, 1, 'the cloned panel does not keep a stale scrim')
-  assert.equal(next.querySelector('.sk-setnav__back').parentElement, next)
+  assert.equal(next.querySelectorAll(':scope > div.sk-setnav__toolbar').length, 1)
+  assert.equal(staleToolbar.isConnected, false, 'the cloned panel does not keep the stale toolbar')
+  assert.ok(next.querySelector(':scope > .sk-setnav__toolbar > button.sk-setnav__back'))
+  assert.equal(next.querySelectorAll('.sk-setnav__back').length, 1)
+  assert.equal(next.querySelectorAll('[data-sk-setnav]').length, 1)
+  assert.equal(next.querySelectorAll('.sk-setnav__toggle').length, 1, 'the cloned panel does not keep a stale toggle')
+  assert.equal(next.querySelectorAll('.sk-setnav__scrim').length, 1, 'the cloned panel does not keep a stale scrim')
 })
 test('grouped menu keeps React rows in place and orders by stable settings identity', async (t) => {
   const { document, ctx, entries, flush, onCleanup } = page(t, PANEL_HTML)
@@ -380,7 +390,7 @@ test('narrow windows collapse the settings nav into a drawer at the workspace br
   viewport(1200)
   window.dispatchEvent(new window.Event('resize'))
   assert.equal(panel.getAttribute('data-sk-settings-nav'), 'wide')
-  assert.equal(toggle.getAttribute('aria-expanded'), 'false')
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true')
   assert.equal(scrim.hidden, true)
   viewport(900)
   window.dispatchEvent(new window.Event('resize'))
@@ -391,6 +401,71 @@ test('narrow windows collapse the settings nav into a drawer at the workspace br
   viewport(1023)
   window.dispatchEvent(new window.Event('resize'))
   assert.equal(panel.getAttribute('data-sk-settings-nav'), 'collapsed')
+})
+
+test('the wide titlebar toggle collapses the inline rail without capturing native Escape', async (t) => {
+  const { window, document, ctx, flush, onCleanup } = page(t, PANEL_HTML)
+  const resize = (width) => {
+    window.innerWidth = width
+    window.dispatchEvent(new window.Event('resize'))
+  }
+  resize(1200)
+  const nativeEscapes = []
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') nativeEscapes.push(event)
+  })
+  onCleanup(installSettingsNav(ctx))
+  await flush()
+
+  const panel = document.querySelector('[data-shortcut-modal="settings"]')
+  const toggle = panel.querySelector('.sk-setnav__toolbar > button.sk-setnav__toggle')
+  const nav = panel.querySelector('nav')
+  const input = nav.querySelector('.sk-setnav__input')
+  const scrim = panel.querySelector('.sk-setnav__scrim')
+  const state = () => panel.getAttribute('data-sk-settings-nav')
+  assert.equal(state(), 'wide')
+  assert.equal(toggle.getAttribute('aria-controls'), nav.id)
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true')
+  assert.equal(toggle.title, '收起设置导航')
+  assert.equal(scrim.hidden, true)
+
+  input.focus()
+  const sendEscape = (target) => {
+    const event = new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    target.dispatchEvent(event)
+    assert.equal(nativeEscapes.at(-1), event)
+    assert.equal(event.defaultPrevented, false)
+  }
+  sendEscape(input)
+  assert.equal(state(), 'wide', 'Escape belongs to native settings, not the wide rail')
+  assert.equal(document.activeElement, input)
+
+  toggle.click()
+  assert.equal(state(), 'wide-collapsed')
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false')
+  assert.equal(toggle.title, '展开设置导航')
+  assert.equal(document.activeElement, toggle, 'hiding the rail returns focus to the toggle')
+  assert.equal(scrim.hidden, true)
+  sendEscape(toggle)
+  assert.equal(state(), 'wide-collapsed')
+  assert.equal(nativeEscapes.length, 2)
+  resize(1100)
+  assert.equal(state(), 'wide-collapsed', 'resizing within wide mode preserves the manual override')
+
+  toggle.click()
+  assert.equal(state(), 'wide')
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true')
+  assert.equal(document.activeElement, toggle, 'opening an inline rail does not steal focus')
+  assert.equal(scrim.hidden, true)
+  nav.querySelector('[data-settings-id="notification"]').click()
+  assert.equal(state(), 'wide', 'a destination does not collapse an inline rail')
+
+  toggle.click()
+  resize(1023)
+  assert.equal(state(), 'collapsed')
+  resize(1024)
+  assert.equal(state(), 'wide', 'crossing back to wide restores the responsive default')
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true')
 })
 
 test('the drawer keeps a native nav id instead of owning it', async (t) => {

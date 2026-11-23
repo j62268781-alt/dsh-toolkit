@@ -1,68 +1,88 @@
-import assert from 'node:assert/strict';
-import { test } from 'node:test';
-import { JSDOM } from 'jsdom';
-import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.ts';
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { JSDOM } from 'jsdom'
+import { installSettingsNav } from '../../src/modules/theme/client/settings-nav.js'
 
-test('titlebar config menu forwards native action, tracks availability, errors and Escape', async (t) => {
-  const dom = new JSDOM(`<div data-shortcut-modal="settings"><nav class="_AnXs9G_nav"><div class="_AnXs9G_navList"></div></nav><div class="_AnXs9G_content"><div class="_AnXs9G_header"><div class="_AnXs9G_actions"><div class="_yHUiNq_action"><button>打开配置文件</button></div></div></div></div></div>`);
-  const originals = new Map();
-  for (const name of ['window','document','MutationObserver','KeyboardEvent']) {
-    originals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
-    Object.defineProperty(globalThis,name,{configurable:true,writable:true,value:dom.window[name] ?? dom.window});
+test('toolbar config mirrors native availability and errors across a contribution remount', async (t) => {
+  const dom = new JSDOM(`<div data-shortcut-modal="settings">
+    <nav class="_x_nav"><div class="_x_navList"></div></nav>
+    <div class="_x_content"><div class="_x_header"><div class="_x_actions">
+      <div class="native-config"><button>打开配置文件</button></div>
+    </div></div></div>
+  </div>`)
+  const globals = new Map()
+  for (const name of ['window', 'document', 'MutationObserver', 'KeyboardEvent']) {
+    globals.set(name, Object.getOwnPropertyDescriptor(globalThis, name))
+    Object.defineProperty(globalThis, name, { configurable: true, writable: true, value: dom.window[name] })
   }
-  const dispose = installSettingsNav();
-  t.after(() => {dispose();dom.window.close();for(const [name,descriptor] of originals){if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globalThis[name];}});
-  const flush = async () => { await new Promise(resolve => setTimeout(resolve,0)); };
-  const doc = dom.window.document;
-  const original = doc.querySelector('._yHUiNq_action button');
-  const owner = original.parentElement;
-  const more = doc.querySelector('.sk-setnav__more');
-  const menu = doc.querySelector('.sk-setnav__actions');
-  const action = menu.querySelector('button');
-  let clicks = 0;
-  original.addEventListener('click', () => clicks++);
-  assert.equal(more.hidden, false);
-  assert.ok(owner.hasAttribute('data-sk-config-original'));
-  more.click();
-  assert.equal(menu.hidden, false);
-  assert.equal(doc.activeElement, action);
-  action.click();
-  assert.equal(clicks,1);
-  original.disabled = true;
-  await flush();
-  assert.equal(action.disabled,true);
-  action.click();
-  assert.equal(clicks,1,'disabled state cannot invoke native controller twice');
-  const error = doc.createElement('span');error.setAttribute('role','alert');error.textContent='无法打开配置文件';owner.append(error);
-  await flush();
-  assert.equal(menu.querySelector('[role="alert"]').textContent,error.textContent);
-  assert.equal(menu.querySelector('[role="alert"]').hidden,false);
-  let closes = 0;doc.addEventListener('keydown', event => {if(event.key==='Escape')closes++;});
-  action.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
-  assert.equal(closes,0,'Escape closes the menu before the native modal');
-  assert.equal(menu.hidden,true);
-  assert.equal(doc.activeElement,more);
-  more.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
-  assert.equal(closes,1,'a subsequent Escape reaches native settings');
-  owner.remove();await flush();
-  assert.equal(action.hidden,true,'only the unavailable document action is hidden');
-  const update = menu.querySelector('[data-sk-settings-update]');
-  assert.equal(more.hidden,false,'the persistent update entry keeps the titlebar menu available');
-  assert.equal(update.hidden,false);
-  assert.equal(update.disabled,true,'browser contexts cannot invoke the desktop updater');
-  assert.match(update.title,/桌面应用/);
-  assert.equal(menu.querySelector('[role="alert"]').hidden,true,'a removed document action leaves no stale error');
-  more.click();
-  assert.equal(menu.hidden,false,'the menu remains openable without a native document action');
-  assert.equal(doc.activeElement,more,'no disabled or hidden menu item receives focus');
-  more.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
-  assert.equal(menu.hidden,true);
-  assert.equal(closes,1,'Escape still dismisses the menu before native settings');
-  doc.querySelector('._AnXs9G_actions').append(owner);await flush();
-  assert.equal(more.hidden,false);
-  assert.equal(action.hidden,false,'a returning document contribution is restored in the menu');
-  assert.equal(action.disabled,true,'the returning contribution retains native availability');
-  dispose();
-  assert.equal(doc.querySelector('.sk-setnav__more'),null);
-  assert.equal(owner.hasAttribute('data-sk-config-original'),false,'native action is restored on plugin teardown');
-});
+  const dispose = installSettingsNav()
+  t.after(() => {
+    dispose()
+    dom.window.close()
+    for (const [name, descriptor] of globals) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor)
+      else delete globalThis[name]
+    }
+  })
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+  const { document } = dom.window
+  const actions = document.querySelector('._x_actions')
+  const owner = actions.querySelector('.native-config')
+  const original = owner.querySelector('button')
+  const toolbar = document.querySelector('.sk-setnav__toolbar')
+  const action = toolbar.querySelector(':scope > button.sk-setnav__config')
+  const alert = toolbar.querySelector('.sk-setnav__action-error[role="alert"]')
+  assert.ok(action)
+  assert.ok(alert)
+  const clicks = []
+  original.addEventListener('click', () => clicks.push('original'))
+
+  assert.equal(action.hidden, false)
+  assert.equal(action.disabled, false)
+  assert.ok(owner.hasAttribute('data-sk-config-original'))
+  assert.equal(alert.hidden, true)
+  action.click()
+  assert.deepEqual(clicks, ['original'], 'one click directly invokes the native button')
+
+  original.disabled = true
+  await flush()
+  assert.equal(action.disabled, true)
+  action.click()
+  assert.deepEqual(clicks, ['original'], 'the disabled action cannot run again')
+
+  const error = document.createElement('span')
+  error.setAttribute('role', 'alert')
+  error.textContent = '无法打开配置文件'
+  owner.append(error)
+  await flush()
+  assert.equal(alert.textContent, error.textContent)
+  assert.equal(alert.hidden, false)
+  error.firstChild.data = '配置文件不可用'
+  await flush()
+  assert.equal(alert.textContent, '配置文件不可用', 'changes to the native error are mirrored')
+
+  owner.remove()
+  await flush()
+  assert.equal(action.hidden, true, 'the toolbar action is unavailable until a native contribution returns')
+  assert.equal(alert.hidden, true)
+  assert.equal(alert.textContent, '', 'the removed contribution leaves no stale error')
+  assert.equal(owner.hasAttribute('data-sk-config-original'), false)
+
+  const replacement = document.createElement('div')
+  replacement.innerHTML = '<button>编辑配置文件</button>'
+  const next = replacement.querySelector('button')
+  next.addEventListener('click', () => clicks.push('replacement'))
+  actions.append(replacement)
+  await flush()
+  assert.equal(action.hidden, false)
+  assert.equal(action.disabled, false, 'the old contribution does not leave the replacement disabled')
+  assert.equal(action.getAttribute('aria-label'), '编辑配置文件')
+  assert.equal(action.title, '编辑配置文件')
+  assert.equal(alert.hidden, true)
+  action.click()
+  assert.deepEqual(clicks, ['original', 'replacement'], 'the projected action forwards to the new native button')
+
+  dispose()
+  assert.ok(document.querySelector('.sk-setnav__config, .sk-setnav__action-error') === null)
+  assert.equal(replacement.hasAttribute('data-sk-config-original'), false, 'teardown restores the native contribution')
+})
