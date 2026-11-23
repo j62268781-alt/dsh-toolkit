@@ -100,7 +100,10 @@ export default function createClient(require) {
     apply(ctx) {
       // 设置面板：页头/卡片/行由 settings-parts 提供，样式只插一次。
       ctx.effect(() => installSettingsParts(), "dsh-toolkit-mobile:settings-parts");
-      ctx.effect(() => registerSettingsIcon(ctx, "mobile", "phone"), "dsh-toolkit-mobile:settings-icon");
+      ctx.effect(
+        () => registerSettingsIcon(ctx, "mobile", "remote-connection", primitives.IconRemoteConnectionOutlineMedium),
+        "dsh-toolkit-mobile:settings-icon"
+      );
       ctx.effect(
         () => ctx.slots.register(
           { name: "settings.section", id: "mobile", order: 30, label: () => "移动端" },

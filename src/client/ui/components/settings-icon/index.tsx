@@ -3,11 +3,11 @@
  * Each feature module owns its own icon: right next to the `settings.section`
  * registration it already makes, it calls `registerSettingsIcon` once. The shell
  * owns the nav button and label, and keeps its default gear for any section that
- * registers nothing. Every glyph is plain inline SVG drawn at 16x16 with
- * `currentColor` and no fill, so it follows the nav row's text color exactly like
- * the native icons do.
+ * registers nothing. Fallback glyphs use a 16×16 SVG viewport and currentColor,
+ * so they follow the nav row's text color like the native icons do.
  */
 import React from "react";
+import { RemoteConnectionShape } from "./remote-connection-shape.js";
 
 // JSX in this file compiles to `__dshReact.createElement`; every entry that ships
 // JSX normally installs that global first, but the archived entry does not, so
@@ -95,13 +95,7 @@ const SHAPES: Record<string, any> = {
       <path d="M4.6 8.6c0-2 1.5-3.5 3.5-3.5h2" />
     </>
   ),
-  phone: (
-    <>
-      <rect x="4.4" y="2.1" width="7.2" height="11.8" rx="1.6" />
-      <path d="M7 4h2" />
-      <path d="M7.3 12.4h1.4" />
-    </>
-  ),
+  "remote-connection": <RemoteConnectionShape />,
   gear: (
     <>
       <circle cx="8" cy="8" r="4.6" />
@@ -111,10 +105,22 @@ const SHAPES: Record<string, any> = {
   ),
 };
 
+// Keep the 16px native layout box. Tighten only the unusually inset artwork
+// and center it within the box so its outline reads like the native nav icons.
+const OPTICAL_TRANSFORMS: Record<string, string> = {
+  bell: "translate(8 8) scale(1.08) translate(-8 -6.8)",
+  paw: "translate(8 8) scale(1.2) translate(-8 -8.075)",
+  plug: "translate(8 8) scale(1.1) translate(-8 -7.8)",
+  hook: "translate(8 8) scale(1.25) translate(-8.05 -6.85)",
+  "remote-connection": "translate(8 8) scale(.92) translate(-9 -9.2)",
+};
+
 /** One React component per icon key; the shell passes `{ size, active }`. */
-function createGlyph(key: string) {
+function createGlyph(key: string, NativeIcon?: React.ElementType<{ size: number }>) {
   function ToolkitSettingsGlyph({ size = 16, active = false }: SettingsGlyphProps) {
     const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
+    if (NativeIcon) return <NativeIcon size={edge} />;
+    const transform = OPTICAL_TRANSFORMS[key];
     return (
       <svg
         viewBox="0 0 16 16"
@@ -122,7 +128,7 @@ function createGlyph(key: string) {
         height={edge}
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.4"
+        strokeWidth="1.3"
         strokeLinecap="round"
         strokeLinejoin="round"
         aria-hidden="true"
@@ -130,7 +136,7 @@ function createGlyph(key: string) {
         data-sk-settings-icon={key}
         data-active={active ? "true" : "false"}
       >
-        {SHAPES[key]}
+        {transform ? <g transform={transform}>{SHAPES[key]}</g> : SHAPES[key]}
       </svg>
     );
   }
@@ -148,12 +154,18 @@ const GLYPH_COMPONENTS: Record<string, any> = Object.freeze(
  * the shipped glyphs. Returns the unregister disposer, or undefined when the
  * slots API is missing/throws or the arguments are unknown.
  */
-export function registerSettingsIcon(ctx: any, sectionId: string, iconKey: string): (() => void) | undefined {
+export function registerSettingsIcon(
+  ctx: any,
+  sectionId: string,
+  iconKey: string,
+  NativeIcon?: React.ElementType<{ size: number }>,
+): (() => void) | undefined {
   const slots = ctx?.slots;
   if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return undefined;
   if (typeof sectionId !== "string" || sectionId === "") return undefined;
-  const Glyph = GLYPH_COMPONENTS[iconKey];
-  if (!Glyph) return undefined;
+  const fallback = GLYPH_COMPONENTS[iconKey];
+  if (!fallback) return undefined;
+  const Glyph = NativeIcon ? createGlyph(iconKey, NativeIcon) : fallback;
   try {
     const dispose = slots.inject("settings.section.icon", () => slots.register({
       name: "settings.section.icon",

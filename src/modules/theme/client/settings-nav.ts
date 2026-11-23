@@ -11,8 +11,8 @@ const NAV_ID = "sk-settings-nav";
  *  ids 的顺序就是组内顺序；没列到的 section 落进「其他设置」，新模块忘了登记也不会消失。 */
 const GROUPS = [
   { title: "个人", ids: ["account", "general", "theme", "boot", "desktop-pet", "notification", "models"] },
-  { title: "集成", ids: ["plugins", "agent-presets", "skills-mcp", "judgment", "hooks", "browser"] },
-  { title: "连接", ids: ["mobile"] },
+  { title: "集成", ids: ["plugins", "agent-presets", "skills-mcp", "judgment", "hooks", "git", "browser"] },
+  { title: "连接", ids: ["remote-connection", "mobile"] },
   { title: "归档管理", ids: ["archived-chats"] },
   { title: "其他设置", ids: [] },
 ];

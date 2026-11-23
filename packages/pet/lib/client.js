@@ -1054,6 +1054,13 @@ window.__ModuleLoader__.load({
 
     // src/client/ui/components/settings-icon/index.tsx
     var import_react2 = __toESM(require("react"), 1);
+
+    // src/client/ui/components/settings-icon/remote-connection-shape.tsx
+    function RemoteConnectionShape() {
+      return /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: 2.2, y: 3.2, width: 10.6, height: 7.6, rx: 1.6 }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.5 13.2h3.4M7.6 10.8v2.4M9.4 10.8v2.4" }), /* @__PURE__ */ __dshReact.createElement("rect", { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 }));
+    }
+
+    // src/client/ui/components/settings-icon/index.tsx
     globalThis.__dshReact ??= import_react2.default;
     var SHAPES = {
       rocket: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "6", r: "1.15" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 10.6 4.7 12.4M9.7 10.6l1.6 1.8M8 12.1v2.2" })),
@@ -1068,12 +1075,21 @@ window.__ModuleLoader__.load({
       hook: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "5.7", cy: "3.2", r: "1.1" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M5.7 4.3v4.4a2.9 2.9 0 0 0 5.8 0V7.5" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M11.5 7.5 9.7 6.9" })),
       // Git 分支：一条主干带一个分叉端点，与 Qoder 设置页的 git 分支图标同义。
       git: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "4.6", cy: "3.4", r: "1.3" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "4.6", cy: "12.6", r: "1.3" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "11.4", cy: "6.4", r: "1.3" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.6 4.7v6.6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.6 8.6c0-2 1.5-3.5 3.5-3.5h2" })),
-      phone: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: "4.4", y: "2.1", width: "7.2", height: "11.8", rx: "1.6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M7 4h2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M7.3 12.4h1.4" })),
+      "remote-connection": /* @__PURE__ */ __dshReact.createElement(RemoteConnectionShape, null),
       gear: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "4.6" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" }))
     };
-    function createGlyph(key) {
+    var OPTICAL_TRANSFORMS = {
+      bell: "translate(8 8) scale(1.08) translate(-8 -6.8)",
+      paw: "translate(8 8) scale(1.2) translate(-8 -8.075)",
+      plug: "translate(8 8) scale(1.1) translate(-8 -7.8)",
+      hook: "translate(8 8) scale(1.25) translate(-8.05 -6.85)",
+      "remote-connection": "translate(8 8) scale(.92) translate(-9 -9.2)"
+    };
+    function createGlyph(key, NativeIcon) {
       function ToolkitSettingsGlyph({ size = 16, active = false }) {
         const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
+        if (NativeIcon) return /* @__PURE__ */ __dshReact.createElement(NativeIcon, { size: edge });
+        const transform = OPTICAL_TRANSFORMS[key];
         return /* @__PURE__ */ __dshReact.createElement(
           "svg",
           {
@@ -1082,7 +1098,7 @@ window.__ModuleLoader__.load({
             height: edge,
             fill: "none",
             stroke: "currentColor",
-            strokeWidth: "1.4",
+            strokeWidth: "1.3",
             strokeLinecap: "round",
             strokeLinejoin: "round",
             "aria-hidden": "true",
@@ -1090,7 +1106,7 @@ window.__ModuleLoader__.load({
             "data-sk-settings-icon": key,
             "data-active": active ? "true" : "false"
           },
-          SHAPES[key]
+          transform ? /* @__PURE__ */ __dshReact.createElement("g", { transform }, SHAPES[key]) : SHAPES[key]
         );
       }
       ToolkitSettingsGlyph.displayName = `ToolkitSettingsGlyph(${key})`;
@@ -1099,12 +1115,13 @@ window.__ModuleLoader__.load({
     var GLYPH_COMPONENTS = Object.freeze(
       Object.fromEntries(Object.keys(SHAPES).map((key) => [key, createGlyph(key)]))
     );
-    function registerSettingsIcon(ctx, sectionId, iconKey) {
+    function registerSettingsIcon(ctx, sectionId, iconKey, NativeIcon) {
       const slots = ctx?.slots;
       if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return void 0;
       if (typeof sectionId !== "string" || sectionId === "") return void 0;
-      const Glyph = GLYPH_COMPONENTS[iconKey];
-      if (!Glyph) return void 0;
+      const fallback = GLYPH_COMPONENTS[iconKey];
+      if (!fallback) return void 0;
+      const Glyph = NativeIcon ? createGlyph(iconKey, NativeIcon) : fallback;
       try {
         const dispose = slots.inject("settings.section.icon", () => slots.register({
           name: "settings.section.icon",

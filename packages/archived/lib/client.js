@@ -84,6 +84,13 @@ window.__ModuleLoader__.load({
 
     // src/client/ui/components/settings-icon/index.tsx
     var import_react = __toESM(require("react"), 1);
+
+    // src/client/ui/components/settings-icon/remote-connection-shape.tsx
+    function RemoteConnectionShape() {
+      return /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: 2.2, y: 3.2, width: 10.6, height: 7.6, rx: 1.6 }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.5 13.2h3.4M7.6 10.8v2.4M9.4 10.8v2.4" }), /* @__PURE__ */ __dshReact.createElement("rect", { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 }));
+    }
+
+    // src/client/ui/components/settings-icon/index.tsx
     globalThis.__dshReact ??= import_react.default;
     var SHAPES = {
       rocket: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 1.9c1.7 1.1 2.7 3 2.7 5 0 1.4-.4 2.6-1 3.7L8 12.1l-1.7-1.5a7 7 0 0 1-1-3.7c0-2 1-3.9 2.7-5Z" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "6", r: "1.15" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.3 10.6 4.7 12.4M9.7 10.6l1.6 1.8M8 12.1v2.2" })),
@@ -98,12 +105,21 @@ window.__ModuleLoader__.load({
       hook: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "5.7", cy: "3.2", r: "1.1" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M5.7 4.3v4.4a2.9 2.9 0 0 0 5.8 0V7.5" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M11.5 7.5 9.7 6.9" })),
       // Git 分支：一条主干带一个分叉端点，与 Qoder 设置页的 git 分支图标同义。
       git: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "4.6", cy: "3.4", r: "1.3" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "4.6", cy: "12.6", r: "1.3" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "11.4", cy: "6.4", r: "1.3" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.6 4.7v6.6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M4.6 8.6c0-2 1.5-3.5 3.5-3.5h2" })),
-      phone: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: "4.4", y: "2.1", width: "7.2", height: "11.8", rx: "1.6" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M7 4h2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M7.3 12.4h1.4" })),
+      "remote-connection": /* @__PURE__ */ __dshReact.createElement(RemoteConnectionShape, null),
       gear: /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "4.6" }), /* @__PURE__ */ __dshReact.createElement("circle", { cx: "8", cy: "8", r: "2" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M8 2v1.4M8 12.6V14M2 8h1.4M12.6 8H14M3.8 3.8l1 1M11.2 11.2l1 1M12.2 3.8l-1 1M4.8 11.2l-1 1" }))
     };
-    function createGlyph(key) {
+    var OPTICAL_TRANSFORMS = {
+      bell: "translate(8 8) scale(1.08) translate(-8 -6.8)",
+      paw: "translate(8 8) scale(1.2) translate(-8 -8.075)",
+      plug: "translate(8 8) scale(1.1) translate(-8 -7.8)",
+      hook: "translate(8 8) scale(1.25) translate(-8.05 -6.85)",
+      "remote-connection": "translate(8 8) scale(.92) translate(-9 -9.2)"
+    };
+    function createGlyph(key, NativeIcon) {
       function ToolkitSettingsGlyph({ size = 16, active = false }) {
         const edge = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 16;
+        if (NativeIcon) return /* @__PURE__ */ __dshReact.createElement(NativeIcon, { size: edge });
+        const transform = OPTICAL_TRANSFORMS[key];
         return /* @__PURE__ */ __dshReact.createElement(
           "svg",
           {
@@ -112,7 +128,7 @@ window.__ModuleLoader__.load({
             height: edge,
             fill: "none",
             stroke: "currentColor",
-            strokeWidth: "1.4",
+            strokeWidth: "1.3",
             strokeLinecap: "round",
             strokeLinejoin: "round",
             "aria-hidden": "true",
@@ -120,7 +136,7 @@ window.__ModuleLoader__.load({
             "data-sk-settings-icon": key,
             "data-active": active ? "true" : "false"
           },
-          SHAPES[key]
+          transform ? /* @__PURE__ */ __dshReact.createElement("g", { transform }, SHAPES[key]) : SHAPES[key]
         );
       }
       ToolkitSettingsGlyph.displayName = `ToolkitSettingsGlyph(${key})`;
@@ -129,12 +145,13 @@ window.__ModuleLoader__.load({
     var GLYPH_COMPONENTS = Object.freeze(
       Object.fromEntries(Object.keys(SHAPES).map((key) => [key, createGlyph(key)]))
     );
-    function registerSettingsIcon(ctx, sectionId, iconKey) {
+    function registerSettingsIcon(ctx, sectionId, iconKey, NativeIcon) {
       const slots = ctx?.slots;
       if (typeof slots?.inject !== "function" || typeof slots?.register !== "function") return void 0;
       if (typeof sectionId !== "string" || sectionId === "") return void 0;
-      const Glyph = GLYPH_COMPONENTS[iconKey];
-      if (!Glyph) return void 0;
+      const fallback = GLYPH_COMPONENTS[iconKey];
+      if (!fallback) return void 0;
+      const Glyph = NativeIcon ? createGlyph(iconKey, NativeIcon) : fallback;
       try {
         const dispose = slots.inject("settings.section.icon", () => slots.register({
           name: "settings.section.icon",
@@ -199,6 +216,7 @@ window.__ModuleLoader__.load({
         project: "项目",
         removeHint: "搜索、恢复或永久删除已归档的会话。",
         restore: "恢复",
+        restoreDone: "已恢复归档会话",
         restoreFailed: "恢复失败：{reason}",
         remove: "删除",
         removeSession: "删除会话",
@@ -211,6 +229,8 @@ window.__ModuleLoader__.load({
         deleteAllDesc: "此操作会从本机移除全部已归档会话，之后不能从 dsh 恢复。",
         deleteOneTitle: "永久删除“{t}”？",
         deleteOneDesc: "此操作会从本机移除该会话，之后不能从 dsh 恢复。",
+        deleteOneDone: "已永久删除归档会话",
+        deleteAllDone: "已永久删除 {t} 个归档会话",
         removeFailed: "删除失败：{reason}",
         // 宿主的失败 code → 一句话（key 见 model.js 的 FAILURE_KEYS）
         failInvalidId: "会话 id 不合法，已跳过。",
@@ -241,6 +261,7 @@ window.__ModuleLoader__.load({
         project: "Project",
         removeHint: "Search, restore, or permanently delete archived sessions.",
         restore: "Restore",
+        restoreDone: "Archived session restored",
         restoreFailed: "Restore failed: {reason}",
         remove: "Delete",
         removeSession: "Delete session",
@@ -253,6 +274,8 @@ window.__ModuleLoader__.load({
         deleteAllDesc: "This removes every archived session from this machine. They cannot be recovered from dsh afterwards.",
         deleteOneTitle: "Permanently delete “{t}”?",
         deleteOneDesc: "This removes the session from this machine. It cannot be recovered from dsh afterwards.",
+        deleteOneDone: "Archived session permanently deleted",
+        deleteAllDone: "Permanently deleted {t} archived sessions",
         removeFailed: "Delete failed: {reason}",
         failInvalidId: "Not a valid session id; skipped.",
         failNoSessionsDir: "dsh’s sessions directory is missing.",
@@ -496,6 +519,141 @@ window.__ModuleLoader__.load({
       return import_react2.default.useSyncExternalStore(controller.subscribe, controller.snapshot, controller.snapshot);
     }
 
+    // src/client/ui/toast.css
+    var toast_default = '/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n *\n * 两条路径共用同一套类名：\n * - 原生路径：栈是 `popover="manual"`（top layer），单条靠 `@starting-style` + `transition` 进出场；\n * - 退化路径（jsdom、没有 popover 的宿主）：就是改造前的固定定位栈 + 两个 `@keyframes`。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n/* display 只跟着「栈开着」走：popover 关闭时 UA 是 display:none，作者样式不能把它顶回来。 */\n.sk-toast-stack:not([popover]),\n.sk-toast-stack:popover-open {\n  display: flex;\n}\n\n/* popover 在 top layer 里，UA 会给 position:fixed + inset:0 + margin:auto + 边框/背景，\n   这里全部按原布局收回来，只保留 `top:40px / left:50%` 的居中胶囊位置。 */\n.sk-toast-stack[popover] {\n  inset: auto;\n  top: 40px;\n  left: 50%;\n  margin: 0;\n  padding: 0;\n  border: 0;\n  background: transparent;\n  color: inherit;\n  overflow: visible;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* 退化路径：没有 `:popover-open` 的宿主继续用关键帧，行为与改造前一致。 */\n@supports not (selector(:popover-open)) {\n  .sk-toast {\n    animation: sk-toast-in 0.16s ease-out;\n  }\n\n  .sk-toast--leaving {\n    animation: sk-toast-out 0.18s ease-in forwards;\n  }\n}\n\n/* 原生路径：进场由 `@starting-style` 给出起点，退场由 `--leaving` 的目标值给出终点。\n   `transition-behavior: allow-discrete` 必须是独立声明，并进 `transition` 简写会让整条声明失效。 */\n@supports (selector(:popover-open)) {\n  .sk-toast {\n    transition: opacity 0.16s ease-out, transform 0.16s ease-out;\n    transition-behavior: allow-discrete;\n  }\n\n  @starting-style {\n    .sk-toast {\n      opacity: 0;\n      transform: translateY(-6px);\n    }\n  }\n}\n\n.sk-toast--leaving {\n  opacity: 0;\n  transform: translateY(-4px);\n}\n\n/* 减弱动效：过渡与关键帧都不跑，节点靠 `toast.ts` 的兜底定时器收掉。 */\n@media (prefers-reduced-motion: reduce) {\n  .sk-toast,\n  .sk-toast--leaving {\n    animation: none;\n    transition: none;\n  }\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n';
+
+    // src/client/ui/toast.ts
+    var HOST_KEY = "__dshToolkitToast__";
+    var STYLE_ID = "dsh-toolkit-toast";
+    var MAX_VISIBLE = 3;
+    var MAX_TEXT = 300;
+    var EXIT_MS = 180;
+    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
+    function resolveHost() {
+      if (typeof document === "undefined" || document.body == null || typeof document.createElement !== "function") return null;
+      const scope = globalThis;
+      const existing = scope[HOST_KEY];
+      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
+      const root = document.createElement("div");
+      root.className = "sk-toast-stack";
+      root.setAttribute("role", "region");
+      root.setAttribute("aria-label", "通知");
+      const popover = typeof root.showPopover === "function";
+      if (popover) root.setAttribute("popover", "manual");
+      document.body.appendChild(root);
+      const created = { root, entries: [], popover, shown: false };
+      scope[HOST_KEY] = created;
+      return created;
+    }
+    function ensureStyles() {
+      try {
+        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
+      } catch {
+      }
+      installStylesheet(toast_default, STYLE_ID);
+    }
+    function normalizeHold(tone, holdMs) {
+      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
+      return holdMs;
+    }
+    function clamp(text) {
+      return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
+    }
+    function openStack(host) {
+      if (!host.popover || host.shown) return;
+      try {
+        host.root.showPopover();
+        host.shown = true;
+      } catch {
+      }
+    }
+    function closeStack(host) {
+      if (!host.popover || !host.shown) return;
+      host.shown = false;
+      try {
+        host.root.hidePopover();
+      } catch {
+      }
+    }
+    function dismiss(host, entry) {
+      if (host.entries.indexOf(entry) === -1) return;
+      host.entries = host.entries.filter((item) => item !== entry);
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      entry.el.classList.add("sk-toast--leaving");
+      let done = false;
+      function finish() {
+        if (done) return;
+        done = true;
+        clearTimeout(timeout);
+        entry.el.removeEventListener("transitionend", onEnd);
+        entry.el.removeEventListener("animationend", onEnd);
+        entry.el.remove();
+        if (host.root.childElementCount === 0) closeStack(host);
+      }
+      function onEnd(event) {
+        if (event.target !== entry.el) return;
+        finish();
+      }
+      entry.el.addEventListener("transitionend", onEnd);
+      entry.el.addEventListener("animationend", onEnd);
+      const timeout = setTimeout(finish, EXIT_MS);
+      if (typeof entry.el.getAnimations === "function") {
+        try {
+          if (entry.el.getAnimations().length === 0) finish();
+        } catch {
+        }
+      }
+    }
+    function arm(host, entry, holdMs) {
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      if (holdMs === 0) {
+        entry.timer = void 0;
+        return;
+      }
+      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
+    }
+    function showToast(text, options = {}) {
+      const message = clamp(String(text ?? "").trim());
+      if (message === "") return;
+      const host = resolveHost();
+      if (host === null) return;
+      ensureStyles();
+      const tone = options.tone ?? "info";
+      const holdMs = normalizeHold(tone, options.holdMs);
+      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
+      if (duplicate !== void 0) {
+        arm(host, duplicate, holdMs);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = `sk-toast sk-toast--${tone}`;
+      el.dataset.tone = tone;
+      el.setAttribute("role", tone === "error" ? "alert" : "status");
+      if (tone !== "info") {
+        const icon = document.createElement("span");
+        icon.className = "sk-toast__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = tone === "error" ? "!" : "✓";
+        el.appendChild(icon);
+      }
+      const body = document.createElement("span");
+      body.className = "sk-toast__text";
+      body.textContent = message;
+      el.appendChild(body);
+      host.root.appendChild(el);
+      openStack(host);
+      const entry = { tone, text: message, el, timer: void 0 };
+      host.entries.push(entry);
+      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
+      arm(host, entry, holdMs);
+    }
+    var toast = {
+      show: showToast,
+      info: (text, options = {}) => showToast(text, { ...options, tone: "info" }),
+      success: (text, options = {}) => showToast(text, { ...options, tone: "success" }),
+      error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
+    };
+
     // src/modules/archived/client/state/removal.ts
     function createRemoval(ctx) {
       const t = ctx.locale.bind(ARCH_NS);
@@ -577,7 +735,7 @@ window.__ModuleLoader__.load({
             doneIds.push(row.id);
             if (receipt.code === DELETION_CODE.retained) retainedIds.add(row.id);
           }
-          await Promise.allSettled(doneIds.filter((id) => !retainedIds.has(id)).flatMap((id) => [
+          const cleanup = await Promise.allSettled(doneIds.filter((id) => !retainedIds.has(id)).flatMap((id) => [
             Promise.resolve().then(() => ctx.workspaces.unarchiveSession(id)),
             Promise.resolve().then(() => ctx.workspaces.unpinSession(id))
           ]));
@@ -599,6 +757,9 @@ window.__ModuleLoader__.load({
             request: failed.length === 0 ? null : { kind: request.kind, rows: failed },
             error: errors.join("；")
           });
+          if (failed.length === 0 && cleanup.every((result) => result.status === "fulfilled")) {
+            toast.success(request.kind === "all" ? t("deleteAllDone").replace("{t}", String(doneIds.length)) : t("deleteOneDone"));
+          }
           void syncTombstones();
         }
       };
@@ -916,141 +1077,6 @@ window.__ModuleLoader__.load({
       return extra === void 0 || extra === "" ? base : `${base} ${extra}`;
     }
 
-    // src/client/ui/toast.css
-    var toast_default = '/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n *\n * 两条路径共用同一套类名：\n * - 原生路径：栈是 `popover="manual"`（top layer），单条靠 `@starting-style` + `transition` 进出场；\n * - 退化路径（jsdom、没有 popover 的宿主）：就是改造前的固定定位栈 + 两个 `@keyframes`。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n/* display 只跟着「栈开着」走：popover 关闭时 UA 是 display:none，作者样式不能把它顶回来。 */\n.sk-toast-stack:not([popover]),\n.sk-toast-stack:popover-open {\n  display: flex;\n}\n\n/* popover 在 top layer 里，UA 会给 position:fixed + inset:0 + margin:auto + 边框/背景，\n   这里全部按原布局收回来，只保留 `top:40px / left:50%` 的居中胶囊位置。 */\n.sk-toast-stack[popover] {\n  inset: auto;\n  top: 40px;\n  left: 50%;\n  margin: 0;\n  padding: 0;\n  border: 0;\n  background: transparent;\n  color: inherit;\n  overflow: visible;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* 退化路径：没有 `:popover-open` 的宿主继续用关键帧，行为与改造前一致。 */\n@supports not (selector(:popover-open)) {\n  .sk-toast {\n    animation: sk-toast-in 0.16s ease-out;\n  }\n\n  .sk-toast--leaving {\n    animation: sk-toast-out 0.18s ease-in forwards;\n  }\n}\n\n/* 原生路径：进场由 `@starting-style` 给出起点，退场由 `--leaving` 的目标值给出终点。\n   `transition-behavior: allow-discrete` 必须是独立声明，并进 `transition` 简写会让整条声明失效。 */\n@supports (selector(:popover-open)) {\n  .sk-toast {\n    transition: opacity 0.16s ease-out, transform 0.16s ease-out;\n    transition-behavior: allow-discrete;\n  }\n\n  @starting-style {\n    .sk-toast {\n      opacity: 0;\n      transform: translateY(-6px);\n    }\n  }\n}\n\n.sk-toast--leaving {\n  opacity: 0;\n  transform: translateY(-4px);\n}\n\n/* 减弱动效：过渡与关键帧都不跑，节点靠 `toast.ts` 的兜底定时器收掉。 */\n@media (prefers-reduced-motion: reduce) {\n  .sk-toast,\n  .sk-toast--leaving {\n    animation: none;\n    transition: none;\n  }\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n';
-
-    // src/client/ui/toast.ts
-    var HOST_KEY = "__dshToolkitToast__";
-    var STYLE_ID = "dsh-toolkit-toast";
-    var MAX_VISIBLE = 3;
-    var MAX_TEXT = 300;
-    var EXIT_MS = 180;
-    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
-    function resolveHost() {
-      if (typeof document === "undefined" || document.body == null || typeof document.createElement !== "function") return null;
-      const scope = globalThis;
-      const existing = scope[HOST_KEY];
-      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
-      const root = document.createElement("div");
-      root.className = "sk-toast-stack";
-      root.setAttribute("role", "region");
-      root.setAttribute("aria-label", "通知");
-      const popover = typeof root.showPopover === "function";
-      if (popover) root.setAttribute("popover", "manual");
-      document.body.appendChild(root);
-      const created = { root, entries: [], popover, shown: false };
-      scope[HOST_KEY] = created;
-      return created;
-    }
-    function ensureStyles() {
-      try {
-        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
-      } catch {
-      }
-      installStylesheet(toast_default, STYLE_ID);
-    }
-    function normalizeHold(tone, holdMs) {
-      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
-      return holdMs;
-    }
-    function clamp(text) {
-      return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
-    }
-    function openStack(host) {
-      if (!host.popover || host.shown) return;
-      try {
-        host.root.showPopover();
-        host.shown = true;
-      } catch {
-      }
-    }
-    function closeStack(host) {
-      if (!host.popover || !host.shown) return;
-      host.shown = false;
-      try {
-        host.root.hidePopover();
-      } catch {
-      }
-    }
-    function dismiss(host, entry) {
-      if (host.entries.indexOf(entry) === -1) return;
-      host.entries = host.entries.filter((item) => item !== entry);
-      if (entry.timer !== void 0) clearTimeout(entry.timer);
-      entry.el.classList.add("sk-toast--leaving");
-      let done = false;
-      function finish() {
-        if (done) return;
-        done = true;
-        clearTimeout(timeout);
-        entry.el.removeEventListener("transitionend", onEnd);
-        entry.el.removeEventListener("animationend", onEnd);
-        entry.el.remove();
-        if (host.root.childElementCount === 0) closeStack(host);
-      }
-      function onEnd(event) {
-        if (event.target !== entry.el) return;
-        finish();
-      }
-      entry.el.addEventListener("transitionend", onEnd);
-      entry.el.addEventListener("animationend", onEnd);
-      const timeout = setTimeout(finish, EXIT_MS);
-      if (typeof entry.el.getAnimations === "function") {
-        try {
-          if (entry.el.getAnimations().length === 0) finish();
-        } catch {
-        }
-      }
-    }
-    function arm(host, entry, holdMs) {
-      if (entry.timer !== void 0) clearTimeout(entry.timer);
-      if (holdMs === 0) {
-        entry.timer = void 0;
-        return;
-      }
-      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
-    }
-    function showToast(text, options = {}) {
-      const message = clamp(String(text ?? "").trim());
-      if (message === "") return;
-      const host = resolveHost();
-      if (host === null) return;
-      ensureStyles();
-      const tone = options.tone ?? "info";
-      const holdMs = normalizeHold(tone, options.holdMs);
-      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
-      if (duplicate !== void 0) {
-        arm(host, duplicate, holdMs);
-        return;
-      }
-      const el = document.createElement("div");
-      el.className = `sk-toast sk-toast--${tone}`;
-      el.dataset.tone = tone;
-      el.setAttribute("role", tone === "error" ? "alert" : "status");
-      if (tone !== "info") {
-        const icon = document.createElement("span");
-        icon.className = "sk-toast__icon";
-        icon.setAttribute("aria-hidden", "true");
-        icon.textContent = tone === "error" ? "!" : "✓";
-        el.appendChild(icon);
-      }
-      const body = document.createElement("span");
-      body.className = "sk-toast__text";
-      body.textContent = message;
-      el.appendChild(body);
-      host.root.appendChild(el);
-      openStack(host);
-      const entry = { tone, text: message, el, timer: void 0 };
-      host.entries.push(entry);
-      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
-      arm(host, entry, holdMs);
-    }
-    var toast = {
-      show: showToast,
-      info: (text, options = {}) => showToast(text, { ...options, tone: "info" }),
-      success: (text, options = {}) => showToast(text, { ...options, tone: "success" }),
-      error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
-    };
-
     // src/modules/archived/client/surfaces/settings/style.css
     var style_default3 = `.sk-arch {
       max-width: 760px;
@@ -1305,6 +1331,7 @@ window.__ModuleLoader__.load({
           setBusyId(id);
           try {
             await ctx.workspaces.unarchiveSession(id);
+            toast.success(t("restoreDone"));
           } catch (reason) {
             toast.error(t("restoreFailed").replace("{reason}", String(reason?.message ?? reason)));
           } finally {

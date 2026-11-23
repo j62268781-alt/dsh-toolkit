@@ -603,6 +603,11 @@ window.__ModuleLoader__.load({
       };
     }
 
+    // src/client/ui/components/settings-icon/remote-connection-shape.tsx
+    function RemoteConnectionShape() {
+      return /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: 2.2, y: 3.2, width: 10.6, height: 7.6, rx: 1.6 }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.5 13.2h3.4M7.6 10.8v2.4M9.4 10.8v2.4" }), /* @__PURE__ */ __dshReact.createElement("rect", { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 }));
+    }
+
     // src/modules/remote/client/qrcode.ts
     var EC_CODEWORDS_PER_BLOCK_M = { 1: 10, 2: 16, 3: 26, 4: 18, 5: 24, 6: 16, 7: 18, 8: 22, 9: 22, 10: 26 };
     var EC_BLOCKS_M = {
@@ -2414,24 +2419,16 @@ window.__ModuleLoader__.load({
           h(
             "span",
             { className: "wc-icon__glyph", "aria-hidden": true },
-            h(
-              "svg",
-              {
-                width: 18,
-                height: 18,
-                viewBox: "0 0 18 18",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: 1.3,
-                strokeLinecap: "round",
-                strokeLinejoin: "round"
-              },
-              // 显示器：圆角矩形 + 底座。
-              h("rect", { x: 2.2, y: 3.2, width: 10.6, height: 7.6, rx: 1.6 }),
-              h("path", { d: "M6.5 13.2h3.4M7.6 10.8v2.4M9.4 10.8v2.4" }),
-              // 手机：压在显示器右下角。
-              h("rect", { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 })
-            )
+            h("svg", {
+              width: 18,
+              height: 18,
+              viewBox: "0 0 18 18",
+              fill: "none",
+              stroke: "currentColor",
+              strokeWidth: 1.3,
+              strokeLinecap: "round",
+              strokeLinejoin: "round"
+            }, h(RemoteConnectionShape))
           ),
           attention ? h("span", { className: "wc-dot", "data-state": tone, title: t("dotAttention"), "aria-label": t("dotAttention") }) : null
         );
