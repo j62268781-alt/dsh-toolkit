@@ -14,7 +14,7 @@ export const NAME = "conversation-rail";
  * 单列 children 改成「消息列 + 右栏」的 flex row，面板因此长在会话内部、和
  * composer 同一列高度里，像 Qoder 那样贴着对话。宿主自己的右栏（rightbar）保持不动。
  */
-export function install(ctx: any) {
+export function install(ctx: any, useOfficialPanel: () => boolean) {
   const t = ctx.locale.bind(TASK_MONITOR_NS);
   const Panel = createTaskMonitorPanel(ctx);
   // `sidebarRight` 没写进静态 inject，属性访问会被 cordis 的 inject 守卫拦成异常
@@ -34,7 +34,7 @@ export function install(ctx: any) {
   return ctx.slots.inject("conversation.hero.frame", () =>
     ctx.slots.register(
       { name: "conversation.hero.frame", id: "task-monitor-rail", order: 40 },
-      (props: any) => <RailLayer {...props} Panel={Panel} actions={actions} label={t("trigger")} />,
+      (props: any) => useOfficialPanel() ? props.children : <RailLayer {...props} Panel={Panel} actions={actions} label={t("trigger")} />,
     ),
   );
 }

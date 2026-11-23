@@ -326,16 +326,17 @@ window.__ModuleLoader__.load({
 
     // src/modules/task-monitor/client/surfaces/header-button/index.tsx
     var NAME = "header-button";
-    function install(ctx) {
+    function install(ctx, useOfficialPanel) {
       const t = ctx.locale.bind(TASK_MONITOR_NS);
       function HeaderButton(props) {
+        const official = useOfficialPanel();
         const sessionId = props.sessionId;
         const choice = useRailChoice(sessionId);
         const narrow2 = useRailNarrow();
         const empty = useHasContent(sessionId) === false;
         const open = typeof sessionId === "string" && sessionId !== "" && (choice === "visible" || choice === null && !narrow2);
         const label = t("trigger");
-        if (empty) return null;
+        if (official || empty) return null;
         return /* @__PURE__ */ __dshReact.createElement(
           "button",
           {
@@ -365,10 +366,10 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/index.tsx
-    var import_react8 = __toESM(require("react"), 1);
+    var import_react9 = __toESM(require("react"), 1);
 
     // src/modules/task-monitor/client/components/panel/index.tsx
-    var import_react7 = __toESM(require("react"), 1);
+    var import_react8 = __toESM(require("react"), 1);
 
     // src/client/http.ts
     var DEFAULT_TIMEOUT_MS = 15e3;
@@ -561,20 +562,133 @@ window.__ModuleLoader__.load({
       error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
     };
 
+    // src/modules/task-monitor/client/state/snapshot.ts
+    var import_react5 = __toESM(require("react"), 1);
+
+    // src/client/poll.ts
+    function hasDocument() {
+      return typeof document !== "undefined" && typeof document.addEventListener === "function";
+    }
+    function pageHidden() {
+      return typeof document !== "undefined" && document.visibilityState === "hidden";
+    }
+    function startPolling(task, { intervalMs, pauseWhenHidden = false, onError = () => {
+    } }) {
+      let stopped = false;
+      let timer;
+      let pending;
+      let controller;
+      const pauses = pauseWhenHidden && hasDocument();
+      const delay = () => typeof intervalMs === "function" ? intervalMs() : intervalMs;
+      function refresh() {
+        if (stopped) return Promise.resolve();
+        if (pending) return pending;
+        clearTimeout(timer);
+        controller = new AbortController();
+        const active = controller;
+        pending = Promise.resolve().then(() => stopped ? void 0 : task(active.signal)).then(() => void 0).catch((error) => {
+          if (!stopped && !active.signal.aborted) onError(error);
+        }).finally(() => {
+          pending = void 0;
+          if (!stopped && !(pauses && pageHidden())) timer = setTimeout(refresh, delay());
+        });
+        return pending;
+      }
+      const onVisibilityChange = () => {
+        if (stopped) return;
+        if (pageHidden()) {
+          clearTimeout(timer);
+          timer = void 0;
+          return;
+        }
+        void refresh();
+      };
+      if (pauses) document.addEventListener("visibilitychange", onVisibilityChange);
+      void refresh();
+      return {
+        refresh,
+        stop() {
+          stopped = true;
+          clearTimeout(timer);
+          controller?.abort();
+          if (pauses) document.removeEventListener("visibilitychange", onVisibilityChange);
+        }
+      };
+    }
+
     // src/host/paths.ts
     var PLUGIN_API_ROOT = "/api/plugins/toolkit";
     function pluginApiPath(moduleName) {
       return `${PLUGIN_API_ROOT}/${moduleName}`;
     }
 
+    // src/modules/task-monitor/host/constants.ts
+    var API_PREFIX = pluginApiPath("task-monitor");
+    var TASK_MONITOR_SNAPSHOT_PATH = `${API_PREFIX}/snapshot`;
+    var TASK_MONITOR_SOURCE_ADD_PATH = `${API_PREFIX}/source-add`;
+    var TASK_MONITOR_SOURCE_REMOVE_PATH = `${API_PREFIX}/source-remove`;
+    var SECTION_ORDER = ["capability", "artifact", "web", "source"];
+    var ENTRY_KINDS = [...SECTION_ORDER, "knowledge"];
+    var INITIAL_VISIBLE = 5;
+    function isHttpUrl(value) {
+      try {
+        const url = new URL(value);
+        return url.protocol === "http:" || url.protocol === "https:";
+      } catch {
+        return false;
+      }
+    }
+
+    // src/modules/task-monitor/client/constants.ts
+    var TASK_MONITOR_POLL_MS = 2500;
+
+    // src/modules/task-monitor/client/state/snapshot.ts
+    async function readSnapshot(sessionId, signal) {
+      const response = await fetchJson(TASK_MONITOR_SNAPSHOT_PATH, { json: { sessionId }, signal });
+      const payload = await response.json();
+      if (!response.ok || payload?.ok !== true) throw new Error(payload?.detail || `HTTP ${response.status}`);
+      return payload;
+    }
+    var readings2 = /* @__PURE__ */ new Map();
+    function subscribe(sessionId, listener) {
+      let reading = readings2.get(sessionId);
+      if (!reading) {
+        const current2 = { snapshot: void 0, listeners: /* @__PURE__ */ new Set(), stop: () => {
+        } };
+        readings2.set(sessionId, current2);
+        current2.stop = startPolling(async (signal) => {
+          const data = await readSnapshot(sessionId, signal);
+          if (signal.aborted) return;
+          current2.snapshot = data;
+          for (const notify of current2.listeners) notify();
+        }, { intervalMs: TASK_MONITOR_POLL_MS, pauseWhenHidden: true }).stop;
+        reading = current2;
+      }
+      const current = reading;
+      current.listeners.add(listener);
+      return () => {
+        current.listeners.delete(listener);
+        if (current.listeners.size === 0) {
+          current.stop();
+          readings2.delete(sessionId);
+        }
+      };
+    }
+    function useSnapshot(sessionId) {
+      const watch = import_react5.default.useCallback((listener) => sessionId ? subscribe(sessionId, listener) : () => {
+      }, [sessionId]);
+      const read = () => readings2.get(sessionId)?.snapshot;
+      return import_react5.default.useSyncExternalStore(watch, read, read);
+    }
+
     // src/modules/git/host/constants.ts
-    var API_PREFIX = pluginApiPath("git");
-    var GIT_BRANCHES_PATH = `${API_PREFIX}/branches`;
-    var GIT_CHECKOUT_PATH = `${API_PREFIX}/checkout`;
-    var GIT_CREATE_BRANCH_PATH = `${API_PREFIX}/create-branch`;
-    var GIT_CHANGES_PATH = `${API_PREFIX}/changes`;
-    var GIT_PUBLISH_PREVIEW_PATH = `${API_PREFIX}/publish-preview`;
-    var GIT_PUBLISH_ACTION_PATH = `${API_PREFIX}/publish-action`;
+    var API_PREFIX2 = pluginApiPath("git");
+    var GIT_BRANCHES_PATH = `${API_PREFIX2}/branches`;
+    var GIT_CHECKOUT_PATH = `${API_PREFIX2}/checkout`;
+    var GIT_CREATE_BRANCH_PATH = `${API_PREFIX2}/create-branch`;
+    var GIT_CHANGES_PATH = `${API_PREFIX2}/changes`;
+    var GIT_PUBLISH_PREVIEW_PATH = `${API_PREFIX2}/publish-preview`;
+    var GIT_PUBLISH_ACTION_PATH = `${API_PREFIX2}/publish-action`;
     var MAX_PUBLISH_MESSAGE_LENGTH = 4e3;
     var MAX_BRANCH_NAME_LENGTH = 200;
     var GIT_PUSH_TIMEOUT_MS = 12e4;
@@ -632,7 +746,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/git/client/surfaces/branch-chip/index.tsx
-    var import_react5 = __toESM(require("react"), 1);
+    var import_react6 = __toESM(require("react"), 1);
 
     // src/client/ime.ts
     function isComposingEvent(event) {
@@ -663,13 +777,13 @@ window.__ModuleLoader__.load({
         }
         return projected;
       };
-      const subscribe = (listener) => {
+      const subscribe2 = (listener) => {
         if (typeof form.subscribe === "function") return form.subscribe(listener);
         return form.store?.subscribe?.(listener);
       };
-      const scoped = { getSnapshot, subscribe };
+      const scoped = { getSnapshot, subscribe: subscribe2 };
       Object.defineProperty(scoped, "snapshot", { get: getSnapshot });
-      scoped.store = { getSnapshot, subscribe };
+      scoped.store = { getSnapshot, subscribe: subscribe2 };
       for (const key of ["status", "writable", "revision"]) {
         Object.defineProperty(scoped, key, { get: () => form[key] });
       }
@@ -794,20 +908,20 @@ window.__ModuleLoader__.load({
         const projected = typeof useProjection === "function" ? useProjection("workingDirectory") : void 0;
         const owned = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.cwd) : void 0;
         const cwd = monitor && typeof props.cwd === "string" ? props.cwd : typeof projected === "string" && projected !== "" ? projected : typeof owned === "string" ? owned : "";
-        const [view, setView] = import_react5.default.useState(EMPTY_VIEW);
-        const [hidden, setHidden] = import_react5.default.useState(false);
-        const [open, setOpen] = import_react5.default.useState(false);
-        const [query, setQuery] = import_react5.default.useState("");
-        const [busy, setBusy] = import_react5.default.useState("");
-        const [pending, setPending] = import_react5.default.useState(null);
-        const [creator, setCreator] = import_react5.default.useState(CLOSED_CREATOR);
-        const [loading, setLoading] = import_react5.default.useState(true);
-        const accept = import_react5.default.useCallback((payload) => {
+        const [view, setView] = import_react6.default.useState(EMPTY_VIEW);
+        const [hidden, setHidden] = import_react6.default.useState(false);
+        const [open, setOpen] = import_react6.default.useState(false);
+        const [query, setQuery] = import_react6.default.useState("");
+        const [busy, setBusy] = import_react6.default.useState("");
+        const [pending, setPending] = import_react6.default.useState(null);
+        const [creator, setCreator] = import_react6.default.useState(CLOSED_CREATOR);
+        const [loading, setLoading] = import_react6.default.useState(true);
+        const accept = import_react6.default.useCallback((payload) => {
           setView(toBranchView(payload));
           setHidden(false);
         }, []);
-        const request = import_react5.default.useRef(0);
-        const load = import_react5.default.useCallback(async () => {
+        const request = import_react6.default.useRef(0);
+        const load = import_react6.default.useCallback(async () => {
           if (cwd === "") return;
           const id = ++request.current;
           setLoading(true);
@@ -828,7 +942,7 @@ window.__ModuleLoader__.load({
             if (id === request.current) setLoading(false);
           }
         }, [cwd, t]);
-        import_react5.default.useEffect(() => {
+        import_react6.default.useEffect(() => {
           if (cwd === "") {
             setHidden(true);
             return;
@@ -845,7 +959,7 @@ window.__ModuleLoader__.load({
             off();
           };
         }, [cwd, load]);
-        const submit = import_react5.default.useCallback(async (name, create) => {
+        const submit = import_react6.default.useCallback(async (name, create) => {
           if (cwd === "" || busy !== "") return;
           setBusy(create ? "create" : "switch");
           try {
@@ -866,7 +980,7 @@ window.__ModuleLoader__.load({
             setBusy("");
           }
         }, [accept, busy, cwd, t]);
-        const pick = import_react5.default.useCallback((name) => {
+        const pick = import_react6.default.useCallback((name) => {
           if (busy !== "") return;
           if (name === view.branch) {
             setOpen(false);
@@ -1026,7 +1140,7 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/git/client/components/publish/index.tsx
-    var import_react6 = __toESM(require("react"), 1);
+    var import_react7 = __toESM(require("react"), 1);
 
     // src/modules/git/client/components/publish/style.css
     var style_default = ".sk-git-publish {\n  display: grid;\n  gap: 12px;\n  max-block-size: min(55vh, 32rem);\n  overflow: auto;\n  overscroll-behavior: contain;\n  overflow-wrap: anywhere;\n}\n\n.sk-git-publish__choices {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n}\n\n.sk-git-publish :where(p, dl, dd, ul) {\n  margin: 0;\n}\n\n.sk-git-publish__facts {\n  display: grid;\n  grid-template-columns: auto minmax(0, 1fr);\n  gap: 4px 12px;\n  align-items: baseline;\n}\n\n.sk-git-publish__paths {\n  padding-inline-start: 1.25em;\n  white-space: pre-wrap;\n}\n\n.sk-git-publish__message {\n  display: grid;\n  gap: 4px;\n}\n\n.sk-git-publish__message textarea {\n  box-sizing: border-box;\n  min-inline-size: 0;\n  padding: 8px;\n  border: 1px solid var(--dsw-alias-border-l2, GrayText);\n  border-radius: var(--dsw-radius-sm, 6px);\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  resize: vertical;\n}\n\n.sk-git-publish__status:empty {\n  position: absolute;\n}\n\n.sk-git-publish__error {\n  white-space: pre-wrap;\n}\n";
@@ -1059,15 +1173,15 @@ window.__ModuleLoader__.load({
     function createGitPublish(ctx, t = ctx.locale.bind(TASK_MONITOR_NS)) {
       const Button = primitives.Button ?? "button";
       function PublishForDirectory({ cwd, children }) {
-        const [open, setOpen] = import_react6.default.useState(false);
-        const [review, setReview] = import_react6.default.useState(CHOOSE);
-        const [message, setMessage] = import_react6.default.useState("");
-        const [pending, setPending] = import_react6.default.useState(false);
-        const alive = import_react6.default.useRef(false);
-        const revision = import_react6.default.useRef(0);
-        const selected = import_react6.default.useRef(null);
-        const messageId = import_react6.default.useId();
-        import_react6.default.useLayoutEffect(() => {
+        const [open, setOpen] = import_react7.default.useState(false);
+        const [review, setReview] = import_react7.default.useState(CHOOSE);
+        const [message, setMessage] = import_react7.default.useState("");
+        const [pending, setPending] = import_react7.default.useState(false);
+        const alive = import_react7.default.useRef(false);
+        const revision = import_react7.default.useRef(0);
+        const selected = import_react7.default.useRef(null);
+        const messageId = import_react7.default.useId();
+        import_react7.default.useLayoutEffect(() => {
           alive.current = true;
           const off = onRepositoryChange(cwd, () => {
             const action2 = selected.current;
@@ -1197,26 +1311,6 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // src/modules/task-monitor/host/constants.ts
-    var API_PREFIX2 = pluginApiPath("task-monitor");
-    var TASK_MONITOR_SNAPSHOT_PATH = `${API_PREFIX2}/snapshot`;
-    var TASK_MONITOR_SOURCE_ADD_PATH = `${API_PREFIX2}/source-add`;
-    var TASK_MONITOR_SOURCE_REMOVE_PATH = `${API_PREFIX2}/source-remove`;
-    var SECTION_ORDER = ["capability", "artifact", "web", "source"];
-    var ENTRY_KINDS = [...SECTION_ORDER, "knowledge"];
-    var INITIAL_VISIBLE = 5;
-    function isHttpUrl(value) {
-      try {
-        const url = new URL(value);
-        return url.protocol === "http:" || url.protocol === "https:";
-      } catch {
-        return false;
-      }
-    }
-
-    // src/modules/task-monitor/client/constants.ts
-    var TASK_MONITOR_POLL_MS = 2500;
-
     // src/modules/task-monitor/client/model.ts
     function groupSections(entries) {
       return SECTION_ORDER.map((kind) => ({
@@ -1291,12 +1385,6 @@ window.__ModuleLoader__.load({
       if (typeof turn !== "number" || !Number.isSafeInteger(turn) || turn <= 0) return null;
       return { seq, turn };
     }
-    function reasonOf2(payload, fallback) {
-      if (payload !== null && typeof payload === "object" && typeof payload.detail === "string" && payload.detail !== "") {
-        return payload.detail;
-      }
-      return fallback;
-    }
     function createTaskMonitorPanel(ctx) {
       const t = ctx.locale.bind(TASK_MONITOR_NS);
       const BranchChip = createBranchChip(ctx);
@@ -1333,29 +1421,27 @@ window.__ModuleLoader__.load({
         const revision = tab?.navigation?.revision ?? 0;
         const slotDirectory = typeof useProjection === "function" ? useProjection("workingDirectory") : void 0;
         const directory = useProjection === void 0 && typeof sessionId === "string" ? ctx.get?.("sessions")?.binding?.(sessionId)?.session?.projections?.faceOf?.("workingDirectory") : void 0;
-        const boundDirectory = import_react7.default.useSyncExternalStore(
+        const boundDirectory = import_react8.default.useSyncExternalStore(
           directory?.subscribe ?? noDirectorySubscription,
           directory?.getSnapshot ?? noDirectorySnapshot
         );
         const projected = slotDirectory ?? boundDirectory;
         const owned = typeof useSessions === "function" ? useSessions((snapshot) => snapshot?.byId?.[sessionId]?.cwd) : void 0;
         const cwd = typeof projected === "string" && projected !== "" ? projected : typeof owned === "string" ? owned : "";
-        const [entries, setEntries] = import_react7.default.useState([]);
-        const [phase, setPhase] = import_react7.default.useState("loading");
-        const [error, setError] = import_react7.default.useState("");
-        const [collapsed, setCollapsed] = import_react7.default.useState({});
-        const [expanded, setExpanded] = import_react7.default.useState({});
-        const [gitSnapshot, setGitSnapshot] = import_react7.default.useState(null);
+        const [entries, setEntries] = import_react8.default.useState([]);
+        const [phase, setPhase] = import_react8.default.useState("loading");
+        const [error, setError] = import_react8.default.useState("");
+        const [collapsed, setCollapsed] = import_react8.default.useState({});
+        const [expanded, setExpanded] = import_react8.default.useState({});
+        const [gitSnapshot, setGitSnapshot] = import_react8.default.useState(null);
         const git = gitSnapshot?.cwd === cwd ? gitSnapshot.data : null;
-        const [review, setReview] = import_react7.default.useState(null);
-        const load = import_react7.default.useCallback(async (quiet) => {
+        const [review, setReview] = import_react8.default.useState(null);
+        const load = import_react8.default.useCallback(async (quiet) => {
           if (typeof sessionId !== "string" || sessionId === "") return;
           if (!quiet) setPhase("loading");
           try {
-            const response = await fetchJson(TASK_MONITOR_SNAPSHOT_PATH, { json: { sessionId } });
-            const payload = await response.json();
-            if (!response.ok || payload?.ok !== true) throw new Error(reasonOf2(payload, `HTTP ${response.status}`));
-            setEntries(Array.isArray(payload.entries) ? payload.entries : []);
+            const payload = await readSnapshot(sessionId);
+            setEntries(Array.isArray(payload.entries) ? [...payload.entries] : []);
             setReview(reviewOf(payload));
             setError("");
             setPhase("ready");
@@ -1367,14 +1453,14 @@ window.__ModuleLoader__.load({
           }
         }, [sessionId]);
         const hasContent = entries.length > 0 || git !== null;
-        import_react7.default.useEffect(() => {
+        import_react8.default.useEffect(() => {
           if (phase !== "ready" && !hasContent) return;
           setHasContent(sessionId, hasContent);
         }, [phase, hasContent, sessionId]);
-        import_react7.default.useEffect(() => {
+        import_react8.default.useEffect(() => {
           void load(false);
         }, [load, revision]);
-        import_react7.default.useEffect(() => {
+        import_react8.default.useEffect(() => {
           if (cwd === "") return void 0;
           let version = 0;
           const refresh = async () => {
@@ -1405,16 +1491,16 @@ window.__ModuleLoader__.load({
             off();
           };
         }, [cwd, revision]);
-        import_react7.default.useEffect(() => {
+        import_react8.default.useEffect(() => {
           if (!visible) return void 0;
           const timer = setInterval(() => {
             void load(true);
           }, TASK_MONITOR_POLL_MS);
           return () => clearInterval(timer);
         }, [visible, load]);
-        const sections = import_react7.default.useMemo(() => groupSections(entries), [entries]);
-        const seeded = import_react7.default.useRef(null);
-        import_react7.default.useEffect(() => {
+        const sections = import_react8.default.useMemo(() => groupSections(entries), [entries]);
+        const seeded = import_react8.default.useRef(null);
+        import_react8.default.useEffect(() => {
           if (phase !== "ready" || seeded.current === sessionId) return;
           seeded.current = sessionId;
           const seed = {};
@@ -1592,7 +1678,7 @@ window.__ModuleLoader__.load({
 
     // src/modules/task-monitor/client/surfaces/conversation-rail/index.tsx
     var NAME2 = "conversation-rail";
-    function install2(ctx) {
+    function install2(ctx, useOfficialPanel) {
       const t = ctx.locale.bind(TASK_MONITOR_NS);
       const Panel = createTaskMonitorPanel(ctx);
       const sidebarRight = sidebarRightOf(ctx);
@@ -1607,7 +1693,7 @@ window.__ModuleLoader__.load({
         "conversation.hero.frame",
         () => ctx.slots.register(
           { name: "conversation.hero.frame", id: "task-monitor-rail", order: 40 },
-          (props) => /* @__PURE__ */ __dshReact.createElement(RailLayer, { ...props, Panel, actions, label: t("trigger") })
+          (props) => useOfficialPanel() ? props.children : /* @__PURE__ */ __dshReact.createElement(RailLayer, { ...props, Panel, actions, label: t("trigger") })
         )
       );
     }
@@ -1630,19 +1716,19 @@ window.__ModuleLoader__.load({
       });
     }
     function RailLayer({ children, useSessions, Panel, actions, label }) {
-      const wrapRef = import_react8.default.useRef(null);
-      const [embedded, setEmbedded] = import_react8.default.useState(false);
-      const [maxHeight, setMaxHeight] = import_react8.default.useState(null);
+      const wrapRef = import_react9.default.useRef(null);
+      const [embedded, setEmbedded] = import_react9.default.useState(false);
+      const [maxHeight, setMaxHeight] = import_react9.default.useState(null);
       const sessionId = activeSessionId(useSessions);
       const choice = useRailChoice(sessionId);
       const narrow2 = useRailNarrow();
       const empty = useHasContent(sessionId) === false;
       const open = !embedded && typeof sessionId === "string" && sessionId !== "" && (choice === "visible" || choice === null && !narrow2);
-      import_react8.default.useEffect(() => {
+      import_react9.default.useEffect(() => {
         const wrap = wrapRef.current;
         setEmbedded(wrap !== null && wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null);
       }, []);
-      import_react8.default.useEffect(() => {
+      import_react9.default.useEffect(() => {
         const wrap = wrapRef.current;
         if (wrap === null || typeof ResizeObserver === "undefined") return void 0;
         if (wrap.closest('[data-slot="sidebar.chat.conversation"]') !== null) return void 0;
@@ -1686,16 +1772,105 @@ window.__ModuleLoader__.load({
       ) : null);
     }
 
+    // src/modules/task-monitor/client/surfaces/session-panel/index.tsx
+    var import_react10 = __toESM(require("react"), 1);
+    var NAME3 = "session-panel";
+    var SLOT = "conversation.session.panel.section";
+    var FOLD = "conversation.session.panel.fold";
+    var SECTIONS = [
+      ["web", "sectionWeb"],
+      ["artifact", "sectionArtifact"],
+      ["source", "sectionSource"]
+    ];
+    function Row({ entry, openFile, openWeb, t }) {
+      const target = entry.target;
+      const url = target !== void 0 && isHttpUrl(target) ? target : void 0;
+      const label = (entry.kind === "web" ? url : void 0) ?? entry.label;
+      const unavailable = entry.unavailable === true;
+      const Icon = entry.kind === "artifact" ? primitives.IconEditOutlineRegular : entry.kind === "source" ? url ? primitives.IconLinkOutlineRegular : primitives.IconBrowseOutlineRegular : url ? primitives.IconGlobeOutlineRegular : primitives.IconSearchOutlineRegular;
+      const content = /* @__PURE__ */ import_react10.default.createElement(import_react10.default.Fragment, null, /* @__PURE__ */ import_react10.default.createElement("span", { "data-row-part": "icon", "aria-hidden": "true" }, Icon ? /* @__PURE__ */ import_react10.default.createElement(Icon, { size: 16 }) : null), /* @__PURE__ */ import_react10.default.createElement("span", { "data-row-part": "content" }, label));
+      const open = unavailable || target === void 0 ? void 0 : url ? openWeb && (() => openWeb(url)) : openFile && (() => openFile(target));
+      return /* @__PURE__ */ import_react10.default.createElement("div", { "data-session-panel-row": "", title: entry.detail || label }, open ? /* @__PURE__ */ import_react10.default.createElement("button", { type: "button", "data-row-part": "body", onClick: open }, content) : url && !unavailable ? /* @__PURE__ */ import_react10.default.createElement("a", { className: "sk-task-monitor-panel-link", "data-row-part": "body", href: url, target: "_blank", rel: "noopener noreferrer" }, content) : /* @__PURE__ */ import_react10.default.createElement("span", { "data-row-part": "body" }, content), unavailable || entry.status === "failed" ? /* @__PURE__ */ import_react10.default.createElement("span", { "data-row-part": "trailing" }, t(unavailable ? "artifactUnavailable" : "failedStatus")) : null);
+    }
+    function install3(ctx, setAvailable) {
+      const t = ctx.locale.bind(TASK_MONITOR_NS);
+      return ctx.slots.inject(SLOT, () => {
+        for (const [index, [kind, title]] of SECTIONS.entries()) {
+          let Section2 = function({ sessionId, useProjection, useSessions, dismissOverlay, renderFactorySlot }) {
+            const snapshot = useSnapshot(sessionId);
+            const [expandedFor, setExpandedFor] = import_react10.default.useState();
+            const projected = useProjection("workingDirectory");
+            const createdIn = useSessions((data) => data.byId[sessionId]?.cwd);
+            const entries = import_react10.default.useMemo(() => groupSections(snapshot?.entries ?? []).find((section) => section.kind === kind)?.entries ?? [], [snapshot]);
+            if (entries.length === 0) return null;
+            const cwd = projected ?? createdIn ?? "";
+            const sidebar = ctx.get?.("sidebarRight");
+            const tabs = ctx.get?.("sidebarRightTabs");
+            const openFile = typeof sidebar?.openResourceIn === "function" ? (path) => {
+              sidebar.openResourceIn(sessionId, fileAddressFor(sessionId, cwd, path));
+              dismissOverlay();
+            } : void 0;
+            const openWeb = tabs?.get?.("browser") && typeof sidebar?.openTabIn === "function" ? (url) => {
+              sidebar.openTabIn(sessionId, "browser", { params: { url } });
+              dismissOverlay();
+            } : void 0;
+            const expanded = expandedFor === sessionId;
+            const foldable = typeof renderFactorySlot === "function" && entries.length > INITIAL_VISIBLE + 1;
+            const shown = foldable && !expanded ? entries.slice(0, INITIAL_VISIBLE) : entries;
+            const label = expanded ? t("collapse") : t("showMore", { n: entries.length - INITIAL_VISIBLE });
+            return /* @__PURE__ */ import_react10.default.createElement(import_react10.default.Fragment, null, shown.map((entry) => /* @__PURE__ */ import_react10.default.createElement(Row, { key: entry.id, entry, openFile, openWeb, t })), foldable ? renderFactorySlot(FOLD, {
+              expanded,
+              label,
+              name: `${label} · ${t(title)}`,
+              onToggle: () => setExpandedFor(expanded ? void 0 : sessionId)
+            }) : null);
+          };
+          var Section = Section2;
+          ctx.slots.register({ name: SLOT, id: `dsh-toolkit-task-monitor.${kind}`, order: 310 + index * 10, label: () => t(title), locale: TASK_MONITOR_NS }, Section2);
+        }
+        setAvailable(true);
+        return () => setAvailable(false);
+      });
+    }
+
+    // src/client/ui/store.ts
+    var import_react11 = __toESM(require("react"), 1);
+    function createStore(initial) {
+      let state = initial;
+      const listeners3 = /* @__PURE__ */ new Set();
+      return {
+        get: () => state,
+        snapshot: () => state,
+        subscribe(listener) {
+          listeners3.add(listener);
+          return () => listeners3.delete(listener);
+        },
+        set(patch) {
+          state = { ...state, ...patch };
+          for (const listener of listeners3) listener();
+        }
+      };
+    }
+    function useStore(controller) {
+      return import_react11.default.useSyncExternalStore(controller.subscribe, controller.snapshot, controller.snapshot);
+    }
+
     // src/modules/task-monitor/client/surfaces/header-button/style.css
     var style_default4 = "/* 会话标题行的 icon-only 开关：28px 热区 + 图标，规格对齐宿主 utilities\n   里其它图标按钮（右栏展开、schedule 入口）。挂载点在面板 React 子树外，\n   所以这份样式由 client/index.ts 全局注入。 */\n.sk-task-monitor-button {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 28px;\n  height: 28px;\n  padding: 0;\n  border: 0;\n  border-radius: 28px;\n  background: transparent;\n  color: var(--dsw-alias-label-tertiary);\n  cursor: pointer;\n}\n\n.sk-task-monitor-button:focus-visible {\n  color: var(--dsw-alias-label-secondary);\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n@media (hover: hover) {\n  .sk-task-monitor-button:hover {\n    color: var(--dsw-alias-label-secondary);\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n.sk-task-monitor-button svg {\n  flex: none;\n}\n";
+
+    // src/modules/task-monitor/client/surfaces/session-panel/style.css
+    var style_default5 = ".sk-task-monitor-panel-link:any-link {\n  color: inherit;\n  text-decoration: none;\n}\n\n[data-session-panel-row]:has(> .sk-task-monitor-panel-link):hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n[data-session-panel-row]:has(> .sk-task-monitor-panel-link:focus-visible) {\n  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: -2px;\n}\n\n.sk-task-monitor-panel-link:focus-visible {\n  outline: none;\n}\n";
 
     // src/modules/task-monitor/client/index.ts
     var inject = ["slots", "locale"];
     function apply(ctx) {
       installDictionary(ctx, TASK_MONITOR_NS, TASK_MONITOR_COPY);
-      ctx.effect(() => installStylesheet(composeStyles(style_default4, style_default), "dsh-toolkit-task-monitor"), "dsh-toolkit-task-monitor:stylesheet");
-      ctx.effect(() => install2(ctx), `dsh-toolkit-task-monitor:${NAME2}`);
-      ctx.effect(() => install(ctx), `dsh-toolkit-task-monitor:${NAME}`);
+      ctx.effect(() => installStylesheet(composeStyles(style_default4, style_default, style_default5), "dsh-toolkit-task-monitor"), "dsh-toolkit-task-monitor:stylesheet");
+      const panel = createStore({ available: false });
+      const useOfficialPanel = () => useStore(panel).available;
+      ctx.effect(() => install3(ctx, (available) => panel.set({ available })), `dsh-toolkit-task-monitor:${NAME3}`);
+      ctx.effect(() => install2(ctx, useOfficialPanel), `dsh-toolkit-task-monitor:${NAME2}`);
+      ctx.effect(() => install(ctx, useOfficialPanel), `dsh-toolkit-task-monitor:${NAME}`);
     }
 
     return module.exports;

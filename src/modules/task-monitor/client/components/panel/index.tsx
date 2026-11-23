@@ -14,6 +14,7 @@ import { fetchJson } from "../../../../../client/http.js";
 import { primitives } from "../../../../../client/ui/primitives.js";
 import { showToast } from "../../../../../client/ui/toast.js";
 import { setHasContent } from "../../state/content.js";
+import { readSnapshot } from "../../state/snapshot.js";
 import { GIT_BRANCHES_PATH, GIT_CHANGES_PATH } from "../../../../git/client/constants.js";
 import { onRepositoryChange } from "../../../../git/client/repository-events.js";
 import { createBranchChip } from "../../../../git/client/surfaces/branch-chip/index.jsx";
@@ -21,7 +22,6 @@ import { createGitPublish } from "../../../../git/client/components/publish/inde
 import { TASK_MONITOR_NS } from "../../locale.js";
 import {
   TASK_MONITOR_POLL_MS,
-  TASK_MONITOR_SNAPSHOT_PATH,
   isHttpUrl,
   type TaskMonitorEntry,
   type TaskMonitorSectionKind,
@@ -77,13 +77,6 @@ function reviewOf(payload: any): { seq: number; turn: number } | null {
   if (typeof seq !== "number" || !Number.isSafeInteger(seq) || seq <= 0) return null;
   if (typeof turn !== "number" || !Number.isSafeInteger(turn) || turn <= 0) return null;
   return { seq, turn };
-}
-
-function reasonOf(payload: any, fallback: string): string {
-  if (payload !== null && typeof payload === "object" && typeof payload.detail === "string" && payload.detail !== "") {
-    return payload.detail;
-  }
-  return fallback;
 }
 
 export function createTaskMonitorPanel(ctx: any) {
@@ -151,10 +144,8 @@ export function createTaskMonitorPanel(ctx: any) {
       if (typeof sessionId !== "string" || sessionId === "") return;
       if (!quiet) setPhase("loading");
       try {
-        const response = await fetchJson(TASK_MONITOR_SNAPSHOT_PATH, { json: { sessionId } });
-        const payload = await response.json();
-        if (!response.ok || payload?.ok !== true) throw new Error(reasonOf(payload, `HTTP ${response.status}`));
-        setEntries(Array.isArray(payload.entries) ? payload.entries : []);
+        const payload = await readSnapshot(sessionId);
+        setEntries(Array.isArray(payload.entries) ? [...payload.entries] : []);
         setReview(reviewOf(payload));
         setError("");
         setPhase("ready");

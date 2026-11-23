@@ -55,11 +55,11 @@ function fakePrimitives() {
 }
 
 const bundleCache = new Map()
-async function loadEntry(variant) {
+async function loadEntry(variant, entryPoint = ENTRY) {
   if (!bundleCache.has(variant)) {
     bundleCache.set(variant, (async () => {
       const result = await build({
-        entryPoints: [ENTRY],
+        entryPoints: [entryPoint],
         bundle: true,
         platform: 'node',
         format: 'esm',
@@ -203,6 +203,82 @@ async function mount(t, dom, state, { host = true, reviewAction = true } = {}) {
   }
   return { act, root, opened, calls, changeDirectory }
 }
+
+test('官方会话面板：三分区共享快照，按会话切换数据，保留原生导航', async (t) => {
+  const dom = withDom(t)
+  const { act } = React
+  const { createRoot } = await import('react-dom/client')
+  const { install } = await loadEntry('official', 'src/modules/task-monitor/client/surfaces/session-panel/index.tsx')
+  const slot = 'conversation.session.panel.section'
+  const sections = []
+  const availability = []
+  const opened = []
+  const ctx = {
+    locale: { bind: () => translator() },
+    slots: {
+      inject(name, activate) { assert.equal(name, slot); return activate() },
+      register(spec, Component) { sections.push({ spec, Component }) },
+    },
+    get: (name) => name === 'sidebarRight' ? { openResourceIn: (...args) => opened.push(args) } : undefined,
+  }
+  const off = install(ctx, (available) => availability.push(available))
+  assert.deepEqual(availability, [true])
+  assert.deepEqual(sections.map(({ spec }) => [spec.name, spec.label()]), [
+    [slot, TASK_MONITOR_COPY.zh.sectionWeb],
+    [slot, TASK_MONITOR_COPY.zh.sectionArtifact],
+    [slot, TASK_MONITOR_COPY.zh.sectionSource],
+  ])
+  const state = { entries: seedEntries() }
+  const { calls, fetchImpl } = fakeFetch(state)
+  const savedFetch = globalThis.fetch
+  let staleSignal
+  let releaseStale
+  const stale = new Promise(resolve => { releaseStale = resolve })
+  globalThis.fetch = async (url, options) => {
+    const response = await fetchImpl(url, options)
+    if (JSON.parse(options.body).sessionId === 's2') {
+      staleSignal = options.signal
+      await stale
+    }
+    return response
+  }
+  const root = createRoot(dom.window.document.getElementById('root'))
+  t.after(async () => {
+    await act(async () => root.unmount())
+    globalThis.fetch = savedFetch
+    dom.restoreGlobals()
+  })
+  let dismissals = 0
+  const render = (sessionId) => sections.map(({ spec, Component }) => React.createElement(Component, {
+    key: spec.id,
+    sessionId,
+    useProjection: () => '/repo',
+    useSessions: (select) => select({ byId: {} }),
+    dismissOverlay: () => { dismissals++ },
+  }))
+  await act(async () => root.render(render('s1')))
+  assert.deepEqual(calls.map(({ url, body }) => [url, body.sessionId]), [[TASK_MONITOR_SNAPSHOT_PATH, 's1']])
+  assert.equal(all(dom, '[data-session-panel-row]').length, 5)
+  assert.ok(!dom.window.document.body.textContent.includes('browser-use'))
+  assert.equal(query(dom, 'a[href="https://example.com/a"]')?.target, '_blank')
+  const artifact = all(dom, 'button').find((button) => button.textContent.includes('out.png'))
+  assert.ok(artifact)
+  await click(dom, act, artifact)
+  assert.equal(opened[0]?.[0], 's1')
+  assert.match(opened[0]?.[1], /out\.png/)
+  assert.equal(dismissals, 1)
+  await act(async () => root.render(render('s2')))
+  assert.equal(staleSignal.aborted, false)
+  assert.equal(all(dom, '[data-session-panel-row]').length, 0)
+  state.entries = []
+  await act(async () => root.render(render('s3')))
+  assert.equal(staleSignal.aborted, true)
+  await act(async () => { releaseStale() })
+  assert.deepEqual(calls.map(({ body }) => body.sessionId), ['s1', 's2', 's3'])
+  assert.equal(all(dom, '[data-session-panel-row]').length, 0)
+  off()
+  assert.deepEqual(availability, [true, false])
+})
 
 const query = (dom, selector) => dom.window.document.querySelector(selector)
 const all = (dom, selector) => [...dom.window.document.querySelectorAll(selector)]

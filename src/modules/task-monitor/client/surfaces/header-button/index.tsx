@@ -13,10 +13,11 @@ import { setRailChoice, useRailChoice, useRailNarrow } from "../../state/rail.js
 
 export const NAME = "header-button";
 
-export function install(ctx: any) {
+export function install(ctx: any, useOfficialPanel: () => boolean) {
   const t = ctx.locale.bind(TASK_MONITOR_NS);
 
   function HeaderButton(props: any) {
+    const official = useOfficialPanel();
     const sessionId: string | undefined = props.sessionId;
     const choice = useRailChoice(sessionId);
     const narrow = useRailNarrow();
@@ -26,7 +27,7 @@ export function install(ctx: any) {
     const open = typeof sessionId === "string" && sessionId !== ""
       && (choice === "visible" || (choice === null && !narrow));
     const label = t("trigger");
-    if (empty) return null;
+    if (official || empty) return null;
     return (
       <button
         type="button"
