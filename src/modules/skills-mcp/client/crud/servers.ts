@@ -178,16 +178,6 @@ export function toggleServerOp(entryId, enabled) {
   return { op: 'toggle', entryId, enabled }
 }
 
-/**
- * Op that flips one row between 按需启动 and 随 DSH 启动.
- *
- * A dedicated op instead of an `update`: the card's one-click switch must not have to
- * restate every connection field (a form-shaped update would rewrite the config wholesale).
- */
-export function lazyServerOp(entryId, lazy) {
-  return { op: 'lazy', entryId, lazy: lazy === true }
-}
-
 /** Op that removes a row. */
 export function deleteServerOp(entryId) {
   return { op: 'delete', entryId }

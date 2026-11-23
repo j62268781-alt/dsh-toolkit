@@ -1447,9 +1447,6 @@ window.__ModuleLoader__.load({
     function toggleServerOp(entryId, enabled) {
       return { op: "toggle", entryId, enabled };
     }
-    function lazyServerOp(entryId, lazy) {
-      return { op: "lazy", entryId, lazy: lazy === true };
-    }
     function deleteServerOp(entryId) {
       return { op: "delete", entryId };
     }
@@ -1784,11 +1781,7 @@ window.__ModuleLoader__.load({
             setScopeDraft({ ...scopeDraft, value: e.target.value });
           }
         }
-      ) : null, compact ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-fieldError", id: fieldErrorId(PREFIX2, "scope"), hidden: true }) : null), compact), !compact && /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, field("启动方式", /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-switchRow", key: "lazy" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchRowText" }, "按需启动（懒加载）", /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchRowHint" }, "有可用清单时，首次调用工具才建立常驻连接；没有可用清单时会先读取工具清单。")), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchSlot", key: "slot" }, switchControl(
-        draft.lazy === true,
-        (next) => setDraft({ ...draft, lazy: next }),
-        "按需启动（懒加载）"
-      ))), true), draft.lazy === true ? field("工具清单", /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-switchRow", key: "manualToolCache" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchRowText" }, "手动更新工具清单", /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchRowHint" }, "默认按服务器声明的有效期复用。开启后不按时间过期；需要更新时，选择「刷新工具清单」。")), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchSlot", key: "slot" }, switchControl(
+      ) : null, compact ? /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-fieldError", id: fieldErrorId(PREFIX2, "scope"), hidden: true }) : null), compact), !compact && /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, draft.lazy === true ? field("工具清单", /* @__PURE__ */ __dshReact.createElement("div", { className: "smp-switchRow", key: "manualToolCache" }, /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchRowText" }, "手动更新工具清单", /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchRowHint" }, "默认按服务器声明的有效期复用。开启后不按时间过期；需要更新时，选择「刷新工具清单」。")), /* @__PURE__ */ __dshReact.createElement("span", { className: "smp-switchSlot", key: "slot" }, switchControl(
         draft.manualToolCache === true,
         (next) => setDraft({ ...draft, manualToolCache: next }),
         "手动更新工具清单"
@@ -2968,22 +2961,6 @@ window.__ModuleLoader__.load({
           const menuItems = [
             reconnect === null ? null : reconnect.node,
             oauthMenuItem,
-            // 「按需启动」是行级开关，和启用/停用同属「这台服务器怎么跑」。放进菜单而不是做成
-            // 卡片上的第二个开关：卡片右侧只有一个位置，两个开关并排会让「停用」和「懒加载」
-            // 读起来像同一件事的两种说法。
-            /* @__PURE__ */ __dshReact.createElement(
-              "button",
-              {
-                className: "smp-menuItem",
-                key: "lazy",
-                disabled: busy,
-                onClick: () => {
-                  setMenuFor("");
-                  commandRowOp(lazyServerOp(row.entryId, row.lazy !== true), row.entryId);
-                }
-              },
-              row.lazy === true ? "改为随 DSH 启动（连接常驻）" : "改为按需启动（懒加载）"
-            ),
             /* @__PURE__ */ __dshReact.createElement(
               "button",
               {

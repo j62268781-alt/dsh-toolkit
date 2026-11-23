@@ -299,17 +299,18 @@ test('MCP 编辑：保留按需启动设置及宿主开关结构', { skip: skipW
   const panel = await bootPanel(emptyDoc({ profileServers: [{ ...PROFILE_ROW, lazy: true, failOnStartupError: false }] }))
   try {
     panel.openMenu()
+    assert.doesNotMatch(panel.text(), /改为随 DSH 启动|改为按需启动/)
     panel.click(panel.byText('编辑'))
+    assert.equal(panel.switchNamed('按需启动（懒加载）')?.props, undefined)
     const rows = panel.findAll((node) => String(node.props.className ?? '') === 'smp-switchRow')
     // 已有的懒加载行保留原值，不应用新增的合并入口默认值。
     for (const [label, enabled] of [
-      ['按需启动（懒加载）', true],
       ['手动更新工具清单', false],
       ['合并为单一 MCP 入口', false],
     ]) {
       assert.equal(panel.switchNamed(label)?.props['aria-checked'], enabled, label)
     }
-    assert.equal(rows.length, 5)
+    assert.equal(rows.length, 4)
     for (const row of rows) {
       const classes = (row.children ?? []).flat(3).filter((child) => child?.props).map((child) => String(child.props.className ?? ''))
       assert.ok(classes.some((name) => name === 'smp-switchSlot'), '开关行缺少开关槽位（决定了 flex 布局的是包装器，不是控件本身）')
@@ -401,6 +402,7 @@ test('新增服务器后立刻出现第三张卡片（不等投影回传）', { 
     const op = (panel.doc.rowCommands ?? [])[0]
     assert.ok(op, '没有把命令发给 Host')
     assert.equal(op.op, 'add')
+    assert.equal(op.lazy, true, '新增 MCP 应默认按需启动')
 
     const after = panel.findAll((node) => String(node.props.className ?? '').includes('smp-cardToggle')).length
     assert.equal(after, before + 1, `保存后应立刻多出一张卡片（投影还没回传）：${before} → ${after}`)

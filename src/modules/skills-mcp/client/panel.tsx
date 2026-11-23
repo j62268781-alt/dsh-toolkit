@@ -19,7 +19,7 @@ import { deleteConfirmDialog } from './components/dialog.jsx'
 import { skillPreviewDialog } from './components/skillPreview.jsx'
 import { skillDialogView } from './components/skillDialog.jsx'
 import { dropOptimisticSkill, hideSkillUntilGone, removalTargetOf } from './crud/skills.js'
-import { addServerOp, deleteServerOp, draftFromRow, inflightKeyForRow, lazyServerOp, rowEntryId, toggleServerOp, updateServerOp } from './crud/servers.js'
+import { addServerOp, deleteServerOp, draftFromRow, inflightKeyForRow, rowEntryId, toggleServerOp, updateServerOp } from './crud/servers.js'
 import panelCss from './styles/panel.css'
 
 import { HINTS } from './components/form.js'
@@ -737,18 +737,6 @@ export function createPanel(React, primitives) {
       const menuItems = [
         reconnect === null ? null : reconnect.node,
         oauthMenuItem,
-        // 「按需启动」是行级开关，和启用/停用同属「这台服务器怎么跑」。放进菜单而不是做成
-        // 卡片上的第二个开关：卡片右侧只有一个位置，两个开关并排会让「停用」和「懒加载」
-        // 读起来像同一件事的两种说法。
-        <button
-          className="smp-menuItem" key="lazy" disabled={busy}
-          onClick={() => {
-            setMenuFor('')
-            commandRowOp(lazyServerOp(row.entryId, row.lazy !== true), row.entryId)
-          }}
-        >
-          {row.lazy === true ? '改为随 DSH 启动（连接常驻）' : '改为按需启动（懒加载）'}
-        </button>,
         <button
           className="smp-menuItem" key="edit" disabled={busy}
           onClick={() => {

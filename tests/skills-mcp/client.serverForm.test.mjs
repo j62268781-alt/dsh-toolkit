@@ -19,7 +19,8 @@ test('服务器表单只为按需启动的服务器显示手动更新工具清�
     return controls.get(name)
   }
   assert.equal(getControl(label), undefined)
-  getControl('按需启动（懒加载）').onChange(true)
+  assert.equal(getControl('按需启动（懒加载）'), undefined)
+  draft = draftFromRow({ serverName: 'alpha', lazy: true })
   assert.equal(getControl(label).checked, false)
   getControl(label).onChange(true)
   assert.equal(getControl(label).checked, true)
@@ -29,13 +30,13 @@ test('服务器表单只为按需启动的服务器显示手动更新工具清�
   assert.equal(getControl(label).checked, true)
   getControl(label).onChange(false)
   assert.equal(draft.manualToolCache, false)
-  getControl('按需启动（懒加载）').onChange(false)
+  assert.equal(draft.lazy, true)
+  draft = draftFromRow({ serverName: 'legacy', lazy: false })
   assert.equal(getControl(label), undefined)
 })
 
 test('服务器表单只在按需启动时显示单一 MCP 入口开关，并保留已保存的设置', () => {
   const label = '合并为单一 MCP 入口'
-  const lazy = '按需启动（懒加载）'
   let draft = draftFromRow({ serverName: 'alpha' })
   const getControls = () => {
     const controls = new Map()
@@ -47,16 +48,12 @@ test('服务器表单只在按需启动时显示单一 MCP 入口开关，并保
     return controls
   }
   assert.equal(getControls().has(label), false)
-  getControls().get(lazy).onChange(true)
+  draft = draftFromRow({ serverName: 'alpha', lazy: true })
   assert.equal(getControls().get(label).checked, false)
   getControls().get(label).onChange(true)
   assert.equal(draft.singleMcpEntry, true)
   assert.equal(draft.serverName, 'alpha')
   draft = draftFromRow({ serverName: 'beta', lazy: true, singleMcpEntry: true })
-  assert.equal(getControls().get(label).checked, true)
-  getControls().get(lazy).onChange(false)
-  assert.equal(getControls().has(label), false)
-  getControls().get(lazy).onChange(true)
   assert.equal(getControls().get(label).checked, true)
   getControls().get(label).onChange(false)
   assert.equal(draft.singleMcpEntry, false)

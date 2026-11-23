@@ -121,28 +121,6 @@ export function serverFormView({
             </div>
           ), compact)}
           {!compact && <>
-          {/*
-            启动方式。这是**挂载归属**的开关，不是连接参数：开启后这一行的 Loader 会被停用，
-            改由插件在第一次调用它的工具时挂载 `mcp-client`，工具清单来自本地缓存 —— 于是
-            「服务器开着、但启动时不连、不吃进程内存」成为可能。默认关闭（= 启动即连）。
-          */}
-          {field("启动方式", (
-            <div className="smp-switchRow" key="lazy">
-              <span className="smp-switchRowText">
-                {"按需启动（懒加载）"}
-                <span className="smp-switchRowHint">
-                  有可用清单时，首次调用工具才建立常驻连接；没有可用清单时会先读取工具清单。
-                </span>
-              </span>
-              <span className="smp-switchSlot" key="slot">
-                {switchControl(
-                  draft.lazy === true,
-                  (next) => setDraft({ ...draft, lazy: next }),
-                  "按需启动（懒加载）",
-                )}
-              </span>
-            </div>
-          ), true)}
           {draft.lazy === true ? field("工具清单", (
             <div className="smp-switchRow" key="manualToolCache">
               <span className="smp-switchRowText">
