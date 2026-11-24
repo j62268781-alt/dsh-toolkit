@@ -9,7 +9,6 @@ import repositoryCss from "../../../../../client/ui/components/settings-parts/re
 import { settingsStyles } from "../../../../../client/styles/settings.js";
 import { toast } from "../../../../../client/ui/toast.js";
 import panelCss from "./style.css";
-import { WorktreeSettings } from "./worktrees.jsx";
 import {
   DEFAULT_ALWAYS_FORCE_PUSH,
   DEFAULT_BRANCH_PREFIX,
@@ -67,7 +66,7 @@ function isWritable(form) {
 export function createGitSection(ctx) {
   const t = ctx.locale.bind(GIT_NS);
 
-  return function GitSettingsSection({ form, worktreeForm }) {
+  return function GitSettingsSection({ form }) {
     // 配置文档不是本页私有的：别处改了它，本页也要跟着重画。
     const [, setVersion] = React.useState(0);
     // 输入中的草稿；`null` 表示「没有草稿，显示服务端的值」。这就是 Qoder 的
@@ -262,7 +261,6 @@ export function createGitSection(ctx) {
             </div>
           </div>
         </CardSection>
-        <WorktreeSettings t={t} retainForm={worktreeForm} />
       </main>
     );
   };
@@ -278,10 +276,7 @@ export function install(ctx) {
     locale: GIT_NS,
     // 配置表单在注册那一刻才取得到（settings 文档是异步加载的），所以放进 inject 回调。
     inject: () => {
-      const { form, entryId } = findScopedForm(ctx, "git");
-      let worktreeForm;
-      try { worktreeForm = ctx.configForms.get("worktree"); } catch { /* Native plugin is optional. */ }
-      return { form, entryId, worktreeForm };
+      return findScopedForm(ctx, "git");
     },
   }, createGitSection(ctx));
 }

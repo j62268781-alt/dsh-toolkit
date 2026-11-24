@@ -10,10 +10,9 @@
 import { registerJsonRoutes } from '../../../host/routes.js'
 import { Config, readSettings, type GitSettings } from './config.js'
 import { gitPromptText } from './prompt.js'
-import { GIT_WORKTREE_CONFIG_PATH, NAME, PROMPT_ORDER, PROMPT_SECTION } from './constants.js'
+import { NAME, PROMPT_ORDER, PROMPT_SECTION } from './constants.js'
 import { createRepository } from './repository.js'
 import { createGitRoutes } from './routes/branches.js'
-import { registerWorktreeConfigRoutes } from './routes/worktree-config.js'
 import { createGitPublishRoutes } from './routes/publish.js'
 import { createPublishService } from './publish.js'
 import { createGitTools } from './tools.js'
@@ -40,7 +39,6 @@ export function apply(ctx: any, config: unknown = {}): void {
       ...createGitRoutes({ repository }),
       ...createGitPublishRoutes(createPublishService()),
     ])
-    registerWorktreeConfigRoutes(routeCtx, GIT_WORKTREE_CONFIG_PATH)
   })
 
   // 工具是可选依赖：没有 tools 服务的宿主里，提示词与路由照旧工作。

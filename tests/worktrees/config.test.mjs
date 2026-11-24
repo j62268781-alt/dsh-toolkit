@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { Readable } from 'node:stream'
 import { test } from 'node:test'
-import { registerWorktreeConfigRoutes } from '../../src/modules/git/host/routes/worktree-config.js'
-import { isWorktreeConfigUpdate, readWorktreeConfig, updateWorktreeConfig } from '../../src/modules/git/host/worktree/config.js'
+import { registerWorktreeConfigRoutes } from '../../src/modules/worktrees/host/routes/worktree-config.js'
+import { isWorktreeConfigUpdate, readWorktreeConfig, updateWorktreeConfig } from '../../src/modules/worktrees/host/worktree/config.js'
 
 const defaults = { directory: '.agents/worktrees', namePrefix: 'dsh-' }
 const moduleName = '@deepseek-ai/dsh-experimental-worktree'

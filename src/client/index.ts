@@ -11,6 +11,7 @@ import * as boot from '../modules/boot/client/index.jsx'
 import * as hooks from '../modules/hooks/client/index.js'
 import * as git from '../modules/git/client/index.js'
 import * as taskMonitor from '../modules/session-panel/client/index.js'
+import * as worktrees from "../modules/worktrees/client/index.js";
 
 export const inject: readonly string[] = []
 
@@ -28,4 +29,5 @@ export function apply(ctx: any): void {
   ctx.plugin({ name: 'dsh-toolkit-hooks-client', ...hooks })
   ctx.plugin({ name: 'dsh-toolkit-git-client', ...git })
   ctx.plugin({ name: 'dsh-toolkit-session-panel-client', ...taskMonitor })
+  ctx.plugin({ name: "dsh-toolkit-worktrees-client", ...worktrees });
 }

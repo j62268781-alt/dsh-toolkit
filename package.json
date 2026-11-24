@@ -2,7 +2,7 @@
   "name": "dsh-toolkit",
   "version": "0.2.0",
   "type": "module",
-  "description": "DSH 工具箱聚合包：独立管理启动画面、主题、归档、决策、移动设备、Skills/MCP、通知、桌面宠物、微信扫码登录与 Git 约定。",
+  "description": "DSH 工具箱聚合包：独立管理启动画面、主题、归档、决策、移动设备、Skills/MCP、通知、桌面宠物、微信扫码登录、Git 约定与工作树。",
   "license": "MIT",
   "main": "index.js",
   "exports": {
@@ -95,6 +95,7 @@
     "dsh-toolkit-skills-mcp": "workspace:^",
     "dsh-toolkit-theme": "workspace:^",
     "dsh-toolkit-remote": "workspace:^",
+    "dsh-toolkit-worktrees": "workspace:^",
     "ds-harness-remote": "0.6.4"
   },
   "peerDependencies": {

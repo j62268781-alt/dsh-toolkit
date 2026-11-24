@@ -70,6 +70,9 @@ importers:
       dsh-toolkit-theme:
         specifier: workspace:^
         version: link:packages/theme
+      dsh-toolkit-worktrees:
+        specifier: workspace:^
+        version: link:packages/worktrees
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ^4.0.5
@@ -249,6 +252,8 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: ^3.18.5
         version: 3.18.5
+
+  packages/worktrees: {}
 
 packages:
 

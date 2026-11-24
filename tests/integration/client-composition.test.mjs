@@ -18,6 +18,7 @@ const EXPECTED_INJECT = {
   'dsh-toolkit-hooks-client': ['slots', 'locale'],
   'dsh-toolkit-git-client': ['slots', 'locale', 'configForms'],
   'dsh-toolkit-session-panel-client': ['slots', 'locale'],
+  'dsh-toolkit-worktrees-client': ['slots', 'locale', 'configForms'],
 }
 const ALL_SERVICES = new Set([
   ...Object.values(EXPECTED_INJECT).flat(), 'sidebarRight', 'shortcuts', 'uiSession', 'uiConversation', 'uiWorkspace',
@@ -208,7 +209,7 @@ async function boot({ missing = [], missingSlots = [] } = {}) {
   return { ...loaded, children, active, pending, effects, registrations, tabTypes, mounted, trace, writes, value, rootForm, inventory, credentials, remoteServices }
 }
 
-test('the real classic factory uses only Host seed modules and mounts twelve separate plugins', async () => {
+test('the real classic factory uses only Host seed modules and mounts thirteen separate plugins', async () => {
   const { client, required, warnings } = await loadClient()
   assert.deepEqual(Array.from(client.inject), [])
   assert.equal(typeof client.apply, 'function')
@@ -227,8 +228,8 @@ test('the real classic factory uses only Host seed modules and mounts twelve sep
 
 test('the unified bundle registers the original settings pages, Remote faces, and mobile tab', async () => {
   const result = await boot()
-  assert.equal(result.children.length, 12)
-  assert.equal(result.active.length, 12)
+  assert.equal(result.children.length, 13)
+  assert.equal(result.active.length, 13)
   assert.deepEqual(result.pending, [])
   assert.deepEqual(result.warnings, [])
   const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
@@ -361,7 +362,7 @@ test('missing archived session services leave theme, other pages, and the mobile
   const result = await boot({ missing: ['sessions'] })
   // pet 客户端现在也读 sessions（主视图切会话时上报已读），缺该服务时与其他会话相关插件一起等待。
   assert.deepEqual(result.pending, ['dsh-toolkit-archived-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-pet-client'])
-  assert.equal(result.active.length, 9)
+  assert.equal(result.active.length, 10)
   assert.deepEqual(result.registrations.filter(({ registration }) => registration.name === 'settings.section').map(({ registration }) => registration.id).sort(), ['boot', 'git', 'hooks', 'judgment', 'skills-mcp', 'theme'])
   assert.equal(result.tabTypes.length, 1)
   assert.equal(result.effects.some(({ plugin }) => plugin === 'dsh-toolkit-theme-client'), true)
@@ -376,7 +377,7 @@ test('nested Remote dependencies block only the client that declares them', asyn
   ]) {
     const result = await boot({ missing: [dependency] })
     assert.deepEqual(result.pending, [pending])
-    assert.equal(result.active.length, 11)
+    assert.equal(result.active.length, 12)
     const sections = result.registrations.filter(({ registration }) => registration.name === 'settings.section')
     assert.equal(sections.length, 8)
     assert.equal(sections.some(({ registration }) => registration.id === absentSection), false)
@@ -387,13 +388,13 @@ test('nested Remote dependencies block only the client that declares them', asyn
 
 test('missing settings forms or mobile tab services do not suspend unrelated children', async () => {
   const withoutForms = await boot({ missing: ['configForms'] })
-  assert.deepEqual(withoutForms.pending, ['dsh-toolkit-theme-client', 'dsh-toolkit-skills-mcp-client', 'dsh-toolkit-judgment-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-boot-client', 'dsh-toolkit-pet-client', 'dsh-toolkit-git-client'])
+  assert.deepEqual(withoutForms.pending, ['dsh-toolkit-theme-client', 'dsh-toolkit-skills-mcp-client', 'dsh-toolkit-judgment-client', 'dsh-toolkit-notification-client', 'dsh-toolkit-boot-client', 'dsh-toolkit-pet-client', 'dsh-toolkit-git-client', 'dsh-toolkit-worktrees-client'])
   assert.deepEqual(withoutForms.active.sort(), ['dsh-toolkit-archived-client', 'dsh-toolkit-hooks-client', 'dsh-toolkit-mobile-client', 'dsh-toolkit-remote-client', 'dsh-toolkit-session-panel-client'])
   assert.equal(withoutForms.tabTypes.length, 1)
 
   const withoutTabs = await boot({ missing: ['sidebarRightTabs'] })
   assert.deepEqual(withoutTabs.pending, ['dsh-toolkit-mobile-client'])
-  assert.equal(withoutTabs.active.length, 11)
+  assert.equal(withoutTabs.active.length, 12)
   assert.equal(withoutTabs.tabTypes.length, 0)
   assert.equal(withoutTabs.registrations.length, 14)
 })

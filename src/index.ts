@@ -9,6 +9,7 @@ import * as pet from './modules/pet/host/index.js'
 import * as skillsMcp from './modules/skills-mcp/host/index.js'
 import * as remote from './modules/remote/host/index.js'
 import * as taskMonitor from './modules/session-panel/host/index.js'
+import * as worktrees from './modules/worktrees/host/index.js'
 import { Config } from './host/config.js'
 import { configuredPlugin, configuredService } from './host/plugins.js'
 
@@ -35,6 +36,7 @@ export function apply(ctx: any, config: any): void {
   // 追加在最后：既有子插件的下标保持不变（集成测试按 children[i] 断言）。
   ctx.plugin(configuredPlugin(git), config.git)
   ctx.plugin(configuredPlugin(taskMonitor), config.taskMonitor)
+  ctx.plugin(worktrees)
 }
 
 export default { name, inject, Config, apply }

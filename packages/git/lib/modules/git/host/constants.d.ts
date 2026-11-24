@@ -1,5 +1,4 @@
 export declare const NAME = "dsh-toolkit-git";
-export declare const GIT_WORKTREE_CONFIG_PATH: string;
 export declare const GIT_BRANCHES_PATH: string;
 export declare const GIT_CHECKOUT_PATH: string;
 export declare const GIT_CREATE_BRANCH_PATH: string;

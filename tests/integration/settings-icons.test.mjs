@@ -34,6 +34,7 @@ const MODULES = [
   { name: "archived", entry: "src/modules/archived/client/index.ts", section: "archived-chats", icon: "archive" },
   { name: "skills-mcp", entry: "src/modules/skills-mcp/client/client.ts", section: "skills-mcp", icon: "plug", factory: true },
   { name: "git", entry: "src/modules/git/client/index.ts", section: "git", icon: "git" },
+  { name: "worktrees", entry: "src/modules/worktrees/client/index.ts", section: "worktrees", icon: "worktrees" },
   { name: "mobile", entry: "src/modules/mobile/client/index.tsx", section: "mobile", icon: "remote-connection", factory: true },
 ];
 

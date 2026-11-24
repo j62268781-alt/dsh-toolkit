@@ -95,6 +95,15 @@ const SHAPES: Record<string, any> = {
       <path d="M4.6 8.6c0-2 1.5-3.5 3.5-3.5h2" />
     </>
   ),
+  // Two checkouts branching from one repository, rather than a commit graph.
+  worktrees: (
+    <>
+      <rect x="5.5" y="2" width="5" height="3.5" rx=".8" />
+      <path d="M8 5.5v2.3M4.2 10V7.8h7.6V10" />
+      <rect x="1.7" y="10" width="5" height="3.8" rx=".8" />
+      <rect x="9.3" y="10" width="5" height="3.8" rx=".8" />
+    </>
+  ),
   "remote-connection": <RemoteConnectionShape />,
   gear: (
     <>

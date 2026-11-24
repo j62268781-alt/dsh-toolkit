@@ -35,4 +35,5 @@ export const PACKAGE_MODULES = Object.freeze([
   { name: 'remote', client: { entry: 'src/modules/remote/client/index', factory: true }, skills: [] },
   { name: 'git', client: { entry: 'src/modules/git/client/index', factory: false }, skills: [] },
   { name: 'session-panel', client: { entry: 'src/modules/session-panel/client/index', factory: false }, skills: [] },
+  { name: 'worktrees', client: { entry: 'src/modules/worktrees/client/index', factory: false }, skills: [] },
 ].map((module) => Object.freeze({ ...module, packageName: `dsh-toolkit-${module.name}` })))

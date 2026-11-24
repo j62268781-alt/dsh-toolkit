@@ -1,4 +1,4 @@
-# One bundle, twelve independently managed component package identities,
+# One bundle, thirteen independently managed component package identities,
 # plus the external ds-harness-remote host, mounted through ./remote-host.js so its
 # own browser UI stays off and the bundle keeps a single unified entry.
 - insert:
@@ -26,6 +26,8 @@
       name: dsh-toolkit-git
     - id: dsh-toolkit-session-panel
       name: dsh-toolkit-session-panel
+    - id: dsh-toolkit-worktrees
+      name: dsh-toolkit-worktrees
     - id: ds-harness-remote
       name: dsh-toolkit/remote-host
       inject:

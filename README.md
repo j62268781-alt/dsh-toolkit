@@ -92,6 +92,7 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 | 会话通知 | 设置 → 通知 | `dsh-toolkit-notification` |
 | 桌面宠物 | 设置 → 桌面宠物 | `dsh-toolkit-pet` |
 | Git 约定 | 设置 → Git | `dsh-toolkit-git` |
+| [工作树](<packages/worktrees/README.md>) | 设置 → 工作树 | `dsh-toolkit-worktrees` |
 | 会话面板增强 | 官方会话面板 → 技能与 MCP、网页查阅、产出、来源 | `dsh-toolkit-session-panel` |
 
 ### 启动动画与外观
