@@ -24,8 +24,5 @@ export {
   normalizeCommitInstructions,
 } from "../host/constants.js";
 
-/** Qoder 的提交说明是「停手 1.2 秒就自动保存」；照抄这个节奏，别让每次敲键都重启宿主插件。 */
-export const COMMIT_INSTRUCTIONS_SAVE_DELAY_MS = 1200;
-
 /** 设置页顺序：钩子（23）之后。DSH 宿主自己的「常规」在最前面。 */
 export const SECTION_ORDER = 24;

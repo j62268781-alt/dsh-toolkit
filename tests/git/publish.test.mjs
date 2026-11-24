@@ -154,6 +154,7 @@ test('preview redacts URL credentials without contacting the remote', async (t) 
 test('host registers both routes and rejects missing identity before reading any body', async () => {
   const routes = new Map()
   const ctx = { on() {}, inject(names, run) { if (names.includes('webServer')) run(this) }, effect(run) { return run() },
+    systemPrompt: { section: () => () => {} },
     webServer: { register(route) { routes.set(route.path, route.handler) } },
     connection: { requestRejection: () => 401 },
   }

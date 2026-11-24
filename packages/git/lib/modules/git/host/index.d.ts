@@ -11,13 +11,13 @@ declare const _default: {
     name: string;
     inject: string[];
     Config: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
-        branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "defined">;
-        alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
-        commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+        branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
+        alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
+        commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
     }>>, Schemastery.ObjectT<NoInfer<{
-        branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "defined">;
-        alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
-        commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+        branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
+        alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
+        commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
     }>>, "plain">;
     apply: typeof apply;
 };

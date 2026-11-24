@@ -443,15 +443,6 @@ window.__ModuleLoader__.load({
       return accepted;
     }
 
-    // src/client/ui/primitives.ts
-    var primitives = (() => {
-      try {
-        return require("@deepseek-ai/dsh-client-ui-primitives");
-      } catch {
-        return {};
-      }
-    })();
-
     // src/client/ui/slot.ts
     function installSlot(ctx, descriptor, Component) {
       return ctx.slots.inject(descriptor.name, () => ctx.slots.register(descriptor, Component));
@@ -475,6 +466,47 @@ window.__ModuleLoader__.load({
     function joinClass(base, extra) {
       return extra === void 0 || extra === "" ? base : `${base} ${extra}`;
     }
+
+    // src/client/ui/primitives.ts
+    var primitives = (() => {
+      try {
+        return require("@deepseek-ai/dsh-client-ui-primitives");
+      } catch {
+        return {};
+      }
+    })();
+
+    // src/client/ui/components/settings-parts/switch.tsx
+    function SettingsSwitch({ label, checked, disabled, onChange, describedBy }) {
+      const HostSwitch = primitives.Switch;
+      if (HostSwitch) return /* @__PURE__ */ __dshReact.createElement(
+        HostSwitch,
+        {
+          label,
+          checked,
+          disabled,
+          onChange,
+          "aria-describedby": describedBy
+        }
+      );
+      return /* @__PURE__ */ __dshReact.createElement(
+        "button",
+        {
+          type: "button",
+          role: "switch",
+          className: "sk-repo-settings__switch",
+          "aria-label": label,
+          "aria-checked": checked,
+          "aria-describedby": describedBy,
+          disabled,
+          onClick: () => onChange(!checked)
+        },
+        /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-repo-settings__switchThumb", "aria-hidden": "true" })
+      );
+    }
+
+    // src/client/ui/components/settings-parts/repository.css
+    var repository_default = '.sk-repo-settings {\n  max-width: 760px;\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-repo-settings__groupLead { margin-top: 8px; }\n\n.sk-repo-settings__field {\n  display: flex;\n  flex-direction: column;\n  align-items: stretch;\n  gap: 4px;\n  width: 260px;\n  max-width: 100%;\n}\n\n.sk-repo-settings__input {\n  width: 100%;\n  box-sizing: border-box;\n  font: inherit;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  padding: 6px 10px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background-color: rgba(128, 128, 128, 0.08);\n}\n\n.sk-repo-settings__input:focus-visible,\n.sk-repo-settings__switch:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n.sk-repo-settings__input[aria-invalid="true"] {\n  border-color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-repo-settings__input:disabled { opacity: 0.6; }\n\n.sk-repo-settings__hint {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-repo-settings__hint:empty { display: none; }\n.sk-repo-settings__hint--error { color: var(--dsw-alias-state-danger-primary, #d0453f); }\n\n/* Only used when the host does not expose its Switch primitive. */\n.sk-repo-settings__switch {\n  flex: none;\n  position: relative;\n  width: 36px;\n  height: 20px;\n  padding: 0;\n  border: 0;\n  border-radius: 999px;\n  corner-shape: round;\n  background-color: rgba(128, 128, 128, 0.45);\n  cursor: pointer;\n}\n\n.sk-repo-settings__switch[aria-checked="true"] {\n  background-color: var(--dsw-alias-state-business-primary, #3a6fd8);\n}\n\n.sk-repo-settings__switch:disabled { opacity: 0.5; cursor: default; }\n\n.sk-repo-settings__switchThumb {\n  position: absolute;\n  inset: 2px auto auto 2px;\n  width: 16px;\n  height: 16px;\n  border-radius: 50%;\n  corner-shape: round;\n  background-color: #fff;\n}\n\n.sk-repo-settings__switch[aria-checked="true"] .sk-repo-settings__switchThumb {\n  transform: translateX(16px);\n}\n';
 
     // src/client/styles/settings.css
     var settings_default = "/* Identical settings rules. Keep module selectors to preserve specificity and overrides. */\n.ab-page>*,.jdg-page>*,.smp-page>*{width:100%;max-width:960px}\n/* Page headings match DSH AgentPresetSection: inherited line height and a 12px title/intro gap. */\n.ab-button,.jdg-button,.smp-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:32px;padding:0 14px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;flex:none}\n.ab-button:hover:not(:disabled),.jdg-button:hover:not(:disabled),.smp-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}\n.ab-button:active:not(:disabled),.jdg-button:active:not(:disabled),.smp-button:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}\n.ab-button[data-variant=outline],.jdg-button[data-variant=outline],.smp-button[data-variant=outline]{border-color:var(--dsw-alias-border-l3)}\n.ab-button[data-variant=primary],.jdg-button[data-variant=primary],.smp-button[data-variant=primary]{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}\n.ab-button[data-variant=primary]:hover:not(:disabled),.jdg-button[data-variant=primary]:hover:not(:disabled),.smp-button[data-variant=primary]:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover)}\n.ab-button:disabled,.jdg-button:disabled,.smp-button:disabled{opacity:.4;cursor:not-allowed}\n.jdg-filterRow,.smp-filterRow,.sk-filterRow{display:flex;align-items:center;gap:8px}\n/* Search matches the built-in plugin inventory (36px, l4 stroke, icon at 12px, 34px right inset, focus ring). */\n.jdg-search,.smp-search,.sk-search{flex:1 1 auto;min-width:140px;color:var(--dsw-alias-label-tertiary);align-items:center;display:flex;position:relative}\n.jdg-searchIcon,.smp-searchIcon,.sk-searchIcon{position:absolute;left:12px;display:inline-flex;pointer-events:none}\n.jdg-searchInput,.smp-searchInput,.sk-searchInput{box-sizing:border-box;width:100%;height:36px;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-md);padding:0 34px 0 36px;outline:none}\n.jdg-searchInput::placeholder,.smp-searchInput::placeholder,.sk-searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}\n.jdg-searchInput:focus-visible,.smp-searchInput:focus-visible,.sk-searchInput:focus-visible{border-color:var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary)) 18%,transparent)}\n.jdg-tabs,.smp-tabs{display:flex;gap:24px;border-bottom:.5px solid var(--dsw-alias-border-l2)}\n.jdg-tab,.smp-tab{appearance:none;background:none;border:0;padding:0 2px 10px;font:inherit;font-size:14px;line-height:22px;color:var(--dsw-alias-label-tertiary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}\n/* Active tab: derived from `aria-selected` (what the a11y tree exposes); `[data-active]`\n * stays because older markup and pinned tests still write it. A selector list rather\n * than `:is()` on purpose — `tests/judgment/panel.test.mjs` pins the literal\n * `.jdg-tab[data-active=true]` selector. */\n.jdg-tab[data-active=true],.jdg-tab[aria-selected=true],.smp-tab[data-active=true],.smp-tab[aria-selected=true]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-label-primary)}\n.jdg-cards,.smp-cards{flex-direction:column;gap:14px;margin:0;padding:0;list-style:none;display:flex}\n.jdg-card,.smp-card{border:.5px solid var(--dsw-alias-settings-card-stroke);background:var(--dsw-alias-settings-card-fill);border-radius:var(--dsw-radius-xl);flex-direction:column;gap:4px;padding:12px 14px;min-width:0;display:flex}\n.jdg-cardRow,.smp-cardRow{align-items:center;gap:10px;min-width:0;display:flex}\n.jdg-cardIdentity,.smp-cardIdentity{color:var(--dsw-alias-label-primary);font-size:14px;font-weight:500;line-height:22px;min-width:0;overflow-wrap:anywhere}\n.jdg-cardEnd,.smp-cardEnd{flex:none;align-items:center;gap:8px;display:inline-flex}\n.jdg-cardDetails,.smp-cardDetails{border-top:.5px solid var(--dsw-alias-border-l2);padding:12px 0 0}\n.jdg-card>.jdg-cardDetails:first-child,.smp-card>.smp-cardDetails:first-child{border-top:0;padding-top:0}\n.jdg-formGrid,.smp-formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}\n/* 原生下拉在这套设置页里只有一种外观：启动动画与通知两个面板共用同一条规则，由\n * settingsStyles() 按面板前缀各自裁剪。appearance:none 去掉平台自带箭头（macOS 会把它\n * 紧贴右边框），改由 data-URI 自绘 14px chevron，距右边缘 10px。 */\n.boot-select,.ntf-select{box-sizing:border-box;height:30px;max-width:100%;font:inherit;font-size:13px;color:var(--dsw-alias-label-primary);background-color:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md,8px);appearance:none;-webkit-appearance:none;padding:0 30px 0 10px;background-image:url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5 8 10.5 12 6.5' stroke='%238b8f99' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;background-size:14px;text-overflow:ellipsis;cursor:pointer}\n.boot-select:focus-visible,.ntf-select:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}\n.boot-select:disabled,.ntf-select:disabled{opacity:.5;cursor:not-allowed}\n/* 表单字段级校验（skills-mcp 的 serverForm / skillDialog）。\n * `:user-invalid` 是主力：浏览器自己知道「用户交互过、且 `required`/`pattern` 不满足」，\n * 所以不需要额外状态类。`[aria-invalid=true]` 是提交被拦下那一刻由 form.ts 的\n * syncAriaInvalid / showFieldIssues 写上的同一事实 —— 两条都留着，读屏读到的与眼睛\n * 看到的不会各说各话。选择器带 `.smp-field`，因为 panel.css 里的\n * `.smp-cardDetails .smp-input` 与单类选择器同权重、且在本文之后注入。 */\n.smp-fieldError{color:var(--dsw-alias-state-error-primary,#d92d20);font-size:12px;line-height:18px}\n.smp-field .smp-input:user-invalid,.smp-field .smp-textarea:user-invalid,\n.smp-field .smp-input[aria-invalid=true],.smp-field .smp-textarea[aria-invalid=true]{border-color:var(--dsw-alias-state-error-primary,#d92d20)}\n/* 文本框随内容长高、到上限再滚（`field-sizing` 在 Chromium 123+ 才有；不支持的宿主\n * 退回 `rows` 的固定高度，所以 `min-block-size` 与原来的 `min-height:84px` 一致）。\n * 正文这类字段以前写死 `rows={8}`：十行内容一开场就带滚动条，三行的请求头又占半屏。 */\n.smp-formGrid .smp-textarea{field-sizing:content;width:100%;height:auto;min-block-size:84px;max-block-size:260px}\n";
@@ -623,7 +655,7 @@ window.__ModuleLoader__.load({
     };
 
     // src/modules/git/client/surfaces/settings/style.css
-    var style_default2 = '.sk-git {\n  max-width: 760px;\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  color: var(--dsw-alias-label-primary);\n}\n\n/* 页头 / 卡片 / 行的骨架来自 src/client/ui/components/settings-parts（.sk-ui-*）。 */\n\n/* 第一组标题跟页头副标题离得太近（容器 gap 只有 12px），单独再加一点顶部留白；\n * 第二组「提交信息」与上一张卡片之间保持原间距，避免整页被拉散。 */\n.sk-git__groupLead {\n  margin-top: 8px;\n}\n\n.sk-git__note {\n  margin: 0;\n  padding: 8px 10px;\n  font-size: 13px;\n  line-height: 18px;\n  border-radius: var(--dsw-radius-md);\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  background-color: var(--dsw-alias-bg-layer-1);\n}\n\n.sk-git__note {\n  color: var(--dsw-alias-label-secondary);\n}\n\n.sk-git__field {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  width: 260px;\n  max-width: 100%;\n}\n\n/* 输入框的底色用半透明灰而不是 layer-2：浅色主题里 layer-2 是纯白，会跟卡片糊在一起。 */\n.sk-git__input,\n.sk-git__textarea {\n  width: 100%;\n  box-sizing: border-box;\n  font: inherit;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  padding: 6px 10px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background-color: rgba(128, 128, 128, 0.08);\n}\n\n.sk-git__input:focus-visible,\n.sk-git__textarea:focus-visible {\n  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n.sk-git__input[aria-invalid="true"] {\n  border-color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-git__input:disabled,\n.sk-git__textarea:disabled {\n  opacity: 0.6;\n  cursor: default;\n}\n\n.sk-git__hint {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-git__hint--error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n/* 提交说明要占满整行，`Row` 的右侧控件栏只有 55% 宽，所以这里直接用骨架的行结构自己排版。 */\n.sk-git__stack {\n  flex-direction: column;\n  align-items: stretch;\n  gap: 8px;\n}\n\n.sk-git__stackBody {\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n}\n\n.sk-git__textarea {\n  min-height: 132px;\n  resize: vertical;\n}\n\n.sk-git__meta {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.sk-git__status {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-git__status--error {\n  color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-git__count {\n  margin-left: auto;\n  color: var(--dsw-alias-label-tertiary);\n  font-variant-numeric: tabular-nums;\n}\n\n/* 宿主没发布 UI kit 时的降级开关（正常路径走 primitives.Switch）。 */\n.sk-git__switch {\n  flex: none;\n  position: relative;\n  width: 36px;\n  height: 20px;\n  padding: 0;\n  border: 0;\n  border-radius: 999px;\n  corner-shape: round;\n  background-color: rgba(128, 128, 128, 0.45);\n  cursor: pointer;\n  transition: background-color 120ms ease;\n}\n\n.sk-git__switch[aria-checked="true"] {\n  background-color: var(--dsw-alias-state-business-primary, #3a6fd8);\n}\n\n.sk-git__switch:disabled {\n  opacity: 0.5;\n  cursor: default;\n}\n\n/* 画圆必须显式 corner-shape: round —— 宿主注入了 superellipse(1.5)，50% 会被画成超椭圆。 */\n.sk-git__switchThumb {\n  position: absolute;\n  top: 2px;\n  left: 2px;\n  width: 16px;\n  height: 16px;\n  border-radius: 50%;\n  corner-shape: round;\n  background-color: #fff;\n  transition: transform 120ms ease;\n}\n\n.sk-git__switch[aria-checked="true"] .sk-git__switchThumb {\n  transform: translateX(16px);\n}\n\n.sk-git__worktreeActions {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 6px 10px;\n}\n\n.sk-git__worktreeButton {\n  padding: 2px 8px;\n  border: 1px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  color: var(--dsw-alias-label-secondary);\n  background: var(--dsw-alias-bg-layer-1);\n  font: inherit;\n  font-size: 12px;\n  line-height: 20px;\n}\n\n.sk-git__worktreeButton:not(:disabled) {\n  cursor: pointer;\n}\n\n.sk-git__worktreeButton:disabled {\n  opacity: .6;\n}\n\n.sk-git__worktreeButton:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, currentColor);\n  outline-offset: 2px;\n}\n';
+    var style_default2 = ".sk-git__note {\n  margin: 0;\n  padding: 8px 10px;\n  font-size: 13px;\n  line-height: 18px;\n  border-radius: var(--dsw-radius-md);\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  background-color: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-secondary);\n}\n\n/* 提交说明需要整行宽度，不使用 Row 的右栏。 */\n.sk-git__stack {\n  flex-direction: column;\n  align-items: stretch;\n  gap: 8px;\n}\n\n.sk-git__stackBody {\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n}\n\n.sk-git__textarea {\n  min-height: 132px;\n  resize: vertical;\n}\n\n.sk-git__meta {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  font-size: 12px;\n  line-height: 18px;\n}\n\n.sk-git__status { color: var(--dsw-alias-label-tertiary); }\n.sk-git__status--error { color: var(--dsw-alias-state-danger-primary, #d0453f); }\n\n.sk-git__count {\n  margin-left: auto;\n  color: var(--dsw-alias-label-tertiary);\n  font-variant-numeric: tabular-nums;\n}\n\n.sk-git__worktreeActions {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 6px 10px;\n}\n\n.sk-git__worktreeButton {\n  padding: 2px 8px;\n  border: 1px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  color: var(--dsw-alias-label-secondary);\n  background: var(--dsw-alias-bg-layer-1);\n  font: inherit;\n  font-size: 12px;\n  line-height: 20px;\n}\n\n.sk-git__worktreeButton:not(:disabled) {\n  cursor: pointer;\n}\n\n.sk-git__worktreeButton:disabled {\n  opacity: .6;\n}\n\n.sk-git__worktreeButton:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, currentColor);\n  outline-offset: 2px;\n}\n";
 
     // src/modules/git/client/surfaces/settings/worktrees.tsx
     var import_react2 = __toESM(require("react"), 1);
@@ -750,7 +782,6 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/git/client/constants.ts
-    var COMMIT_INSTRUCTIONS_SAVE_DELAY_MS = 1200;
     var SECTION_ORDER = 24;
 
     // src/modules/git/client/surfaces/settings/worktrees.tsx
@@ -872,6 +903,7 @@ window.__ModuleLoader__.load({
     // src/modules/git/client/surfaces/settings/index.tsx
     var NAME = "settings";
     var CSS = `${settingsStyles("sk")}
+    ${repository_default}
     ${style_default2}`;
     var DEFAULTS = Object.freeze({
       branchPrefix: DEFAULT_BRANCH_PREFIX,
@@ -902,25 +934,6 @@ window.__ModuleLoader__.load({
     }
     function createGitSection(ctx) {
       const t = ctx.locale.bind(GIT_NS);
-      function GitSwitch({ label, checked, disabled, onChange }) {
-        const HostSwitch = primitives.Switch;
-        if (HostSwitch === void 0) {
-          return /* @__PURE__ */ __dshReact.createElement(
-            "button",
-            {
-              type: "button",
-              role: "switch",
-              className: "sk-git__switch",
-              "aria-label": label,
-              "aria-checked": checked,
-              disabled,
-              onClick: () => onChange(!checked)
-            },
-            /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-git__switchThumb", "aria-hidden": "true" })
-          );
-        }
-        return /* @__PURE__ */ __dshReact.createElement(HostSwitch, { label, checked, disabled, onChange });
-      }
       return function GitSettingsSection({ form, worktreeForm }) {
         const [, setVersion] = import_react3.default.useState(0);
         const [prefixDraft, setPrefixDraft] = import_react3.default.useState(null);
@@ -929,7 +942,13 @@ window.__ModuleLoader__.load({
         const [forceDraft, setForceDraft] = import_react3.default.useState(null);
         const [forceBusy, setForceBusy] = import_react3.default.useState(false);
         const [instructionsDraft, setInstructionsDraft] = import_react3.default.useState(null);
-        const [saveState, setSaveState] = import_react3.default.useState("");
+        const [instructionsStatus, setInstructionsStatus] = import_react3.default.useState(null);
+        const activeInstructions = import_react3.default.useRef(null);
+        const queuedInstructions = import_react3.default.useRef(null);
+        const prefixErrorId = import_react3.default.useId();
+        const instructionsId = import_react3.default.useId();
+        const instructionsDescriptionId = import_react3.default.useId();
+        const instructionsStatusId = import_react3.default.useId();
         import_react3.default.useEffect(() => {
           if (typeof form?.subscribe !== "function") return void 0;
           return form.subscribe(() => setVersion((value) => value + 1));
@@ -937,7 +956,7 @@ window.__ModuleLoader__.load({
         const settings = readForm(form);
         const writable = isWritable(form);
         const prefixValue = prefixDraft ?? settings.branchPrefix;
-        const instructionsValue = instructionsDraft ?? settings.commitInstructions;
+        const instructionsValue = instructionsDraft?.value ?? settings.commitInstructions;
         const forceValue = forceDraft ?? settings.alwaysForcePush;
         const savePrefix = async () => {
           if (prefixDraft === null) return;
@@ -963,30 +982,32 @@ window.__ModuleLoader__.load({
           }
         };
         const saveInstructions = async (draft) => {
-          if (!writable) return;
-          const next = normalizeCommitInstructions(draft);
-          if (next === settings.commitInstructions) {
-            setInstructionsDraft(null);
+          if (!isWritable(form)) return;
+          if (activeInstructions.current !== null) {
+            if (draft !== activeInstructions.current) queuedInstructions.current = draft;
             return;
           }
-          setSaveState("saving");
+          const next = normalizeCommitInstructions(draft.value);
+          if (next === readForm(form).commitInstructions) {
+            setInstructionsDraft((current) => current === draft ? null : current);
+            setInstructionsStatus((status) => status?.failed ? null : status);
+            return;
+          }
+          activeInstructions.current = draft;
+          setInstructionsStatus({ draft, label: t("saving") });
           try {
             await acceptConfigWrite(() => form.set("commitInstructions", next), "commitInstructions");
             setInstructionsDraft((current) => current === draft ? null : current);
-            setSaveState("saved");
+            setInstructionsStatus({ draft, label: t("saved") });
           } catch (cause) {
-            setSaveState("failed");
-            toast.error(t("saveFailed", { reason: String(cause?.message ?? cause) }));
+            setInstructionsStatus({ draft, label: t("saveFailed", { reason: String(cause?.message ?? cause) }), failed: true });
+          } finally {
+            activeInstructions.current = null;
+            const queued = queuedInstructions.current;
+            queuedInstructions.current = null;
+            if (queued !== null) void saveInstructions(queued);
           }
         };
-        import_react3.default.useEffect(() => {
-          if (instructionsDraft === null || !writable) return void 0;
-          if (normalizeCommitInstructions(instructionsDraft) === settings.commitInstructions) return void 0;
-          const timer = setTimeout(() => {
-            void saveInstructions(instructionsDraft);
-          }, COMMIT_INSTRUCTIONS_SAVE_DELAY_MS);
-          return () => clearTimeout(timer);
-        }, [instructionsDraft, writable, settings.commitInstructions]);
         const toggleForcePush = async (next) => {
           if (!writable || forceBusy) return;
           setForceDraft(next);
@@ -1002,22 +1023,23 @@ window.__ModuleLoader__.load({
             setForceBusy(false);
           }
         };
-        const saveLabel = saveState === "saving" ? t("saving") : saveState === "saved" ? t("saved") : "";
-        return /* @__PURE__ */ __dshReact.createElement("main", { className: "sk-git" }, /* @__PURE__ */ __dshReact.createElement("style", null, CSS), /* @__PURE__ */ __dshReact.createElement(PageHeader, { title: t("title"), subtitle: t("subtitle") }), writable ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git__note", role: "status" }, t("readOnly")), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "sk-git__groupLead", title: t("sectionTitle"), "aria-label": t("sectionTitle") }, /* @__PURE__ */ __dshReact.createElement(
+        const visibleInstructionsStatus = instructionsDraft === null || instructionsDraft === instructionsStatus?.draft ? instructionsStatus : null;
+        return /* @__PURE__ */ __dshReact.createElement("main", { className: "sk-git sk-repo-settings" }, /* @__PURE__ */ __dshReact.createElement("style", null, CSS), /* @__PURE__ */ __dshReact.createElement(PageHeader, { title: t("title"), subtitle: t("subtitle") }), writable ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git__note", role: "status" }, t("readOnly")), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "sk-repo-settings__groupLead", title: t("sectionTitle"), "aria-label": t("sectionTitle") }, /* @__PURE__ */ __dshReact.createElement(
           Row,
           {
             title: t("branchPrefix"),
             description: t("branchPrefixDescription"),
-            control: /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git__field" }, /* @__PURE__ */ __dshReact.createElement(
+            control: /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-repo-settings__field" }, /* @__PURE__ */ __dshReact.createElement(
               "input",
               {
                 type: "text",
-                className: "sk-git__input",
+                className: "sk-repo-settings__input",
                 value: prefixValue,
                 maxLength: MAX_BRANCH_PREFIX_LENGTH,
                 placeholder: t("branchPrefixPlaceholder"),
                 "aria-label": t("branchPrefix"),
-                "aria-invalid": prefixError === "" ? "false" : "true",
+                "aria-invalid": prefixError !== "",
+                "aria-describedby": prefixError === "" ? void 0 : prefixErrorId,
                 disabled: !writable || prefixBusy,
                 onChange: (event) => {
                   setPrefixDraft(event.target.value);
@@ -1028,10 +1050,10 @@ window.__ModuleLoader__.load({
                   if (isComposingEvent(event)) return;
                   if (event.key !== "Enter") return;
                   event.preventDefault();
-                  void savePrefix();
+                  event.currentTarget.blur();
                 }
               }
-            ), prefixError === "" ? null : /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-git__hint sk-git__hint--error" }, prefixError))
+            ), prefixError === "" ? null : /* @__PURE__ */ __dshReact.createElement("p", { id: prefixErrorId, className: "sk-repo-settings__hint sk-repo-settings__hint--error" }, prefixError))
           }
         ), /* @__PURE__ */ __dshReact.createElement(
           Row,
@@ -1039,7 +1061,7 @@ window.__ModuleLoader__.load({
             title: t("alwaysForcePush"),
             description: t("alwaysForcePushDescription"),
             control: /* @__PURE__ */ __dshReact.createElement(
-              GitSwitch,
+              SettingsSwitch,
               {
                 label: t("alwaysForcePush"),
                 checked: forceValue,
@@ -1048,25 +1070,23 @@ window.__ModuleLoader__.load({
               }
             )
           }
-        )), /* @__PURE__ */ __dshReact.createElement(CardSection, { title: t("commitSection"), "aria-label": t("commitSection") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-ui-row sk-git__stack" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-ui-rowText" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-ui-rowTitle" }, t("commitInstructions")), /* @__PURE__ */ __dshReact.createElement("p", { className: "sk-ui-rowDesc" }, t("commitInstructionsDescription"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git__stackBody" }, /* @__PURE__ */ __dshReact.createElement(
+        )), /* @__PURE__ */ __dshReact.createElement(CardSection, { title: t("commitSection"), "aria-label": t("commitSection") }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-ui-row sk-git__stack" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-ui-rowText" }, /* @__PURE__ */ __dshReact.createElement("label", { htmlFor: instructionsId, className: "sk-ui-rowTitle" }, t("commitInstructions")), /* @__PURE__ */ __dshReact.createElement("p", { id: instructionsDescriptionId, className: "sk-ui-rowDesc" }, t("commitInstructionsDescription"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git__stackBody" }, /* @__PURE__ */ __dshReact.createElement(
           "textarea",
           {
+            id: instructionsId,
             rows: 6,
-            className: "sk-git__textarea",
+            className: "sk-repo-settings__input sk-git__textarea",
             value: instructionsValue,
             maxLength: MAX_COMMIT_INSTRUCTIONS_LENGTH,
             placeholder: t("commitInstructionsPlaceholder"),
-            "aria-label": t("commitInstructions"),
+            "aria-describedby": visibleInstructionsStatus?.failed ? `${instructionsDescriptionId} ${instructionsStatusId}` : instructionsDescriptionId,
             disabled: !writable,
-            onChange: (event) => {
-              setInstructionsDraft(event.target.value);
-              setSaveState("");
-            },
+            onChange: (event) => setInstructionsDraft({ value: event.target.value }),
             onBlur: () => {
               if (instructionsDraft !== null) void saveInstructions(instructionsDraft);
             }
           }
-        ), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git__meta" }, /* @__PURE__ */ __dshReact.createElement("span", { className: saveState === "failed" ? "sk-git__status sk-git__status--error" : "sk-git__status" }, saveLabel), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-git__count" }, t("count", { count: instructionsValue.length, max: MAX_COMMIT_INSTRUCTIONS_LENGTH })))))), /* @__PURE__ */ __dshReact.createElement(WorktreeSettings, { t, retainForm: worktreeForm }));
+        ), /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-git__meta" }, /* @__PURE__ */ __dshReact.createElement("span", { id: instructionsStatusId, role: "status", className: visibleInstructionsStatus?.failed ? "sk-git__status sk-git__status--error" : "sk-git__status" }, visibleInstructionsStatus?.label), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-git__count" }, t("count", { count: instructionsValue.length, max: MAX_COMMIT_INSTRUCTIONS_LENGTH })))))), /* @__PURE__ */ __dshReact.createElement(WorktreeSettings, { t, retainForm: worktreeForm }));
       };
     }
     function install(ctx) {

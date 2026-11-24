@@ -123,18 +123,16 @@ test('apply：注册一段提示词，自由文本必须关掉插值', () => {
   assert.equal(section.order, PROMPT_ORDER)
   // 用户的文本里出现 `{{…}}` 也不能让宿主当成插值表达式（未知引用会直接抛错）。
   assert.equal(section.interpolate, false)
-  assert.match(section.text, /\{\{user\}\}/)
+  assert.match(section.text(), /\{\{user\}\}/)
   // 注销交给 effect，插件重启时旧段必须跟着走。
   assert.deepEqual(ctx.effects, [`dsh-toolkit-git:${PROMPT_SECTION}`])
   assert.deepEqual(ctx.released, [])
 })
 
-test('apply：什么都没配就一个段都不注册，但路由与工具仍然挂上', () => {
+test('apply：空配置不贡献提示词文本，路由与工具仍然挂上', () => {
   const ctx = fakeCtx()
   host.apply(ctx, {})
-  assert.equal(ctx.sections.length, 0)
-  assert.equal(ctx.effects.length, 0)
-  // 提示词的早退不能把分支按钮的路由、也不能把两个 git 工具一起跳过。
+  assert.equal(ctx.sections[0].text(), '')
   assert.equal(ctx.injected.length, 2)
   assert.deepEqual(ctx.injected[0].names, ['webServer', 'connection'])
   assert.deepEqual(ctx.injected[1].names, ['tools'])
@@ -143,7 +141,22 @@ test('apply：什么都没配就一个段都不注册，但路由与工具仍然
 
   const legacy = fakeCtx()
   host.apply(legacy, undefined)
-  assert.equal(legacy.sections.length, 0)
+  assert.equal(legacy.sections[0].text(), '')
+})
+
+test('Git 三个字段支持宿主热写入，提示词读取最新值而不重新注册', () => {
+  for (const key of ['branchPrefix', 'alwaysForcePush', 'commitInstructions']) {
+    assert.equal(host.Config.dict[key].meta.volatile, true, key)
+  }
+  const ctx = fakeCtx()
+  let instructions = ''
+  host.apply(ctx, { commitInstructions: { get: () => instructions } })
+  assert.equal(ctx.sections[0].text(), '')
+  instructions = '保留 {{ticket}} 编号'
+  assert.match(ctx.sections[0].text(), /保留 \{\{ticket\}\} 编号/)
+  instructions = ''
+  assert.equal(ctx.sections[0].text(), '')
+  assert.equal(ctx.sections.length, 1)
 })
 
 test('apply：配了提示词时，路由与段落同时在', () => {

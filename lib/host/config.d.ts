@@ -248,13 +248,13 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         bridgeApprovalTimeoutMs: s<number, number, "volatile-defined">;
     }>>, "defined">;
     git: s<Schemastery.ObjectS<NoInfer<{
-        branchPrefix: s<string, string, "defined">;
-        alwaysForcePush: s<boolean, boolean, "defined">;
-        commitInstructions: s<string, string, "defined">;
+        branchPrefix: s<string, string, "volatile-defined">;
+        alwaysForcePush: s<boolean, boolean, "volatile-defined">;
+        commitInstructions: s<string, string, "volatile-defined">;
     }>>, Schemastery.ObjectT<NoInfer<{
-        branchPrefix: s<string, string, "defined">;
-        alwaysForcePush: s<boolean, boolean, "defined">;
-        commitInstructions: s<string, string, "defined">;
+        branchPrefix: s<string, string, "volatile-defined">;
+        alwaysForcePush: s<boolean, boolean, "volatile-defined">;
+        commitInstructions: s<string, string, "volatile-defined">;
     }>>, "defined">;
     taskMonitor: s<Schemastery.ObjectS<NoInfer<{
         enabled: s<boolean, boolean, "defined">;
@@ -510,13 +510,13 @@ export declare const Config: s<Schemastery.ObjectS<NoInfer<{
         bridgeApprovalTimeoutMs: s<number, number, "volatile-defined">;
     }>>, "defined">;
     git: s<Schemastery.ObjectS<NoInfer<{
-        branchPrefix: s<string, string, "defined">;
-        alwaysForcePush: s<boolean, boolean, "defined">;
-        commitInstructions: s<string, string, "defined">;
+        branchPrefix: s<string, string, "volatile-defined">;
+        alwaysForcePush: s<boolean, boolean, "volatile-defined">;
+        commitInstructions: s<string, string, "volatile-defined">;
     }>>, Schemastery.ObjectT<NoInfer<{
-        branchPrefix: s<string, string, "defined">;
-        alwaysForcePush: s<boolean, boolean, "defined">;
-        commitInstructions: s<string, string, "defined">;
+        branchPrefix: s<string, string, "volatile-defined">;
+        alwaysForcePush: s<boolean, boolean, "volatile-defined">;
+        commitInstructions: s<string, string, "volatile-defined">;
     }>>, "defined">;
     taskMonitor: s<Schemastery.ObjectS<NoInfer<{
         enabled: s<boolean, boolean, "defined">;

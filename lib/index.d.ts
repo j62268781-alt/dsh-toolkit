@@ -255,13 +255,13 @@ declare const _default: {
             bridgeApprovalTimeoutMs: import("@deepseek-ai/schemastery").default<number, number, "volatile-defined">;
         }>>, "defined">;
         git: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
-            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "defined">;
-            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
-            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
+            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
+            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
         }>>, Schemastery.ObjectT<NoInfer<{
-            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "defined">;
-            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
-            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
+            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
+            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
         }>>, "defined">;
         taskMonitor: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
             enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
@@ -517,13 +517,13 @@ declare const _default: {
             bridgeApprovalTimeoutMs: import("@deepseek-ai/schemastery").default<number, number, "volatile-defined">;
         }>>, "defined">;
         git: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
-            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "defined">;
-            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
-            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
+            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
+            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
         }>>, Schemastery.ObjectT<NoInfer<{
-            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "defined">;
-            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;
-            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "defined">;
+            branchPrefix: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
+            alwaysForcePush: import("@deepseek-ai/schemastery").default<boolean, boolean, "volatile-defined">;
+            commitInstructions: import("@deepseek-ai/schemastery").default<string, string, "volatile-defined">;
         }>>, "defined">;
         taskMonitor: import("@deepseek-ai/schemastery").default<Schemastery.ObjectS<NoInfer<{
             enabled: import("@deepseek-ai/schemastery").default<boolean, boolean, "defined">;

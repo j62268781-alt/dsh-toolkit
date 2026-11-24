@@ -17,11 +17,11 @@ import {
  */
 export const Config = s.object({
   /** 新建分支时预填的前缀；留空表示不加前缀。 */
-  branchPrefix: s.string().default(DEFAULT_BRANCH_PREFIX),
+  branchPrefix: s.string().default(DEFAULT_BRANCH_PREFIX).volatile(),
   /** 推送已存在的远端分支时使用 `--force-with-lease`。 */
-  alwaysForcePush: s.boolean().default(DEFAULT_ALWAYS_FORCE_PUSH),
+  alwaysForcePush: s.boolean().default(DEFAULT_ALWAYS_FORCE_PUSH).volatile(),
   /** 追加到提交说明生成指令里的用户偏好（自由文本，允许换行）。 */
-  commitInstructions: s.string().default(DEFAULT_COMMIT_INSTRUCTIONS),
+  commitInstructions: s.string().default(DEFAULT_COMMIT_INSTRUCTIONS).volatile(),
 })
 
 export interface GitSettings {
