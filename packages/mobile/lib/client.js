@@ -1909,7 +1909,6 @@ window.__ModuleLoader__.load({
           wechatRunning: false
         });
         const [ready, setReady] = React2.useState(false);
-        const [pending, setPending] = React2.useState({ phone: false, wechat: false });
         React2.useEffect(() => {
           let alive = true;
           void readFeatures().then((next) => {
@@ -1924,28 +1923,40 @@ window.__ModuleLoader__.load({
         const patch = React2.useCallback((key, next) => {
           setFeatures((prev) => ({ ...prev, [key]: next }));
         }, []);
-        const mark = React2.useCallback((key, next) => {
-          setPending((prev) => ({ ...prev, [key]: next }));
-        }, []);
-        const apply = React2.useCallback(async (key, next, current) => {
-          mark(key, true);
-          patch(key, next);
-          let persisted = false;
+        const intent = React2.useRef({ phone: null, wechat: null });
+        const flushing = React2.useRef({ phone: false, wechat: false });
+        const commit = React2.useCallback(async (key, next) => {
           try {
             const payload = await writeSwitch(key === "phone" ? { phone: next } : { wechat: next });
-            persisted = true;
             if (key === "wechat") {
               setFeatures((prev) => ({ ...prev, wechatRunning: payload?.running === true }));
-            } else if (!next) {
-              await unbindPhone();
             }
+            return true;
           } catch (failure) {
-            if (!persisted) patch(key, current);
+            if (intent.current[key] === null) patch(key, !next);
             toast.error(String(failure?.message ?? failure));
-          } finally {
-            mark(key, false);
+            return false;
           }
-        }, [patch, mark]);
+        }, [patch]);
+        const flush = React2.useCallback(async (key) => {
+          if (flushing.current[key]) return;
+          flushing.current[key] = true;
+          try {
+            while (intent.current[key] !== null) {
+              const next = intent.current[key];
+              intent.current[key] = null;
+              if (!await commit(key, next)) break;
+              if (key === "phone" && !next && intent.current.phone === null) await unbindPhone();
+            }
+          } finally {
+            flushing.current[key] = false;
+          }
+        }, [commit]);
+        const apply = React2.useCallback((key, next) => {
+          patch(key, next);
+          intent.current[key] = next;
+          void flush(key);
+        }, [patch, flush]);
         const hero = React2.useMemo(() => h("img", {
           className: "mbm-hero",
           src: hero_default,
@@ -1986,9 +1997,9 @@ window.__ModuleLoader__.load({
               Toggle,
               {
                 checked: features.phone,
-                disabled: !ready || pending.phone,
+                disabled: !ready,
                 label: "允许手机控制此设备",
-                onChange: (next) => void apply("phone", next, features.phone)
+                onChange: (next) => apply("phone", next)
               }
             )
           ),
@@ -2002,9 +2013,9 @@ window.__ModuleLoader__.load({
               Toggle,
               {
                 checked: features.wechat,
-                disabled: !ready || pending.wechat,
+                disabled: !ready,
                 label: "微信 ClawBot",
-                onChange: (next) => void apply("wechat", next, features.wechat)
+                onChange: (next) => apply("wechat", next)
               }
             )
           )

@@ -228,6 +228,56 @@ test('关闭手机入口：先关功能位，再解绑并清掉本地残留', as
   }
 })
 
+test('回执没回来时开关不锁自己：连点两次，第二次也照做', async () => {
+  const panel = await mount({
+    'plugin:preferences': { ok: true, phone: true, wechat: false, running: false },
+  })
+  try {
+    // 第一笔写入卡住不返回：真实环境里关入口要接着打远端服务器的撤销接口，
+    // 这一拍能到几百毫秒。开关在这段时间里既不能变灰也不能吞掉后续点击。
+    const posts = []
+    const logouts = []
+    let release
+    const gate = new Promise((resolve) => { release = resolve })
+    globalThis.fetch = async (url, init = {}) => {
+      const raw = String(url)
+      const body = init.body === undefined ? undefined : JSON.parse(init.body)
+      if (raw.startsWith(PLUGIN_PREFIX)) {
+        if (init.method === 'POST') {
+          posts.push(body)
+          if (posts.length === 1) await gate
+          return json({ ok: true, phone: body.phone === true, wechat: false, running: false })
+        }
+        return json({ ok: true, phone: true, wechat: false, running: false })
+      }
+      if (raw.startsWith(`${CONTROL_PREFIX}/`)) {
+        logouts.push(raw)
+        return json({ result: { ok: true, value: { config: { serverUrl: '' } } } })
+      }
+      throw new Error(`unexpected fetch: ${raw}`)
+    }
+
+    await panel.click(panel.phone())
+    assert.equal(panel.phone().getAttribute('aria-checked'), 'false', '点击要立刻跟手')
+    assert.equal(panel.phone().disabled, false, '等回执时开关不该变灰、更不该点不动')
+
+    await panel.click(panel.phone())
+    assert.equal(panel.phone().getAttribute('aria-checked'), 'true', '第二次点击不该被吞')
+
+    await act(async () => {
+      release()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    assert.deepEqual(posts, [{ phone: false }, { phone: true }], '两笔意图都写下去，且按点击顺序落地')
+    assert.equal(panel.phone().getAttribute('aria-checked'), 'true', '最后停在用户最后一次点击上')
+    assert.deepEqual(logouts, [], '刚关又开回来，就别撤凭据了')
+    assert.equal(panel.error() === null, true)
+  } finally {
+    await panel.unmount()
+  }
+})
+
 test('写功能位失败时退回原值并报错，且不发解绑', async () => {
   const panel = await mount({
     'plugin:preferences': { ok: true, phone: true, wechat: false, running: false },

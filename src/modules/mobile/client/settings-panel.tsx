@@ -186,8 +186,6 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
       wechatRunning: false,
     })
     const [ready, setReady] = React.useState(false)
-    // 每个开关各自忙：一个在等回执时另一个还能点，也不会把整页一起刷一遍。
-    const [pending, setPending] = React.useState({ phone: false, wechat: false })
 
     React.useEffect(() => {
       let alive = true
@@ -205,37 +203,62 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
       setFeatures((prev: any) => ({ ...prev, [key]: next }))
     }, [])
 
-    const mark = React.useCallback((key: 'phone' | 'wechat', next: boolean) => {
-      setPending((prev: any) => ({ ...prev, [key]: next }))
-    }, [])
-
     /**
-     * 先让开关跟手再发请求：切开关是一次明确的意图，等回执回来才动会显得「卡一下」。
+     * 开关不等回执，也不在等回执的时候把自己锁上。
      *
-     * 关手机入口是两步：写功能位（关掉菜单入口）→ 解绑（撤销授权、忘掉本地快照）。
-     * 第二步失败不该把开关翻回开：功能位已经落地，这时候显示「开」反而更骗人；
-     * 所以只有写功能位本身失败才退回原值。
+     * 宿主 `Switch` 就是个原生 button：`disabled` 一挂上去既是 `opacity:.5`（灰一下），
+     * 又把点击直接吞掉。而关手机入口是三步：写功能位 → 撤销授权（这一趟要打远端服务器，
+     * 是这里唯一真正慢的一步）→ 清本机配对残留。把它挂在 `disabled` 上，用户得到的就是
+     * 「点一下先灰一阵，想再点得等它亮回来」——页面上其他开关没有这种多段式回执，
+     * 所以只有这一颗显得卡。
+     *
+     * 改成：点击只记「最新意图」，同一个开关的写入排成一串落地。连点不会被吞，
+     * 也不会两个请求同时写同一个位（谁后回谁说话，开关会闪回旧值）。
      */
-    const apply = React.useCallback(async (key: 'phone' | 'wechat', next: boolean, current: boolean) => {
-      mark(key, true)
-      patch(key, next)
-      let persisted = false
+    // 宿主注入的 React 是 any，`useRef<T>` 这种带类型实参的调用过不了 noImplicitAny。
+    const intent = React.useRef({ phone: null as boolean | null, wechat: null as boolean | null })
+    const flushing = React.useRef({ phone: false, wechat: false })
+
+    const commit = React.useCallback(async (key: 'phone' | 'wechat', next: boolean): Promise<boolean> => {
       try {
         const payload = await writeSwitch(key === 'phone' ? { phone: next } : { wechat: next })
-        persisted = true
         if (key === 'wechat') {
           setFeatures((prev: any) => ({ ...prev, wechatRunning: payload?.running === true }))
-        } else if (!next) {
-          await unbindPhone()
         }
+        return true
       } catch (failure: any) {
-        if (!persisted) patch(key, current)
+        // 只有这一笔仍是用户最后一个意思时才回翻；后面已经点了别的，就让那一笔去说话。
+        if (intent.current[key] === null) patch(key, !next)
         // 一次性的失败走 toast：以前这行 `<p class="mbm-error">` 会把整张卡片往下顶。
         toast.error(String(failure?.message ?? failure))
-      } finally {
-        mark(key, false)
+        return false
       }
-    }, [patch, mark])
+    }, [patch])
+
+    /** 把某个开关攒下的意图逐笔写完；写入期间再点只是改 `intent`，不另起一条链。 */
+    const flush = React.useCallback(async (key: 'phone' | 'wechat') => {
+      if (flushing.current[key]) return
+      flushing.current[key] = true
+      try {
+        while (intent.current[key] !== null) {
+          const next = intent.current[key] as boolean
+          intent.current[key] = null
+          if (!(await commit(key, next))) break
+          // 关掉手机入口是两步：功能位落地后再解绑（撤销授权、忘掉本地快照）。
+          // 这中间用户已经把开关又打开了，就别再撤凭据了，等下一笔写回开就行。
+          if (key === 'phone' && !next && intent.current.phone === null) await unbindPhone()
+        }
+      } finally {
+        flushing.current[key] = false
+      }
+    }, [commit])
+
+    const apply = React.useCallback((key: 'phone' | 'wechat', next: boolean) => {
+      // 先让开关跟手再发请求：切开关是一次明确的意图，等回执回来才动才是真「卡一下」。
+      patch(key, next)
+      intent.current[key] = next
+      void flush(key)
+    }, [patch, flush])
 
     // 横幅走 data URL，重新创建 <img> 会让浏览器重新解码一次；渲染一次就固定下来，
     // 这样切换开关时不会因为整块子树重建而闪一下。
@@ -281,9 +304,9 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
           >
             <Toggle
               checked={features.phone}
-              disabled={!ready || pending.phone}
+              disabled={!ready}
               label="允许手机控制此设备"
-              onChange={(next: boolean) => void apply('phone', next, features.phone)}
+              onChange={(next: boolean) => apply('phone', next)}
             />
           </Row>
           <Row
@@ -292,9 +315,9 @@ export function createMobileSettings(React: any, deps: MobileSettingsDeps) {
           >
             <Toggle
               checked={features.wechat}
-              disabled={!ready || pending.wechat}
+              disabled={!ready}
               label="微信 ClawBot"
-              onChange={(next: boolean) => void apply('wechat', next, features.wechat)}
+              onChange={(next: boolean) => apply('wechat', next)}
             />
           </Row>
         </CardSection>
