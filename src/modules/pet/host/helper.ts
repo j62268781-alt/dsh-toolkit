@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
-import { resolveElectron, helperEnvironment, type ResolveElectronOptions } from './electron.js'
+import { resolveElectron, helperEnvironment, type ResolveElectronOptions, type RuntimeProgress } from './electron.js'
 import { readElectronPath, type PetSettings } from './config.js'
 import type { HelperBridge } from './bridge.js'
 
@@ -22,6 +22,8 @@ export interface HelperState {
   status: 'stopped' | 'starting' | 'running' | 'error'
   available: boolean
   error?: string | undefined
+  /** 首次准备运行时期间的下载/解压进度；准备结束（成功或失败）后清空。 */
+  progress?: RuntimeProgress | undefined
 }
 
 export interface HelperManagerOptions {
@@ -67,15 +69,20 @@ export class HelperManager {
     if (this.disposed) return
     if (this.pending) return this.pending
     const generation = this.generation
-    this.update({ status: 'starting', error: undefined })
+    this.update({ status: 'starting', error: undefined, progress: undefined })
     this.pending = (async () => {
       try {
-        const binary = await this.resolve({ electronPath: readElectronPath(config), download: true })
+        const binary = await this.resolve({
+          electronPath: readElectronPath(config), download: true,
+          // 下载进度直接进 state：`/state` 与 SSE 都带 `runtime`，设置页因此能画进度条，
+          // 而不是整段几分钟只显示「正在准备」。
+          onProgress: (progress) => { if (!this.disposed && generation === this.generation) this.update({ progress }) },
+        })
         if (this.disposed || generation !== this.generation) return
-        this.update({ available: true, status: 'stopped' })
+        this.update({ available: true, status: 'stopped', progress: undefined })
         if (this.enabled) this.start(binary)
       } catch (error: any) {
-        if (!this.disposed && generation === this.generation) this.update({ status: 'error', error: error.message })
+        if (!this.disposed && generation === this.generation) this.update({ status: 'error', error: error.message, progress: undefined })
       }
     })().finally(() => { this.pending = undefined })
     return this.pending
@@ -89,7 +96,7 @@ export class HelperManager {
   }
   start(binary: string | undefined): void {
     if (this.child || this.disposed || !this.enabled) return
-    this.update({ status: 'starting', error: undefined })
+    this.update({ status: 'starting', error: undefined, progress: undefined })
     let child: ChildProcess
     try {
       // binary 可能是 undefined（下载未启用或找不到）：spawn 会立刻抛错，由下面的 catch 转成 error 状态。
@@ -153,7 +160,7 @@ export class HelperManager {
       timer = setTimeout(() => { child.kill('SIGKILL'); done() }, 3000)
       timer.unref?.()
     })
-    this.update({ status: 'stopped', error: undefined })
+    this.update({ status: 'stopped', error: undefined, progress: undefined })
   }
   async dispose(): Promise<void> { this.disposed = true; this.enabled = false; await this.stop() }
 }

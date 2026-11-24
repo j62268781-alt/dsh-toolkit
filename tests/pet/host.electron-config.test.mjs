@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { ELECTRON_VERSION, executableIn, helperEnvironment, resolveElectron, runtimeDirectory } from '../../src/modules/pet/host/electron.ts'
+import { ELECTRON_VERSION, executableIn, helperEnvironment, progressDownloader, resolveElectron, runtimeDirectory, trimRuntime } from '../../src/modules/pet/host/electron.ts'
 import { readSettings } from '../../src/modules/pet/host/config.ts'
 
 async function temporaryHome(t) {
@@ -98,4 +98,61 @@ test('settings clamp finite dimensions and reject coercion and nonfinite numbers
   assert.equal(settings.islandEnabled, true)
   assert.equal(original.petSize, 75)
   assert.equal(settings.petSize, 75)
+})
+
+test('the runtime downloader streams the archive to disk and reports whole-percent progress', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'dsh-toolkit-download-test-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const target = path.join(directory, 'electron.zip')
+  const original = globalThis.fetch
+  t.after(() => { globalThis.fetch = original })
+  let chunks = 2
+  globalThis.fetch = async (url) => {
+    assert.match(String(url), /electron-v43\.3\.0-win32-x64\.zip$/)
+    const body = new ReadableStream({ start(controller) { for (let index = 0; index < chunks; index += 1) controller.enqueue(new Uint8Array(50)); controller.close() } })
+    return new Response(body, { headers: { 'content-length': '100' } })
+  }
+  const reports = []
+  await progressDownloader((progress) => reports.push(progress)).download('https://example.test/electron-v43.3.0-win32-x64.zip', target)
+  assert.equal((await readFile(target)).byteLength, 100, 'the archive lands on disk byte for byte')
+  // 两次 50 字节，按 Content-Length 折算成整条流水线的百分比：44 / 88（下载最多占 88%）。
+  assert.deepEqual(reports.map((report) => [report.phase, report.percent, report.received]), [['download', 44, 50], ['download', 88, 100]])
+  assert.equal(reports.at(-1).total, 100)
+  // 服务器短传时必须报错，不能把半个 zip 交给解压器。
+  chunks = 1
+  await assert.rejects(progressDownloader(() => {}).download('https://example.test/electron-v43.3.0-win32-x64.zip', `${target}.short`), /truncated/)
+})
+
+test('a stalled runtime download fails instead of hanging forever', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'dsh-toolkit-stall-test-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const original = globalThis.fetch
+  t.after(() => { globalThis.fetch = original })
+  globalThis.fetch = async (_url, init) => {
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new Uint8Array(10))
+        // 推了 10 字节就装死：既不 close 也不再给数据，等价于链路停住。
+        init?.signal?.addEventListener('abort', () => controller.error(init.signal.reason))
+      },
+    })
+    return new Response(body, { headers: { 'content-length': '100' } })
+  }
+  await assert.rejects(
+    progressDownloader(() => {}, 1200).download('https://example.test/electron-v43.3.0-win32-x64.zip', path.join(directory, 'electron.zip')),
+    /stalled/,
+    'a silent link must surface as an error, not as an endless "downloading" row',
+  )
+})
+
+test('trimming the runtime keeps only the English locale pack', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'dsh-toolkit-trim-test-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const locales = path.join(directory, 'locales')
+  await mkdir(locales, { recursive: true })
+  for (const name of ['en-US.pak', 'zh-CN.pak', 'ja.pak', 'resources.pak']) await writeFile(path.join(locales, name), 'x'.repeat(10))
+  assert.equal(await trimRuntime(directory, 'win32'), 20, 'only the localised .pak files are removed')
+  assert.deepEqual((await readdir(locales)).sort(), ['en-US.pak', 'resources.pak'])
+  assert.equal(await trimRuntime(directory, 'darwin'), 0, 'macOS localisation lives inside the app bundle and is left alone')
+  assert.deepEqual((await readdir(locales)).sort(), ['en-US.pak', 'resources.pak'])
 })

@@ -1,5 +1,5 @@
 import { type ChildProcess, type SpawnOptions } from 'node:child_process';
-import { type ResolveElectronOptions } from './electron.js';
+import { type ResolveElectronOptions, type RuntimeProgress } from './electron.js';
 import { type PetSettings } from './config.js';
 import type { HelperBridge } from './bridge.js';
 /** 与 `spawn` 的三参数重载同形；测试用假实现替换它（见 tests/pet/host.helper.test.mjs）。 */
@@ -9,6 +9,8 @@ export interface HelperState {
     status: 'stopped' | 'starting' | 'running' | 'error';
     available: boolean;
     error?: string | undefined;
+    /** 首次准备运行时期间的下载/解压进度；准备结束（成功或失败）后清空。 */
+    progress?: RuntimeProgress | undefined;
 }
 export interface HelperManagerOptions {
     onChange: () => void;

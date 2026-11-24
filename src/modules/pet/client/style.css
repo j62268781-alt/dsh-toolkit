@@ -36,6 +36,10 @@
 .pet-previewEyes { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 6px; color: #7de2b7; font-size: 8px; line-height: 1; }
 .pet-previewEyes span:last-child { color: #fff; font-size: 6px; }
 .pet-previewLabel { text-align: center; color: var(--dsw-alias-label-secondary); font-size: 12px; margin-top: 8px; }
+/* 运行时进度：一次 138MB 的下载只在准备阶段出现，宽度按百分比推进，未开始时整条不渲染。 */
+.pet-runtime { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.pet-runtimeBar { width: 180px; max-width: 100%; height: 4px; border-radius: 999px; background: var(--dsw-alias-border-l3); overflow: hidden; }
+.pet-runtimeBarFill { display: block; height: 100%; border-radius: inherit; background: var(--dsw-alias-state-business-primary); transition: width .18s ease; }
 .pet-runtimeActions { display: flex; gap: 8px; }
 .pet-notice, .pet-error { font-size: 12px; line-height: 1.5; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 6px; padding: 10px 12px; }
 .pet-error { color: var(--dsw-alias-state-error-primary); }
@@ -45,7 +49,7 @@
   .pet-previews { gap: 16px; }
   .pet-size > .pet-sectionHeader { flex-wrap: wrap; }
 }
-@media (prefers-reduced-motion: reduce) { .pet-switch span { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .pet-switch span, .pet-runtimeBarFill { transition: none; } }
 .pet-search { display: flex; align-items: center; gap: 8px; padding: 0; }
 /* 搜索按钮旁的「全部 / 已安装 / 未安装」：分段控件，选中态用主色文字 + 底色。 */
 .pet-filter { display: flex; flex: none; align-items: center; gap: 2px; padding: 2px; border-radius: var(--dsw-radius-md, 8px); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); }

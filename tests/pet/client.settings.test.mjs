@@ -157,6 +157,18 @@ test('settings use root-scoped accepted config writes, independent toggles, runt
   const prepare = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Prepare desktop runtime')
   await act(async () => { prepare.click(); await flush() })
   assert.deepEqual(JSON.parse(net.requests.find((request) => request.options.method === 'POST').options.body), { action: 'prepare' })
+  // 准备运行时是现下载 138MB：host 通过 SSE 推 `runtime.progress`，设置页把它画成进度条，
+  // 否则用户整段几分钟只看到「正在准备」。
+  await act(async () => { net.send({ runtime: { status: 'starting', available: false, progress: { phase: 'download', percent: 42, received: 44_040_192, total: 104_857_600 } } }); await flush() })
+  const bar = document.querySelector('.pet-runtimeBar')
+  assert.ok(bar, 'the runtime row shows a progress bar while the download runs')
+  assert.equal(bar.getAttribute('role'), 'progressbar')
+  assert.equal(bar.getAttribute('aria-valuenow'), '42')
+  assert.equal(bar.querySelector('.pet-runtimeBarFill').style.width, '42%')
+  assert.match(document.querySelector('.pet-section[aria-label="Desktop runtime"]').textContent, /42%/)
+  assert.match(document.querySelector('.pet-section[aria-label="Desktop runtime"]').textContent, /42\.0 \/ 100\.0 MB/)
+  await act(async () => { net.send({ runtime: { status: 'stopped', available: true } }); await flush() })
+  assert.equal(document.querySelector('.pet-runtimeBar'), null, 'the bar disappears once the runtime is ready')
   await act(async () => { net.send({ navigation: { seq: 0 } }); await flush(); net.send({ navigation: { seq: 1, sessionId: 'archived' } }); await flush() })
   assert.deepEqual(runtime.opened, ['unarchive:archived', 'open:archived'])
   await act(async () => { runtime.dispose(); await flush() })
@@ -382,7 +394,7 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   assert.ok(options.includes('Qoduck'))
 })
 
-test('writing one setting only disables that control instead of greying out the whole panel', async (t) => {
+test('config writes never grey out controls, and clicks during an inflight write are not swallowed', async (t) => {
   const dom = new JSDOM('<html><head></head><body><div id="root"></div></body></html>', { url: 'https://dsh.test' })
   const saved = new Map()
   for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, IS_REACT_ACT_ENVIRONMENT: true })) { saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key)); Object.defineProperty(globalThis, key, { configurable: true, writable: true, value }) }
@@ -405,12 +417,45 @@ test('writing one setting only disables that control instead of greying out the 
   const release = runtime.hold()
   await act(async () => { petToggle.click(); await flush() })
   assert.deepEqual(runtime.writes.at(-1), [{ op: 'set', path: ['pet', 'petEnabled'], value: true }])
-  assert.equal(petToggle.disabled, true, 'the control being written is disabled')
+  // 宿主的 Switch 是原生 <button disabled>：写进行中一禁用，它就变灰并吃掉下一次点击，
+  // 用户感知就是「点一下卡一下」。range 更糟 —— 拖到一半被 disabled 会直接中断拖动。
+  assert.equal(petToggle.disabled, false, 'the control being written stays clickable')
+  assert.equal(petToggle.getAttribute('aria-checked'), 'true', 'the switch follows the click before the host answers')
   assert.equal(islandToggle.disabled, false, 'the other switches stay usable during a write')
   assert.equal(sliders.every((slider) => slider.disabled === false), true, 'the sliders stay usable during a write')
   assert.equal(browse.disabled, false, 'the library button stays usable during a write')
+  // 回执没回来就再点一次：这一下必须照做，并且最终状态跟最后一次点击走。
+  await act(async () => { petToggle.click(); await flush() })
+  assert.equal(petToggle.getAttribute('aria-checked'), 'false', 'a second click during the inflight write is not swallowed')
+  assert.equal(petToggle.disabled, false)
   release()
-  await act(async () => { await flush() })
-  assert.equal(petToggle.getAttribute('aria-checked'), 'true', 'the write still lands once it resolves')
-  assert.equal(petToggle.disabled, false, 'the control comes back after the write settles')
+  await act(async () => { await flush(); await flush(); await flush() })
+  assert.deepEqual(runtime.writes, [
+    [{ op: 'set', path: ['pet', 'petEnabled'], value: true }],
+    [{ op: 'set', path: ['pet', 'petEnabled'], value: false }],
+  ], 'both clicks reach the host, in click order')
+  assert.equal(petToggle.getAttribute('aria-checked'), 'false', 'the settled state is the last click, not the first write')
+})
+
+test('a rejected write rolls the control back to the stored value instead of leaving it flipping', async (t) => {
+  const dom = new JSDOM('<html><head></head><body><div id="root"></div></body></html>', { url: 'https://dsh.test' })
+  const saved = new Map()
+  for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, IS_REACT_ACT_ENVIRONMENT: true })) { saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key)); Object.defineProperty(globalThis, key, { configurable: true, writable: true, value }) }
+  const net = network()
+  const runtime = context()
+  const module = await clientModule()
+  const HostSwitch = ({ checked, disabled, label, onChange }) => React.createElement('button', { type: 'button', className: 'host-switch', role: 'switch', 'aria-checked': checked, 'aria-label': label, disabled, onClick: () => onChange(!checked) })
+  const client = module.default((name) => name === 'react' ? React : { Switch: HostSwitch })
+  client.apply(runtime.ctx)
+  const { Component } = runtime.sections[0]
+  const root = createRoot(document.getElementById('root'))
+  t.after(async () => { await act(async () => root.unmount()); runtime.dispose(); net.restore(); for (const [key, value] of saved) { if (value) Object.defineProperty(globalThis, key, value); else delete globalThis[key] }; dom.window.close() })
+  await act(async () => { root.render(React.createElement(Component)); await flush() })
+  const petToggle = document.querySelector('[aria-label="Show floating pet"]')
+  assert.equal(petToggle.getAttribute('aria-checked'), 'false')
+  runtime.reject(true)
+  await act(async () => { petToggle.click(); await flush() })
+  assert.equal(runtime.writes.length, 1, 'the click still reaches the host')
+  assert.equal(petToggle.getAttribute('aria-checked'), 'false', 'a rejected write rolls the switch back')
+  assert.equal(petToggle.disabled, false, 'and it stays clickable for the retry')
 })

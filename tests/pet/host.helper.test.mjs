@@ -7,6 +7,43 @@ const enabled = { petEnabled: true, islandEnabled: false }
 const disabled = { petEnabled: false, islandEnabled: false }
 const flush = async () => { for (let i = 0; i < 12; i += 1) await Promise.resolve() }
 
+test('runtime download progress is published while preparing and cleared afterwards', async (t) => {
+  const states = []
+  const manager = new HelperManager({
+    bridge: { url: 'http://127.0.0.1:1234', token: 'private-token' },
+    onChange() { states.push({ ...manager.state }) },
+    resolve: async (options) => {
+      options.onProgress?.({ phase: 'download', percent: 42, received: 42, total: 100 })
+      await flush()
+      return '/test/electron'
+    },
+  })
+  t.after(() => manager.dispose())
+  await manager.prepare(disabled)
+  const during = states.find((state) => state.progress?.percent === 42)
+  assert.equal(during?.status, 'starting', 'progress must arrive while the runtime is still preparing')
+  assert.equal(during?.progress?.phase, 'download')
+  assert.equal(during?.progress?.received, 42)
+  assert.equal(manager.state.progress, undefined, 'a prepared runtime must not keep a stale progress bar')
+  assert.equal(manager.state.available, true)
+})
+
+test('a failed runtime download keeps the error and drops the progress bar', async (t) => {
+  const manager = new HelperManager({
+    bridge: { url: 'http://127.0.0.1:1234', token: 'private-token' },
+    onChange() {},
+    resolve: async (options) => {
+      options.onProgress?.({ phase: 'download', percent: 10, received: 10, total: 100 })
+      throw new Error('network down')
+    },
+  })
+  t.after(() => manager.dispose())
+  await manager.prepare(disabled)
+  assert.equal(manager.state.status, 'error')
+  assert.equal(manager.state.error, 'network down')
+  assert.equal(manager.state.progress, undefined)
+})
+
 function fixture(t, options = {}) {
   const children = [], launches = [], resolutions = []
   const manager = new HelperManager({
@@ -34,7 +71,7 @@ test('helper clears Electron Node mode and becomes running only after a complete
   t.after(() => { if (previous === undefined) delete process.env.ELECTRON_RUN_AS_NODE; else process.env.ELECTRON_RUN_AS_NODE = previous })
   const f = fixture(t)
   await f.manager.configure({ electronPath: '/configured/electron' }, enabled)
-  assert.deepEqual(f.resolutions, [{ electronPath: '/configured/electron', download: true }])
+  assert.deepEqual(f.resolutions.map(({ onProgress, ...rest }) => rest), [{ electronPath: '/configured/electron', download: true }])
   const [binary, args, options] = f.launches[0]
   assert.equal(binary, '/test/electron')
   assert.match(args[0], /\/runtime\/main\.cjs$/)
@@ -184,7 +221,8 @@ test('volatile configuration references reach Electron resolution as plain strin
   const f = fixture(t)
   const volatile = (value) => ({ get: () => value, [Symbol.for('cosmokit.volatile.write')]: () => {} })
   await f.manager.configure({ electronPath: volatile('/from/reference') }, enabled)
-  assert.deepEqual(f.resolutions, [{ electronPath: '/from/reference', download: true }])
+  assert.deepEqual(f.resolutions.map(({ onProgress, ...rest }) => rest), [{ electronPath: '/from/reference', download: true }])
+  assert.equal(typeof f.resolutions[0].onProgress, 'function', 'the download reports progress into the published state')
   assert.equal(f.manager.state.status, 'starting')
   assert.equal(f.manager.state.error, undefined)
 })
