@@ -19,7 +19,7 @@ function fixture(items = [], options = {}) {
     sessionController: { list(request, inputSignal) { calls++; signal = inputSignal; assert.deepEqual(request, {}); return options.baseline ?? Promise.resolve({ items }) }, ...(options.events ? { events: options.events } : {}) },
     sessionProjections: {
       onChanged(listener) { projections.add(listener); return () => projections.delete(listener) },
-      snapshot(session, keys) { assert.deepEqual(keys, ['title', 'sessionListMetadata', 'inbox', 'goal', 'userQuestions', 'turnOutline', 'contextBreakdown', 'tokenUsage', 'todos', 'conversationContinuation']); if (options.projectionError) throw new Error('projection unavailable'); return values.get(session.id) ?? { asOfSeq: 0, values: {} } },
+      snapshot(session, keys) { assert.deepEqual(keys, ['title', 'sessionListMetadata', 'inbox', 'goal', 'userQuestions', 'tokenUsage', 'conversationContinuation']); if (options.projectionError) throw new Error('projection unavailable'); return values.get(session.id) ?? { asOfSeq: 0, values: {} } },
     },
   }
   for (const item of items) live.set(item.sessionId, { id: item.sessionId, header: { origin: item.origin, parentSession: item.parentSessionId } })
@@ -359,25 +359,31 @@ test('a failed turn the host can retry reads as continuable', async () => {
   f.feed.dispose()
 })
 
-test('progress comes from turn outline, context breakdown, token usage and todos', async () => {
-  // 只用声明了 wire 的投影：sessionStats / contextPressure 是 Host-only，插件读不到。
-  const f = fixture([row('a', { running: true, updatedAt: Date.now() })], { baseline: Promise.resolve({ items: [
-    row('a', { running: true, updatedAt: Date.now() }, {
-      turnOutline: [{ turn: 1, seq: 3, prompt: 'first', response: '' }, { turn: 2, seq: 40, prompt: 'second', response: '' }],
-      contextBreakdown: { systemTokens: 12_000, toolsTokens: 4_000, messageTokens: 46_000 },
-      tokenUsage: { uncachedInputTokens: 900, outputTokens: 3_400, cacheReadTokens: 0, cacheWriteTokens: 0 },
-      todos: [{ content: 'already done', status: 'completed' }, { content: '改投影键', status: 'in_progress' }],
-    }),
-  ] }) }); await f.feed.ready
+test('progress comes from the log tail and the visible token usage', async () => {
+  // 回合号/步骤/在跑的工具只能回读日志尾页：turnOutline、todos 这些单元这个宿主根本不返回。
+  const records = [
+    { type: 'event', event: { type: 'turn/start', seq: 98, data: { turn: 3, step: 0 } } },
+    { type: 'event', event: { type: 'step/start', seq: 99, data: { turn: 3, step: 1 } } },
+    { type: 'event', event: { type: 'tool/call', seq: 100, data: { turn: 3, step: 1, callId: 'call_1', name: 'bash' } } },
+    { type: 'event', event: { type: 'tool/result', seq: 101, data: { callId: 'call_1' } } },
+    { type: 'event', event: { type: 'step/start', seq: 110, data: { turn: 3, step: 2 } } },
+    { type: 'event', event: { type: 'tool/call', seq: 111, data: { turn: 3, step: 2, callId: 'call_2', name: 'read' } } },
+  ]
+  const f = fixture([row('a', { running: true, updatedAt: Date.now() }, {
+    tokenUsage: { uncachedInputTokens: 900, outputTokens: 3_400, cacheReadTokens: 0, cacheWriteTokens: 0 },
+  })], { events: async () => ({ records }) })
+  await f.feed.ready
   f.emit('api-session/status', 'a', true)
+  await new Promise((resolve) => setImmediate(resolve))
   const [item] = f.feed.snapshot()
-  assert.equal(item.progress.turn, 2)
-  assert.equal(item.progress.todo, '改投影键')
-  assert.equal(item.progress.contextTokens, 62_000)
+  assert.equal(item.progress.turn, 3)
+  assert.equal(item.progress.step, 2)
+  // 只有还没等到 tool/result 的那个才算「在跑」
+  assert.equal(item.progress.tool, 'read')
   assert.equal(item.progress.outputTokens, 3_400)
-  // Host-only 的字段不该从别处漏进来
-  assert.equal(item.progress.tools, undefined)
-  assert.equal(item.progress.step, undefined)
+  // 没有数据来源的字段不该凭空出现
+  assert.equal(item.progress.contextTokens, undefined)
+  assert.equal(item.progress.todo, undefined)
   f.feed.dispose()
 })
 

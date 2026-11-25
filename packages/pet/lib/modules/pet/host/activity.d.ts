@@ -4,16 +4,16 @@
  */
 export type WaitReason = 'approval' | 'question' | 'goal-paused' | 'goal-blocked' | 'goal-limit' | 'queued';
 /**
- * 正在进行的进度：只挑有 `wire` 的投影，不需要回读日志。
- * 工具数与工具耗时来自 `sessionStats`，而它没有 wire、插件读不到，所以这里没有。
+ * 正在进行的进度。宿主没有可读的 `sessionStats`/`contextPressure`，回合号与步骤只能从
+ * 会话日志尾页的 `step/start`、`tool/call` 里取（见 `readTail`），累计输出走 `tokenUsage`。
  */
 export interface ActivityProgress {
-    /** 本回合序号（`turnOutline` 最后一条的 `turn`）。 */
+    /** 当前回合序号（日志尾页最后一个 `step/start` 的 `turn`）。 */
     turn?: number;
-    /** 当前在做的待办（`todos` 里 `in_progress` 那条的文案）。 */
-    todo?: string;
-    /** 上下文大小（`contextBreakdown` 的系统/工具/消息三部分之和）。 */
-    contextTokens?: number;
+    /** 当前步骤序号（日志尾页最后一个 `step/start` 的 `step`）。 */
+    step?: number;
+    /** 正在跑的工具名（`tool/call` 有派发、还没等到 `tool/result`）。 */
+    tool?: string;
     /** 整个会话累计输出 token（`tokenUsage.outputTokens`）。 */
     outputTokens?: number;
     /** 正在跑的子会话数（聚合时统计，不在单行 facts 里算）。 */
