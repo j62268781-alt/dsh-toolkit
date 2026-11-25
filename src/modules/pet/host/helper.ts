@@ -65,6 +65,26 @@ export class HelperManager {
     this.state = { ...this.state, ...patch } as HelperState
     this.onChange()
   }
+  /**
+   * 只探测运行时是否已经就绪，不触发下载。
+   *
+   * `available` 原先只由 `prepare()`（下载/解压流水线）置 true：桌面端关着、运行时其实
+   * 早就装好的机器，设置页会一直显示「首次使用需要准备桌面运行时」。
+   * 这里用 `download: false` 只做一次路径检查，不会因为误判又拉一遍 138MB。
+   */
+  async probe(config: any): Promise<void> {
+    // 正在准备时以 prepare 为准；它结束后会自己写 available，探测结果反而可能是旧的。
+    if (this.disposed || this.pending || this.state.status === 'starting' || this.state.status === 'running') return
+    try {
+      const binary = await this.resolve({ electronPath: readElectronPath(config), download: false })
+      if (this.disposed || this.pending) return
+      this.update({ available: !!binary })
+    } catch {
+      // 配置里写死的路径不可执行时 resolve 会抛错；探测只把它降级成「不可用」，
+      // 给人看的诊断仍由 prepare / start 的 catch 负责。
+      if (!this.disposed) this.update({ available: false })
+    }
+  }
   async prepare(config: any, start = false): Promise<void> {
     if (this.disposed) return
     if (this.pending) return this.pending
@@ -90,7 +110,8 @@ export class HelperManager {
   async configure(config: any, settings: PetSettings): Promise<void> {
     this.config = config
     this.enabled = settings.petEnabled || settings.islandEnabled
-    if (!this.enabled) { await this.stop(); return }
+    // 关着也要探一次：可用性不该取决于「这次有没有启用桌面端」。
+    if (!this.enabled) { await this.stop(); await this.probe(config); return }
     await this.pending
     if (this.enabled && !this.child && this.state.status !== 'error') await this.prepare(this.config, true)
   }

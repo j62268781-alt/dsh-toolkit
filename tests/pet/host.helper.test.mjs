@@ -28,6 +28,44 @@ test('runtime download progress is published while preparing and cleared afterwa
   assert.equal(manager.state.available, true)
 })
 
+test('an installed runtime is probed without downloading', async (t) => {
+  const f = fixture(t)
+  await f.manager.probe({ electronPath: '' })
+  assert.equal(f.resolutions[0].download, false, 'a probe must never start the download pipeline')
+  assert.equal(f.manager.state.available, true)
+  assert.equal(f.manager.state.status, 'stopped')
+  assert.equal(f.manager.state.error, undefined)
+})
+
+test('a missing runtime stays unavailable after probing', async (t) => {
+  const f = fixture(t, { resolve: async () => undefined })
+  await f.manager.probe({})
+  assert.equal(f.manager.state.available, false)
+  assert.equal(f.manager.state.status, 'stopped')
+  assert.equal(f.manager.state.error, undefined, 'probing reports availability, not a startup failure')
+})
+
+test('a broken explicit runtime path is reported unavailable instead of an error', async (t) => {
+  const f = fixture(t, { resolve: async () => { throw new Error('Electron executable must be an existing absolute executable path') } })
+  await f.manager.probe({ electronPath: '/missing/electron' })
+  assert.equal(f.manager.state.available, false)
+  assert.equal(f.manager.state.status, 'stopped')
+  assert.equal(f.manager.state.error, undefined)
+})
+
+test('probing never races an in-flight preparation', async (t) => {
+  const calls = []
+  let finish
+  const f = fixture(t, { resolve: (value) => { calls.push(value); return new Promise((resolve) => { finish = resolve }) } })
+  const preparing = f.manager.prepare({}, false)
+  await flush()
+  await f.manager.probe({})
+  assert.equal(calls.length, 1, 'preparation already owns the resolution')
+  finish('/test/electron')
+  await preparing
+  assert.equal(f.manager.state.available, true)
+})
+
 test('a failed runtime download keeps the error and drops the progress bar', async (t) => {
   const manager = new HelperManager({
     bridge: { url: 'http://127.0.0.1:1234', token: 'private-token' },
@@ -86,6 +124,15 @@ test('helper clears Electron Node mode and becomes running only after a complete
   assert.equal(f.manager.state.status, 'starting')
   child.stdout.emit('data', Buffer.from('dy"}\n'))
   assert.equal(f.manager.state.status, 'running')
+})
+
+test('disabling both surfaces keeps an installed runtime marked available', async (t) => {
+  const f = fixture(t)
+  await f.manager.configure({}, disabled)
+  assert.equal(f.manager.state.available, true, 'availability must not depend on the surfaces being enabled')
+  assert.equal(f.manager.state.status, 'stopped')
+  assert.equal(f.launches.length, 0)
+  assert.equal(f.resolutions.at(-1).download, false)
 })
 
 test('disabling both surfaces terminates the helper and cancels any restart', async (t) => {

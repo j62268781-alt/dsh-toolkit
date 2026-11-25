@@ -34,6 +34,14 @@ export declare class HelperManager {
     restart: ReturnType<typeof setTimeout> | undefined;
     constructor({ onChange, bridge, resolve, launch }: HelperManagerOptions);
     update(patch: Partial<HelperState>): void;
+    /**
+     * 只探测运行时是否已经就绪，不触发下载。
+     *
+     * `available` 原先只由 `prepare()`（下载/解压流水线）置 true：桌面端关着、运行时其实
+     * 早就装好的机器，设置页会一直显示「首次使用需要准备桌面运行时」。
+     * 这里用 `download: false` 只做一次路径检查，不会因为误判又拉一遍 138MB。
+     */
+    probe(config: any): Promise<void>;
     prepare(config: any, start?: boolean): Promise<void>;
     configure(config: any, settings: PetSettings): Promise<void>;
     start(binary: string | undefined): void;
