@@ -4,22 +4,15 @@
  */
 export type WaitReason = 'approval' | 'question' | 'goal-paused' | 'goal-blocked' | 'goal-limit' | 'queued';
 /**
- * 正在进行的进度：全部来自宿主投影，不需要回读日志。
- * 宿主没有「当前工具」的事件，但 `sessionStats.pendingCalls` 记着在飞的工具数
- * （callId → 派发时刻），够说清「几个工具在跑、最久那个跑了多久」。
+ * 正在进行的进度：只挑有 `wire` 的投影，不需要回读日志。
+ * 工具数与工具耗时来自 `sessionStats`，而它没有 wire、插件读不到，所以这里没有。
  */
 export interface ActivityProgress {
-    /** 本回合序号（`sessionStats.openStep.turn`）。 */
+    /** 本回合序号（`turnOutline` 最后一条的 `turn`）。 */
     turn?: number;
-    /** 本步序号（`sessionStats.openStep.step`）。 */
-    step?: number;
-    /** 本步已用时（毫秒）。 */
-    stepMs?: number;
-    /** 在飞工具数（`sessionStats.pendingCalls` 的条目数）。 */
-    tools?: number;
-    /** 最早那个在飞工具已跑多久（毫秒）。 */
-    toolMs?: number;
-    /** 下一次请求的上下文大小（`contextPressure.projectedTokens`，缺省退到 pressureTokens）。 */
+    /** 当前在做的待办（`todos` 里 `in_progress` 那条的文案）。 */
+    todo?: string;
+    /** 上下文大小（`contextBreakdown` 的系统/工具/消息三部分之和）。 */
     contextTokens?: number;
     /** 整个会话累计输出 token（`tokenUsage.outputTokens`）。 */
     outputTokens?: number;

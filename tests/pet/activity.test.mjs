@@ -19,7 +19,7 @@ function fixture(items = [], options = {}) {
     sessionController: { list(request, inputSignal) { calls++; signal = inputSignal; assert.deepEqual(request, {}); return options.baseline ?? Promise.resolve({ items }) }, ...(options.events ? { events: options.events } : {}) },
     sessionProjections: {
       onChanged(listener) { projections.add(listener); return () => projections.delete(listener) },
-      snapshot(session, keys) { assert.deepEqual(keys, ['title', 'sessionListMetadata', 'inbox', 'goal', 'userQuestions', 'sessionStats', 'contextPressure', 'tokenUsage', 'conversationContinuation', 'llmRetry']); if (options.projectionError) throw new Error('projection unavailable'); return values.get(session.id) ?? { asOfSeq: 0, values: {} } },
+      snapshot(session, keys) { assert.deepEqual(keys, ['title', 'sessionListMetadata', 'inbox', 'goal', 'userQuestions', 'turnOutline', 'contextBreakdown', 'tokenUsage', 'todos', 'conversationContinuation']); if (options.projectionError) throw new Error('projection unavailable'); return values.get(session.id) ?? { asOfSeq: 0, values: {} } },
     },
   }
   for (const item of items) live.set(item.sessionId, { id: item.sessionId, header: { origin: item.origin, parentSession: item.parentSessionId } })
@@ -347,18 +347,6 @@ test('without a readable turn log a stopped turn stays a normal finish', async (
   f.feed.dispose()
 })
 
-test('an upstream retry keeps the session running but says so', async () => {
-  const f = fixture([row('a', { running: true, updatedAt: Date.now() })]); await f.feed.ready
-  f.emit('api-session/status', 'a', true)
-  f.project('a', 'llmRetry', { 'openai/gpt': { retry: 1 } })
-  assert.equal(f.feed.snapshot()[0].status, 'retrying')
-  assert.equal(f.feed.snapshot()[0].running, true)
-  // step/start 或 turn/end 会让宿主把 llmRetry 清空，重试结束就回到普通执行中
-  f.project('a', 'llmRetry', {}, 3)
-  assert.equal(f.feed.snapshot()[0].status, 'running')
-  f.feed.dispose()
-})
-
 test('a failed turn the host can retry reads as continuable', async () => {
   const f = fixture([row('a', { updatedAt: Date.now() - 60_000 })]); await f.feed.ready
   assert.equal(f.feed.snapshot()[0].status, 'completed')
@@ -371,24 +359,25 @@ test('a failed turn the host can retry reads as continuable', async () => {
   f.feed.dispose()
 })
 
-test('progress comes from session stats, context pressure and token usage', async () => {
-  const startedAt = Date.now() - 5_000, toolAt = Date.now() - 3_000
+test('progress comes from turn outline, context breakdown, token usage and todos', async () => {
+  // 只用声明了 wire 的投影：sessionStats / contextPressure 是 Host-only，插件读不到。
   const f = fixture([row('a', { running: true, updatedAt: Date.now() })], { baseline: Promise.resolve({ items: [
     row('a', { running: true, updatedAt: Date.now() }, {
-      sessionStats: { turns: 2, steps: 7, openStep: { turn: 2, step: 3, startTime: startedAt, firstTokenTime: null }, pendingCalls: { c1: toolAt, c2: Date.now() - 1_000 } },
-      contextPressure: { pressureTokens: 60_000, projectedTokens: 62_000 },
+      turnOutline: [{ turn: 1, seq: 3, prompt: 'first', response: '' }, { turn: 2, seq: 40, prompt: 'second', response: '' }],
+      contextBreakdown: { systemTokens: 12_000, toolsTokens: 4_000, messageTokens: 46_000 },
       tokenUsage: { uncachedInputTokens: 900, outputTokens: 3_400, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      todos: [{ content: 'already done', status: 'completed' }, { content: '改投影键', status: 'in_progress' }],
     }),
   ] }) }); await f.feed.ready
   f.emit('api-session/status', 'a', true)
   const [item] = f.feed.snapshot()
   assert.equal(item.progress.turn, 2)
-  assert.equal(item.progress.step, 3)
-  assert.equal(item.progress.tools, 2)
-  assert.ok(item.progress.stepMs >= 5_000, `step time: ${item.progress.stepMs}`)
-  assert.ok(item.progress.toolMs >= 3_000, `tool time: ${item.progress.toolMs}`)
+  assert.equal(item.progress.todo, '改投影键')
   assert.equal(item.progress.contextTokens, 62_000)
   assert.equal(item.progress.outputTokens, 3_400)
+  // Host-only 的字段不该从别处漏进来
+  assert.equal(item.progress.tools, undefined)
+  assert.equal(item.progress.step, undefined)
   f.feed.dispose()
 })
 

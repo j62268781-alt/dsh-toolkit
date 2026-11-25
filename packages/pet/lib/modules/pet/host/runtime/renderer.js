@@ -8,13 +8,13 @@ const animations = {
   idle: [0,[280,110,110,140,140,320]], runningRight:[1,[120,120,120,120,120,120,120,220]], runningLeft:[2,[120,120,120,120,120,120,120,220]], waving:[3,[140,140,140,280]], jumping:[4,[140,140,140,140,280]], failed:[5,[140,140,140,140,140,140,140,240]], waiting:[6,[150,150,150,150,150,260]], approval:[6,[150]], question:[6,[150]], running:[7,[120,120,120,120,120,220]], review:[8,[150,150,150,150,150,280]],
 }
 const words = {
-  zh: { idle:'暂时没有会话活动', running:'正在执行', waiting:'等待你的处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', todo:'待办', approval:'审批请求', question:'待回答的问题', hint:'打开会话即可批准或回答', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。', greeting:'hi~', live:'实时活动', interrupted:'本轮已停止', retrying:'正在重试', continuable:'可以继续', turns:'第 {turn} 轮', steps:'第 {step} 步', toolsRun:'{count} 个工具运行中', subagents:'{count} 个子代理', context:'上下文', output:'输出', waitApproval:'等你批准', waitQuestion:'等你回答', goalPaused:'目标已暂停', goalBlocked:'目标被卡住', goalLimit:'轮次已用尽', queueWait:'有输入待发' },
-  en: { idle:'No active sessions', running:'Running', waiting:'Waiting for you', failed:'Turn failed', completed:'Turn complete', open:'Open session', todo:'Todo', approval:'Approval request', question:'Question', hint:'Open the session to approve or answer', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.', greeting:'hi~', live:'Live activity', interrupted:'Turn stopped', retrying:'Retrying', continuable:'Can continue', turns:'Turn {turn}', steps:'Step {step}', toolsRun:'{count} tools running', subagents:'{count} subagents', context:'Context', output:'Output', waitApproval:'Approve?', waitQuestion:'Answer?', goalPaused:'Goal paused', goalBlocked:'Goal blocked', goalLimit:'Round limit', queueWait:'Input queued' },
+  zh: { idle:'暂时没有会话活动', running:'正在执行', waiting:'等待你的处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', todo:'待办', approval:'审批请求', question:'待回答的问题', hint:'打开会话即可批准或回答', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。', greeting:'hi~', live:'实时活动', interrupted:'本轮已停止', continuable:'可以继续', turns:'第 {turn} 轮', doing:'正在做', subagents:'{count} 个子代理', context:'上下文', output:'输出', waitApproval:'等你批准', waitQuestion:'等你回答', goalPaused:'目标已暂停', goalBlocked:'目标被卡住', goalLimit:'轮次已用尽', queueWait:'有输入待发' },
+  en: { idle:'No active sessions', running:'Running', waiting:'Waiting for you', failed:'Turn failed', completed:'Turn complete', open:'Open session', todo:'Todo', approval:'Approval request', question:'Question', hint:'Open the session to approve or answer', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.', greeting:'hi~', live:'Live activity', interrupted:'Turn stopped', continuable:'Can continue', turns:'Turn {turn}', doing:'Doing', subagents:'{count} subagents', context:'Context', output:'Output', waitApproval:'Approve?', waitQuestion:'Answer?', goalPaused:'Goal paused', goalBlocked:'Goal blocked', goalLimit:'Round limit', queueWait:'Input queued' },
 }
 // Qoder 的收起态只有「宠物 + 状态徽标」，状态靠短语 + 语义色表达，数量进 tooltip。
 const badges = {
-  zh: { running:'正在工作', waiting:'需要你处理', completed:'有新结果', failed:'失败', interrupted:'已停止', retrying:'重试中', continuable:'可继续' },
-  en: { running:'Working', waiting:'Needs you', completed:'New result', failed:'Failed', interrupted:'Stopped', retrying:'Retrying', continuable:'Can continue' },
+  zh: { running:'正在工作', waiting:'需要你处理', completed:'有新结果', failed:'失败', interrupted:'已停止', continuable:'可继续' },
+  en: { running:'Working', waiting:'Needs you', completed:'New result', failed:'Failed', interrupted:'Stopped', continuable:'Can continue' },
 }
 let state, expanded = false, hovered = false, image, imageKey = '', frame = 0, motion = '', look = null, timer, hoverTimer, leaveTimer, waveUntil = performance.now() + 2600, drag = null, padChecks = 0, lastPointer = null, signature = '', clip = '', preloaded = ''
 // 久坐：桌宠长时间没被打扰就放慢 idle 并偶尔瞟一眼（复用 v2 精灵表第 9–10 行的视线帧）。
@@ -50,13 +50,7 @@ function badgeText(session, extra = 0) {
   if (status === 'waiting') return (waitPhrases[session.waitReason] ? t(waitPhrases[session.waitReason]) : badgeWord('waiting')) + tail + more
   return badgeWord(status) + tail + more
 }
-// 时间与 token 的短写法：展开态一行放得下，不必给完整数字。
-function duration(ms) {
-  const seconds = Math.max(0, Math.round(Number(ms) / 1000))
-  if (seconds < 60) return state?.settings.language === 'en' ? `${seconds}s` : `${seconds} 秒`
-  const minutes = Math.floor(seconds / 60), rest = seconds % 60
-  return state?.settings.language === 'en' ? (rest ? `${minutes}m ${rest}s` : `${minutes}m`) : (rest ? `${minutes} 分 ${rest} 秒` : `${minutes} 分`)
-}
+// token 的短写法：展开态一行放得下，不必给完整数字。
 function tokens(count) {
   const value = Number(count)
   if (!Number.isFinite(value) || value <= 0) return ''
@@ -70,11 +64,8 @@ function progressText(session) {
   const en = state?.settings.language === 'en'
   const parts = []
   if (progress.turn) parts.push(t('turns').replace('{turn}', progress.turn))
-  if (progress.step) parts.push(t('steps').replace('{step}', progress.step))
-  if (progress.tools) parts.push(t('toolsRun').replace('{count}', progress.tools))
-  // 工具跑了多久只在它已经跑了一阵时才有意义，几毫秒的抖动不值得占位置。
-  if (progress.tools && progress.toolMs >= 1000) parts.push(duration(progress.toolMs))
   if (progress.subagents) parts.push(t('subagents').replace('{count}', progress.subagents))
+  if (progress.todo) parts.push(`${t('doing')} ${progress.todo}`)
   if (progress.contextTokens) parts.push(`${en ? 'ctx' : '上下文'} ${tokens(progress.contextTokens)}`)
   if (progress.outputTokens) parts.push(`${t('output')} ${tokens(progress.outputTokens)}`)
   return parts.join(' · ')
@@ -322,8 +313,6 @@ function currentMotion() {
   // Keep a real session state visible instead of masking it with hover or the launch greeting.
   if (status === 'running') return 'running'
   if (status === 'waiting' || status === 'failed' || status === 'completed') return status === 'completed' ? 'review' : status
-  // 重试中依旧是「在跑」，只是上游抖了一下，继续播 running。
-  if (status === 'retrying') return 'running'
   // 精灵表没有「停下」这一行，被打断/可继续都回到 idle 的呼吸，别硬套 failed 的哭脸。
   if (status === 'interrupted' || status === 'continuable') return 'idle'
   if (hovered && state.kind === 'pet') return 'jumping'
