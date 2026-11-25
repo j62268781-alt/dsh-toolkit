@@ -38,7 +38,7 @@ test('independent settings handle retention, saved-config conflicts and managed-
             return Response.json({ ok: false }, { status: 409 })
           }
           assert.deepEqual(body.expected, cfg)
-          Object.assign(cfg, { directory: body.directory, namePrefix: body.namePrefix })
+          Object.assign(cfg, { directory: body.directory || '.agents/worktrees', namePrefix: body.namePrefix })
           return Response.json({ ok: true, ...cfg })
         }
         return Response.json({ ok: true, ...cfg })
@@ -117,6 +117,20 @@ test('independent settings handle retention, saved-config conflicts and managed-
     assert.equal(doc.querySelector('[name="directory"]'), input)
     assert.equal(managedReads, 1)
     assert.match(doc.body.textContent, /已保存/)
+    assert.equal(input.required, false)
+    const help = doc.getElementById(input.getAttribute('aria-describedby').split(' ')[0])
+    assert.match(help.textContent, /清空后离开输入框，恢复 DSH 默认目录/)
+    await act(async () => { input.focus(); change(input, '') })
+    assert.equal(submitted.length, 2)
+    assert.equal(input.value, '')
+    await act(async () => prefix.focus())
+    assert.deepEqual(submitted[2], {
+      expected: { directory: '.agents/custom', namePrefix: 'test-' }, directory: '', namePrefix: 'test-',
+    })
+    assert.equal(input.value, '.agents/worktrees')
+    assert.equal(prefix.value, 'test-')
+    assert.equal(input.getAttribute('aria-invalid'), 'false')
+    assert.equal(managedReads, 1)
     conflict = true
     await act(async () => { input.focus(); change(input, '.agents/conflict'); input.blur() })
     assert.equal(input.disabled, true)

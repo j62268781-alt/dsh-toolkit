@@ -64,7 +64,8 @@ test('native directory/prefix validation preserves empty/slashed prefixes withou
   for (const namePrefix of ['', 'team/', '团队/feat-']) {
     assert.equal(isWorktreeConfigUpdate({ expected: defaults, directory: '.agents/中文', namePrefix }), true)
   }
-  for (const directory of ['', 'a/', '/a', 'a//b', './a', 'a/../b', 'C:/a', 'a\\b', 'a\0b']) {
+  assert.equal(isWorktreeConfigUpdate({ ...defaults, expected: defaults, directory: '' }), true)
+  for (const directory of ['a/', '/a', 'a//b', './a', 'a/../b', 'C:/a', 'a\\b', 'a\0b']) {
     assert.equal(isWorktreeConfigUpdate({ ...defaults, expected: defaults, directory }), false)
   }
   for (const namePrefix of ['-x', '/x', 'a//', '../x', 'a/./x', 'a:b', 'a\\b']) {
@@ -83,6 +84,26 @@ test('reads resolved native config and preserves raw untouched fields and non-na
   const result = await updateWorktreeConfig(editor, { ...expected, namePrefix: 'team/', expected, retainOnArchive: false })
   assert.deepEqual(result, { directory: 'interpolated/pool', namePrefix: 'team/' })
   assert.deepEqual(editor.raw, { ...raw, namePrefix: 'team/' })
+})
+
+test('clearing the directory drops its raw value and returns the native default without changing other fields', async () => {
+  const raw = { directory: { __jsExpr: 'pool' }, namePrefix: 'team/', retainOnArchive: true, maxOutputBytes: 42 }
+  const editor = fakeEditor(raw)
+  const expected = readWorktreeConfig(editor)
+  const route = setup(editor)
+  const request = { ...expected, directory: '', expected }
+  const reset = { directory: defaults.directory, namePrefix: 'team/' }
+  assert.deepEqual(await route.request('POST', request), { status: 200, body: { ok: true, ...reset }, consumed: true })
+  assert.deepEqual(editor.raw, { namePrefix: 'team/', retainOnArchive: true, maxOutputBytes: 42 })
+  assert.deepEqual(raw.directory, { __jsExpr: 'pool' })
+  assert.deepEqual(await route.request('GET'), { status: 200, body: { ok: true, ...reset }, consumed: false })
+  assert.deepEqual(await route.request('POST', request), { status: 409, body: { ok: false, reason: 'worktree-config-conflict' }, consumed: true })
+  const saved = editor.raw
+  assert.deepEqual(await updateWorktreeConfig(editor, { ...reset, directory: '', expected: reset }), reset)
+  assert.equal(editor.raw, saved)
+  editor.raw = { ...saved, directory: defaults.directory }
+  assert.deepEqual(await updateWorktreeConfig(editor, { ...reset, directory: '', expected: reset }), reset)
+  assert.equal(Object.hasOwn(editor.raw, 'directory'), false)
 })
 
 test('refuses stale values reloaded by ConfigEditor before entering the change callback', async () => {

@@ -101,7 +101,7 @@ export function WorktreeSettings({ t, retainForm }: { t: Copy; retainForm?: any 
         control={<div className="sk-repo-settings__field">
           <input id={`${id}-${field}`} name={field} className="sk-repo-settings__input" value={draft[field]}
             aria-describedby={`${id}-${field}-help ${id}-${field}-status`} aria-invalid={messages[field] === "worktreeConfigInvalid"}
-            required={field === "directory"} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+            autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}
             disabled={status !== ""}
             onChange={event => {
               const value = event.currentTarget.value;

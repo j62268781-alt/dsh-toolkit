@@ -40,7 +40,8 @@ export function isWorktreeConfigUpdate(value: unknown): value is WorktreeConfigU
   const next = fields(value)
   if (next === undefined || !fields((value as WorktreeConfigUpdate).expected)) return false
   // Mirror native WorktreeService's constructor checks, additionally rejecting an unusable NUL path.
-  return relativePath(next.directory) && !next.namePrefix.startsWith('-') && relativePath(`${next.namePrefix}name`)
+  return (next.directory === '' || relativePath(next.directory))
+    && !next.namePrefix.startsWith('-') && relativePath(`${next.namePrefix}name`)
 }
 
 function unavailable(): HttpFailure {
@@ -73,30 +74,35 @@ export function readWorktreeConfig(editor: WorktreeConfigEditor | undefined): Wo
 
 export async function updateWorktreeConfig(service: WorktreeConfigEditor | undefined, update: WorktreeConfigUpdate): Promise<WorktreeConfig> {
   const { directory, namePrefix, expected } = update
-  const result = { directory, namePrefix }
   const noChange = new Error('native worktree config already current')
   try {
     const { editor, entry } = target(service)
-    await editor.edit(entry, (current) => {
-      // ConfigEditor has reloaded profile patches under its lock. Resolve this raw candidate so
-      // comparison uses the same defaults and interpolation as GET, without writing them back.
-      const fiber = entry.fiber
-      if (fiber?.state !== ACTIVE) throw unavailable()
-      const actual = fields(fiber.resolveConfig(current))
-      if (actual === undefined) throw unavailable()
-      if (actual.directory !== expected.directory || actual.namePrefix !== expected.namePrefix) {
-        throw httpFailure(409, 'worktree-config-conflict')
-      }
-      if (actual.directory === directory && actual.namePrefix === namePrefix) throw noChange
-      return {
-        ...current,
-        ...(actual.directory !== directory ? { directory } : {}),
-        ...(actual.namePrefix !== namePrefix ? { namePrefix } : {}),
-      }
-    })
-    return result
+    try {
+      await editor.edit(entry, (current) => {
+        // ConfigEditor reloads profile patches under its lock before providing the raw fields.
+        const fiber = entry.fiber
+        if (fiber?.state !== ACTIVE) throw unavailable()
+        const actual = fields(fiber.resolveConfig(current))
+        if (actual === undefined) throw unavailable()
+        if (actual.directory !== expected.directory || actual.namePrefix !== expected.namePrefix) {
+          throw httpFailure(409, 'worktree-config-conflict')
+        }
+        const resetDirectory = directory === ''
+        const directoryChanged = resetDirectory ? Object.hasOwn(current, 'directory') : actual.directory !== directory
+        if (!directoryChanged && actual.namePrefix === namePrefix) throw noChange
+        const next = { ...current }
+        if (resetDirectory) delete next.directory
+        else if (directoryChanged) next.directory = directory
+        if (actual.namePrefix !== namePrefix) next.namePrefix = namePrefix
+        const resolved = fields(fiber.resolveConfig(next))
+        if (!resolved || !relativePath(resolved.directory)) throw unavailable()
+        return next
+      })
+    } catch (error) {
+      if (error !== noChange) throw error
+    }
+    return readWorktreeConfig(editor)
   } catch (error) {
-    if (error === noChange) return result
     return safeFailure(error)
   }
 }
