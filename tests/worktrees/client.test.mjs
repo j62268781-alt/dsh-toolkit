@@ -20,7 +20,7 @@ test('independent settings handle retention, saved-config conflicts, managed-lis
   const { createRoot } = await import('react-dom/client')
   const { act } = React
   const doc = dom.window.document
-  const cfg = { directory: '.agents/worktrees', namePrefix: 'dsh-' }
+  const cfg = { directory: '.agents/worktrees', namePrefix: 'dsh-', worktreePrefix: 'composer-' }
   const submitted = []
   let conflict = false
   let managedReads = 0
@@ -40,12 +40,14 @@ test('independent settings handle retention, saved-config conflicts, managed-lis
         if (options.method === 'POST') {
           const body = JSON.parse(options.body)
           submitted.push(body)
-          if (conflict) {
-            cfg.directory = '.agents/changed-elsewhere'
-            return Response.json({ ok: false }, { status: 409 })
-          }
           assert.deepEqual(body.expected, cfg)
+          if (conflict) {
+            cfg.namePrefix = body.namePrefix
+            return Response.json({ ok: false, reason: 'worktree-prefix-unconfirmed' }, { status: 409 })
+          }
           Object.assign(cfg, { directory: body.directory || '.agents/worktrees', namePrefix: body.namePrefix })
+          if (body.syncNamePrefix) cfg.worktreePrefix = body.namePrefix
+          if (body.directory === '') assert.equal(body.namePrefix, 'test-')
           return Response.json({ ok: true, ...cfg })
         }
         return Response.json({ ok: true, ...cfg })
@@ -122,6 +124,9 @@ test('independent settings handle retention, saved-config conflicts, managed-lis
     assert.match(doc.body.textContent, /没有受管工作树记录/)
     const input = doc.querySelector('[name="directory"]')
     assert.equal(input.value, '.agents/worktrees')
+    assert.equal(input.required, false)
+    const help = doc.getElementById(input.getAttribute('aria-describedby').split(' ')[0])
+    assert.match(help.textContent, /清空后离开输入框，恢复 DSH 默认目录/)
     const toggle = doc.querySelector('[role="switch"]')
     assert.equal(toggle.getAttribute('aria-checked'), 'false')
     await act(async () => toggle.click())
@@ -132,35 +137,46 @@ test('independent settings handle retention, saved-config conflicts, managed-lis
       element.dispatchEvent(new dom.window.Event('input', { bubbles: true }))
     }
     const prefix = doc.querySelector('[name="namePrefix"]')
+    const alignLabel = WORKTREES_COPY.zh.worktreePrefixAlign
+    assert.match(doc.body.textContent, /新会话入口当前使用： composer-/)
+    await act(async () => { prefix.focus(); prefix.blur() })
+    assert.equal(submitted.length, 0, 'an unchanged blur does not silently align an existing difference')
+    await act(async () => button(alignLabel).click())
+    assert.deepEqual(submitted.shift(), {
+      expected: { directory: '.agents/worktrees', namePrefix: 'dsh-', worktreePrefix: 'composer-' },
+      directory: '.agents/worktrees', namePrefix: 'dsh-', syncNamePrefix: true,
+    })
+    assert.ok(!button(alignLabel))
     await act(async () => { input.focus(); change(input, '.agents/custom') })
     assert.equal(submitted.length, 0)
     await act(async () => { prefix.focus(); change(prefix, 'test-'); prefix.blur() })
     assert.deepEqual(submitted, [
-      { expected: { directory: '.agents/worktrees', namePrefix: 'dsh-' }, directory: '.agents/custom', namePrefix: 'dsh-' },
-      { expected: { directory: '.agents/custom', namePrefix: 'dsh-' }, directory: '.agents/custom', namePrefix: 'test-' },
+      { expected: { directory: '.agents/worktrees', namePrefix: 'dsh-', worktreePrefix: 'dsh-' }, directory: '.agents/custom', namePrefix: 'dsh-' },
+      { expected: { directory: '.agents/custom', namePrefix: 'dsh-', worktreePrefix: 'dsh-' }, directory: '.agents/custom', namePrefix: 'test-', syncNamePrefix: true },
     ])
     assert.equal(doc.querySelector('[name="directory"]'), input)
     assert.equal(managedReads, 1)
     assert.match(doc.body.textContent, /已保存/)
-    assert.equal(input.required, false)
-    const help = doc.getElementById(input.getAttribute('aria-describedby').split(' ')[0])
-    assert.match(help.textContent, /清空后离开输入框，恢复 DSH 默认目录/)
     await act(async () => { input.focus(); change(input, '') })
     assert.equal(submitted.length, 2)
     assert.equal(input.value, '')
     await act(async () => prefix.focus())
     assert.deepEqual(submitted[2], {
-      expected: { directory: '.agents/custom', namePrefix: 'test-' }, directory: '', namePrefix: 'test-',
+      expected: { directory: '.agents/custom', namePrefix: 'test-', worktreePrefix: 'test-' }, directory: '', namePrefix: 'test-',
     })
     assert.equal(input.value, '.agents/worktrees')
     assert.equal(prefix.value, 'test-')
     assert.equal(input.getAttribute('aria-invalid'), 'false')
     assert.equal(managedReads, 1)
     conflict = true
-    await act(async () => { input.focus(); change(input, '.agents/conflict'); input.blur() })
+    await act(async () => { prefix.focus(); change(prefix, 'partial-'); prefix.blur() })
     assert.equal(input.disabled, true)
+    assert.match(doc.body.textContent, /无法确认两个创建入口已同步/)
     await act(async () => button('重新读取').click())
-    assert.equal(input.value, '.agents/changed-elsewhere')
+    assert.equal(input.disabled, false)
+    assert.equal(prefix.value, 'partial-')
+    assert.match(doc.body.textContent, /新会话入口当前使用： test-/)
+    assert.ok(button(alignLabel))
     const refresh = button('刷新列表')
     await act(async () => refresh.click())
     const groups = [...doc.querySelectorAll('.sk-worktrees__repository')]

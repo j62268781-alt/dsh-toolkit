@@ -6,9 +6,13 @@ import { SettingsSwitch } from "../../../../../client/ui/components/settings-par
 import { WORKTREE_CONFIG_PATH } from "../../../host/constants.js";
 
 type Copy = (key: string) => string;
-interface NativeConfig { directory: string; namePrefix: string }
+interface NativeConfig { directory: string; namePrefix: string; worktreePrefix?: string }
 const fields = ["directory", "namePrefix"] as const;
 type Field = typeof fields[number];
+
+function nativeConfig({ directory, namePrefix, worktreePrefix }: NativeConfig): NativeConfig {
+  return { directory, namePrefix, ...(typeof worktreePrefix === "string" ? { worktreePrefix } : {}) };
+}
 
 export function WorktreeSettings({ t, retainForm }: { t: Copy; retainForm?: any }) {
   const saved = React.useRef<NativeConfig | undefined>(undefined);
@@ -32,7 +36,7 @@ export function WorktreeSettings({ t, retainForm }: { t: Copy; retainForm?: any 
         const payload = await response.json();
         if (controller.signal.aborted) return;
         if (response.ok && payload.ok === true) {
-          const value = { directory: payload.directory, namePrefix: payload.namePrefix };
+          const value = nativeConfig(payload);
           saved.current = value;
           conflicted.current = false;
           setDraft(value);
@@ -47,28 +51,44 @@ export function WorktreeSettings({ t, retainForm }: { t: Copy; retainForm?: any 
   }, [reload]);
 
   const message = (field: Field, value: string) => setMessages(previous => ({ ...previous, [field]: value }));
-  const save = (field: Field, value: string) => {
+  const requireReload = (field: Field, reason: string) => {
+    conflicted.current = true;
+    message(field, "");
+    setStatus(reason);
+  };
+  const save = (field: Field, value: string, align = false) => {
     // Both fields share one CAS snapshot. Write only the field that lost focus,
     // and let the next queued write use the snapshot returned by this one.
     queue.current = queue.current.then(async () => {
       const expected = saved.current;
-      if (!expected || conflicted.current || expected[field] === value) return;
+      if (!expected || conflicted.current) return;
+      const syncNamePrefix = field === "namePrefix" && expected.worktreePrefix !== undefined;
+      if (expected[field] === value && (!align || !syncNamePrefix || expected.worktreePrefix === value)) return;
       message(field, "saving");
       try {
-        const response = await fetchJson(WORKTREE_CONFIG_PATH, { json: { expected, ...expected, [field]: value } });
+        const { directory, namePrefix } = expected;
+        const response = await fetchJson(WORKTREE_CONFIG_PATH, { json: {
+          expected, directory, namePrefix, [field]: value, ...(syncNamePrefix ? { syncNamePrefix: true } : {}),
+        } });
         const payload = await response.json();
         if (response.ok && payload.ok === true) {
-          const next = { directory: payload.directory, namePrefix: payload.namePrefix };
+          const next = nativeConfig(payload);
+          if (syncNamePrefix && (next.namePrefix !== value || next.worktreePrefix !== value)) {
+            requireReload(field, "worktreePrefixUnconfirmed");
+            return;
+          }
           saved.current = next;
-          setDraft(current => current?.[field] === value ? { ...current, [field]: next[field] } : current);
+          setDraft(current => current && {
+            ...current, worktreePrefix: next.worktreePrefix,
+            [field]: current[field] === value ? next[field] : current[field],
+          });
           message(field, "saved");
         } else if (response.status === 409) {
-          conflicted.current = true;
-          message(field, "");
-          setStatus("worktreeConfigConflict");
+          requireReload(field, payload.reason === "worktree-prefix-unconfirmed" ? "worktreePrefixUnconfirmed" : "worktreeConfigConflict");
         } else message(field, response.status === 400 ? "worktreeConfigInvalid" : "worktreeSaveFailed");
       } catch {
-        message(field, "worktreeSaveFailed");
+        if (syncNamePrefix) requireReload(field, "worktreePrefixUnconfirmed");
+        else message(field, "worktreeSaveFailed");
       }
     });
   };
@@ -94,10 +114,15 @@ export function WorktreeSettings({ t, retainForm }: { t: Copy; retainForm?: any 
   return <CardSection className="sk-repo-settings__groupLead" title={t("worktreeSettings")} aria-label={t("worktreeSettings")}>
     {draft && fields.map(field => {
       const error = messages[field] === "worktreeConfigInvalid" || messages[field] === "worktreeSaveFailed";
+      const composerPrefix = field === "namePrefix" ? draft.worktreePrefix : undefined;
+      const diverged = composerPrefix !== undefined && composerPrefix !== saved.current?.namePrefix;
       return <Row key={field}
         title={<label htmlFor={`${id}-${field}`}>{t(`worktree-${field}`)}</label>}
-        description={<span id={`${id}-${field}-help`}>{t(`worktree-${field}-help`)}
-          {field === "directory" ? <> {t("worktreeConfigWarning")}</> : null}</span>}
+        description={<span id={`${id}-${field}-help`}>{field === "namePrefix" && composerPrefix === undefined
+          ? t("worktreePrefixToolOnly") : t(`worktree-${field}-help`)}
+          {field === "directory" && <> {t("worktreeConfigWarning")}</>}
+          {diverged && <> {t("worktreePrefixComposerCurrent")} <bdi>{composerPrefix || t("worktreePrefixNone")}</bdi></>}
+        </span>}
         control={<div className="sk-repo-settings__field">
           <input id={`${id}-${field}`} name={field} className="sk-repo-settings__input" value={draft[field]}
             aria-describedby={`${id}-${field}-help ${id}-${field}-status`} aria-invalid={messages[field] === "worktreeConfigInvalid"}
@@ -108,13 +133,16 @@ export function WorktreeSettings({ t, retainForm }: { t: Copy; retainForm?: any 
               setDraft(previous => previous && { ...previous, [field]: value });
               message(field, "");
             }} onBlur={event => save(field, event.currentTarget.value)} />
+          {diverged && draft.namePrefix === saved.current?.namePrefix && <button type="button" className="sk-worktrees__button"
+            disabled={status !== "" || messages[field] === "saving"}
+            onClick={() => save("namePrefix", draft.namePrefix, true)}>{t("worktreePrefixAlign")}</button>}
           <span id={`${id}-${field}-status`} role="status" className={`sk-repo-settings__hint${error ? " sk-repo-settings__hint--error" : ""}`}>
             {messages[field] && t(messages[field])}
           </span>
         </div>} />;
     })}
     {status && <Row title={<span role="status">{t(status)}</span>} control={
-      (status === "worktreeConfigConflict" || status === "worktreeLoadFailed") &&
+      (status === "worktreeConfigConflict" || status === "worktreePrefixUnconfirmed" || status === "worktreeLoadFailed") &&
       <button className="sk-worktrees__button" type="button" onClick={() => {
         setStatus("worktreeLoading");
         setReload(value => value + 1);
