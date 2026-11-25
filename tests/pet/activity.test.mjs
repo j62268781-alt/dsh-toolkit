@@ -387,6 +387,25 @@ test('progress comes from the log tail and the visible token usage', async () =>
   f.feed.dispose()
 })
 
+test('the sweep reads only the rows the island can show', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] })
+  const now = Date.now()
+  const read = []
+  // 一条在跑 + 四条刚更新过的：补扫只该读在跑的和最近三条，剩下那条没人看。
+  const f = fixture([
+    row('live', { running: true, updatedAt: now }),
+    row('newest', { updatedAt: now - 1000 }),
+    row('newer', { updatedAt: now - 2000 }),
+    row('older', { updatedAt: now - 3000 }),
+    row('stale', { updatedAt: now - 4000 }),
+  ], { events: async (request) => { read.push(request.address.sessionId); return { records: [] } } })
+  await f.feed.ready
+  t.mock.timers.tick(5000)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(read.sort(), ['live', 'newer', 'newest', 'older'])
+  f.feed.dispose()
+})
+
 test('running subagents show up as parallelism next to the parent', async () => {
   const f = fixture([
     row('root', { running: true, updatedAt: Date.now() }),
