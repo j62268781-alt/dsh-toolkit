@@ -44,6 +44,14 @@ export declare function progressDownloader(report: RuntimeProgressListener, idle
  * macOS 的本地化在 `Electron.app` 的 .lproj 里、跟着 Info.plist 走，整套跳过。
  */
 export declare function trimRuntime(directory: string, platform?: NodeJS.Platform): Promise<number>;
+/**
+ * 删掉 `prepare()` 遗留的暂存目录，返回删除的个数。
+ *
+ * 暂存目录是 `mkdtemp` 建的，宿主机被强制退出（升级、崩溃、系统关机）时 `finally`
+ * 跑不到，就会把几百 KB 的半成品留在运行时目录旁边。只在运行时已就绪时清理：
+ * 那时不会再有活跃的解压，删除不会打乱正在进行的准备。
+ */
+export declare function cleanStaleStaging(parent: string, now?: number): Promise<number>;
 /** Download only on explicit preparation or when a desktop surface is enabled. */
 export declare function resolveElectron({ electronPath, download, onProgress }?: ResolveElectronOptions): Promise<string | undefined>;
 export declare function helperEnvironment(url: string, token: string, env?: NodeJS.ProcessEnv): NodeJS.ProcessEnv;

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { ELECTRON_VERSION, executableIn, helperEnvironment, progressDownloader, resolveElectron, runtimeDirectory, trimRuntime } from '../../src/modules/pet/host/electron.ts'
+import { ELECTRON_VERSION, cleanStaleStaging, executableIn, helperEnvironment, progressDownloader, resolveElectron, runtimeDirectory, trimRuntime } from '../../src/modules/pet/host/electron.ts'
 import { readSettings } from '../../src/modules/pet/host/config.ts'
 
 async function temporaryHome(t) {
@@ -40,6 +40,32 @@ test('runtime resolution uses explicit paths before environment overrides and ne
   assert.equal(await resolveElectron({ electronPath: explicit }), explicit)
   await assert.rejects(resolveElectron({ electronPath: 'relative/electron' }), /absolute executable path/)
   await assert.rejects(resolveElectron({ electronPath: path.join(directory, 'missing') }), /absolute executable path/)
+})
+
+test('stale staging directories from an interrupted preparation are swept, recent ones survive', async (t) => {
+  const directory = await temporaryHome(t)
+  const parent = path.dirname(runtimeDirectory())
+  const stale = path.join(parent, '.prepare-stale')
+  const fresh = path.join(parent, '.prepare-fresh')
+  const unrelated = path.join(parent, 'keep-me')
+  for (const target of [stale, fresh, unrelated]) await mkdir(target, { recursive: true })
+  const old = new Date(Date.now() - 3 * 60 * 60 * 1000)
+  await utimes(stale, old, old)
+  assert.equal(await cleanStaleStaging(parent), 1)
+  assert.deepEqual((await readdir(parent)).sort(), ['.prepare-fresh', 'keep-me'], 'only old .prepare-* directories are removed')
+  assert.equal(await cleanStaleStaging(path.join(directory, 'missing')), 0, 'a missing parent is not an error')
+})
+
+test('resolving an installed runtime also sweeps abandoned staging directories', async (t) => {
+  const directory = await temporaryHome(t)
+  const binary = await executable(executableIn(runtimeDirectory()))
+  const parent = path.dirname(runtimeDirectory())
+  const abandoned = path.join(parent, '.prepare-abandoned')
+  await mkdir(abandoned, { recursive: true })
+  const old = new Date(Date.now() - 6 * 60 * 60 * 1000)
+  await utimes(abandoned, old, old)
+  assert.equal(await resolveElectron({ download: false }), binary)
+  assert.equal((await readdir(parent)).includes('.prepare-abandoned'), false)
 })
 
 test('runtime cache is platform/version scoped and reused without a network request', async (t) => {
