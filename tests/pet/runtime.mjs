@@ -657,10 +657,10 @@ test('continuable, session count and progress are all readable', async (t) => {
   show([{ id: 'a', title: 'A', status: 'running', running: true, queued: 2 }, { id: 'b', title: 'B', status: 'waiting' }])
   assert.equal(badge.textContent, '正在工作 ·2 +1')
   assert.equal(doc.getElementById('cap').title, '正在工作 ·2 +1 · 2 个会话')
-  // 单会话详情形态：进度行把轮次/正在做的待办/上下文/输出串起来
-  show([{ id: 'a', title: 'A', status: 'completed', progress: { turn: 2, todo: '改投影键', contextTokens: 62_000, outputTokens: 3_400 } }])
+  // 单会话详情形态：进度行把轮次/步骤/在跑的工具/输出串起来
+  show([{ id: 'a', title: 'A', status: 'completed', progress: { turn: 2, step: 3, tool: 'bash', outputTokens: 3_400 } }])
   const progress = doc.querySelector('.session-detail .progress')
-  assert.equal(progress.textContent, '第 2 轮 · 正在做 改投影键 · 上下文 62K · 输出 3.4K')
+  assert.equal(progress.textContent, '第 2 轮 · 第 3 步 · 正在用 bash · 输出 3.4K')
   // 没有进度数据时不留空行
   show([{ id: 'a', title: 'A', status: 'completed' }])
   assert.equal(doc.querySelector('.session-detail .progress'), null)

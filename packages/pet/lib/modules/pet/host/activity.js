@@ -1,10 +1,10 @@
-// Verified DSH 0.2.2-rc.5 wire keys. 只有声明了 `wire` 的投影才会被 snapshot 折叠、
-// 也只有它们会推给插件：sessionStats / contextPressure / llmRetry / turnBoundary 都是
-// Host-only（没有 wire），读它们只会拿到 undefined。所以「进度」只用可见的几项拼：
-// turnOutline 给回合序号，contextBreakdown 给上下文构成，tokenUsage 给累计输出，
-// todos 给当前在做的待办。工具数与工具耗时没有可见投影，只能回读日志，留给后续。
+// 只有声明了 `wire` 的投影才会被 snapshot 折叠并推给插件。实测（DSH 0.2.2-rc.5，desktop 宿主）
+// 能拿到的只有下面这 7 个键：turnOutline / contextBreakdown / todos 虽然在包里声明了 wire，
+// 但这个宿主没有把它们注册成可读单元，snapshot 永远返回 undefined；sessionStats /
+// contextPressure / llmRetry / turnBoundary 干脆是 Host-only。所以累计输出从 tokenUsage 取，
+// 回合号、步骤、当前工具只能回读会话日志的尾页（见 readTail）。
 // approval 没有 wire 投影，靠自己的 scoped waterfall 观察。
-const KEYS = ['title', 'sessionListMetadata', 'inbox', 'goal', 'userQuestions', 'turnOutline', 'contextBreakdown', 'tokenUsage', 'todos', 'conversationContinuation'];
+const KEYS = ['title', 'sessionListMetadata', 'inbox', 'goal', 'userQuestions', 'tokenUsage', 'conversationContinuation'];
 const text = (value, limit = 240) => typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, limit) : '';
 const time = (value) => Number.isFinite(value) ? value : 0;
 // 灵动岛/桌宠展示的是「实时活动」：结束或暂停的会话只留最近半小时，判定为「正在跑」的
@@ -13,6 +13,9 @@ const time = (value) => Number.isFinite(value) ? value : 0;
 const STALE_FINISHED = 30 * 60 * 1000;
 const STALE_RUNNING = 6 * 60 * 60 * 1000;
 const TICK = 60 * 1000;
+// 尾页回读：消息条数与最小间隔（热态 1–2ms，冷态约 80ms，按会话限流）。
+const TAIL_MESSAGES = 40;
+const TAIL_INTERVAL = 3000;
 /** `ctx` 是宿主插件上下文（形状由宿主决定），故显式 any。 */
 export function createActivityFeed(ctx, onChange = () => { }, options = {}) {
     // 用户已经点开看过的会话：记录「看到时的活动时间」。之后只要没有新动作（updatedAt 前进）
@@ -22,6 +25,7 @@ export function createActivityFeed(ctx, onChange = () => { }, options = {}) {
     const removals = new Set();
     // 正在回读结束原因的会话（同一条会话不要并发读同一页日志）。
     const endings = new Set();
+    const tailsQueued = new Set();
     const disposers = [];
     const abort = new AbortController();
     const boots = [];
@@ -205,39 +209,90 @@ export function createActivityFeed(ctx, onChange = () => { }, options = {}) {
         if (typeof dispose === 'function')
             disposers.push(dispose);
     };
-    // turn/end 的 reason 只落在会话日志里（宿主不广播 turn/end），所以「用户按了停止」只能回读
-    // 最后一页来区分。读不到就当作正常结束 —— 宁可漏报，也不凭空造出一个「已停止」。
-    const readEnding = async (id) => {
+    // 宿主不广播 turn/end，也没有可读的 sessionStats，所以「用户按了停止」和「第几步、在跑什么工具」
+    // 都只能回读会话日志的尾页。一次回读同时拿三样东西，节流到 TAIL_INTERVAL：热态实测 1–2ms，
+    // 冷态（首次加载某个会话）约 80ms，所以只在需要时按会话限流，不跟着每一帧走。
+    const readTail = async (id, force = false) => {
         const controller = ctx.sessionController;
-        if (disposed || typeof controller?.events !== 'function' || endings.has(id))
+        if (disposed || typeof controller?.events !== 'function')
             return;
+        const row = rows.get(id);
+        if (!force && row && Date.now() - (row.tailAt ?? 0) < TAIL_INTERVAL)
+            return;
+        // 同一会话只跑一次回读；期间再来的请求排队，等这次落地后补一次，免得错过 turn/end。
+        if (endings.has(id)) {
+            tailsQueued.add(id);
+            return;
+        }
         endings.add(id);
         try {
-            const page = await controller.events({ address: { kind: 'session', sessionId: id }, maxMessages: 8 }, abort.signal);
+            const page = await controller.events({ address: { kind: 'session', sessionId: id }, maxMessages: TAIL_MESSAGES }, abort.signal);
             if (disposed)
                 return;
-            const row = rows.get(id);
-            if (!row)
+            const target = rows.get(id);
+            if (!target)
                 return;
+            const events = (page?.records ?? [])
+                .map((record) => record?.event)
+                .filter((event) => Number.isFinite(event?.seq))
+                .sort((a, b) => a.seq - b.seq);
             let latest;
-            for (const record of page?.records ?? []) {
-                const event = record?.event;
-                const kind = event?.type === 'turn/end' ? event.data?.reason?.kind : undefined;
-                if (typeof kind !== 'string' || (latest && event.seq <= latest.seq))
-                    continue;
-                latest = { kind, seq: event.seq };
+            const open = new Map();
+            let turn;
+            let step;
+            let tool;
+            for (const event of events) {
+                if (event.type === 'turn/start')
+                    open.clear();
+                else if (event.type === 'step/start' || event.type === 'tool/call') {
+                    if (Number.isFinite(event.data?.turn))
+                        turn = Number(event.data.turn);
+                    if (Number.isFinite(event.data?.step))
+                        step = Number(event.data.step);
+                }
+                if (event.type === 'tool/call') {
+                    const callId = String(event.data?.callId ?? '');
+                    const name = text(event.data?.name, 32);
+                    if (callId && name)
+                        open.set(callId, name);
+                    if (callId && name && (!tool || event.seq >= tool.seq))
+                        tool = { name, seq: event.seq };
+                }
+                else if (event.type === 'tool/result') {
+                    const callId = String(event.data?.callId ?? '');
+                    if (callId)
+                        open.delete(callId);
+                }
+                else if (event.type === 'turn/end') {
+                    const kind = event.data?.reason?.kind;
+                    if (typeof kind === 'string' && (!latest || event.seq >= latest.seq))
+                        latest = { kind, seq: event.seq };
+                    open.clear();
+                }
             }
-            if (!latest || (row.ending && row.ending.seq >= latest.seq))
-                return;
-            row.ending = latest;
-            publish();
+            const running = [...open.keys()];
+            const tail = {
+                ...(Number.isFinite(turn) ? { turn } : {}),
+                ...(Number.isFinite(step) ? { step } : {}),
+                ...(running.length && tool ? { tool: tool.name } : {}),
+            };
+            const changedTail = JSON.stringify(tail) !== JSON.stringify(target.tail ?? {});
+            const changedEnding = Boolean(latest) && (!target.ending || latest.seq > target.ending.seq);
+            target.tail = tail;
+            target.tailAt = Date.now();
+            if (changedEnding)
+                target.ending = latest;
+            if (changedTail || changedEnding)
+                publish();
         }
         catch (error) {
             if (!disposed)
-                warn(`turn ending unavailable for ${id}`, error);
+                warn(`session tail unavailable for ${id}`, error);
         }
         finally {
             endings.delete(id);
+            if (tailsQueued.delete(id) && !disposed)
+                void readTail(id, true);
         }
     };
     listen('api-session/added', (summary) => mutate(() => {
@@ -262,17 +317,21 @@ export function createActivityFeed(ctx, onChange = () => { }, options = {}) {
             }
             row.updatedAt = Math.max(row.updatedAt, Date.now());
         });
-        if (!running && !disposed)
-            void readEnding(id);
+        if (!disposed)
+            void readTail(id, !running);
     });
-    listen('api-session/activity', (id, updatedAt) => mutate(() => {
-        if (removals.has(id))
-            return;
-        eventLive.add(id);
-        const row = ensure(id);
-        row.updatedAt = Math.max(row.updatedAt, time(updatedAt));
-        row.error = undefined;
-    }));
+    listen('api-session/activity', (id, updatedAt) => {
+        mutate(() => {
+            if (removals.has(id))
+                return;
+            eventLive.add(id);
+            const row = ensure(id);
+            row.updatedAt = Math.max(row.updatedAt, time(updatedAt));
+            row.error = undefined;
+        });
+        if (!disposed)
+            void readTail(id);
+    });
     listen('api-session/error', (id, error) => mutate(() => {
         if (removals.has(id))
             return;
@@ -445,17 +504,13 @@ function facts(row, { liveIds = new Set(), eventLive = new Set(), now = Date.now
     const interrupted = !runningNow && !starting && !goalStarting && (row.ending?.kind === 'aborted' || row.ending?.kind === 'interrupted');
     // 失败回合被宿主折叠成「空提示可重跑」的 seq；error 事件不一定会留下来，所以它是独立信号。
     const continuable = !runningNow && !starting && !goalStarting && typeof row.values.conversationContinuation === 'number';
-    const turns = row.values.turnOutline;
-    const lastTurn = Array.isArray(turns) && turns.length ? Number(turns[turns.length - 1]?.turn) : NaN;
-    const breakdown = row.values.contextBreakdown;
-    const contextTokens = breakdown ? Number(breakdown.systemTokens) + Number(breakdown.toolsTokens) + Number(breakdown.messageTokens) : NaN;
+    // 回合/步骤/在跑的工具都来自日志尾页（`readTail`），累计输出来自可见的 tokenUsage。
+    const tail = row.tail ?? {};
     const outputTokens = Number(row.values.tokenUsage?.outputTokens);
-    const todos = row.values.todos;
-    const activeTodo = Array.isArray(todos) ? todos.find((entry) => entry?.status === 'in_progress') : undefined;
     const progress = {
-        ...(Number.isFinite(lastTurn) ? { turn: lastTurn } : {}),
-        ...(text(activeTodo?.content, 40) ? { todo: text(activeTodo?.content, 40) } : {}),
-        ...(Number.isFinite(contextTokens) && contextTokens > 0 ? { contextTokens } : {}),
+        ...(Number.isFinite(tail.turn) ? { turn: tail.turn } : {}),
+        ...(Number.isFinite(tail.step) ? { step: tail.step } : {}),
+        ...(tail.tool ? { tool: tail.tool } : {}),
         ...(Number.isFinite(outputTokens) && outputTokens > 0 ? { outputTokens } : {}),
     };
     const detail = interrupted ? '' : waiting

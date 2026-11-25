@@ -8,8 +8,8 @@ const animations = {
   idle: [0,[280,110,110,140,140,320]], runningRight:[1,[120,120,120,120,120,120,120,220]], runningLeft:[2,[120,120,120,120,120,120,120,220]], waving:[3,[140,140,140,280]], jumping:[4,[140,140,140,140,280]], failed:[5,[140,140,140,140,140,140,140,240]], waiting:[6,[150,150,150,150,150,260]], approval:[6,[150]], question:[6,[150]], running:[7,[120,120,120,120,120,220]], review:[8,[150,150,150,150,150,280]],
 }
 const words = {
-  zh: { idle:'暂时没有会话活动', running:'正在执行', waiting:'等待你的处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', todo:'待办', approval:'审批请求', question:'待回答的问题', hint:'打开会话即可批准或回答', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。', greeting:'hi~', live:'实时活动', interrupted:'本轮已停止', continuable:'可以继续', turns:'第 {turn} 轮', doing:'正在做', subagents:'{count} 个子代理', context:'上下文', output:'输出', waitApproval:'等你批准', waitQuestion:'等你回答', goalPaused:'目标已暂停', goalBlocked:'目标被卡住', goalLimit:'轮次已用尽', queueWait:'有输入待发' },
-  en: { idle:'No active sessions', running:'Running', waiting:'Waiting for you', failed:'Turn failed', completed:'Turn complete', open:'Open session', todo:'Todo', approval:'Approval request', question:'Question', hint:'Open the session to approve or answer', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.', greeting:'hi~', live:'Live activity', interrupted:'Turn stopped', continuable:'Can continue', turns:'Turn {turn}', doing:'Doing', subagents:'{count} subagents', context:'Context', output:'Output', waitApproval:'Approve?', waitQuestion:'Answer?', goalPaused:'Goal paused', goalBlocked:'Goal blocked', goalLimit:'Round limit', queueWait:'Input queued' },
+  zh: { idle:'暂时没有会话活动', running:'正在执行', waiting:'等待你的处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', todo:'待办', approval:'审批请求', question:'待回答的问题', hint:'打开会话即可批准或回答', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。', greeting:'hi~', live:'实时活动', interrupted:'本轮已停止', continuable:'可以继续', turns:'第 {turn} 轮', steps:'第 {step} 步', usingTool:'正在用 {tool}', subagents:'{count} 个子代理', output:'输出', waitApproval:'等你批准', waitQuestion:'等你回答', goalPaused:'目标已暂停', goalBlocked:'目标被卡住', goalLimit:'轮次已用尽', queueWait:'有输入待发' },
+  en: { idle:'No active sessions', running:'Running', waiting:'Waiting for you', failed:'Turn failed', completed:'Turn complete', open:'Open session', todo:'Todo', approval:'Approval request', question:'Question', hint:'Open the session to approve or answer', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.', greeting:'hi~', live:'Live activity', interrupted:'Turn stopped', continuable:'Can continue', turns:'Turn {turn}', steps:'Step {step}', usingTool:'Using {tool}', subagents:'{count} subagents', output:'Output', waitApproval:'Approve?', waitQuestion:'Answer?', goalPaused:'Goal paused', goalBlocked:'Goal blocked', goalLimit:'Round limit', queueWait:'Input queued' },
 }
 // Qoder 的收起态只有「宠物 + 状态徽标」，状态靠短语 + 语义色表达，数量进 tooltip。
 const badges = {
@@ -61,12 +61,11 @@ function tokens(count) {
 /** 展开态的进度行：宿主投影给什么就说什么，没有就整行不出现。 */
 function progressText(session) {
   const progress = session?.progress || {}
-  const en = state?.settings.language === 'en'
   const parts = []
   if (progress.turn) parts.push(t('turns').replace('{turn}', progress.turn))
+  if (progress.step) parts.push(t('steps').replace('{step}', progress.step))
+  if (progress.tool) parts.push(t('usingTool').replace('{tool}', progress.tool))
   if (progress.subagents) parts.push(t('subagents').replace('{count}', progress.subagents))
-  if (progress.todo) parts.push(`${t('doing')} ${progress.todo}`)
-  if (progress.contextTokens) parts.push(`${en ? 'ctx' : '上下文'} ${tokens(progress.contextTokens)}`)
   if (progress.outputTokens) parts.push(`${t('output')} ${tokens(progress.outputTokens)}`)
   return parts.join(' · ')
 }
