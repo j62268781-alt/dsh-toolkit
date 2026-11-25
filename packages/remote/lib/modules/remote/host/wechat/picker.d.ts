@@ -1,19 +1,19 @@
 /**
- * 未绑定会话时的「选择器」：欢迎语、选择卡、序号回复。
+ * 选择器：`/start` 才会出现的「会话卡 / 工作区卡」与序号回复。
+ *
+ * 普通消息不触发选择：没绑定会话时直接在当前（默认）工作区开一条，
+ * 用户问什么就答什么；想挑会话或换工作区才发 `/start`。
  *
  * 交互顺序（尽量短，微信里打字少）：
- *   1. 先给工作区卡：只显示目录名，最后一项是「不选，用默认工作区」；
- *   2. 选完工作区再给会话卡：第 1 项永远是「新建」，其余是本工作区的全部会话（只显示标题）；
- *   3. 会话卡里的 0 是回到工作区卡。
+ *   1. 会话卡：第 1 项永远是「新建」，其余是本工作区的全部会话（只显示标题），0 是换工作区；
+ *   2. 选完工作区再回到会话卡：工作区卡只显示目录名，最后一项是「不选，用默认工作区」。
  *
  * 设计约束：
  *   · 微信里只能发纯文本，所以选择靠「回复数字」；
- *   · 命令永远放行（/help /start /sessions /use /new …），选择器只管普通消息和纯数字；
- *   · 待选状态只活 10 分钟且一次消费，避免把 Agent 的追问答案（比如「2」）误当成选择。
+ *   · 命令永远放行（/help /start /sessions /use /new …），选择器只管纯数字；
+ *   · 待选状态只活 10 分钟，且下一条非数字消息会把它作废，避免把 Agent 的追问答案（比如「2」）误当成选择。
  */
 export declare const CHOICE_TTL_MS: number;
-/** 同一用户两次欢迎语的最小间隔：超过这个时间没聊过才重新打招呼。 */
-export declare const GREET_INTERVAL_MS: number;
 /** 会话卡里最多列多少条（正常够用；超过时在卡尾说明总数）。 */
 export declare const SESSION_LIST_LIMIT = 100;
 /** 会话卡的第一项：在这个工作区新建一条会话。 */
@@ -41,10 +41,7 @@ export declare function parseChoice(text: any): number;
  * @param options.home 家目录（卡上把它显示成 `~`）
  */
 export declare function createPicker({ ctx, conversations, workspaceCwd, home, logger, ttlMs }: any): {
-    clear: (userId: any) => void;
     clearChoice: (userId: any) => void;
-    suspend: (userId: any, message: any) => void;
-    takePending: (userId: any) => any;
     showSessions: (userId: any, workspacePath: any) => Promise<string>;
     showWorkspaces: (userId: any) => Promise<string>;
     choose: (userId: any, number: any) => Promise<{

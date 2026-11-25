@@ -47,7 +47,7 @@ export function helpText() {
   return [
     '可用命令：',
     '/help 看这个列表',
-    '/start 重新选会话（发一张选择卡）',
+    '/start 选会话或换工作区（发一张选择卡）',
     '/sessions（/ls）当前工作区的会话',
     '/use <序号|id前缀>（/switch /bind）切到已有会话',
     '/new（/reset）新建会话',

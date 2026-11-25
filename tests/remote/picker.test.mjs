@@ -252,17 +252,6 @@ test('待选状态有 10 分钟时效，过期后数字回到普通消息', asyn
   assert.equal(await picker.choose('user-1', 1), undefined)
 })
 
-test('挂起的问题一次性消费，过期的补跑会被丢弃', async () => {
-  const { picker } = pickerWith({ ttlMs: 1 })
-  picker.suspend('user-1', { message_id: 'm1' })
-  assert.deepEqual(picker.takePending('user-1'), { message_id: 'm1' })
-  assert.equal(picker.takePending('user-1'), undefined)
-
-  picker.suspend('user-1', { message_id: 'm2' })
-  await new Promise((resolve) => setTimeout(resolve, 8))
-  assert.equal(picker.takePending('user-1'), undefined)
-})
-
 test('会话卡把该工作区的会话全列出来（不是只列 5 条）', async () => {
   const { picker } = pickerWith({ ctx: fakeCtx({ sessions: records(12) }) })
   await picker.showWorkspaces('user-1')
