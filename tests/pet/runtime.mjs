@@ -58,6 +58,19 @@ test('renderer snapshot does not expose filesystem or Host secrets and ranks ses
   assert.equal(result.pets[0].spritesheet, 'pet-asset://pet/duck/spritesheet.png')
   assert.equal(JSON.stringify(result).includes('/private'), false)
   assert.equal(JSON.stringify(result).includes('secret'), false)
+  // 徽标与进度行要用的字段必须原样过桥，但不认识的等待原因、超长的工具名不能漏过去。
+  const rich = publicState({ settings: {}, pets: [], sessions: [
+    { id: 'wait', status: 'waiting', waitReason: 'approval', queued: 3, updatedAt: 9 },
+    { id: 'odd', status: 'waiting', waitReason: 'made-up', queued: 0 },
+    { id: 'run', status: 'running', progress: { turn: 2, step: 3, tool: 'x'.repeat(80), outputTokens: 3400, secret: '/private' } },
+  ] }, 'island', { bounds: { width: 1000, height: 800 } })
+  const [wait, run] = [rich.sessions.find(s => s.id === 'wait'), rich.sessions.find(s => s.id === 'run')]
+  assert.equal(wait.waitReason, 'approval')
+  assert.equal(wait.queued, 3)
+  assert.equal(rich.sessions.find(s => s.id === 'odd').waitReason, undefined)
+  assert.equal(rich.sessions.find(s => s.id === 'odd').queued, undefined)
+  assert.deepEqual(run.progress, { turn: 2, step: 3, tool: 'x'.repeat(32), outputTokens: 3400 })
+  assert.equal(JSON.stringify(rich).includes('/private'), false)
 })
 test('assets are bounded to one known pet spritesheet', () => {
   const state = { pets:[{ id:'duck', assetDir:'/assets/duck' }] }
@@ -195,6 +208,23 @@ test('real renderer focuses one session with an inline todo on a single clickabl
   dom.window.close()
 })
 
+test('a finished session says 本轮已完成 once instead of repeating it below the title', async () => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  const state = { settings: { language: 'zh', activePet: 'duck' }, pets: [], kind: 'island', sessions: [{ id: 'a', title: '工作树生命周期验收', status: 'completed', detail: 'Turn finished', updatedAt: Date.now() }] }
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+  dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+  dom.window.pet = { initial: async () => state, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState() {}, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const doc = dom.window.document
+  assert.equal(doc.body.dataset.form, 'detail')
+  assert.equal(doc.querySelector('.session .status-phrase').textContent, '本轮已完成')
+  // 「Turn finished」这类通用短语已经被状态短语说过，再补一行就是重复。
+  assert.equal(doc.querySelector('.session .detail'), null)
+  dom.window.close()
+})
 test('running sessions expand as a three-row list with no avatar, footer, input or scrolling', async (t) => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')

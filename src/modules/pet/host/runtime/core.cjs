@@ -11,7 +11,7 @@ function readEnvironment(env) {
 }
 
 function orderedSessions(sessions = []) {
-  const rank = { waiting: 0, running: 1, failed: 2, completed: 3 }
+  const rank = { waiting: 0, running: 1, retrying: 1, failed: 2, continuable: 2, interrupted: 2, completed: 3 }
   return sessions.filter(s => s && typeof s.id === 'string').toSorted((a, b) => (rank[a.status] ?? 4) - (rank[b.status] ?? 4) || (b.updatedAt || 0) - (a.updatedAt || 0))
 }
 
@@ -26,6 +26,7 @@ function clipFile(pet, motion) {
   return declared[motion] === `motion/${motion}.webp` ? `motion/${motion}.webp` : null
 }
 
+const WAIT_REASONS = new Set(['approval', 'question', 'goal-paused', 'goal-blocked', 'goal-limit', 'queued'])
 function publicState(state, kind, display) {
   const settings = state.settings || {}
   return {
@@ -33,7 +34,21 @@ function publicState(state, kind, display) {
     // Petdex 安装的形象用 `petdex:<slug>` 作为 id，精灵表文件名也可能不是 spritesheet.png。
     pets: (state.pets || []).filter(p => /^(?:petdex:)?[a-z0-9][a-z0-9._-]*$/i.test(p.id)).map(p => ({ id: p.id, name: p.name, spriteVersionNumber: p.manifest?.spriteVersionNumber === 2 ? 2 : 1, spritesheet: `pet-asset://pet/${encodeURIComponent(p.id)}/${encodeURIComponent(p.sheetFile || 'spritesheet.png')}`, animations: Object.fromEntries(CLIP_MOTIONS.map(motion => [motion, clipFile(p, motion)]).filter(([, file]) => file).map(([motion, file]) => [motion, `pet-asset://pet/${encodeURIComponent(p.id)}/${file}`])) })),
     // updatedAt 只用于展开态的「刚刚 / N 分钟前」，不是绝对时间戳：渲染端只读差值。
-    sessions: orderedSessions(state.sessions).map(s => ({ id: s.id, title: String(s.title || ''), detail: String(s.detail || ''), status: s.status, running: Boolean(s.running), updatedAt: Number(s.updatedAt) || 0, pendingKind: s.pendingKind })),
+    sessions: orderedSessions(state.sessions).map(s => ({
+      id: s.id, title: String(s.title || ''), detail: String(s.detail || ''), status: s.status,
+      running: Boolean(s.running), updatedAt: Number(s.updatedAt) || 0, pendingKind: s.pendingKind,
+      // 徽标要把「为什么在等」和「排了几条」画出来，所以这两个字段必须跟着快照一起过桥。
+      waitReason: WAIT_REASONS.has(s.waitReason) ? s.waitReason : undefined,
+      queued: Number.isFinite(s.queued) && s.queued > 0 ? s.queued : undefined,
+      // 展开态的进度行（第几轮 / 第几步 / 在用什么工具 / 输出多少）同样只在快照里，渲染端拿不到就整行消失。
+      progress: s.progress && typeof s.progress === 'object' ? {
+        ...(Number.isFinite(s.progress.turn) ? { turn: s.progress.turn } : {}),
+        ...(Number.isFinite(s.progress.step) ? { step: s.progress.step } : {}),
+        ...(typeof s.progress.tool === 'string' && s.progress.tool ? { tool: s.progress.tool.slice(0, 32) } : {}),
+        ...(Number.isFinite(s.progress.outputTokens) ? { outputTokens: s.progress.outputTokens } : {}),
+        ...(Number.isFinite(s.progress.subagents) ? { subagents: s.progress.subagents } : {}),
+      } : undefined,
+    })),
     revision: state.revision, kind,
     display: { id: display.id, width: display.bounds.width, height: display.bounds.height, notch: display.notch || null, island: islandGeometry(settings, display.notch, display.bounds) },
   }
