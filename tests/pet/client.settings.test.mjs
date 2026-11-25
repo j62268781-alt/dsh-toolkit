@@ -288,7 +288,7 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   const calls = []
   const installed = new Set()
   const pets = () => [{ id: 'qoduck-lab', name: 'Qoduck', source: 'builtin' }, ...(installed.has('boba') ? [{ id: 'petdex:boba', name: 'Boba', source: 'petdex' }] : [])]
-  const catalog = Array.from({ length: 21 }, (_, index) => ({ slug: index === 0 ? 'boba' : `pet-${index + 1}`, displayName: index === 0 ? 'Boba' : `Pet ${index + 1}` }))
+  const catalog = Array.from({ length: 130 }, (_, index) => ({ slug: index === 0 ? 'boba' : `pet-${index + 1}`, displayName: index === 0 ? 'Boba' : `Pet ${index + 1}` }))
   let events
   let releaseInstall = () => {}
   const installGate = new Promise((resolve) => { releaseInstall = resolve })
@@ -315,7 +315,7 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   assert.deepEqual(document.querySelectorAll('select optgroup').length, 0, 'the native select is a flat list')
   const browse = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Browse library')
   await act(async () => { browse.click(); await flush() })
-  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 0, limit: 20, filter: 'all' })
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 0, limit: 60, filter: 'all' })
   const dialogCard = document.querySelector('.tk-dialogCard')
   assert.ok(dialogCard, 'the library opens in the shared resizable dialog')
   assert.equal(dialogCard.style.width, '920px', 'the dialog keeps its own default width instead of filling the window')
@@ -325,31 +325,28 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   const toolbar = document.querySelector('.tk-dialogToolbar')
   assert.ok(toolbar && toolbar.querySelector('.pet-search'), 'the search stays pinned above the scrolling list')
   assert.equal(document.querySelector('.tk-dialogBody .pet-search'), null, 'the search form is not part of the scrolling body')
-  // 底部只剩固定分页条：关闭入口是右上角的宿主图标，不再有「关闭」按钮。
+  // 没有分页条：底部只留一行「已显示 N / 共 M」，更多结果靠滚到底自动续拉。
   const foot = document.querySelector('.tk-dialogFoot')
-  assert.ok(foot && foot.querySelector('.tk-pagination'), 'the pager is pinned to the dialog footer, not inside the scrolling list')
+  assert.equal(foot.querySelector('.tk-pagination'), null, 'pagination is gone — the list just scrolls')
   assert.equal([...foot.querySelectorAll('button')].some((button) => button.textContent === 'Close'), false, 'no close button in the footer')
   assert.ok(document.querySelector('.tk-dialogClose svg'), 'closing happens through the host icon in the header')
-  assert.ok(document.querySelector('.tk-dialogFoot .tk-pageSummary'), 'the total sits on the same row as the page buttons')
-  assert.equal(document.querySelector('.tk-dialogBody .tk-pagination'), null, 'the pager is not part of the scrolling body')
+  assert.match(foot.textContent, /Showing 60 of 130/, 'the footer reports how much of the result set is loaded')
   // 搜索按钮旁的筛选：默认「全部」，切到「已安装」后按筛选重新从第一页拉。
   const chips = [...document.querySelectorAll('.pet-filter .pet-filterChip')]
   assert.deepEqual(chips.map((chip) => chip.textContent), ['All', 'Installed', 'Not installed'], 'the install-state filter sits next to the search button')
   assert.equal(chips[0].getAttribute('aria-pressed'), 'true', 'the filter defaults to All')
   // 切筛选时搜索框与分页条必须是同一批 DOM 节点（不被销毁重建），否则会闪一下。
   const searchInput = document.querySelector('.pet-search input')
-  const pager = document.querySelector('.tk-pagination')
-  assert.ok(searchInput && pager)
+  assert.ok(searchInput)
   await act(async () => { chips[1].click(); await flush() })
   assert.equal(document.querySelector('.pet-search input'), searchInput, 'the search field is not remounted when the filter changes')
-  assert.equal(document.querySelector('.tk-pagination'), pager, 'the pager is not remounted when the filter changes')
   assert.equal(searchInput.disabled, false, 'the search field stays usable while a page loads')
-  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 0, limit: 20, filter: 'installed' })
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 0, limit: 60, filter: 'installed' })
   assert.equal([...document.querySelectorAll('.pet-filter .pet-filterChip')][1].getAttribute('aria-pressed'), 'true')
   await act(async () => { [...document.querySelectorAll('.pet-filter .pet-filterChip')][0].click(); await flush() })
-  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 0, limit: 20, filter: 'all' })
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 0, limit: 60, filter: 'all' })
   const tiles = [...document.querySelectorAll('.pet-tile')]
-  assert.equal(tiles.length, 20, 'one page shows 20 pets')
+  assert.equal(tiles.length, 60, 'the first batch is 60 pets, the host cap')
   const row = tiles[0]
   assert.match(row.textContent, /Boba/)
   // 预览图走插件自己的受认证路由，页面不直连 Petdex。
@@ -357,7 +354,8 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   assert.ok(thumb, 'each tile shows the pet artwork')
   assert.ok(row.querySelector('.pet-tileCopy .pet-desc'), 'the subtitle (pet id) is rendered under the title')
   assert.ok(row.querySelector('.pet-tileActions button'), 'the install action sits in its own row under the copy')
-  assert.match(thumb.getAttribute('style'), /\/api\/plugins\/toolkit\/pet\/asset\?slug=boba/)
+  assert.match(thumb.querySelector('img').getAttribute('src'), /\/api\/plugins\/toolkit\/pet\/asset\?slug=boba/)
+  assert.equal(thumb.querySelector('img').getAttribute('loading'), 'lazy', 'artwork is fetched only when it scrolls near the viewport')
   const install = [...row.querySelectorAll('button')].find((button) => button.textContent === 'Install')
   const catalogCalls = () => calls.filter((call) => call.action === 'catalog').length
   const catalogBefore = catalogCalls()
@@ -384,12 +382,17 @@ test('the pet library searches Petdex and installs or removes a pet from the set
   assert.deepEqual(calls.filter((call) => call.action === 'remove'), [{ action: 'remove', slug: 'boba' }])
   assert.equal(catalogCalls(), catalogBefore, 'removing patches the card instead of reloading the whole page')
   assert.ok([...document.querySelectorAll('.pet-tile button')].some((button) => button.textContent === 'Install'), 'the card flips back to Install right away')
-  // 分页：第 2 页只请求剩下的 1 只。
-  const next = [...document.querySelectorAll('.tk-pagination button')].find((button) => button.textContent === 'Next')
-  assert.ok(next, 'the shared pagination control is rendered')
-  await act(async () => { next.click(); await flush() })
-  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 20, limit: 20, filter: 'all' })
-  assert.equal(document.querySelectorAll('.pet-tile').length, 1)
+  // 滚到底续拉下一批：offset 跟着已有数量走，追加而不是替换；取满匹配数后不再请求。
+  const body = document.querySelector('.tk-dialogBody')
+  await act(async () => { body.dispatchEvent(new dom.window.Event('scroll')); await flush() })
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 60, limit: 60, filter: 'all' })
+  assert.equal(document.querySelectorAll('.pet-tile').length, 120, 'the next batch is appended below the cards already on screen')
+  await act(async () => { body.dispatchEvent(new dom.window.Event('scroll')); await flush() })
+  assert.deepEqual(calls.at(-1), { action: 'catalog', query: '', offset: 120, limit: 60, filter: 'all' })
+  assert.equal(document.querySelectorAll('.pet-tile').length, 130)
+  const settled = catalogCalls()
+  await act(async () => { body.dispatchEvent(new dom.window.Event('scroll')); await flush() })
+  assert.equal(catalogCalls(), settled, 'reaching the end of the result set stops asking for more')
   const options = [...document.querySelectorAll('select option')].map((option) => option.textContent)
   assert.ok(options.includes('Qoduck'))
 })

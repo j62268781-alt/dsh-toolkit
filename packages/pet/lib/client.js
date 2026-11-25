@@ -96,45 +96,6 @@ window.__ModuleLoader__.load({
       return () => tag.remove();
     }
 
-    // src/client/ui/components/pagination/index.tsx
-    function paginationWindow(page, pages, span = 2) {
-      if (!Number.isInteger(page) || !Number.isInteger(pages) || pages <= 0 || page < 0) return [];
-      const shown = [];
-      let last = -1;
-      for (let index = 0; index < pages; index += 1) {
-        const near = Math.abs(index - page) <= span;
-        const edge = index === 0 || index === pages - 1;
-        if (!near && !edge) continue;
-        if (last >= 0 && index - last > 1) shown.push(null);
-        shown.push(index);
-        last = index;
-      }
-      return shown;
-    }
-    function Pagination({ page = 0, pages = 1, onChange, labels = {}, disabled = false, summary }) {
-      const total = Number.isInteger(pages) && pages > 0 ? pages : 1;
-      const shown = paginationWindow(page, total);
-      const paged = shown.length > 0 && total > 1;
-      if (!paged && !summary) return null;
-      const go = (next) => {
-        if (disabled) return;
-        if (!Number.isInteger(next) || next < 0 || next >= total || next === page) return;
-        if (typeof onChange === "function") onChange(next);
-      };
-      return /* @__PURE__ */ __dshReact.createElement("nav", { className: "tk-pagination", "aria-label": labels.label ?? "Pagination" }, summary ? /* @__PURE__ */ __dshReact.createElement("span", { className: "tk-pageSummary" }, summary) : null, paged && /* @__PURE__ */ __dshReact.createElement("span", { className: "tk-pageButtons" }, /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "tk-page", disabled: disabled || page <= 0, onClick: () => go(page - 1) }, labels.prev ?? "Previous"), shown.map((entry, index) => entry === null ? /* @__PURE__ */ __dshReact.createElement("span", { className: "tk-pageGap", key: `gap:${index}`, "aria-hidden": "true" }, "…") : /* @__PURE__ */ __dshReact.createElement("button", { type: "button", key: entry, "aria-current": entry === page ? "page" : void 0, className: entry === page ? "tk-page tk-pageCurrent" : "tk-page", disabled, onClick: () => go(entry) }, entry + 1)), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "tk-page", disabled: disabled || page >= total - 1, onClick: () => go(page + 1) }, labels.next ?? "Next")));
-    }
-    var paginationCss = `
-    .tk-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
-    .tk-pageSummary { min-width: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .tk-pageButtons { display: flex; flex: none; align-items: center; gap: 6px; }
-    .tk-pagination .tk-page { font: inherit; min-width: 30px; height: 30px; padding: 0 9px; color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-1); border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 8px); cursor: pointer; font-variant-numeric: tabular-nums; }
-    .tk-pagination .tk-page:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
-    .tk-pagination .tk-pageCurrent { background: var(--dsw-alias-label-primary); color: var(--dsw-alias-label-primary-foreground); border-color: transparent; }
-    .tk-pagination .tk-page:disabled { opacity: .45; cursor: default; }
-    .tk-pagination .tk-page:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 3px; }
-    .tk-pagination .tk-pageGap { color: var(--dsw-alias-label-secondary); padding: 0 2px; }
-    `;
-
     // src/client/ui/components/resizable-dialog/index.tsx
     var import_react = require("react");
     var OVERLAY_PADDING = 24;
@@ -193,6 +154,7 @@ window.__ModuleLoader__.load({
       toolbar,
       children,
       footer,
+      onBodyScroll,
       closeLabel = "Close",
       resizeLabel = "Resize dialog",
       storageKey,
@@ -332,7 +294,7 @@ window.__ModuleLoader__.load({
         event.preventDefault();
         setSize(clampTo(next, limits));
       };
-      const card = /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogCard", ref: cardRef, style: { width: `${size.width}px`, height: `${size.height}px` } }, /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogHead" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogHeading" }, /* @__PURE__ */ __dshReact.createElement("h3", { className: "tk-dialogTitle" }, title), description && /* @__PURE__ */ __dshReact.createElement("p", { className: "tk-dialogDesc" }, description)), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "tk-dialogClose", "aria-label": closeLabel, onClick: requestClose }, /* @__PURE__ */ __dshReact.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.5 2.5L13.5 13.5" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M13.5 2.5L2.5 13.5" })))), toolbar && /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogToolbar" }, toolbar), /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogBody" }, children), footer && /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogFoot" }, footer), /* @__PURE__ */ __dshReact.createElement(
+      const card = /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogCard", ref: cardRef, style: { width: `${size.width}px`, height: `${size.height}px` } }, /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogHead" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogHeading" }, /* @__PURE__ */ __dshReact.createElement("h3", { className: "tk-dialogTitle" }, title), description && /* @__PURE__ */ __dshReact.createElement("p", { className: "tk-dialogDesc" }, description)), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "tk-dialogClose", "aria-label": closeLabel, onClick: requestClose }, /* @__PURE__ */ __dshReact.createElement("svg", { width: "16", height: "16", viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: "1", "aria-hidden": "true" }, /* @__PURE__ */ __dshReact.createElement("path", { d: "M2.5 2.5L13.5 13.5" }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M13.5 2.5L2.5 13.5" })))), toolbar && /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogToolbar" }, toolbar), /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogBody", onScroll: onBodyScroll }, children), footer && /* @__PURE__ */ __dshReact.createElement("div", { className: "tk-dialogFoot" }, footer), /* @__PURE__ */ __dshReact.createElement(
         "button",
         {
           type: "button",
@@ -637,10 +599,8 @@ window.__ModuleLoader__.load({
         install: "安装",
         uninstall: "卸载",
         installed: "已安装",
-        prevPage: "上一页",
-        nextPage: "下一页",
-        pagination: "宠物库分页",
-        pageSummary: "第 {page}/{pages} 页，共 {matched} 个匹配的宠物。",
+        libraryCount: "已显示 {loaded} / {matched}，继续滚动加载更多",
+        libraryDone: "共 {matched} 个匹配的宠物。",
         filterByInstall: "按安装状态筛选",
         filterAll: "全部",
         filterInstalled: "已安装",
@@ -709,10 +669,8 @@ window.__ModuleLoader__.load({
         install: "Install",
         uninstall: "Uninstall",
         installed: "Installed",
-        prevPage: "Previous",
-        nextPage: "Next",
-        pagination: "Pet library pages",
-        pageSummary: "Page {page} of {pages} · {matched} matching pets.",
+        libraryCount: "Showing {loaded} of {matched} — scroll for more",
+        libraryDone: "{matched} matching pets.",
         filterByInstall: "Filter by install state",
         filterAll: "All",
         filterInstalled: "Installed",
@@ -920,7 +878,7 @@ window.__ModuleLoader__.load({
     };
 
     // src/modules/pet/client/panel.tsx
-    var PAGE_SIZE = 20;
+    var LIBRARY_BATCH = 60;
     function createPetPanel(React2, { t, settings, connection, actions, primitives }) {
       const { useEffect: useEffect2, useRef: useRef2, useState: useState2, useSyncExternalStore } = React2;
       const Switch = primitives?.Switch;
@@ -958,7 +916,7 @@ window.__ModuleLoader__.load({
         const [pending, setPending] = useState2(null);
         const [echo, setEcho] = useState2({});
         const [query, setQuery] = useState2("");
-        const [library, setLibrary] = useState2({ open: false, loading: false, pets: [], error: "", page: 0, pages: 1, matched: 0, filter: "all" });
+        const [library, setLibrary] = useState2({ open: false, loading: false, refreshing: false, pets: [], error: "", matched: 0, filter: "all", done: false });
         const [installing, setInstalling] = useState2(null);
         const searchTicket = useRef2(0);
         const queue = useRef2(/* @__PURE__ */ new Map());
@@ -1029,23 +987,30 @@ window.__ModuleLoader__.load({
         };
         const change = (field, next) => write(field, next);
         const shown = (field) => Object.prototype.hasOwnProperty.call(echo, field) ? echo[field] : value[field];
-        const searchLibrary = async (term, page = 0, nextFilter = library.filter) => {
-          const wanted = Number.isInteger(page) && page >= 0 ? page : 0;
+        const searchLibrary = async (term, offset = 0, nextFilter = library.filter) => {
+          const from = Number.isInteger(offset) && offset > 0 ? offset : 0;
           const filter = ["all", "installed", "missing"].includes(nextFilter) ? nextFilter : "all";
           const ticket = searchTicket.current + 1;
           searchTicket.current = ticket;
-          setLibrary((current) => ({ ...current, open: true, loading: true, error: "", filter }));
+          setLibrary((current) => ({ ...current, open: true, loading: true, refreshing: from === 0, error: "", filter }));
           try {
-            const result = await connection.catalog(term, wanted * PAGE_SIZE, PAGE_SIZE, filter);
+            const result = await connection.catalog(term, from, LIBRARY_BATCH, filter);
             if (searchTicket.current !== ticket) return;
             const found = Array.isArray(result?.pets) ? result.pets.filter((pet) => typeof pet?.slug === "string") : [];
-            const matched = Number.isFinite(Number(result?.matched)) ? Number(result.matched) : found.length;
-            const pages = Math.max(1, Math.ceil(matched / PAGE_SIZE));
-            setLibrary({ open: true, loading: false, pets: found, error: "", page: Math.min(wanted, pages - 1), pages, matched, filter });
+            const matched = Number.isFinite(Number(result?.matched)) ? Number(result.matched) : from + found.length;
+            setLibrary((current) => {
+              const known = new Set(from === 0 ? [] : current.pets.map((pet) => pet.slug));
+              const pets = from === 0 ? found : [...current.pets, ...found.filter((pet) => !known.has(pet.slug))];
+              return { open: true, loading: false, refreshing: false, pets, error: "", matched, filter, done: found.length === 0 || pets.length >= matched };
+            });
           } catch (reason) {
             if (searchTicket.current !== ticket) return;
-            setLibrary((current) => ({ ...current, open: true, loading: false, pets: [], error: String(reason?.message ?? reason) }));
+            setLibrary((current) => ({ ...current, open: true, loading: false, refreshing: false, error: String(reason?.message ?? reason) }));
           }
+        };
+        const loadMore = () => {
+          if (!library.open || library.loading || library.done || library.error) return;
+          void searchLibrary(query, library.pets.length, library.filter);
         };
         const openLibrary = () => {
           setLibrary((current) => ({ ...current, open: true }));
@@ -1063,8 +1028,7 @@ window.__ModuleLoader__.load({
             const patched = current.pets.map((pet) => pet.slug === slug ? { ...pet, installed } : pet);
             const pets = stillMatches ? patched : patched.filter((pet) => pet.slug !== slug);
             const matched = stillMatches ? current.matched : Math.max(0, current.matched - 1);
-            const pages = Math.max(1, Math.ceil(matched / PAGE_SIZE));
-            return { ...current, pets, matched, pages, page: Math.min(current.page, pages - 1) };
+            return { ...current, pets, matched, done: pets.length >= matched };
           });
         };
         const togglePet = async (pet, installed) => {
@@ -1080,7 +1044,7 @@ window.__ModuleLoader__.load({
           const stillMatches = library.filter === "all" || library.filter === "installed" === !installed;
           patchInstalled(pet.slug, !installed);
           await connection.refresh();
-          if (!stillMatches && library.pets.length <= 1 && library.page > 0) await searchLibrary(query, library.page - 1, library.filter);
+          if (!stillMatches && library.pets.length <= 1 && !library.done) void searchLibrary(query, library.pets.length, library.filter);
         };
         const toggle = (field) => /* @__PURE__ */ __dshReact.createElement(Row, { title: t(field), description: t(`${field}Desc`) }, /* @__PURE__ */ __dshReact.createElement(Toggle, { field, value: shown(field), disabled: readonly, change }));
         const runtime = state.runtime ?? {};
@@ -1095,16 +1059,19 @@ window.__ModuleLoader__.load({
         const tile = (pet) => {
           const name = pet.displayName || pet.slug;
           const installed = pet.installed === true || state.pets.some((entry) => entry.id === `petdex:${pet.slug}`);
-          return /* @__PURE__ */ __dshReact.createElement("article", { className: installed ? "pet-tile pet-tileInstalled" : "pet-tile", key: pet.slug, title: installed ? `${name} · ${t("installed")}` : name }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-tileArt", role: "img", "aria-label": name, style: { backgroundImage: `url("${petPreviewUrl(pet.slug)}")` } }), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-tileCopy" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, name), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-desc" }, pet.slug)), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-tileActions" }, progressOf(pet.slug) !== null ? /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-button pet-tileButton pet-tileProgress", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": progressOf(pet.slug), "aria-label": t("installing", { name }) }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-tileProgressFill", style: { width: `${progressOf(pet.slug)}%` }, "aria-hidden": "true" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-tileProgressText" }, progressOf(pet.slug), "%")) : installed ? /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton pet-tileButton", disabled: busyFor(`pet:${pet.slug}`), onClick: () => void run(`pet:${pet.slug}`, () => togglePet(pet, true)) }, t("uninstall")) : /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-tileButton", disabled: busyFor(`pet:${pet.slug}`), onClick: () => void run(`pet:${pet.slug}`, () => togglePet(pet, false)) }, t("install"))));
+          return /* @__PURE__ */ __dshReact.createElement("article", { className: installed ? "pet-tile pet-tileInstalled" : "pet-tile", key: pet.slug, title: installed ? `${name} · ${t("installed")}` : name }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-tileArt", role: "img", "aria-label": name }, /* @__PURE__ */ __dshReact.createElement("img", { src: petPreviewUrl(pet.slug), alt: "", loading: "lazy", decoding: "async" })), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-tileCopy" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, name), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-desc" }, pet.slug)), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-tileActions" }, progressOf(pet.slug) !== null ? /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-button pet-tileButton pet-tileProgress", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": progressOf(pet.slug), "aria-label": t("installing", { name }) }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-tileProgressFill", style: { width: `${progressOf(pet.slug)}%` }, "aria-hidden": "true" }), /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-tileProgressText" }, progressOf(pet.slug), "%")) : installed ? /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton pet-tileButton", disabled: busyFor(`pet:${pet.slug}`), onClick: () => void run(`pet:${pet.slug}`, () => togglePet(pet, true)) }, t("uninstall")) : /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-tileButton", disabled: busyFor(`pet:${pet.slug}`), onClick: () => void run(`pet:${pet.slug}`, () => togglePet(pet, false)) }, t("install"))));
         };
-        const libraryBody = library.error ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-error", role: "alert" }, t("catalogFailed")) : library.pets.length === 0 ? library.loading ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("searching")) : /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("noResults")) : /* @__PURE__ */ __dshReact.createElement(OptionGrid, { columns: 6, className: library.loading ? "pet-grid pet-gridBusy" : "pet-grid", "aria-busy": library.loading || void 0 }, library.pets.map(tile));
+        const libraryBody = library.error ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-error", role: "alert" }, t("catalogFailed")) : library.pets.length === 0 ? library.loading ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("searching")) : /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("noResults")) : /* @__PURE__ */ __dshReact.createElement(OptionGrid, { columns: 6, className: library.refreshing ? "pet-grid pet-gridBusy" : "pet-grid", "aria-busy": library.refreshing || void 0 }, library.pets.map(tile));
         return /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-page" }, /* @__PURE__ */ __dshReact.createElement(PageHeader, { title: t("title"), subtitle: t("intro") }), readonly && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-notice", role: "status" }, t("readOnly")), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("appearance"), "aria-label": t("appearance"), hint: /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: busyFor("catalog"), onClick: () => void run("catalog", openLibrary) }, t("browseLibrary")) }, /* @__PURE__ */ __dshReact.createElement(Row, { title: t("identity"), description: t("identityDesc") }, /* @__PURE__ */ __dshReact.createElement("select", { "aria-label": t("identity"), value: shown("activePet"), disabled: readonly || !state.pets.length, onChange: (event) => void change("activePet", event.target.value) }, !selected && /* @__PURE__ */ __dshReact.createElement("option", { value: shown("activePet") }, state.pets.length ? t("missingPet") : t("emptyPets")), state.pets.map((pet) => /* @__PURE__ */ __dshReact.createElement("option", { key: pet.id, value: pet.id }, pet.name))))), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("desktop"), "aria-label": t("desktop") }, toggle("petEnabled"), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("petSize"), description: t("petSizeDesc") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "petSize", value: shown("petSize"), disabled: readonly, change })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("bubbleWidth"), description: t("bubbleWidthDesc") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "bubbleWidth", value: shown("bubbleWidth"), disabled: readonly, change }))), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("screenTop"), "aria-label": t("screenTop") }, toggle("islandEnabled"), toggle("islandIdle"), toggle("islandAllDisplays"), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-size" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-sectionHeader" }, /* @__PURE__ */ __dshReact.createElement("div", null, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-title" }, t("islandSize")), /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc" }, t("islandSizeDesc"))), /* @__PURE__ */ __dshReact.createElement("button", { type: "button", className: "pet-button pet-quietButton", disabled: readonly || shown("islandWidth") === DEFAULT_SETTINGS.islandWidth && shown("islandHeight") === DEFAULT_SETTINGS.islandHeight, onClick: () => {
           void write("islandWidth", DEFAULT_SETTINGS.islandWidth);
           void write("islandHeight", DEFAULT_SETTINGS.islandHeight);
-        } }, t("restore"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-previews" }, /* @__PURE__ */ __dshReact.createElement(Preview, { builtIn: true, width: shown("islandWidth"), height: shown("islandHeight") }), /* @__PURE__ */ __dshReact.createElement(Preview, { width: shown("islandWidth"), height: shown("islandHeight") })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("width") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "islandWidth", label: t("width"), value: shown("islandWidth"), disabled: readonly, change })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("height") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "islandHeight", label: t("height"), value: shown("islandHeight"), disabled: readonly, change })))), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("runtime"), "aria-label": t("runtime") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: t(runtimeText), description: runtimeDescription }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-runtime" }, runtimePercent === null ? null : /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-runtimeBar", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": runtimePercent, "aria-label": t("runtime") }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-runtimeBarFill", style: { width: `${runtimePercent}%` }, "aria-hidden": "true" })), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-runtimeActions" }, state.loaded && runtime.status === "error" ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busyFor("action:retry"), onClick: () => run("action:retry", () => connection.action("retry")) }, t("retry")) : state.loaded && runtime.available === false && runtime.status !== "starting" ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busyFor("action:prepare"), onClick: () => run("action:prepare", () => connection.action("prepare")) }, t("prepare")) : state.loaded && runtime.available === true && runtime.status === "stopped" && (value.petEnabled || value.islandEnabled) ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busyFor("action:start"), onClick: () => run("action:start", () => connection.action("start")) }, t("start")) : null))), state.loaded && !state.connected && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc", role: "status" }, t("reconnecting"))), /* @__PURE__ */ __dshReact.createElement(Modal, { open: library.open, onClose: closeLibrary, storageKey: "dsh-toolkit:pet-library-size", title: t("library"), closeLabel: t("close"), resizeLabel: t("resizeDialog"), description: t("libraryIntro"), toolbar: /* @__PURE__ */ __dshReact.createElement("form", { className: "pet-search", onSubmit: (event) => {
+        } }, t("restore"))), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-previews" }, /* @__PURE__ */ __dshReact.createElement(Preview, { builtIn: true, width: shown("islandWidth"), height: shown("islandHeight") }), /* @__PURE__ */ __dshReact.createElement(Preview, { width: shown("islandWidth"), height: shown("islandHeight") })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("width") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "islandWidth", label: t("width"), value: shown("islandWidth"), disabled: readonly, change })), /* @__PURE__ */ __dshReact.createElement(Row, { title: t("height") }, /* @__PURE__ */ __dshReact.createElement(Slider, { field: "islandHeight", label: t("height"), value: shown("islandHeight"), disabled: readonly, change })))), /* @__PURE__ */ __dshReact.createElement(CardSection, { className: "pet-section", title: t("runtime"), "aria-label": t("runtime") }, /* @__PURE__ */ __dshReact.createElement(Row, { title: t(runtimeText), description: runtimeDescription }, /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-runtime" }, runtimePercent === null ? null : /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-runtimeBar", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": runtimePercent, "aria-label": t("runtime") }, /* @__PURE__ */ __dshReact.createElement("span", { className: "pet-runtimeBarFill", style: { width: `${runtimePercent}%` }, "aria-hidden": "true" })), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-runtimeActions" }, state.loaded && runtime.status === "error" ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busyFor("action:retry"), onClick: () => run("action:retry", () => connection.action("retry")) }, t("retry")) : state.loaded && runtime.available === false && runtime.status !== "starting" ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busyFor("action:prepare"), onClick: () => run("action:prepare", () => connection.action("prepare")) }, t("prepare")) : state.loaded && runtime.available === true && runtime.status === "stopped" && (value.petEnabled || value.islandEnabled) ? /* @__PURE__ */ __dshReact.createElement("button", { className: "pet-button", disabled: busyFor("action:start"), onClick: () => run("action:start", () => connection.action("start")) }, t("start")) : null))), state.loaded && !state.connected && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc", role: "status" }, t("reconnecting"))), /* @__PURE__ */ __dshReact.createElement(Modal, { open: library.open, onClose: closeLibrary, storageKey: "dsh-toolkit:pet-library-size", title: t("library"), closeLabel: t("close"), resizeLabel: t("resizeDialog"), description: t("libraryIntro"), onBodyScroll: (event) => {
+          const body = event.currentTarget;
+          if (body.scrollHeight - body.scrollTop - body.clientHeight <= 320) loadMore();
+        }, toolbar: /* @__PURE__ */ __dshReact.createElement("form", { className: "pet-search", onSubmit: (event) => {
           event.preventDefault();
           void searchLibrary(query, 0, library.filter);
-        } }, /* @__PURE__ */ __dshReact.createElement("input", { type: "search", "aria-label": t("searchPets"), placeholder: t("searchPets"), value: query, onChange: (event) => setQuery(event.target.value) }), /* @__PURE__ */ __dshReact.createElement("button", { type: "submit", className: "pet-button" }, t("search")), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-filter", role: "group", "aria-label": t("filterByInstall") }, [["all", "filterAll"], ["installed", "filterInstalled"], ["missing", "filterMissing"]].map(([key, label]) => /* @__PURE__ */ __dshReact.createElement("button", { key, type: "button", className: library.filter === key ? "pet-filterChip pet-filterChipActive" : "pet-filterChip", "aria-pressed": library.filter === key, onClick: () => void searchLibrary(query, 0, key) }, t(label))))), footer: !library.error && library.matched > 0 ? /* @__PURE__ */ __dshReact.createElement(Pagination, { page: library.page, pages: library.pages, disabled: library.loading, summary: t("pageSummary", { page: library.page + 1, pages: library.pages, matched: library.matched }), onChange: (next) => void searchLibrary(query, next, library.filter), labels: { prev: t("prevPage"), next: t("nextPage"), label: t("pagination") } }) : void 0 }, libraryBody, skippedPets > 0 && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("skippedPets", { count: skippedPets }))));
+        } }, /* @__PURE__ */ __dshReact.createElement("input", { type: "search", "aria-label": t("searchPets"), placeholder: t("searchPets"), value: query, onChange: (event) => setQuery(event.target.value) }), /* @__PURE__ */ __dshReact.createElement("button", { type: "submit", className: "pet-button" }, t("search")), /* @__PURE__ */ __dshReact.createElement("div", { className: "pet-filter", role: "group", "aria-label": t("filterByInstall") }, [["all", "filterAll"], ["installed", "filterInstalled"], ["missing", "filterMissing"]].map(([key, label]) => /* @__PURE__ */ __dshReact.createElement("button", { key, type: "button", className: library.filter === key ? "pet-filterChip pet-filterChipActive" : "pet-filterChip", "aria-pressed": library.filter === key, onClick: () => void searchLibrary(query, 0, key) }, t(label))))), footer: !library.error && library.pets.length > 0 ? /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryCount", "aria-live": "polite" }, library.done ? t("libraryDone", { matched: library.matched }) : t("libraryCount", { loaded: library.pets.length, matched: library.matched })) : void 0 }, libraryBody, skippedPets > 0 && /* @__PURE__ */ __dshReact.createElement("p", { className: "pet-desc pet-libraryNote" }, t("skippedPets", { count: skippedPets }))));
       };
     }
 
@@ -1300,14 +1267,17 @@ window.__ModuleLoader__.load({
     .pet-grid { --sk-ui-grid-gap: 8px; }
     /* 重新搜索/翻页期间保留旧卡片、不压暗也不重建：只挡住点击，避免明暗切换又来一次「闪」。 */
     .pet-gridBusy { pointer-events: none; }
-    .pet-tile { display: flex; flex-direction: column; min-width: 0; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 10px; overflow: hidden; background: var(--dsw-alias-bg-layer-1); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease; }
+    .pet-tile { display: flex; flex-direction: column; min-width: 0; content-visibility: auto; contain-intrinsic-size: auto 228px; border: 0.5px solid var(--dsw-alias-border-l2); border-radius: 10px; overflow: hidden; background: var(--dsw-alias-bg-layer-1); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease; }
     .pet-tile:hover, .pet-tile:focus-within { transform: translateY(-2px); border-color: var(--dsw-alias-border-l3); background: var(--dsw-alias-interactive-bg-hover); box-shadow: 0 8px 18px rgba(0, 0, 0, .16); }
-    .pet-tileArt { display: block; aspect-ratio: 192 / 208; background-color: var(--dsw-alias-bg-layer-1); background-repeat: no-repeat; background-position: 0 0; background-size: 600% 100%; transition: transform .18s ease; }
+    .pet-tileArt { position: relative; display: block; aspect-ratio: 192 / 208; overflow: hidden; background-color: var(--dsw-alias-bg-layer-1); transition: transform .18s ease; }
+    /* 预览图是一条 1152x208 的 6 帧横排：铺 600% 宽正好露出第 1 帧，其余帧被裁掉。
+       用 <img loading="lazy"> 而不是背景图 —— 背景图会一次性扒完全部结果，滚动加载也就白做了。 */
+    .pet-tileArt img { position: absolute; top: 0; left: 0; display: block; width: 600%; height: 100%; object-fit: cover; object-position: 0 0; }
     .pet-tile:hover .pet-tileArt { transform: scale(1.04); }
     .pet-tileCopy { padding: 8px 8px 0; min-width: 0; }
     .pet-tileCopy .pet-title { font-size: 12px; line-height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     /* 副标题给满两行，第三行起省略；这样 6 列窄卡片里的名字与 ID 都能看到。 */
-    .pet-tileCopy .pet-desc { margin-top: 2px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 11px; line-height: 15px; overflow-wrap: anywhere; }
+    .pet-tileCopy .pet-desc { margin-top: 2px; overflow: hidden; font-size: 11px; line-height: 15px; white-space: nowrap; text-overflow: ellipsis; }
     /* 动作做成卡片底部整宽的一条：平时极淡，鼠标移上来才点亮成主色，20 张卡片不至于满屏按钮。 */
     .pet-tileActions { padding: 0; margin-top: 8px; }
     .pet-tileButton { width: 100%; height: 28px; padding: 0 8px; font-size: 11.5px; background: transparent; border: 0; border-top: 0.5px solid var(--dsw-alias-border-l2); border-radius: 0; opacity: .8; transition: opacity .18s ease, background-color .18s ease, border-color .18s ease, color .18s ease; }
@@ -1322,7 +1292,7 @@ window.__ModuleLoader__.load({
     .pet-tileProgressFill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--dsw-alias-state-business-primary); opacity: .22; transition: width .18s ease; }
     .pet-tileProgressText { position: relative; z-index: 1; font-variant-numeric: tabular-nums; }
     /* 弹窗底部的分页条固定在卡片底部，列表滚动时始终可见。 */
-    .tk-dialogFoot .tk-pagination { width: 100%; }
+    .pet-libraryCount { margin: 0; font-variant-numeric: tabular-nums; }
     @media (prefers-reduced-motion: reduce) { .pet-tile, .pet-tileArt, .pet-tileButton, .pet-tileProgressFill { transition: none; } .pet-tile:hover, .pet-tile:focus-within { transform: none; } .pet-tile:hover .pet-tileArt { transform: none; } }
     `;
 
@@ -1373,7 +1343,7 @@ window.__ModuleLoader__.load({
           const Panel = createPetPanel(React2, { t, settings, connection, actions, primitives });
           ctx.effect(() => ctx.locale?.register?.(PET_NS, PET_COPY), "dsh-toolkit-pet:dictionary");
           ctx.effect(() => installSettingsParts(), "dsh-toolkit-pet:settings-parts");
-          ctx.effect(() => typeof document === "undefined" ? void 0 : installStylesheet(style_default2 + paginationCss + resizableDialogCss, "dsh-toolkit-pet"), "dsh-toolkit-pet:stylesheet");
+          ctx.effect(() => typeof document === "undefined" ? void 0 : installStylesheet(style_default2 + resizableDialogCss, "dsh-toolkit-pet"), "dsh-toolkit-pet:stylesheet");
           ctx.effect(() => {
             const off = form ? form.subscribe?.(refresh) ?? form.store?.subscribe?.(refresh) : connection.subscribe(refresh);
             return () => {

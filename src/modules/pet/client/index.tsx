@@ -1,7 +1,6 @@
 import { findScopedForm } from '../../../client/config.js'
 import { acceptConfigWrite } from '../../../client/config-write.js'
 import { installStylesheet } from '../../../client/ui/stylesheet.js'
-import { paginationCss } from '../../../client/ui/components/pagination/index.jsx'
 import { resizableDialogCss } from '../../../client/ui/components/resizable-dialog/index.jsx'
 import { createPetConnection } from './connection.js'
 import { CONFIG_NS, formSnapshot, readSettings } from './model.js'
@@ -51,7 +50,7 @@ export default function createPet(require) {
       // host's `data-plugin` reclaim contract (tests assert `style[data-plugin=dsh-toolkit-pet]`).
       // 分页控件是共享件（src/client/ui/components/pagination/index.jsx），样式随本模块的样式表一起注入。
       ctx.effect(() => installSettingsParts(), 'dsh-toolkit-pet:settings-parts')
-ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet(css + paginationCss + resizableDialogCss, 'dsh-toolkit-pet'), 'dsh-toolkit-pet:stylesheet')
+ctx.effect(() => typeof document === 'undefined' ? undefined : installStylesheet(css + resizableDialogCss, 'dsh-toolkit-pet'), 'dsh-toolkit-pet:stylesheet')
       ctx.effect(() => {
         // `subscribe()` 在 ScopedForm 上的返回类型是 `unknown`（宿主实现可能返回 disposer 或句柄），
         // 这里只按「函数就调用」使用，故显式收窄成可选 disposer。
