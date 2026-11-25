@@ -282,12 +282,16 @@ export function createActivityFeed(ctx, onChange = () => { }, options = {}) {
             const changedEnding = Boolean(latest) && (!target.ending || latest.seq > target.ending.seq);
             target.tail = tail;
             target.tailAt = Date.now();
+            target.tailError = undefined;
             if (changedEnding)
                 target.ending = latest;
             if (changedTail || changedEnding)
                 publish();
         }
         catch (error) {
+            const target = rows.get(id);
+            if (target)
+                target.tailError = String(error?.message ?? error).slice(0, 200);
             if (!disposed)
                 warn(`session tail unavailable for ${id}`, error);
         }
@@ -458,6 +462,8 @@ export function createActivityFeed(ctx, onChange = () => { }, options = {}) {
             inbox: inbox ? { 'next-turn': counts(inbox['next-turn']), 'next-step': counts(inbox['next-step']) } : null,
             goal: row.values.goal?.goal ? { phase: row.values.goal.goal.phase, roundsStarted: row.values.goal.roundsStarted, updatedAt: row.values.goal.updatedAt } : null,
             pending: row.pending.size,
+            blank: row.blank, origin: row.origin,
+            tail: row.tail ?? null, tailAt: row.tailAt ?? 0, tailError: row.tailError ?? null,
         };
     };
     return {
@@ -468,6 +474,7 @@ export function createActivityFeed(ctx, onChange = () => { }, options = {}) {
             disposed = true;
             abort.abort();
             clearInterval(tick);
+            clearInterval(sweep);
             for (const timer of boots)
                 clearTimeout(timer);
             boots.length = 0;

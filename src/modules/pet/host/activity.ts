@@ -67,6 +67,7 @@ interface ActivityRow {
   tail?: { turn?: number; step?: number; tool?: string }
   /** 上次回读尾页的时刻，用来节流。 */
   tailAt?: number
+  tailError?: string
 }
 
 /** `facts()` 的结论，也是子会话聚合（`aggregate`）的单位。 */
@@ -327,9 +328,12 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
       const changedEnding = Boolean(latest) && (!target.ending || (latest as { seq: number }).seq > target.ending.seq)
       target.tail = tail
       target.tailAt = Date.now()
+      target.tailError = undefined
       if (changedEnding) target.ending = latest
       if (changedTail || changedEnding) publish()
     } catch (error) {
+      const target = rows.get(id)
+      if (target) target.tailError = String((error as any)?.message ?? error).slice(0, 200)
       if (!disposed) warn(`session tail unavailable for ${id}`, error)
     } finally {
       endings.delete(id)
@@ -457,6 +461,8 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
       inbox: inbox ? { 'next-turn': counts(inbox['next-turn']), 'next-step': counts(inbox['next-step']) } : null,
       goal: row.values.goal?.goal ? { phase: row.values.goal.goal.phase, roundsStarted: row.values.goal.roundsStarted, updatedAt: row.values.goal.updatedAt } : null,
       pending: row.pending.size,
+      blank: row.blank, origin: row.origin,
+      tail: row.tail ?? null, tailAt: row.tailAt ?? 0, tailError: row.tailError ?? null,
     }
   }
   return {
@@ -466,6 +472,7 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
       disposed = true
       abort.abort()
       clearInterval(tick)
+      clearInterval(sweep)
       for (const timer of boots) clearTimeout(timer)
       boots.length = 0
       for (const dispose of disposers.reverse()) dispose?.()
