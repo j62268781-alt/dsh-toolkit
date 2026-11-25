@@ -16,7 +16,7 @@
 }
 
 .sk-worktrees__button { cursor: pointer; }
-.sk-worktrees__button[aria-disabled="true"] { opacity: 0.6; cursor: default; }
+.sk-worktrees__button:is(:disabled, [aria-disabled="true"]) { opacity: 0.6; cursor: default; }
 .sk-worktrees__button:focus-visible {
   outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, currentColor);
   outline-offset: 1px;
@@ -28,6 +28,9 @@
   flex-wrap: wrap;
   gap: 6px 10px;
 }
+
+/* Keep the status in the accessibility tree without adding an empty flex item. */
+.sk-worktrees__check-status:empty { position: absolute; }
 
 .sk-worktrees__repository {
   margin: 8px 0;

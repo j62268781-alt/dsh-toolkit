@@ -5,9 +5,9 @@ import React from 'react'
 import { readFile } from 'node:fs/promises'
 import vm from 'node:vm'
 import { WORKTREES_COPY } from '../../src/modules/worktrees/client/locale.js'
-import { MANAGED_WORKTREES_PATH, WORKTREE_CONFIG_PATH } from '../../src/modules/worktrees/host/constants.js'
+import { MANAGED_WORKTREE_CHECK_PATH, MANAGED_WORKTREES_PATH, WORKTREE_CONFIG_PATH } from '../../src/modules/worktrees/host/constants.js'
 
-test('independent settings handle retention, saved-config conflicts and managed-list refresh', async (t) => {
+test('independent settings handle retention, saved-config conflicts and managed-list refresh and cleanup checks', async (t) => {
   const dom = new JSDOM('<div id="root"></div>', { url: 'https://dsh.example.test', pretendToBeVisual: true })
   for (const [key, value] of Object.entries({
     window: dom.window, document: dom.window.document, IS_REACT_ACT_ENVIRONMENT: true,
@@ -25,10 +25,14 @@ test('independent settings handle retention, saved-config conflicts and managed-
   let conflict = false
   let managedReads = 0
   let finishRefresh
+  let finishCheck
+  let checkSignal
+  let checkReads = 0
   const navigation = []
   let failOpen = true
   t.mock.method(globalThis, 'fetch', async (url, options) => {
-    switch (new URL(url, dom.window.location.href).pathname) {
+    const parsedUrl = new URL(url, dom.window.location.href)
+    switch (parsedUrl.pathname) {
       case WORKTREE_CONFIG_PATH:
         if (options.method === 'POST') {
           const body = JSON.parse(options.body)
@@ -45,7 +49,7 @@ test('independent settings handle retention, saved-config conflicts and managed-
       case MANAGED_WORKTREES_PATH: {
         const request = ++managedReads
         if (request === 3) return new Promise(resolve => { finishRefresh = resolve })
-        return Response.json({ ok: true, worktrees: request === 1 ? [] : [
+        return Response.json({ ok: true, cleanupCheck: request !== 1, worktrees: request === 1 ? [] : [
           { path: '/repo/.agents/worktrees/one', repositoryRoot: '/repo', branch: 'dsh-one', status: 'present',
             sessionId: 'one', sessionTitle: 'Active topic', sessionArchived: false },
           { path: '/second/three', repositoryRoot: '/second', branch: 'dsh-three', status: 'unknown',
@@ -54,6 +58,18 @@ test('independent settings handle retention, saved-config conflicts and managed-
             sessionId: 'two', sessionTitle: 'Archived topic', sessionArchived: true },
         ] })
       }
+      case MANAGED_WORKTREE_CHECK_PATH:
+        assert.equal(options.method, undefined)
+        assert.deepEqual(Object.fromEntries(parsedUrl.searchParams), {
+          sessionId: 'two', repositoryRoot: '/repo', path: '/repo/two',
+        })
+        if (++checkReads === 1) return Response.json({ ok: true, eligible: true, reason: 'clean' })
+        if (checkReads === 2) return Response.json({ ok: true, eligible: false, reason: 'checkout-missing' })
+        if (checkReads === 3) {
+          checkSignal = options.signal
+          return new Promise(resolve => { finishCheck = resolve })
+        }
+        throw new Error('Unexpected repeated check')
       default: throw new Error(`Unexpected URL ${url}`)
     }
   })
@@ -71,7 +87,7 @@ test('independent settings handle retention, saved-config conflicts and managed-
       assert.equal(id, 'dsh-toolkit-worktrees')
       client = factory(name => { assert.equal(name, 'react'); return React })
     } } },
-    fetch: globalThis.fetch, AbortController, AbortSignal, Headers,
+    fetch: globalThis.fetch, AbortController, AbortSignal, Headers, URLSearchParams,
   })
   client.apply({
     effect(run, label) { if (label === 'dsh-toolkit-worktrees:settings') run() },
@@ -143,10 +159,23 @@ test('independent settings handle retention, saved-config conflicts and managed-
     const [active, archived] = groups[0].nextElementSibling.children
     assert.match(active.textContent, /dsh-one.*目录存在.*Active topic/)
     assert.match(archived.textContent, /dsh-two.*目录不存在.*Archived topic.*已归档/)
-    assert.ok(!archived.querySelector('button'))
+    assert.ok(!archived.querySelector('[aria-label^="打开会话"]'))
     assert.match(groups[1].nextElementSibling.textContent, /dsh-three.*无法确认目录状态.*three/)
-    assert.ok(!groups[1].nextElementSibling.querySelector('button'))
-    const open = active.querySelector('button')
+    assert.ok(!groups[1].nextElementSibling.querySelector('[aria-label^="打开会话"]'))
+
+    assert.equal(checkReads, 0)
+    const check = archived.querySelector('[aria-label^="检查清理条件"]')
+    assert.match(check.getAttribute('aria-label'), /dsh-two.*\/repo\/two/)
+    await act(async () => check.click())
+    assert.match(archived.querySelector('[role="status"]').textContent, /符合清理条件（未删除）/)
+    await act(async () => check.click())
+    assert.match(archived.querySelector('[role="status"]').textContent, /不可清理：工作树目录不存在/)
+    await act(async () => { check.focus(); check.click(); check.click() })
+    assert.equal(checkReads, 3)
+    assert.equal(check.getAttribute('aria-disabled'), 'true')
+    assert.ok(doc.activeElement === check)
+    assert.equal(archived.querySelector('[role="status"]').textContent, '')
+    const open = active.querySelector('[aria-label^="打开会话"]')
     assert.match(open.getAttribute('aria-label'), /打开会话: Active topic/)
     await act(async () => open.click())
     assert.deepEqual(navigation, [])
@@ -154,7 +183,11 @@ test('independent settings handle retention, saved-config conflicts and managed-
     await act(async () => refresh.click())
     assert.equal(refresh.getAttribute('aria-disabled'), 'true')
     assert.ok(active.isConnected)
+    assert.equal(checkSignal.aborted, true)
+    await act(async () => finishCheck(Response.json({ ok: true, eligible: true, reason: 'clean' })))
     await act(async () => finishRefresh(Response.json({}, { status: 500 })))
+    assert.equal(check.getAttribute('aria-disabled'), 'true')
+    assert.doesNotMatch(archived.textContent, /符合清理条件/)
     assert.ok(open.isConnected)
     assert.equal(refresh.getAttribute('aria-disabled'), 'false')
     assert.match(doc.body.textContent, /刷新失败，仍显示上次读取的结果/)
