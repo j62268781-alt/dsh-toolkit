@@ -35,13 +35,22 @@ export declare function progressDownloader(report: RuntimeProgressListener, idle
     download(url: string, targetFilePath: string, _options?: any): Promise<void>;
 };
 /**
- * 去掉运行时里用不到的界面语言包。
+ * 去掉运行时里用不到的界面语言包，返回省下的字节数。
  *
  * Electron 只发布整包（43.3.0 的 win32-x64 压缩包 137.7MB），没有官方精简版；
- * 真正能省的是 `locales/` 下除 en-US 之外的 .pak —— 它们只装 Chromium 的原生界面文案，
- * 而 helper 没有菜单、没有对话框。缺对应语言的 pak 时 Chromium 回落到 en-US。
+ * 真正能省的是界面语言包 —— 它们只装 Chromium 的原生界面文案，而 helper 没有菜单、
+ * 没有对话框。缺对应语言时 Chromium 回落到英文。
  *
- * macOS 的本地化在 `Electron.app` 的 .lproj 里、跟着 Info.plist 走，整套跳过。
+ * Windows / Linux 在 `locales/*.pak`，macOS 在 `Electron Framework.framework` 的
+ * `<lang>.lproj` 里（43.3.0 darwin-arm64 解压 295MB，裁完 229MB，省 22%）。
+ * 两侧都留一份英文兜底。
+ *
+ * 不能碰的东西（43.3.0 实测）：`resources.pak`、`chrome_100_percent.pak`、`icudtl.dat`
+ * 是 Chromium 的运行必需资源；`Electron.app/Contents/Resources/default_app.asar` 看起来
+ * 「反正没人用」，删了 Electron 直接退 1，连 `--version` 都不打。
+ *
+ * Mac 上的 `LICENSES.chromium.html`（19MB）是随包发的第三方许可证文本，插件不转发这个
+ * 分发包、只在本机删，删掉不影响运行。
  */
 export declare function trimRuntime(directory: string, platform?: NodeJS.Platform): Promise<number>;
 /**

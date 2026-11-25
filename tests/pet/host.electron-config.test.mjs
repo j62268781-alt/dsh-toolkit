@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, utimes, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
@@ -64,8 +64,15 @@ test('resolving an installed runtime also sweeps abandoned staging directories',
   await mkdir(abandoned, { recursive: true })
   const old = new Date(Date.now() - 6 * 60 * 60 * 1000)
   await utimes(abandoned, old, old)
+  // 旧版本装好的运行时没裁过语言包，解析命中时就地补一刀。
+  const translations = process.platform === 'darwin'
+    ? path.join(runtimeDirectory(), 'Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/zh_CN.lproj')
+    : path.join(runtimeDirectory(), 'locales')
+  await mkdir(translations, { recursive: true })
+  await writeFile(path.join(translations, process.platform === 'darwin' ? 'locale.pak' : 'zh-CN.pak'), 'x'.repeat(8))
   assert.equal(await resolveElectron({ download: false }), binary)
   assert.equal((await readdir(parent)).includes('.prepare-abandoned'), false)
+  await assert.rejects(stat(translations), Error, 'an installed runtime is trimmed down while it is resolved')
 })
 
 test('runtime cache is platform/version scoped and reused without a network request', async (t) => {
@@ -177,8 +184,27 @@ test('trimming the runtime keeps only the English locale pack', async (t) => {
   const locales = path.join(directory, 'locales')
   await mkdir(locales, { recursive: true })
   for (const name of ['en-US.pak', 'zh-CN.pak', 'ja.pak', 'resources.pak']) await writeFile(path.join(locales, name), 'x'.repeat(10))
-  assert.equal(await trimRuntime(directory, 'win32'), 20, 'only the localised .pak files are removed')
+  await writeFile(path.join(directory, 'LICENSES.chromium.html'), 'x'.repeat(30))
+  assert.equal(await trimRuntime(directory, 'win32'), 50, 'other locales (20) and the bundled licence text (30) go')
   assert.deepEqual((await readdir(locales)).sort(), ['en-US.pak', 'resources.pak'])
-  assert.equal(await trimRuntime(directory, 'darwin'), 0, 'macOS localisation lives inside the app bundle and is left alone')
+  assert.equal(await trimRuntime(directory, 'win32'), 0, 'trimming twice frees nothing more')
   assert.deepEqual((await readdir(locales)).sort(), ['en-US.pak', 'resources.pak'])
+})
+
+test('macOS trimming drops the bundled translations and keeps the English fallback', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'dsh-toolkit-trim-darwin-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const resources = path.join(directory, 'Electron.app/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources')
+  for (const name of ['en.lproj', 'zh_CN.lproj', 'hi_FEMININE.lproj']) {
+    await mkdir(path.join(resources, name), { recursive: true })
+    await writeFile(path.join(resources, name, 'locale.pak'), 'x'.repeat(10))
+  }
+  // 看起来没人用、但删了 Electron 就退 1 的文件必须留着。
+  for (const name of ['resources.pak', 'icudtl.dat']) await writeFile(path.join(resources, name), 'x'.repeat(10))
+  const resourcesDir = path.join(directory, 'Electron.app/Contents/Resources')
+  await mkdir(resourcesDir, { recursive: true })
+  await writeFile(path.join(resourcesDir, 'default_app.asar'), 'x'.repeat(10))
+  assert.equal(await trimRuntime(directory, 'darwin'), 20)
+  assert.deepEqual((await readdir(resources)).sort(), ['en.lproj', 'icudtl.dat', 'resources.pak'])
+  assert.equal((await stat(path.join(resourcesDir, 'default_app.asar'))).size, 10)
 })

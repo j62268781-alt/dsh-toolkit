@@ -33,7 +33,7 @@ macOS 上，有刘海的屏幕通过 `NSScreen.safeAreaInsets` 和刘海两侧�
 | `islandHeight` | `100` | 普通屏幕的灵动岛收起高度百分比，75–150；刘海屏固定贴合系统安全区 |
 | `electronPath` | 空字符串 | 指定现有 Electron 可执行文件的绝对路径 |
 
-`DSH_TOOLKIT_ELECTRON_PATH` 也可指定可执行文件。运行时未指定时，插件使用 Electron 43.3.0，按平台与架构缓存在 DSH 数据目录下的 `toolkit/pet/electron` 中。Electron 只发布整包（43.3.0 的 Windows x64 压缩包约 138MB），没有官方精简版；插件在解压后删掉 `locales/` 下除 `en-US.pak` 之外的语言包（helper 没有菜单和对话框，缺对应语言时 Chromium 回落到 en-US），并用 `cacheMode: Bypass` 自己管临时压缩包、解压完立即删除，不再把整包多留一份在 `%LOCALAPPDATA%\electron\Cache`。下载走插件的自定义 downloader，按 Content-Length 汇报百分比；判死条件是「60 秒没有新字节」而不是总时长，慢链路也能下完。默认从 GitHub Release 取包，国内直连通常只有几十 KB/s，可先设 `ELECTRON_MIRROR`（例如 `https://npmmirror.com/mirrors/electron/`）再点「准备桌面运行时」——镜像地址由 `@electron/get` 解析后交给同一个 downloader，进度与校验和都会照常工作。Host 启动辅助进程前会清除 `ELECTRON_RUN_AS_NODE`，确保 Electron 创建图形窗口。
+`DSH_TOOLKIT_ELECTRON_PATH` 也可指定可执行文件。运行时未指定时，插件使用 Electron 43.3.0，按平台与架构缓存在 DSH 数据目录下的 `toolkit/pet/electron` 中。Electron 只发布整包（43.3.0 的 Windows x64 压缩包约 138MB），没有官方精简版；插件在解压后删掉界面语言包与随包发的 Chromium 许可证文本（19MB）：Windows / Linux 删 `locales/` 下除 `en-US.pak` 之外的 .pak，macOS 删 `Electron Framework.framework` 里除 `en.lproj` 之外的 .lproj（解压 295MB → 229MB）。helper 没有菜单和对话框，缺对应语言时 Chromium 回落到英文；`resources.pak`、`icudtl.dat`、`Electron.app/Contents/Resources/default_app.asar` 不能删，实测删了 Electron 直接退出，并用 `cacheMode: Bypass` 自己管临时压缩包、解压完立即删除，不再把整包多留一份在 `%LOCALAPPDATA%\electron\Cache`。下载走插件的自定义 downloader，按 Content-Length 汇报百分比；判死条件是「60 秒没有新字节」而不是总时长，慢链路也能下完。默认从 GitHub Release 取包，国内直连通常只有几十 KB/s，可先设 `ELECTRON_MIRROR`（例如 `https://npmmirror.com/mirrors/electron/`）再点「准备桌面运行时」——镜像地址由 `@electron/get` 解析后交给同一个 downloader，进度与校验和都会照常工作。Host 启动辅助进程前会清除 `ELECTRON_RUN_AS_NODE`，确保 Electron 创建图形窗口。
 
 ## 运行方式
 

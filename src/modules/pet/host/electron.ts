@@ -1,5 +1,5 @@
 import { access, chmod, mkdir, mkdtemp, open, readdir, rename, rm, stat } from 'node:fs/promises'
-import { constants } from 'node:fs'
+import { constants, type Dirent } from 'node:fs'
 import path from 'node:path'
 import { dshHome } from '../../../host/dsh-home.js'
 
@@ -117,25 +117,69 @@ export function progressDownloader(report: RuntimeProgressListener, idleMs = 60_
 const LOCALE_PACK = /^(?:[a-z]{2,3}(?:[-_][A-Za-z]{2,4}){0,2})\.pak$/
 
 /**
- * 去掉运行时里用不到的界面语言包。
+ * macOS 把每种语言的界面文案放在 app bundle 里：`<lang>.lproj/locale.pak`。
+ *
+ * 解压后约 47MB，占整包 16%，和 Windows 的 `locales/*.pak` 是同一类东西。
+ */
+const DARWIN_LOCALES = path.join('Electron.app', 'Contents', 'Frameworks', 'Electron Framework.framework', 'Versions', 'A', 'Resources')
+
+/** 递归累加占用；读不到的部分按 0 算（只用来汇报省了多少空间）。 */
+async function usage(target: string): Promise<number> {
+  let entries: Dirent[]
+  try { entries = await readdir(target, { withFileTypes: true }) } catch { return 0 }
+  let total = 0
+  for (const entry of entries) {
+    const file = path.join(target, entry.name)
+    if (entry.isDirectory()) total += await usage(file)
+    else try { total += (await stat(file)).size } catch { /* 刚好被删掉了。 */ }
+  }
+  return total
+}
+
+/**
+ * 去掉运行时里用不到的界面语言包，返回省下的字节数。
  *
  * Electron 只发布整包（43.3.0 的 win32-x64 压缩包 137.7MB），没有官方精简版；
- * 真正能省的是 `locales/` 下除 en-US 之外的 .pak —— 它们只装 Chromium 的原生界面文案，
- * 而 helper 没有菜单、没有对话框。缺对应语言的 pak 时 Chromium 回落到 en-US。
+ * 真正能省的是界面语言包 —— 它们只装 Chromium 的原生界面文案，而 helper 没有菜单、
+ * 没有对话框。缺对应语言时 Chromium 回落到英文。
  *
- * macOS 的本地化在 `Electron.app` 的 .lproj 里、跟着 Info.plist 走，整套跳过。
+ * Windows / Linux 在 `locales/*.pak`，macOS 在 `Electron Framework.framework` 的
+ * `<lang>.lproj` 里（43.3.0 darwin-arm64 解压 295MB，裁完 229MB，省 22%）。
+ * 两侧都留一份英文兜底。
+ *
+ * 不能碰的东西（43.3.0 实测）：`resources.pak`、`chrome_100_percent.pak`、`icudtl.dat`
+ * 是 Chromium 的运行必需资源；`Electron.app/Contents/Resources/default_app.asar` 看起来
+ * 「反正没人用」，删了 Electron 直接退 1，连 `--version` 都不打。
+ *
+ * Mac 上的 `LICENSES.chromium.html`（19MB）是随包发的第三方许可证文本，插件不转发这个
+ * 分发包、只在本机删，删掉不影响运行。
  */
 export async function trimRuntime(directory: string, platform: NodeJS.Platform = process.platform): Promise<number> {
-  if (platform === 'darwin') return 0
+  const notice = path.join(directory, 'LICENSES.chromium.html')
+  let freed = 0
+  try { freed += (await stat(notice)).size; await rm(notice) } catch { /* 没有这个文件（或删不掉）不算错。 */ }
+  if (platform === 'darwin') return freed + await trimDarwinLocales(path.join(directory, DARWIN_LOCALES))
   const locales = path.join(directory, 'locales')
   let entries: string[]
-  try { entries = await readdir(locales) } catch { return 0 }
-  let freed = 0
+  try { entries = await readdir(locales) } catch { return freed }
   for (const name of entries) {
     // 只删语言包：`resources.pak` / `chrome_100_percent.pak` 是 Chromium 必需的资源包，删了起不来。
     if (name === 'en-US.pak' || !LOCALE_PACK.test(name)) continue
     const file = path.join(locales, name)
     try { freed += (await stat(file)).size; await rm(file) } catch { /* 少删一个不影响启动。 */ }
+  }
+  return freed
+}
+
+async function trimDarwinLocales(resources: string): Promise<number> {
+  let entries: string[]
+  try { entries = await readdir(resources) } catch { return 0 }
+  let freed = 0
+  for (const name of entries) {
+    // 留 en.lproj 兜底；`_FEMININE` / `_MASCULINE` / `_NEUTER` 变体是 Chromium 的语法性别语言包。
+    if (name === 'en.lproj' || !name.endsWith('.lproj')) continue
+    const target = path.join(resources, name)
+    try { const bytes = await usage(target); await rm(target, { recursive: true, force: true }); freed += bytes } catch { /* 少删一套不影响启动。 */ }
   }
   return freed
 }
@@ -177,6 +221,9 @@ export async function resolveElectron({ electronPath = '', download = false, onP
     // 运行时已就绪：顺手收掉宿主被强杀时留下的 `.prepare-*` 暂存目录（几百 KB 一处，
     // 不影响功能，但会一直堆在用户目录里）。
     await cleanStaleStaging(path.dirname(directory))
+    // 旧版本装好的运行时没裁过 macOS 的语言包（那之前整个跳过 darwin），顺便补一刀；
+    // 裁干净之后这里只是一次 readdir，没有删不掉的成本。
+    await trimRuntime(directory).catch(() => 0)
     return binary
   }
   if (!download) return undefined
