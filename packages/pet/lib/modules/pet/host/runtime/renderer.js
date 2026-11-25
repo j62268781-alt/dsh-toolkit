@@ -222,7 +222,10 @@ function detailForm(session) {
   open.append(head)
   const progress = progressText(session)
   if (progress) open.append(element('span', progress, 'progress'))
-  open.append(element('span', summarise(session) || phraseOf(session), 'detail'))
+  // 说明行只在它带来新信息时才出现：`Turn finished` 这类通用短语已经被状态短语说过一遍，
+  // 再兜底回填一句一模一样的「本轮已完成」就成了重复的一行。
+  const detail = summarise(session)
+  if (detail && detail !== phraseOf(session)) open.append(element('span', detail, 'detail'))
   if (session.pendingKind) open.append(pendingBlock(session))
   open.onclick = () => openAndCollapse(session, open)
   card.append(open)
