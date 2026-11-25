@@ -16,6 +16,8 @@ const TICK = 60 * 1000
 // 尾页回读：消息条数与最小间隔（热态 1–2ms，冷态约 80ms，按会话限流）。
 const TAIL_MESSAGES = 40
 const TAIL_INTERVAL = 3000
+// 没有事件也要补读：宿主重启后已有会话不会补发 status/activity。
+const TAIL_SWEEP = 5000
 
 /** 一条待处理请求（审批 / 提问）。 */
 interface PendingRequest {
@@ -334,6 +336,19 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
       if (tailsQueued.delete(id) && !disposed) void readTail(id, true)
     }
   }
+  // 事件不是唯一入口：宿主重启时已经在跑的会话不会补发 status/activity（实测启动后 16 秒
+  // 一个事件都没有），只靠监听就永远不会读到它们的尾页。所以定时补扫在跑或刚更新过的会话，
+  // 单次回读的开销由 readTail 的按会话节流兜住。
+  const sweep = setInterval(() => {
+    if (disposed) return
+    const at = Date.now()
+    for (const row of rows.values()) {
+      if (row.origin === 'subagent' || row.blank) continue
+      if (!row.running && at - row.updatedAt > LIVE_FRESH) continue
+      void readTail(row.sessionId)
+    }
+  }, TAIL_SWEEP)
+  sweep.unref?.()
   listen('api-session/added', (summary) => mutate(() => {
     if (summary?.sessionId) eventLive.add(summary.sessionId)
     mergeSummary(summary)
