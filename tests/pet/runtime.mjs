@@ -281,6 +281,51 @@ test('collapsed pill speaks Qoder: status badge on the right, greeting when idle
   assert.equal(body.classList.contains('expanded'), false)
 })
 
+test('each waiting reason and the stopped turn get their own badge', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+  dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+  const base = { settings: { language: 'zh', activePet: 'duck' }, pets: [], kind: 'island', display: { island: { compact: 320, expanded: 560, height: 32 } } }
+  let update
+  dom.window.pet = { initial: async () => ({ ...base, sessions: [] }), action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState(fn) { update = fn }, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const doc = dom.window.document, body = doc.body, badge = doc.getElementById('badge-text')
+  const show = session => update({ ...base, sessions: [session] })
+  // 四种「等人」的原因各说各话，徽标文案和 CSS 属性都要分开
+  show({ id: 'a', title: 'A', status: 'waiting', waitReason: 'approval', pendingKind: 'approval' })
+  assert.equal(badge.textContent, '等你批准')
+  assert.equal(body.dataset.wait, 'approval')
+  show({ id: 'a', title: 'A', status: 'waiting', waitReason: 'question', pendingKind: 'question' })
+  assert.equal(badge.textContent, '等你回答')
+  assert.equal(body.dataset.wait, 'question')
+  assert.equal(doc.querySelector('.status-phrase').textContent, '等你回答')
+  show({ id: 'a', title: 'A', status: 'waiting', waitReason: 'goal-paused' })
+  assert.equal(badge.textContent, '目标已暂停')
+  show({ id: 'a', title: 'A', status: 'waiting', waitReason: 'goal-blocked' })
+  assert.equal(badge.textContent, '目标被卡住')
+  show({ id: 'a', title: 'A', status: 'waiting', waitReason: 'goal-limit' })
+  assert.equal(badge.textContent, '轮次已用尽')
+  show({ id: 'a', title: 'A', status: 'waiting', waitReason: 'queued' })
+  assert.equal(badge.textContent, '有输入待发')
+  assert.equal(body.dataset.wait, 'queued')
+  // 宿主没说原因时退回原来那句，绝不空白
+  show({ id: 'a', title: 'A', status: 'waiting' })
+  assert.equal(badge.textContent, '需要你处理')
+  assert.equal(body.dataset.wait, undefined)
+  // 执行中把队列条数缀在末尾
+  show({ id: 'a', title: 'A', status: 'running', running: true, queued: 2 })
+  assert.equal(badge.textContent, '正在工作 ·2')
+  show({ id: 'a', title: 'A', status: 'interrupted' })
+  assert.equal(badge.textContent, '已停止')
+  assert.equal(body.dataset.status, 'interrupted')
+  update({ ...base, settings: { language: 'en', activePet: 'duck' }, sessions: [{ id: 'a', title: 'A', status: 'waiting', waitReason: 'approval', pendingKind: 'approval' }] })
+  assert.equal(badge.textContent, 'Approve?')
+})
+
 test('the island panel keeps its own stacking context and never fades in', async () => {
   const css = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.css', import.meta.url), 'utf8')
   // #silhouette 是 position:absolute 的黑色剪影，会盖住未定位的 #activity —— 面板必须自己建层叠上下文，否则展开面板全黑。

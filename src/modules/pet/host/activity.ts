@@ -16,6 +16,12 @@ interface PendingRequest {
   detail: string
 }
 
+/**
+ * 等人处理的原因。宿主把四种完全不同的处境都压成 `waiting`，岛上只显示「需要你处理」时，
+ * 用户分不清是要他批准、要他回答问题，还是目标已经停了 —— 所以把原因单独带出来。
+ */
+export type WaitReason = 'approval' | 'question' | 'goal-paused' | 'goal-blocked' | 'goal-limit' | 'queued'
+
 /** 活动的内部行：把「会话摘要 + projection + 宿主状态」揉在一起。 */
 interface ActivityRow {
   sessionId: string
@@ -29,6 +35,8 @@ interface ActivityRow {
   error?: string
   origin?: string
   parentSessionId?: string
+  /** 最近一回合的结束原因：宿主不广播它，只能从会话日志尾页回读。 */
+  ending?: { kind: string; seq: number }
 }
 
 /** `facts()` 的结论，也是子会话聚合（`aggregate`）的单位。 */
@@ -39,6 +47,9 @@ interface ActivityFacts {
   error: string | undefined
   detail: string
   updatedAt: number
+  waitReason: WaitReason | undefined
+  queued: number
+  interrupted: boolean
 }
 
 /** 对外快照的一行（`snapshot()` 返回、灵动岛直接渲染）。 */
@@ -50,6 +61,8 @@ export interface ActivitySnapshotItem {
   updatedAt: number
   running: boolean
   pendingKind?: string
+  waitReason?: WaitReason
+  queued?: number
 }
 
 export interface ActivityOptions {
@@ -73,6 +86,8 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
   const seen = options.seen instanceof Map ? options.seen : new Map<string, number>()
   const rows = new Map<string, ActivityRow>()
   const removals = new Set<string>()
+  // 正在回读结束原因的会话（同一条会话不要并发读同一页日志）。
+  const endings = new Set<string>()
   const disposers: (() => void)[] = []
   const abort = new AbortController()
   const boots: ReturnType<typeof setTimeout>[] = []
@@ -161,7 +176,7 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
     }
     const aggregate = (row: ActivityRow, seen = new Set<string>()): ActivityFacts => {
       // 成环保护：这个结果只参与下面的 `||=` 合并（waiting/detail/pending/error 都是「无」），不会进快照。
-      if (seen.has(row.sessionId)) return { running: false, waiting: false, pending: undefined, error: undefined, detail: '', updatedAt: 0 }
+      if (seen.has(row.sessionId)) return { running: false, waiting: false, pending: undefined, error: undefined, detail: '', updatedAt: 0, waitReason: undefined, queued: 0, interrupted: false }
       seen.add(row.sessionId)
       const own = facts(row, { liveIds, eventLive, now, freshMs: LIVE_FRESH })
       for (const child of children.get(row.sessionId) ?? []) {
@@ -169,8 +184,11 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
         if (now - child.updatedAt > STALE_RUNNING) continue
         const next = aggregate(child, seen)
         own.running ||= next.running
-        if (next.waiting && !own.waiting) { own.waiting = true; own.detail = next.detail }
+        if (next.waiting && !own.waiting) { own.waiting = true; own.detail = next.detail; own.waitReason = next.waitReason }
         own.error ||= next.error
+        // 子代理并行时队列条数要累加，否则徽标只报主会话那一条。
+        own.queued += next.queued
+        own.interrupted ||= next.interrupted
         own.updatedAt = Math.max(own.updatedAt, next.updatedAt)
         if (next.pending && (!own.pending || next.pending.kind === 'permission')) own.pending = next.pending
       }
@@ -184,12 +202,15 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
       if (!state.pending && now - state.updatedAt > (state.running ? STALE_RUNNING : STALE_FINISHED)) continue
       // 看过的结果不再提醒；出现新动作、重新跑起来、或等人处理时都会自己回到列表。
       if (!state.running && !state.pending && (seen.get(row.sessionId) ?? 0) >= state.updatedAt) continue
-      const status = state.pending || state.waiting ? 'waiting' : state.running ? 'running' : state.error ? 'failed' : 'completed'
+      const status = state.pending || state.waiting ? 'waiting' : state.running ? 'running' : state.error ? 'failed' : state.interrupted ? 'interrupted' : 'completed'
       next.push({ id: row.sessionId, title: text(row.values.title, 160) || 'Untitled session', status,
         detail: state.pending?.detail || (status === 'failed' ? text(state.error) : state.detail),
-        updatedAt: state.updatedAt, running: state.running, ...(state.pending ? { pendingKind: state.pending.kind } : {}) })
+        updatedAt: state.updatedAt, running: state.running,
+        ...(state.pending ? { pendingKind: state.pending.kind } : {}),
+        ...(state.waitReason ? { waitReason: state.waitReason } : {}),
+        ...(state.queued ? { queued: state.queued } : {}) })
     }
-    const rank: Record<string, number> = { waiting: 0, running: 1, failed: 2, completed: 2 }
+    const rank: Record<string, number> = { waiting: 0, running: 1, failed: 2, interrupted: 2, completed: 2 }
     next.sort((a, b) => rank[a.status] - rank[b.status] || b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
     const bounded = next.slice(0, 20)
     if (JSON.stringify(bounded) === JSON.stringify(current)) return
@@ -209,20 +230,51 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
     const dispose = ctx.on(event, callback, { global: true, ...options })
     if (typeof dispose === 'function') disposers.push(dispose)
   }
+  // turn/end 的 reason 只落在会话日志里（宿主不广播 turn/end），所以「用户按了停止」只能回读
+  // 最后一页来区分。读不到就当作正常结束 —— 宁可漏报，也不凭空造出一个「已停止」。
+  const readEnding = async (id: string): Promise<void> => {
+    const controller = ctx.sessionController
+    if (disposed || typeof controller?.events !== 'function' || endings.has(id)) return
+    endings.add(id)
+    try {
+      const page = await controller.events({ address: { kind: 'session', sessionId: id }, maxMessages: 8 }, abort.signal)
+      if (disposed) return
+      const row = rows.get(id)
+      if (!row) return
+      let latest: { kind: string; seq: number } | undefined
+      for (const record of page?.records ?? []) {
+        const event = record?.event
+        const kind = event?.type === 'turn/end' ? event.data?.reason?.kind : undefined
+        if (typeof kind !== 'string' || (latest && event.seq <= latest.seq)) continue
+        latest = { kind, seq: event.seq }
+      }
+      if (!latest || (row.ending && row.ending.seq >= latest.seq)) return
+      row.ending = latest
+      publish()
+    } catch (error) {
+      if (!disposed) warn(`turn ending unavailable for ${id}`, error)
+    } finally {
+      endings.delete(id)
+    }
+  }
   listen('api-session/added', (summary) => mutate(() => {
     if (summary?.sessionId) eventLive.add(summary.sessionId)
     mergeSummary(summary)
   }))
-  listen('api-session/status', (id, running) => mutate(() => {
-    if (removals.has(id)) return
-    // 能收到本进程的状态事件，本身就说明这个会话是活的（比摘要里的持久化 running 可信）。
-    eventLive.add(id)
-    const row = ensure(id)
-    row.verified = true
-    row.running = running
-    if (running) { row.error = undefined; row.blank = false }
-    row.updatedAt = Math.max(row.updatedAt, Date.now())
-  }))
+  listen('api-session/status', (id, running) => {
+    mutate(() => {
+      if (removals.has(id)) return
+      // 能收到本进程的状态事件，本身就说明这个会话是活的（比摘要里的持久化 running 可信）。
+      eventLive.add(id)
+      const row = ensure(id)
+      row.verified = true
+      row.running = running
+      // 新回合开始就丢掉上一回合的结束原因，否则「已停止」会一直挂在这条会话上。
+      if (running) { row.error = undefined; row.blank = false; row.ending = undefined }
+      row.updatedAt = Math.max(row.updatedAt, Date.now())
+    })
+    if (!running && !disposed) void readEnding(id)
+  })
   listen('api-session/activity', (id, updatedAt) => mutate(() => {
     if (removals.has(id)) return
     eventLive.add(id)
@@ -365,7 +417,19 @@ function facts(row: ActivityRow, { liveIds = new Set<string>(), eventLive = new 
   const pending: PendingRequest | undefined = [...row.pending.values()].sort((a, b) => (a.kind === 'permission' ? 0 : 1) - (b.kind === 'permission' ? 0 : 1))[0]
     ?? (row.values.userQuestions?.active?.length ? { kind: 'question', detail: text(row.values.userQuestions.active[0].questions?.[0]?.question) || 'Answer requested' } : undefined)
   const waiting = goal?.goal?.phase === 'paused' || goal?.goal?.phase === 'blocked' || exhausted && !row.running && !queued || stuckQueue
-  return { running: Boolean(runningNow || starting || goalStarting), waiting, pending, error: row.error,
-    detail: waiting ? stuckQueue ? 'Input queued' : text(goal?.goal?.blockedReason?.message) || (exhausted ? 'Goal round limit reached' : 'Goal paused') : queued ? 'Input queued' : goalStarting ? 'Goal in progress' : runningNow ? 'Working' : 'Turn finished',
+  // 等待的原因要一起带出去：徽标文案、图标、配色都靠它区分「要你批准」和「目标卡住了」。
+  let waitReason: WaitReason | undefined
+  if (pending) waitReason = pending.kind === 'permission' ? 'approval' : 'question'
+  else if (goal?.goal?.phase === 'paused') waitReason = 'goal-paused'
+  else if (goal?.goal?.phase === 'blocked') waitReason = 'goal-blocked'
+  else if (exhausted && !row.running && !queued) waitReason = 'goal-limit'
+  else if (stuckQueue) waitReason = 'queued'
+  // 用户按了停止：回合正常收尾（completed/failed）与「被打断」在快照里必须能分开。
+  const interrupted = !runningNow && !starting && !goalStarting && (row.ending?.kind === 'aborted' || row.ending?.kind === 'interrupted')
+  const detail = interrupted ? '' : waiting
+    ? stuckQueue ? 'Input queued' : text(goal?.goal?.blockedReason?.message) || (exhausted ? 'Goal round limit reached' : 'Goal paused')
+    : queued ? 'Input queued' : goalStarting ? 'Goal in progress' : runningNow ? 'Working' : 'Turn finished'
+  return { running: Boolean(runningNow || starting || goalStarting), waiting, pending, error: row.error, detail,
+    waitReason, queued: queueCount, interrupted,
     updatedAt: Math.max(row.updatedAt, time(goal?.updatedAt)) }
 }
