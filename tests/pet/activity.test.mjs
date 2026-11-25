@@ -16,7 +16,7 @@ function fixture(items = [], options = {}) {
       return () => entries.splice(entries.indexOf(entry), 1)
     },
     sessions: { get: (id) => live.get(id), list: () => [...live.values()] },
-    sessionController: { list(request, inputSignal) { calls++; signal = inputSignal; assert.deepEqual(request, {}); return options.baseline ?? Promise.resolve({ items }) } },
+    sessionController: { list(request, inputSignal) { calls++; signal = inputSignal; assert.deepEqual(request, {}); return options.baseline ?? Promise.resolve({ items }) }, ...(options.events ? { events: options.events } : {}) },
     sessionProjections: {
       onChanged(listener) { projections.add(listener); return () => projections.delete(listener) },
       snapshot(session, keys) { assert.deepEqual(keys, ['title', 'sessionListMetadata', 'inbox', 'goal', 'userQuestions']); if (options.projectionError) throw new Error('projection unavailable'); return values.get(session.id) ?? { asOfSeq: 0, values: {} } },
@@ -285,4 +285,64 @@ test('a result the user already opened stops nagging until the session moves aga
   g.feed.markSeen('busy')
   assert.deepEqual(g.feed.snapshot().map(({ id }) => id), ['busy'])
   g.feed.dispose()
+})
+
+test('every holding pattern names its own reason instead of one flat waiting', async () => {
+  const f = fixture([row('a', { updatedAt: Date.now() - 4 * 60_000 })]); await f.feed.ready
+  f.project('a', 'goal', { goal: { phase: 'paused', maxGoalRounds: 3 }, roundsStarted: 1 })
+  assert.equal(f.feed.snapshot()[0].status, 'waiting')
+  assert.equal(f.feed.snapshot()[0].waitReason, 'goal-paused')
+  f.project('a', 'goal', { goal: { phase: 'blocked', maxGoalRounds: 3 }, roundsStarted: 1 }, 3)
+  assert.equal(f.feed.snapshot()[0].waitReason, 'goal-blocked')
+  f.project('a', 'goal', { goal: { phase: 'active', maxGoalRounds: 3 }, roundsStarted: 3 }, 4)
+  assert.equal(f.feed.snapshot()[0].waitReason, 'goal-limit')
+  f.project('a', 'goal', { goal: { phase: 'complete' } }, 5)
+  f.project('a', 'inbox', { 'next-turn': [], 'next-step': [{}] })
+  // 队列压在一条不跑的会话上：原因要说「有输入待发」，不能和 goal 的三种混成一句。
+  assert.equal(f.feed.snapshot()[0].waitReason, 'queued')
+  f.project('a', 'inbox', { 'next-turn': [], 'next-step': [] }, 7)
+  f.project('a', 'userQuestions', { active: [{ questions: [{ question: 'Which one?' }] }] })
+  assert.equal(f.feed.snapshot()[0].waitReason, 'question')
+  const answer = deferred()
+  const pending = f.request('approval/request', { agent: { session: { id: 'a' } }, reason: 'Allow?' }, () => answer.promise)
+  assert.equal(f.feed.snapshot()[0].waitReason, 'approval')
+  answer.resolve('allowed'); await pending
+  f.feed.dispose()
+})
+
+test('queued steps ride along with the running badge', async () => {
+  const f = fixture([row('a', { running: true, updatedAt: Date.now() })]); await f.feed.ready
+  f.project('a', 'inbox', { 'next-turn': [{}], 'next-step': [{}, {}] })
+  const [item] = f.feed.snapshot()
+  assert.equal(item.status, 'running')
+  assert.equal(item.queued, 3)
+  f.feed.dispose()
+})
+
+test('a user-stopped turn reads as interrupted, a finished one does not', async () => {
+  let records = [{ type: 'event', event: { type: 'turn/end', seq: 9, time: Date.now(), data: { turn: 1, reason: { kind: 'aborted', reason: { kind: 'user' } } } } }]
+  const f = fixture([row('a', { running: true, updatedAt: Date.now() })], { events: async () => ({ records }) })
+  await f.feed.ready
+  f.emit('api-session/status', 'a', true)
+  f.emit('api-session/status', 'a', false)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(f.feed.snapshot()[0].status, 'interrupted')
+  assert.equal(f.feed.snapshot()[0].detail, '')
+  // 下一回合开始就把上一回合的结束原因丢掉
+  f.emit('api-session/status', 'a', true)
+  assert.equal(f.feed.snapshot()[0].status, 'running')
+  records = [{ type: 'event', event: { type: 'turn/end', seq: 12, data: { turn: 2, reason: { kind: 'completed' } } } }]
+  f.emit('api-session/status', 'a', false)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(f.feed.snapshot()[0].status, 'completed')
+  f.feed.dispose()
+})
+
+test('without a readable turn log a stopped turn stays a normal finish', async () => {
+  const f = fixture([row('a', { running: true, updatedAt: Date.now() })]); await f.feed.ready
+  f.emit('api-session/status', 'a', true)
+  f.emit('api-session/status', 'a', false)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(f.feed.snapshot()[0].status, 'completed')
+  f.feed.dispose()
 })

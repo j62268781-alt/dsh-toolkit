@@ -8,13 +8,13 @@ const animations = {
   idle: [0,[280,110,110,140,140,320]], runningRight:[1,[120,120,120,120,120,120,120,220]], runningLeft:[2,[120,120,120,120,120,120,120,220]], waving:[3,[140,140,140,280]], jumping:[4,[140,140,140,140,280]], failed:[5,[140,140,140,140,140,140,140,240]], waiting:[6,[150,150,150,150,150,260]], approval:[6,[150]], question:[6,[150]], running:[7,[120,120,120,120,120,220]], review:[8,[150,150,150,150,150,280]],
 }
 const words = {
-  zh: { idle:'暂时没有会话活动', running:'正在执行', waiting:'等待你的处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', todo:'待办', approval:'审批请求', question:'待回答的问题', hint:'打开会话即可批准或回答', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。', greeting:'hi~', live:'实时活动' },
-  en: { idle:'No active sessions', running:'Running', waiting:'Waiting for you', failed:'Turn failed', completed:'Turn complete', open:'Open session', todo:'Todo', approval:'Approval request', question:'Question', hint:'Open the session to approve or answer', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.', greeting:'hi~', live:'Live activity' },
+  zh: { idle:'暂时没有会话活动', running:'正在执行', waiting:'等待你的处理', failed:'本轮执行失败', completed:'本轮已完成', open:'打开会话', todo:'待办', approval:'审批请求', question:'待回答的问题', hint:'打开会话即可批准或回答', reply:'补充要求或回复…', send:'发送', permission:'请打开会话处理批准或问题', error:'操作未完成，请在会话中重试。', greeting:'hi~', live:'实时活动', interrupted:'本轮已停止', waitApproval:'等你批准', waitQuestion:'等你回答', goalPaused:'目标已暂停', goalBlocked:'目标被卡住', goalLimit:'轮次已用尽', queueWait:'有输入待发' },
+  en: { idle:'No active sessions', running:'Running', waiting:'Waiting for you', failed:'Turn failed', completed:'Turn complete', open:'Open session', todo:'Todo', approval:'Approval request', question:'Question', hint:'Open the session to approve or answer', reply:'Reply or add instructions…', send:'Send', permission:'Open the session to review approvals or questions', error:'Action failed. Please try again in the session.', greeting:'hi~', live:'Live activity', interrupted:'Turn stopped', waitApproval:'Approve?', waitQuestion:'Answer?', goalPaused:'Goal paused', goalBlocked:'Goal blocked', goalLimit:'Round limit', queueWait:'Input queued' },
 }
 // Qoder 的收起态只有「宠物 + 状态徽标」，状态靠短语 + 语义色表达，数量进 tooltip。
 const badges = {
-  zh: { running:'正在工作', waiting:'需要你处理', completed:'有新结果', failed:'失败' },
-  en: { running:'Working', waiting:'Needs you', completed:'New result', failed:'Failed' },
+  zh: { running:'正在工作', waiting:'需要你处理', completed:'有新结果', failed:'失败', interrupted:'已停止' },
+  en: { running:'Working', waiting:'Needs you', completed:'New result', failed:'Failed', interrupted:'Stopped' },
 }
 let state, expanded = false, hovered = false, image, imageKey = '', frame = 0, motion = '', look = null, timer, hoverTimer, leaveTimer, waveUntil = performance.now() + 2600, drag = null, padChecks = 0, lastPointer = null, signature = '', clip = '', preloaded = ''
 // 久坐：桌宠长时间没被打扰就放慢 idle 并偶尔瞟一眼（复用 v2 精灵表第 9–10 行的视线帧）。
@@ -31,13 +31,29 @@ function measureText(text, size) {
 const reduced = matchMedia('(prefers-reduced-motion: reduce)')
 function t(key) { return words[state?.settings.language === 'en' ? 'en' : 'zh'][key] || key }
 function badgeWord(status) { return badges[state?.settings.language === 'en' ? 'en' : 'zh'][status] || t(status) }
+// 宿主把「等你批准 / 等你回答 / 目标暂停 / 目标阻塞 / 轮次用尽 / 有输入待发」全压成 waiting，
+// 岛上只能靠 waitReason 把它们拆开 —— 否则六种处境都写着同一句「需要你处理」。
+const waitPhrases = { approval:'waitApproval', question:'waitQuestion', 'goal-paused':'goalPaused', 'goal-blocked':'goalBlocked', 'goal-limit':'goalLimit', queued:'queueWait' }
+/** 展开态里的状态短语：等待要说清原因，其余按状态名。 */
+function phraseOf(session) {
+  const status = session?.status || 'idle'
+  if (status === 'waiting' && waitPhrases[session.waitReason]) return t(waitPhrases[session.waitReason])
+  return t(status)
+}
+/** 收起态徽标文案：等待按原因换词，执行中把队列条数缀在末尾。 */
+function badgeText(session) {
+  if (!session) return t('greeting')
+  const status = session.status || 'idle'
+  if (status === 'idle') return t('greeting')
+  if (status === 'waiting') return waitPhrases[session.waitReason] ? t(waitPhrases[session.waitReason]) : badgeWord('waiting')
+  return badgeWord(status) + (Number(session.queued) > 0 ? ` ·${session.queued}` : '')
+}
 // 仿 Qoder dt()：按徽标文案量宽 → 夹进区间 → 取偶数 → 再被几何宽封顶（菜单里调宽度仍生效）。
-function compactWidth(status) {
+function compactWidth(session) {
   const g = dimensions()
   const notch = state?.display?.notch
   if (!state || state.kind !== 'island') return g.compact
-  const text = status === 'idle' ? t('greeting') : badgeWord(status)
-  const badge = Math.ceil(measureText(text, 11.5)) + 12 + 4 + 14
+  const badge = Math.ceil(measureText(badgeText(session), 11.5)) + 12 + 4 + 14
   const side = Math.max(27, badge)
   const natural = notch ? Math.round(notch.width + 2 * (12 + side)) : Math.round(16 + 2 * side)
   const low = notch ? Math.min(g.compact, 300) : 212
@@ -62,7 +78,7 @@ function layout() {
   document.body.classList.toggle('notched', Boolean(notch))
   document.body.style.setProperty('--notch-width', `${notch?.width || 0}px`)
   document.body.style.setProperty('--notch-height', `${notch?.height || 0}px`)
-  const compact = compactWidth(state.sessions[0]?.status || 'idle')
+  const compact = compactWidth(state.sessions[0])
   surface.style.width = `${expanded ? g.wide : hovered ? Math.min(g.wide, compact + 32) : compact}px`
   const capHeight = g.height + (!notch && !expanded && hovered ? 4 : 0)
   cap.style.height = `${capHeight}px`
@@ -139,7 +155,7 @@ function runningRow(session) {
   open.setAttribute('aria-label', `${session.title || t(session.status)} · ${t('open')}`)
   const lines = element('span', '', 'row-lines')
   lines.append(element('strong', session.title || t(session.status), 'title'))
-  const phrase = t(session.status), detail = summarise(session)
+  const phrase = phraseOf(session), detail = summarise(session)
   lines.append(element('small', detail && detail !== phrase ? `${phrase} · ${detail}` : phrase, 'note'))
   open.append(lines)
   open.onclick = () => openAndCollapse(session, open)
@@ -178,11 +194,11 @@ function detailForm(session) {
   open.setAttribute('aria-label', `${session.title || t(session.status)} · ${t('open')}`)
   const head = element('span', '', 'detail-head')
   head.append(element('strong', session.title || t(session.status), 'title'))
-  head.append(element('span', session.pendingKind ? t('waiting') : t(session.status), 'status-phrase'))
+  head.append(element('span', phraseOf(session), 'status-phrase'))
   const when = stamp(session.updatedAt)
   if (when) head.append(element('time', when, 'stamp'))
   open.append(head)
-  open.append(element('span', summarise(session) || (session.pendingKind ? t('waiting') : t(session.status)), 'detail'))
+  open.append(element('span', summarise(session) || phraseOf(session), 'detail'))
   if (session.pendingKind) open.append(pendingBlock(session))
   open.onclick = () => openAndCollapse(session, open)
   card.append(open)
@@ -246,10 +262,13 @@ function update(next) {
   // 待办配色按类型区分（审批橙 / 提问青），没有待办时不要留下空属性骗过 CSS。
   if (pending) document.body.dataset.pending = pending
   else delete document.body.dataset.pending
-  $('badge-text').textContent = status === 'idle' ? t('greeting') : badgeWord(status)
-  const hint = status === 'idle' ? t('idle') : `${t(status)}${count > 1 ? ` · ${count}` : ''}`
+  // 等待原因单独成属性，CSS 据此换图标与配色（提问青、目标琥珀、排队紫）。
+  if (status === 'waiting' && current?.waitReason) document.body.dataset.wait = current.waitReason
+  else delete document.body.dataset.wait
+  $('badge-text').textContent = badgeText(current)
+  const hint = status === 'idle' ? t('idle') : `${badgeText(current)}${count > 1 ? ` · ${count}` : ''}`
   cap.title = hint
-  cap.setAttribute('aria-label', status === 'idle' ? t('idle') : `${badgeWord(status)}${count > 1 ? ` · ${count}` : ''}`)
+  cap.setAttribute('aria-label', status === 'idle' ? t('idle') : hint)
   const pet = selectedPet()
   // 有动画片段的宠物把上下浮动交给 CSS 合成动画，精灵表回退路径则沿用帧里烘焙的位移。
   document.body.toggleAttribute('data-clips', Boolean(pet && Object.keys(pet.animations || {}).length))
@@ -268,6 +287,8 @@ function currentMotion() {
   // Keep a real session state visible instead of masking it with hover or the launch greeting.
   if (status === 'running') return 'running'
   if (status === 'waiting' || status === 'failed' || status === 'completed') return status === 'completed' ? 'review' : status
+  // 精灵表没有「停下」这一行，被打断就回到 idle 的呼吸，别硬套 failed 的哭脸。
+  if (status === 'interrupted') return 'idle'
   if (hovered && state.kind === 'pet') return 'jumping'
   if (performance.now() < waveUntil) return 'waving'
   if ((look ?? gaze) !== null && selectedPet()?.spriteVersionNumber === 2) return 'look'

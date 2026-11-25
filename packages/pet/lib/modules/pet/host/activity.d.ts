@@ -1,3 +1,8 @@
+/**
+ * 等人处理的原因。宿主把四种完全不同的处境都压成 `waiting`，岛上只显示「需要你处理」时，
+ * 用户分不清是要他批准、要他回答问题，还是目标已经停了 —— 所以把原因单独带出来。
+ */
+export type WaitReason = 'approval' | 'question' | 'goal-paused' | 'goal-blocked' | 'goal-limit' | 'queued';
 /** 对外快照的一行（`snapshot()` 返回、灵动岛直接渲染）。 */
 export interface ActivitySnapshotItem {
     id: string;
@@ -7,6 +12,8 @@ export interface ActivitySnapshotItem {
     updatedAt: number;
     running: boolean;
     pendingKind?: string;
+    waitReason?: WaitReason;
+    queued?: number;
 }
 export interface ActivityOptions {
     /** 用户已看过的会话：`sessionId → 看到时的活动时间`。 */
