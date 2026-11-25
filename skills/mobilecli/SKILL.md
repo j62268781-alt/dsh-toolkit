@@ -12,14 +12,25 @@ A universal automation and management skill for iOS and Android devices, simulat
 
 ## Install
 
-Before the first device command, make sure the `mobilecli` binary exists. If it is missing, install it globally with npm. No need to ask the user first; installing is expected.
+The plugin **ships its own** `mobilecli` for the current platform (declared in the packages'
+`optionalDependencies`), so the built-in `mobile_*` tools work with no global install. That bundled
+copy is what the plugin resolves first, ahead of anything on `PATH`.
+
+This skill, however, runs the raw CLI through a shell, so it needs `mobilecli` on `PATH`. Install the
+same version the plugin ships (keep the number in sync with `packages/mobile/package.json`):
 
 ```bash
-command -v mobilecli >/dev/null || npm install -g mobilecli@latest
+command -v mobilecli >/dev/null || npm install -g mobilecli@1.0.23
 mobilecli --version
 ```
 
-If `npm install -g` fails with a permissions error, retry with `sudo npm install -g mobilecli@latest` or ask the user. If `mobilecli` is not on the agent's PATH but the user says it is installed, run `npm bin -g` (or `npm prefix -g`) and use the binary from there.
+If `npm install -g` fails with a permissions error, retry with `sudo npm install -g mobilecli@1.0.23`
+or ask the user. If `mobilecli` is not on the agent's PATH but the user says it is installed, run
+`npm bin -g` (or `npm prefix -g`) and use the binary from there.
+
+All clients share one daemon, and a client whose version differs from the running daemon restarts it.
+So a stale global install (say 1.0.19) alternating with the plugin's bundled 1.0.23 will make the
+daemon restart on every switch — upgrade the global copy (or remove it) instead of leaving both.
 
 Do not run `npx mobilecli@latest` for every command; it re-resolves the package each time and makes automation slow.
 

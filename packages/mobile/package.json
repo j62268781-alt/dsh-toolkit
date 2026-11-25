@@ -35,6 +35,14 @@
     "README.md",
     "LICENSE"
   ],
+  "optionalDependencies": {
+    "@mobilenext/mobilecli-darwin-amd64": "1.0.23",
+    "@mobilenext/mobilecli-darwin-arm64": "1.0.23",
+    "@mobilenext/mobilecli-linux-amd64": "1.0.23",
+    "@mobilenext/mobilecli-linux-arm64": "1.0.23",
+    "@mobilenext/mobilecli-windows-amd64": "1.0.23",
+    "@mobilenext/mobilecli-windows-arm64": "1.0.23"
+  },
   "peerDependencies": {
     "@deepseek-ai/dsh-tools": "^0.2.1-rc.1"
   },

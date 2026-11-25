@@ -202,6 +202,25 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: 0.2.1-rc.1
         version: 0.2.1-rc.1(c3b211c6f014171a83f9423fed3f65af)
+    optionalDependencies:
+      '@mobilenext/mobilecli-darwin-amd64':
+        specifier: 1.0.23
+        version: 1.0.23
+      '@mobilenext/mobilecli-darwin-arm64':
+        specifier: 1.0.23
+        version: 1.0.23
+      '@mobilenext/mobilecli-linux-amd64':
+        specifier: 1.0.23
+        version: 1.0.23
+      '@mobilenext/mobilecli-linux-arm64':
+        specifier: 1.0.23
+        version: 1.0.23
+      '@mobilenext/mobilecli-windows-amd64':
+        specifier: 1.0.23
+        version: 1.0.23
+      '@mobilenext/mobilecli-windows-arm64':
+        specifier: 1.0.23
+        version: 1.0.23
 
   packages/notification:
     dependencies:
@@ -770,6 +789,36 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@mobilenext/mobilecli-darwin-amd64@1.0.23':
+    resolution: {integrity: sha512-XZP1oyxYPIe5nS1T0xjpdKIrTHBjvHeN+WwslWlQAdZRgWuVt4QDHVbmAOrs8EN0YrcPLbNzsmRYH/hSrC5/Sw==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@mobilenext/mobilecli-darwin-arm64@1.0.23':
+    resolution: {integrity: sha512-3IlJfFqD+xEdWjCof9UrTIsPJiWSMd3A1Kf6UmO+EuTY61Chd1aw1eI4bSgtRCWjM65Qo8sNPh0QBQUKNcI7Ag==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@mobilenext/mobilecli-linux-amd64@1.0.23':
+    resolution: {integrity: sha512-nIwtx1v1cDLXXsUHX2KzJiUY1f5vd0b/Pzt9wIcKucREUEDX9fBfadXLhB3gF37lAMvd/+fzZ19+v7kCPUZQ+w==}
+    cpu: [x64]
+    os: [linux, android]
+
+  '@mobilenext/mobilecli-linux-arm64@1.0.23':
+    resolution: {integrity: sha512-aAyGT0/94UAs7rRC30vzpfLruVtpqYYVc/kwoNyez1mxrXGc8Wir5tWGCkiv42A1dc9QvN4gw6IgEJrY2s9hgQ==}
+    cpu: [arm64]
+    os: [linux, android]
+
+  '@mobilenext/mobilecli-windows-amd64@1.0.23':
+    resolution: {integrity: sha512-n1PbH/1t58UZ+raMrk+BhUIbVbRqVuGCe/ALtltwHsL2TqsdK44JtnyqtFQaOAze07/s0ykhsX5sTIV1BhX4UA==}
+    cpu: [x64]
+    os: [win32]
+
+  '@mobilenext/mobilecli-windows-arm64@1.0.23':
+    resolution: {integrity: sha512-sB7vRsc6jIazABxf6rB1z7YeNGm9WnRUEtiLRDNj9OdNXkYI22Ne37vkdpuRWbL5YsqYHs0tRnwEZC2iWEJVyQ==}
+    cpu: [arm64]
+    os: [win32]
 
   '@modelcontextprotocol/client@2.2.0':
     resolution: {integrity: sha512-LxCou/CSYQ6dwEnjhLZY0KnEuc8V4UJ3IEQCl/uR2yHobSQIEdJKUlKLRYRF5i5FqRGHy1eK7une3aAWDHLtig==}
@@ -1955,6 +2004,24 @@ snapshots:
   '@eslint-community/regexpp@4.12.3': {}
 
   '@exodus/bytes@1.16.0': {}
+
+  '@mobilenext/mobilecli-darwin-amd64@1.0.23':
+    optional: true
+
+  '@mobilenext/mobilecli-darwin-arm64@1.0.23':
+    optional: true
+
+  '@mobilenext/mobilecli-linux-amd64@1.0.23':
+    optional: true
+
+  '@mobilenext/mobilecli-linux-arm64@1.0.23':
+    optional: true
+
+  '@mobilenext/mobilecli-windows-amd64@1.0.23':
+    optional: true
+
+  '@mobilenext/mobilecli-windows-arm64@1.0.23':
+    optional: true
 
   '@modelcontextprotocol/client@2.2.0':
     dependencies:

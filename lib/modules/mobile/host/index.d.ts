@@ -45,7 +45,7 @@ export interface MobilePluginConfig {
     enabled?: boolean;
     /** 路由前缀，默认 `DEFAULT_ROUTE_PREFIX`。 */
     routePrefix?: string;
-    /** mobilecli 二进制路径，缺省时按 PATH / MOBILECLI_PATH 解析。 */
+    /** mobilecli 二进制路径，缺省时按「自带平台包 / PATH / MOBILECLI_PATH」解析。 */
     binaryPath?: string | null;
     /** MOBILECLI_HOME；CLI 与 daemon RPC 必须用同一个值。 */
     homeDir?: string | null;

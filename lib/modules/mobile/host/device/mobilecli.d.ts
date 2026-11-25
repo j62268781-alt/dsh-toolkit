@@ -1,13 +1,19 @@
 /**
  * mobilecli 二进制的解析与调用。
  *
- * mobilecli 是一个 Go 二进制，通过 npm 按平台分发（`@mobilenext/mobilecli-<os>-<arch>`
- * 是 optionalDependencies）。所以「找二进制」有三种来源，按优先级：
+ * mobilecli 是一个 Go 二进制，通过 npm 按平台分发（`@mobilenext/mobilecli-<os>-<arch>`）。
+ * 本包把这六个平台包声明成自己的 optionalDependencies，所以「找二进制」按优先级：
  *
  *   1. 配置里的 binaryPath（用户显式指定，最高优先级）
  *   2. MOBILECLI_PATH 环境变量
- *   3. PATH 上的 `mobilecli`（npm -g 安装的 shim）
- *   4. 本包 node_modules 里的平台包（mobilecli 作为本包依赖安装时）
+ *   3. 本包自带的平台包（装插件时装进来的那份）
+ *   4. PATH 上的 `mobilecli`（npm -g 安装的 shim）
+ *   5. 全局 node_modules 里的平台包（npm -g 且 shim 不在 PATH 时）
+ *
+ * 之所以自带那份排在 PATH 之前：插件行为不该随用户全局装了什么版本漂移，
+ * 而镜像同步经常滞后（实测 npmmirror 上 mobilecli 壳已有 1.0.24，平台包却
+ * 停在 1.0.23）。版本钉死 1.0.23 而不是 `^1.0.23` 同理 —— 浮动范围会在
+ * 这种半同步状态下装出一个只有壳、没有二进制的包。
  *
  * 参数始终作为独立 argv 传入，不经过 shell。
  * runJson() 使用有限输出和可取消的进程执行器；spawnStream() 单独保留长驻字节流，
@@ -29,6 +35,30 @@ export declare class MobilecliError extends Error {
         exitCode?: number;
     });
 }
+/**
+ * 当前平台对应的 npm 平台包名与包内二进制名。
+ *
+ * mobilecli 把 Go 二进制拆成六个包按平台分发，「要找哪个包」完全由
+ * process.platform / process.arch 决定。参数留出是为了能测到非本机平台。
+ *
+ * @param {string} [platform] 默认真实平台
+ * @param {string} [arch] 默认真实架构
+ * @returns {{pkg: string, binary: string}} 平台包名与包内文件名
+ */
+export declare function platformTarget(platform?: string, arch?: string): {
+    pkg: string;
+    binary: string;
+};
+/**
+ * 解析不到二进制时给用户看的说明。
+ *
+ * 要能回答「我明明装了为什么还是没有」：自带平台包缺失最常见的原因不是没装，
+ * 而是安装时被**静默跳过**（optionalDependencies + 镜像滞后），所以这里点名
+ * 该装哪个包，再给重装 / 全局安装 / 显式指定三条出路。
+ *
+ * @returns {string} 中文说明（不含"找不到"这类前缀，由调用方拼）
+ */
+export declare function missingBinaryHint(): string;
 /**
  * 解析 mobilecli 二进制的绝对路径。
  *

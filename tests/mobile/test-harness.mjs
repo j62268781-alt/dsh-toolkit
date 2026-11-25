@@ -13,13 +13,19 @@
  */
 
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import net from "node:net";
+import { pathToFileURL } from "node:url";
 import http from "node:http";
 import { Readable } from "node:stream";
-import { Mobilecli, resolveBinary } from "../../src/modules/mobile/host/device/mobilecli.ts";
+import {
+  Mobilecli,
+  missingBinaryHint,
+  platformTarget,
+  resolveBinary,
+} from "../../src/modules/mobile/host/device/mobilecli.ts";
 import { resolveDevice } from "../../src/modules/mobile/host/agent/device-resolution.ts";
 import {
   createMobileLoopRequest,
@@ -124,6 +130,59 @@ await test("解析结果绝不是跑不起来的 shell shim（Windows 回归）"
   if (process.platform === "win32") {
     assert.ok(lower.endsWith(".exe"), `Windows 上应解析到 .exe，实际：${resolved}`);
   }
+});
+
+await test("平台包名与二进制名按平台/架构映射", () => {
+  assert.deepEqual(platformTarget("darwin", "arm64"), {
+    pkg: "@mobilenext/mobilecli-darwin-arm64",
+    binary: "mobilecli-darwin-arm64",
+  });
+  assert.deepEqual(platformTarget("darwin", "x64"), {
+    pkg: "@mobilenext/mobilecli-darwin-amd64",
+    binary: "mobilecli-darwin-amd64",
+  });
+  assert.deepEqual(platformTarget("linux", "x64"), {
+    pkg: "@mobilenext/mobilecli-linux-amd64",
+    binary: "mobilecli-linux-amd64",
+  });
+  // npm 只有 windows 前缀，win32 必须映射过去；可执行映像带 .exe
+  assert.deepEqual(platformTarget("win32", "arm64"), {
+    pkg: "@mobilenext/mobilecli-windows-arm64",
+    binary: "mobilecli-windows-arm64.exe",
+  });
+  // 非 arm64 一律落到 amd64（上游只发两个架构）
+  assert.equal(platformTarget("linux", "ia32").pkg, "@mobilenext/mobilecli-linux-amd64");
+});
+
+// pnpm 严格嵌套时平台包的真实位置在 .pnpm/<pkg>@<v>/node_modules 下，从仓库
+// 根 or from 一个无关目录解析必然 MODULE_NOT_FOUND。自带那档必须从本模块的
+// 作用域解析，并且要排在 PATH 之前 —— 否则装了自带的也没用。
+await test("自带平台包排在 PATH 之前（pnpm 嵌套回归）", () => {
+  const dir = mkdtempSync(join(tmpdir(), "mobilecli-bundled-"));
+  try {
+    const { pkg, binary } = platformTarget();
+    const pkgDir = join(dir, "node_modules", ...pkg.split("/"));
+    mkdirSync(pkgDir, { recursive: true });
+    writeFileSync(join(pkgDir, "package.json"), JSON.stringify({ name: pkg, version: "0.0.0" }));
+    const fakeBinary = join(pkgDir, binary);
+    writeFileSync(fakeBinary, "#!/bin/sh\nexit 0\n");
+    chmodSync(fakeBinary, 0o755);
+
+    const baseUrl = pathToFileURL(join(dir, "lib", "device", "mobilecli.js")).href;
+    assert.equal(resolveBinary(null, baseUrl), fakeBinary);
+    // 显式路径仍然最高优先级，不会被自带那档抢走
+    assert.equal(resolveBinary(fakeBinary, baseUrl), fakeBinary);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+await test("缺二进制的提示点名该装的平台包与出路", () => {
+  const hint = missingBinaryHint();
+  assert.ok(hint.includes(platformTarget().pkg), `提示里应出现平台包名：${hint}`);
+  assert.ok(hint.includes("pnpm install"));
+  assert.ok(hint.includes("MOBILECLI_PATH"));
+  assert.ok(hint.includes("binaryPath"));
 });
 
 const explicit = process.env.MOBILECLI_BIN ?? resolveBinary(null);

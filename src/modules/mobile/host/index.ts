@@ -23,7 +23,7 @@
  * @module dsh-toolkit-mobile
  */
 
-import { Mobilecli, resolveBinary } from "./device/mobilecli.js";
+import { Mobilecli, missingBinaryHint, resolveBinary } from "./device/mobilecli.js";
 import { AdbProbe, findAdb } from "./device/android-toolchain.js";
 import { registerSkills } from "./agent/skills.js";
 import { StreamSessionPool } from "./stream/session.js";
@@ -150,7 +150,7 @@ export interface MobilePluginConfig {
   enabled?: boolean;
   /** 路由前缀，默认 `DEFAULT_ROUTE_PREFIX`。 */
   routePrefix?: string;
-  /** mobilecli 二进制路径，缺省时按 PATH / MOBILECLI_PATH 解析。 */
+  /** mobilecli 二进制路径，缺省时按「自带平台包 / PATH / MOBILECLI_PATH」解析。 */
   binaryPath?: string | null;
   /** MOBILECLI_HOME；CLI 与 daemon RPC 必须用同一个值。 */
   homeDir?: string | null;
@@ -243,8 +243,7 @@ export function apply(ctx: any, config: MobilePluginConfig = {}): void {
     // 这样用户能看到"装 mobilecli"而不是插件加载失败的栈回溯。
     log(
       "warn",
-      "找不到 mobilecli 二进制。装上它即可启用：npm i -g mobilecli@latest"
-        + "（或用 MOBILECLI_PATH / 配置里的 binaryPath 指定路径）",
+      `找不到 mobilecli 二进制。${missingBinaryHint()}`,
     );
   } else {
     log("info", `使用 mobilecli：${binary}`);
@@ -267,8 +266,7 @@ export function apply(ctx: any, config: MobilePluginConfig = {}): void {
   const ensureBinary = () => {
     if (binary === null) {
       throw new Error(
-        "mobilecli 不可用。安装：npm i -g mobilecli@latest"
-          + "，或用 MOBILECLI_PATH 环境变量 / cordis.patch.yml 里的 binaryPath 指定路径。",
+        `mobilecli 不可用。${missingBinaryHint()}`,
       );
     }
   };

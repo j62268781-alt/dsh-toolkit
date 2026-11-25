@@ -1,13 +1,19 @@
 /**
  * mobilecli 二进制的解析与调用。
  *
- * mobilecli 是一个 Go 二进制，通过 npm 按平台分发（`@mobilenext/mobilecli-<os>-<arch>`
- * 是 optionalDependencies）。所以「找二进制」有三种来源，按优先级：
+ * mobilecli 是一个 Go 二进制，通过 npm 按平台分发（`@mobilenext/mobilecli-<os>-<arch>`）。
+ * 本包把这六个平台包声明成自己的 optionalDependencies，所以「找二进制」按优先级：
  *
  *   1. 配置里的 binaryPath（用户显式指定，最高优先级）
  *   2. MOBILECLI_PATH 环境变量
- *   3. PATH 上的 `mobilecli`（npm -g 安装的 shim）
- *   4. 本包 node_modules 里的平台包（mobilecli 作为本包依赖安装时）
+ *   3. 本包自带的平台包（装插件时装进来的那份）
+ *   4. PATH 上的 `mobilecli`（npm -g 安装的 shim）
+ *   5. 全局 node_modules 里的平台包（npm -g 且 shim 不在 PATH 时）
+ *
+ * 之所以自带那份排在 PATH 之前：插件行为不该随用户全局装了什么版本漂移，
+ * 而镜像同步经常滞后（实测 npmmirror 上 mobilecli 壳已有 1.0.24，平台包却
+ * 停在 1.0.23）。版本钉死 1.0.23 而不是 `^1.0.23` 同理 —— 浮动范围会在
+ * 这种半同步状态下装出一个只有壳、没有二进制的包。
  *
  * 参数始终作为独立 argv 传入，不经过 shell。
  * runJson() 使用有限输出和可取消的进程执行器；spawnStream() 单独保留长驻字节流，
@@ -19,7 +25,7 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
-import { delimiter, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { findOnPath } from "./path.js";
 import { Singleflight } from "../../../../host/singleflight.js";
 import { runProcess } from "../../../../host/process.js";
@@ -127,6 +133,65 @@ function npmGlobalRoots(): string[] {
 }
 
 /**
+ * 当前平台对应的 npm 平台包名与包内二进制名。
+ *
+ * mobilecli 把 Go 二进制拆成六个包按平台分发，「要找哪个包」完全由
+ * process.platform / process.arch 决定。参数留出是为了能测到非本机平台。
+ *
+ * @param {string} [platform] 默认真实平台
+ * @param {string} [arch] 默认真实架构
+ * @returns {{pkg: string, binary: string}} 平台包名与包内文件名
+ */
+export function platformTarget(
+  platform: string = process.platform,
+  arch: string = process.arch,
+): { pkg: string; binary: string } {
+  const os = platform === "win32" ? "windows" : platform;
+  const cpu = arch === "arm64" ? "arm64" : "amd64";
+  const ext = platform === "win32" ? ".exe" : "";
+  return { pkg: `@mobilenext/mobilecli-${os}-${cpu}`, binary: `mobilecli-${os}-${cpu}${ext}` };
+}
+
+/**
+ * 本包自带的平台包（package.json 里的 optionalDependencies）。
+ *
+ * 用 `require.resolve` 而不是拼 node_modules 路径：pnpm 严格嵌套，真实位置是
+ * `.pnpm/@mobilenext+mobilecli-<os>-<cpu>@<v>/node_modules/…`，只有从本包作用域
+ * 解析才拿得到；而 npm 全局安装又不在本包作用域里 —— 两种布局都交给解析器。
+ *
+ * @param {string} baseUrl 解析基准（本模块的 import.meta.url）
+ * @returns {string|null} 二进制绝对路径；没装到返回 null
+ */
+function bundledBinary(baseUrl: string): string | null {
+  const { pkg, binary } = platformTarget();
+  try {
+    const pkgJson = createRequire(baseUrl).resolve(`${pkg}/package.json`);
+    const candidate = join(dirname(pkgJson), binary);
+    return existsSync(candidate) ? candidate : null;
+  } catch {
+    // 平台包没装（或装的是别的平台）：落到 PATH / 全局根兜底
+    return null;
+  }
+}
+
+/**
+ * 解析不到二进制时给用户看的说明。
+ *
+ * 要能回答「我明明装了为什么还是没有」：自带平台包缺失最常见的原因不是没装，
+ * 而是安装时被**静默跳过**（optionalDependencies + 镜像滞后），所以这里点名
+ * 该装哪个包，再给重装 / 全局安装 / 显式指定三条出路。
+ *
+ * @returns {string} 中文说明（不含"找不到"这类前缀，由调用方拼）
+ */
+export function missingBinaryHint(): string {
+  const { pkg } = platformTarget();
+  return `本包应自带 ${pkg}（optionalDependencies），没解析到通常是安装时被跳过了`
+    + "（常见原因：npm 镜像还没同步该平台包）。先重装依赖（pnpm install），"
+    + "或全局安装 npm i -g mobilecli@1.0.23，"
+    + "或用 MOBILECLI_PATH / cordis.patch.yml 里的 binaryPath 指定路径。";
+}
+
+/**
  * 解析 mobilecli 二进制的绝对路径。
  *
  * @param {string|null|undefined} explicit 配置里指定的路径
@@ -148,27 +213,23 @@ export function resolveBinary(explicit: string | null | undefined, baseUrl: stri
     return fromEnv;
   }
 
-  // 3) PATH（npm -g mobilecli 装出来的 shim）
+  // 3) 本包自带的平台包。排在 PATH 之前：插件行为要可复现，且镜像滞后时
+  //    PATH 上那份可能只剩壳（能 spawn、一调就 "Failed to find …"）。
+  const bundled = bundledBinary(baseUrl);
+  if (bundled !== null) return bundled;
+
+  // 4) PATH（npm -g mobilecli 装出来的 shim）
   const onPath = findOnPath("mobilecli");
   if (onPath !== null) return onPath;
 
-  // 4) 作为本包依赖装进来的平台包，或 npm -g 装的那份。
+  // 5) 全局 node_modules 里的平台包。
   //
-  //    ⚠️ 本包的 package.json **没有** optionalDependencies（零运行时依赖是
-  //    刻意的），所以 `require.resolve` 从本包作用域出发通常找不到平台包 ——
-  //    `npm i -g mobilecli` 装出来的那份在**全局** node_modules 里。
-  //    实测：只查本包作用域会 MODULE_NOT_FOUND，于是整个插件在 Windows 上
-  //    解析不到任何可用二进制（PATH 上只有跑不起来的 shim）。
-  //
-  //    所以这里显式把全局根也作为解析基准。
+  //    走到这里说明我们自带的没装上、PATH 上也没有 shim（或 shim 不可用）。
+  //    全局根也要作为解析基准：`npm i -g` 的真实二进制在
+  //    <prefix>/node_modules/mobilecli/node_modules/@mobilenext/… 下，
+  //    从本包作用域解析不到。
   try {
-    const platform = process.platform === "win32" ? "windows" : process.platform;
-    const arch = process.arch === "arm64" ? "arm64" : "amd64";
-    const pkg = `@mobilenext/mobilecli-${platform}-${arch}`;
-    const ext = process.platform === "win32" ? ".exe" : "";
-    const binaryName = `mobilecli-${platform}-${arch}${ext}`;
-
-    // 先按本包作用域找（作为依赖装进来的情况），再按全局根找（npm -g 的情况）
+    const { pkg, binary } = platformTarget();
     const require = createRequire(baseUrl);
     const searchPaths = [undefined, ...npmGlobalRoots()];
 
@@ -177,8 +238,8 @@ export function resolveBinary(explicit: string | null | undefined, baseUrl: stri
         const pkgJson = searchPath === undefined
           ? require.resolve(`${pkg}/package.json`)
           : require.resolve(`${pkg}/package.json`, { paths: [searchPath] });
-        const binary = join(pkgJson, "..", binaryName);
-        if (existsSync(binary)) return binary;
+        const candidate = join(dirname(pkgJson), binary);
+        if (existsSync(candidate)) return candidate;
       } catch {
         // 这个基准找不到，试下一个
       }
