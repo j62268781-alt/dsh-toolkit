@@ -32,7 +32,7 @@ import {
 } from './inspect.js'
 import { maskId, extractMessageText } from './ilink.js'
 import { prepareOutboundText } from './markdown.js'
-import { GREET_INTERVAL_MS, createPicker, parseChoice, WELCOME_TEXT } from './picker.js'
+import { WELCOME_TEXT, createPicker, parseChoice, workspaceLabel } from './picker.js'
 import { bridgeStatePath, createBridgeStore } from './store.js'
 
 const TYPING_REFRESH_MS = 15_000
@@ -260,17 +260,18 @@ export function createBridge({
   async function sendSessions(userId: any, args: any) {
     const ref = typeof args === 'string' ? args.trim() : ''
     const currentSessionId = conversations.sessionIdOf(userId)
+    const currentWorkspace = conversations.workspaceOf?.(userId) ?? workspaceCwd
     if (isAllRef(ref)) {
       await sendText(userId, await describeAllSessions({ ctx, currentSessionId }))
       return
     }
     const workspaces = await loadWorkspaces(ctx)
-    const workspace = ref === '' ? workspaces.find((item) => item.path === workspaceCwd) : resolveWorkspace(workspaces, ref)
+    const workspace = ref === '' ? workspaces.find((item) => item.path === currentWorkspace) : resolveWorkspace(workspaces, ref)
     if (workspace === undefined) {
       await sendText(
         userId,
         ref === ''
-          ? `当前工作区（${workspaceCwd}）还没有登记，历史里也没有它的会话。\n用 /workspaces 看现有工作区。`
+          ? `当前工作区（${currentWorkspace}）还没有登记，历史里也没有它的会话。\n用 /workspaces 看现有工作区。`
           : `找不到工作区「${ref}」。先用 /workspaces 看序号或路径。`,
       )
       return
@@ -299,7 +300,7 @@ export function createBridge({
 
     let target
     if (/^\d+$/.test(ref)) {
-      const listing = lastListings.get(userId) ?? (await sessionsOfWorkspace(ctx, workspaceCwd)).sessions
+      const listing = lastListings.get(userId) ?? (await sessionsOfWorkspace(ctx, conversations.workspaceOf?.(userId) ?? workspaceCwd)).sessions
       target = listing[Number(ref) - 1]
       if (target === undefined) {
         await sendText(userId, `序号 ${ref} 超出范围（列表里只有 ${listing.length} 条）。先发 /sessions 看一遍。`)
@@ -345,7 +346,8 @@ export function createBridge({
     picker?.clearChoice?.(userId)
     switch (command.name) {
       case 'start': {
-        await promptForSession(userId)
+        // 会话卡优先：当前工作区（默认或上次选的）的会话全列出来，0 可以换工作区。
+        await sendText(userId, await picker.showSessions(userId, conversations.workspaceOf?.(userId) ?? workspaceCwd))
         return true
       }
       case 'help':
@@ -366,7 +368,6 @@ export function createBridge({
       case 'reset': {
         const sessionId = conversations.rotate(userId)
         await sendText(userId, `已开启新会话（${sessionId}）。\n想回到旧会话可以用 /sessions 找到它，再 /use <序号>。`)
-        await replaySuspended(userId)
         return true
       }
       case 'stop':
@@ -378,7 +379,7 @@ export function createBridge({
       case 'where':
       case 'info': {
         const sessionId = conversations.sessionIdOf(userId)
-        const lines = [await describeCurrent({ ctx, sessionId, workspaceCwd })]
+        const lines = [await describeCurrent({ ctx, sessionId, workspaceCwd: conversations.workspaceOf?.(userId) ?? workspaceCwd })]
         const source = conversations.sourceOf?.(userId) ?? 'auto'
         lines.push(source === 'picked'
           ? '会话来源：手动选择（/use 或选择卡）'
@@ -406,7 +407,6 @@ export function createBridge({
       case 'switch':
       case 'bind':
         await useSession(userId, command.args)
-        await replaySuspended(userId)
         return true
       case 'approve':
       case 'reject':
@@ -421,12 +421,14 @@ export function createBridge({
   /** 跑一轮对话并回复。 */
   async function processMessage(userId: any, message: any) {
     let typing
+    // 附件落到「这个用户当前的工作区」（/start 里换过工作区就按换过的），不是全局默认。
+    const workspace = conversations.workspaceOf?.(userId) ?? workspaceCwd
     try {
       const inbound: any = await buildInboundContent({
         message,
         api,
         attachments: ctx.attachments,
-        workspaceCwd,
+        workspaceCwd: workspace,
         logger,
         includeImages: settings.bridgeIncludeImages,
       })
@@ -443,17 +445,12 @@ export function createBridge({
       }
     } catch (error: any) {
       if (error?.code === 'SESSION_MISSING') {
-        // 绑定过的会话被删了：解除绑定并重新发卡，别让它一直失败。
+        // 绑定的会话被删了：解除绑定后直接在当前工作区重开一条，别让用户再选一次。
         conversations.unbind?.(userId)
         lastError = String(error.message ?? error)
         logger?.warn?.(`[remote] 绑定的会话已不存在：${lastError}`)
-        try {
-          const card = await picker.showWorkspaces(userId)
-          await sendText(userId, [`你选的会话已经找不到了（${error.sessionId}）。`, '已经从绑定里移除，重新选一条：', '', card].join('\n'))
-        } catch {
-          // 连卡片都发不出去时只能记日志。
-        }
-        return
+        await sendText(userId, `你选的会话已经找不到了（${error.sessionId}），已改用当前工作区继续。`).catch(() => {})
+        return processMessage(userId, message)
       }
       counters.failed += 1
       lastError = String(error?.message ?? error)
@@ -468,33 +465,15 @@ export function createBridge({
     }
   }
 
-  /** 这个用户是否该补一句欢迎语（首次接触，或隔了一天没说话）。 */
-  function needsGreeting(userId: any) {
-    const last = store?.getGreetedAt?.(userId)
-    return last === undefined || Date.now() - last >= GREET_INTERVAL_MS
-  }
-
-  /** 发选择卡（先工作区、再会话）；欢迎语只在首次或隔天时补在前面，避免每条消息都寒暄。 */
-  async function promptForSession(userId: any) {
-    const card = await picker.showWorkspaces(userId)
-    if (needsGreeting(userId)) {
-      store?.setGreetedAt?.(userId, Date.now())
-      await sendText(userId, `${WELCOME_TEXT}\n\n${card}`)
-      return
-    }
-    await sendText(userId, card)
-  }
-
-  /** 选完会话后，把刚才挂起的那条问题补跑掉。 */
-  async function replaySuspended(userId: any) {
-    const suspended = picker?.takePending?.(userId)
-    if (suspended === undefined) return
-    try {
-      await sendText(userId, '接着回你刚才那条：')
-    } catch {
-      // 提示发不出去不影响补跑。
-    }
-    await processMessage(userId, suspended)
+  /** 第一次说话时补一句欢迎语 + 当前工作区；之后不再寒暄。 */
+  async function greetOnce(userId: any) {
+    if (store?.getGreetedAt?.(userId) !== undefined) return
+    store?.setGreetedAt?.(userId, Date.now())
+    const label = workspaceLabel(conversations.workspaceOf?.(userId) ?? workspaceCwd, homeWorkspace())
+    await sendText(
+      userId,
+      `${WELCOME_TEXT}\n\n当前工作区：${label}。直接说需求就行，要挑会话或换工作区发 /start。`,
+    )
   }
 
   /** 正在等选择时，把纯数字回复当选项消费掉。 */
@@ -506,7 +485,6 @@ export function createBridge({
     const result = await picker.choose(userId, number)
     if (result === undefined) return false
     for (const line of result.texts) await sendText(userId, line)
-    if (result.bound !== undefined) await replaySuspended(userId)
     return true
   }
 
@@ -568,15 +546,12 @@ export function createBridge({
 
       // 正在等选择时，纯数字就是选项。
       if (await handleChoice(userId, text)) return
+      // 其它消息说明用户不打算选了：把卡作废，免得后面的「2」被误当成选项。
+      picker?.clearChoice?.(userId)
 
-      // 还没选会话：不进 Agent，先挂起这条消息再发选择卡（选完自动补跑）。
-      if (conversations.bindingOf?.(userId) === undefined) {
-        picker?.suspend?.(userId, message)
-        await promptForSession(userId).catch((error) => {
-          logger?.warn?.(`[remote] 发送选择卡失败：${error instanceof Error ? error.message : String(error)}`)
-        })
-        return
-      }
+      // 没选过会话也照常回答：直接在当前（默认）工作区自动开一条，不打断用户。
+      // 想挑会话或换工作区才需要 /start。
+      await greetOnce(userId).catch(() => {})
 
       // 不在这里 await 的是调用方（monitor）：监听循环必须继续。
       // 这里返回 promise，方便单测等这一轮处理完。
@@ -606,7 +581,7 @@ export function createBridge({
       lastReplyAt,
       lastError,
       lastTypingError,
-      workspace: workspaceCwd,
+      workspace: lastUserId === undefined ? workspaceCwd : conversations?.workspaceOf?.(lastUserId) ?? workspaceCwd,
     }
   }
 

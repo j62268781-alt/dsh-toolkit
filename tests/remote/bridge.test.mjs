@@ -84,7 +84,7 @@ async function harness(overrides = {}, ctxExtra = {}, options = {}) {
     unbind() {
       bound = undefined
     },
-    workspaceOf: () => options.workspaceOf ?? '/tmp/wc-workspace',
+    workspaceOf: () => (typeof options.workspaceOf === 'function' ? options.workspaceOf() : options.workspaceOf ?? '/tmp/wc-workspace'),
     sessionIdOf: (userId) => (userId === undefined ? undefined : `remote-${userId}`),
     dispose() {},
   }
@@ -199,7 +199,8 @@ test('授权用户的消息交给会话管理器，回复发回微信并带 cont
     assert.ok(Array.isArray(content))
     assert.ok(content[0].text.includes('帮我看看这个报错'))
     assert.deepEqual(h.sent.at(-1), { userId: 'user-0123456789', text: '好的，已处理。', contextToken: 'ctx-1' })
-    assert.equal(h.bridge.status().replied, 1)
+    // 第一次说话先补一句欢迎语，所以「已回」是 2 条
+    assert.equal(h.bridge.status().replied, 2)
   } finally {
     await h.dispose()
   }
@@ -280,8 +281,9 @@ test('重启后落盘的开关与策略生效（首条消息前不预热也能�
       })
       assert.equal(bridge.status().enabled, true)
       assert.equal(bridge.status().received, 1)
-      assert.equal(sent.length, 1)
-      assert.match(sent[0].text, /重启后也能回/)
+      // 欢迎语 + 回答
+      assert.equal(sent.length, 2)
+      assert.match(sent.at(-1).text, /重启后也能回/)
     } finally {
       await bridge.dispose()
     }
@@ -457,7 +459,7 @@ test('斜杠命令：/use 按 /sessions 的序号与 id 前缀切换会话', asy
         return undefined
       },
     },
-  })
+  }, { workspaceOf: () => home })
   try {
     await h.bridge.handleMessage(h.message('/sessions'))
     assert.ok(h.sent.at(-1).text.includes('gui-session-aaaa'))
@@ -550,26 +552,29 @@ test('/use 在回答进行中不切会话，先要求 /cancel', async () => {
   }
 })
 
-test('还没选会话时：先发欢迎语 + 选择卡，消息挂起不进 Agent', async () => {
+test('没选过会话也直接回答：不弹选择卡，用当前工作区进 Agent', async () => {
   const h = await harness({ bridgeAccessPolicy: 'open' }, {}, { bound: undefined })
   try {
     await h.bridge.handleMessage(h.message('帮我看看这个报错'))
-    assert.equal(h.calls.process.length, 0)
-    const text = h.sent.map((item) => item.text).join('\n')
-    assert.match(text, /你好！我是你的 AI 助手/)
-    // 没有任何工作区数据时，跳过工作区卡，直接给默认工作区的会话卡
-    assert.match(text, /请选择会话（回复序号）/)
-    assert.match(text, /1\. 新建一条会话/)
-    assert.equal(h.bridge.status().sessionBound, false)
-    assert.equal(h.bridge.status().awaitingChoice, true)
-    // 欢迎语写进了状态文件：重启后不会再寒暄一遍
+    assert.equal(h.calls.process.length, 1)
+    // 没有绑定会话也不该悄悄新建一条
+    assert.equal(h.calls.rotate, 0)
+    const texts = h.sent.map((item) => item.text)
+    // 第一次说话补一句欢迎语 + 当前工作区
+    assert.ok(texts.some((text) => text.includes('你好！我是你的 AI 助手')))
+    assert.ok(texts.some((text) => text.includes('当前工作区：wc-workspace')))
+    // 不弹任何选择卡
+    assert.ok(!texts.some((text) => text.includes('请选择会话')))
+    assert.ok(!texts.some((text) => text.includes('先选工作区')))
+    assert.equal(h.bridge.status().awaitingChoice, false)
+    // 欢迎语写进了状态文件：以后不再寒暄
     assert.equal(typeof h.store.getGreetedAt('user-0123456789'), 'number')
   } finally {
     await h.dispose()
   }
 })
 
-test('先选工作区：卡上只显示目录名，选完才列这个工作区的会话', async () => {
+test('/start 先列当前工作区的会话，回复 0 才换工作区', async () => {
   const h = await harness({ bridgeAccessPolicy: 'open' }, {
     workspaceRegistry: {
       list() {
@@ -581,20 +586,26 @@ test('先选工作区：卡上只显示目录名，选完才列这个工作区�
     },
   }, { bound: undefined })
   try {
-    await h.bridge.handleMessage(h.message('在吗'))
+    await h.bridge.handleMessage(h.message('/start'))
     const card = h.sent.at(-1).text
-    assert.ok(card.includes('先选工作区（回复序号）'))
-    assert.ok(card.includes('wc-workspace（当前）'))
-    assert.ok(card.includes('dsh-toolkit'))
-    assert.ok(!card.includes('/Users/joeson/Documents'))
-    assert.ok(card.includes('3. 不选，用默认工作区（~）'))
+    assert.ok(card.includes('请选择会话'))
+    assert.ok(card.includes('工作区：wc-workspace'))
+    assert.ok(card.includes('1. 新建一条会话'))
+    assert.ok(card.includes('0. 换个工作区'))
+
+    await h.bridge.handleMessage(h.message('0'))
+    const workspaces = h.sent.at(-1).text
+    assert.ok(workspaces.includes('先选工作区（回复序号）'))
+    assert.ok(workspaces.includes('wc-workspace（当前）'))
+    assert.ok(workspaces.includes('dsh-toolkit'))
+    assert.ok(!workspaces.includes('/Users/joeson/Documents'))
+    assert.ok(workspaces.includes('3. 不选，用默认工作区（~）'))
 
     await h.bridge.handleMessage(h.message('2'))
     const sessions = h.sent.at(-1).text
     assert.ok(sessions.includes('请选择会话'))
     assert.ok(sessions.includes('工作区：dsh-toolkit'))
-    assert.ok(sessions.includes('1. 新建一条会话'))
-    // 还没真正选会话，所以不补跑
+    // 还没真正选会话，所以不跑消息
     assert.equal(h.calls.process.length, 0)
     assert.equal(h.calls.switchTo.length, 0)
   } finally {
@@ -602,7 +613,28 @@ test('先选工作区：卡上只显示目录名，选完才列这个工作区�
   }
 })
 
-test('会话卡选 1：在选中的工作区新建，并补跑挂起的问题', async () => {
+test('/start 之后先问了别的：卡作废，数字不再被当成选项', async () => {
+  const h = await harness({ bridgeAccessPolicy: 'open' }, {
+    workspaceRegistry: {
+      list() {
+        return [{ id: 'ws-a', title: '主目录', path: '/tmp/wc-workspace', sessionIds: [] }]
+      },
+    },
+  }, { bound: undefined })
+  try {
+    await h.bridge.handleMessage(h.message('/start'))
+    await h.bridge.handleMessage(h.message('先说说你在哪个目录'))
+    assert.equal(h.calls.process.length, 1)
+    // 上一条不是数字 → 卡作废，这个「2」按普通消息处理
+    await h.bridge.handleMessage(h.message('2'))
+    assert.equal(h.calls.process.length, 2)
+    assert.equal(h.calls.switchTo.length, 0)
+  } finally {
+    await h.dispose()
+  }
+})
+
+test('/start 里选工作区再选 1：在选中的工作区新建会话', async () => {
   const h = await harness({ bridgeAccessPolicy: 'open' }, {
     workspaceRegistry: {
       list() {
@@ -614,20 +646,21 @@ test('会话卡选 1：在选中的工作区新建，并补跑挂起的问题', 
     },
   }, { bound: undefined })
   try {
-    await h.bridge.handleMessage(h.message('写个脚本'))
+    await h.bridge.handleMessage(h.message('/start'))
+    // 0 = 换工作区，2 = dsh-toolkit，1 = 新建
+    await h.bridge.handleMessage(h.message('0'))
     await h.bridge.handleMessage(h.message('2'))
     await h.bridge.handleMessage(h.message('1'))
     assert.equal(h.calls.rotate, 1)
     assert.equal(h.calls.rotateWorkspace, '/Users/joeson/Documents/dsh-plugins/dsh-toolkit')
-    assert.equal(h.calls.process.length, 1)
+    assert.equal(h.calls.process.length, 0)
     assert.ok(h.sent.some((item) => item.text.includes('已新建会话')))
-    assert.ok(h.sent.some((item) => item.text.includes('接着回你刚才那条')))
   } finally {
     await h.dispose()
   }
 })
 
-test('会话卡选 2：切到列表里那条会话，并把挂着的问题补跑掉', async () => {
+test('/start 里选 2：切到列表里那条会话', async () => {
   const records = [
     { header: { id: 'gui-session-aaaa', cwd: '/tmp/wc-workspace', createdAt: 2 }, live: false, persisted: true },
     { header: { id: 'gui-session-bbbb', cwd: '/tmp/wc-workspace', createdAt: 1 }, live: false, persisted: true },
@@ -643,23 +676,18 @@ test('会话卡选 2：切到列表里那条会话，并把挂着的问题补跑
     },
   }, { bound: undefined })
   try {
-    await h.bridge.handleMessage(h.message('帮我看一下构建日志'))
-    assert.equal(h.calls.process.length, 0)
-
-    // 有历史会话但没登记工作区 → 先给由会话 cwd 派生的工作区卡，选 1 才进会话卡
-    await h.bridge.handleMessage(h.message('1'))
+    await h.bridge.handleMessage(h.message('/start'))
     assert.ok(h.sent.at(-1).text.includes('请选择会话'))
+    assert.ok(h.sent.at(-1).text.includes('工作区：wc-workspace'))
 
     await h.bridge.handleMessage(h.message('2'))
     assert.deepEqual(h.calls.switchTo, [
       { userId: 'user-0123456789', sessionId: 'gui-session-aaaa', cwd: '/tmp/wc-workspace' },
     ])
-    // 选完立刻补跑刚才挂起的那条，而不是让它石沉大海
-    assert.equal(h.calls.process.length, 1)
+    // 选定即生效，不会顺手把别的消息也跑一遍
+    assert.equal(h.calls.process.length, 0)
     const texts = h.sent.map((item) => item.text)
     assert.ok(texts.some((text) => text.includes('已切到')))
-    assert.ok(texts.some((text) => text.includes('接着回你刚才那条')))
-    assert.ok(texts.some((text) => text.includes('好的，已处理。')))
     assert.equal(h.bridge.status().sessionBound, true)
   } finally {
     await h.dispose()
@@ -678,7 +706,9 @@ test('工作区卡最后一项：不选，用默认工作区', async () => {
     },
   }, { bound: undefined })
   try {
-    await h.bridge.handleMessage(h.message('在吗'))
+    // /start → 0 换工作区 → 3 用默认工作区
+    await h.bridge.handleMessage(h.message('/start'))
+    await h.bridge.handleMessage(h.message('0'))
     await h.bridge.handleMessage(h.message('3'))
     assert.ok(h.sent.at(-1).text.includes('请选择会话'))
     // 「不选」用的是桥的默认工作区（$HOME），卡上显示成 ~
@@ -702,14 +732,15 @@ test('基础命令不被选择门禁拦住', async () => {
   }
 })
 
-test('刚打过招呼的用户再触发选择时不重复发欢迎语', async () => {
+test('欢迎语只在第一次说话时发一次', async () => {
   const h = await harness({ bridgeAccessPolicy: 'open' }, {}, { bound: undefined })
   try {
+    // 打过招呼（哪怕只是 1 分钟前）就不再寒暄，普通消息也不会被卡住
     h.store.setGreetedAt('user-0123456789', Date.now() - 60_000)
-    await h.bridge.handleMessage(h.message('/start'))
-    const text = h.sent.at(-1).text
-    assert.ok(text.includes('请选择会话'))
-    assert.ok(!text.includes('你好！我是你的 AI 助手'))
+    await h.bridge.handleMessage(h.message('再问一句'))
+    const texts = h.sent.map((item) => item.text)
+    assert.ok(!texts.some((text) => text.includes('你好！我是你的 AI 助手')))
+    assert.equal(h.calls.process.length, 1)
   } finally {
     await h.dispose()
   }
