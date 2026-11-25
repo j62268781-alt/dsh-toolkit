@@ -1,6 +1,10 @@
 # Pet painter
 
-Procedural painter for the built-in `deepseek-whale` pet. `whale.py` draws the side view,
+> 内置形象已经换成 Petdex 的 `aoi-shark-maid`（见 `src/modules/pet/host/runtime/pets/`），
+> `deepseek-whale` 连同它的素材一起被移除了。这套画笔代码保留下来，作为「怎么自己生成一套
+> 宠物素材」的参考；下面命令里的输出路径已经不存在，需要重新生成时先建一个自己的目录。
+
+Procedural painter for the former built-in `deepseek-whale` pet. `whale.py` draws the side view,
 `front.py` the front view (used for every idle/status row), `sheet.py` mixes both into
 one sprite sheet. Everything here is plain
 Pillow + numpy drawing code; no external artwork is downloaded or copied.
