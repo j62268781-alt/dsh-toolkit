@@ -633,7 +633,7 @@ test('a pet with motion clips plays the 60 fps WebP instead of redrawing the she
   assert.equal(canvas.hidden, false, 'reduced-motion falls back to the sprite sheet')
 })
 
-test('retrying, continuable, session count and progress are all readable', async (t) => {
+test('continuable, session count and progress are all readable', async (t) => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
   const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
@@ -647,10 +647,6 @@ test('retrying, continuable, session count and progress are all readable', async
   await new Promise(resolve => setImmediate(resolve))
   const doc = dom.window.document, body = doc.body, badge = doc.getElementById('badge-text')
   const show = sessions => update({ ...base, sessions })
-  // 重试中仍是「跑着」，但要说清是上游在重试，而不是普通执行
-  show([{ id: 'a', title: 'A', status: 'retrying', running: true }])
-  assert.equal(badge.textContent, '重试中')
-  assert.equal(body.dataset.status, 'retrying')
   show([{ id: 'a', title: 'A', status: 'continuable' }])
   assert.equal(badge.textContent, '可继续')
   assert.equal(body.dataset.status, 'continuable')
@@ -661,14 +657,14 @@ test('retrying, continuable, session count and progress are all readable', async
   show([{ id: 'a', title: 'A', status: 'running', running: true, queued: 2 }, { id: 'b', title: 'B', status: 'waiting' }])
   assert.equal(badge.textContent, '正在工作 ·2 +1')
   assert.equal(doc.getElementById('cap').title, '正在工作 ·2 +1 · 2 个会话')
-  // 单会话详情形态：进度行把轮次/步骤/工具/上下文/输出串起来
-  show([{ id: 'a', title: 'A', status: 'completed', progress: { turn: 2, step: 3, tools: 2, toolMs: 4_000, contextTokens: 62_000, outputTokens: 3_400 } }])
+  // 单会话详情形态：进度行把轮次/正在做的待办/上下文/输出串起来
+  show([{ id: 'a', title: 'A', status: 'completed', progress: { turn: 2, todo: '改投影键', contextTokens: 62_000, outputTokens: 3_400 } }])
   const progress = doc.querySelector('.session-detail .progress')
-  assert.equal(progress.textContent, '第 2 轮 · 第 3 步 · 2 个工具运行中 · 4 秒 · 上下文 62K · 输出 3.4K')
+  assert.equal(progress.textContent, '第 2 轮 · 正在做 改投影键 · 上下文 62K · 输出 3.4K')
   // 没有进度数据时不留空行
   show([{ id: 'a', title: 'A', status: 'completed' }])
   assert.equal(doc.querySelector('.session-detail .progress'), null)
   // 运行中列表形态也能看到并行度
-  show([{ id: 'a', title: 'A', status: 'running', running: true, progress: { turn: 1, step: 2, tools: 1, subagents: 2 } }])
-  assert.equal(doc.querySelector('.row-open .note').textContent, '正在执行 · 第 1 轮 · 第 2 步 · 1 个工具运行中 · 2 个子代理')
+  show([{ id: 'a', title: 'A', status: 'running', running: true, progress: { turn: 1, subagents: 2 } }])
+  assert.equal(doc.querySelector('.row-open .note').textContent, '正在执行 · 第 1 轮 · 2 个子代理')
 })

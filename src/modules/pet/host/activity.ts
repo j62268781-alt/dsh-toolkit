@@ -1,9 +1,10 @@
-// Verified DSH 0.2.1-rc.5 wire keys. turnBoundary is Host-only; approval
-// has no wire projection and is observed through its scoped waterfall.
-// sessionStats/contextPressure/tokenUsage/llmRetry 是「进度」的数据源：
-// 宿主不广播工具事件，但 sessionStats 的 pendingCalls 记着在飞的工具数与派发时刻，
-// openStep 记着本步起点，contextPressure 给下一次请求的上下文大小。
-const KEYS = ['title', 'sessionListMetadata', 'inbox', 'goal', 'userQuestions', 'sessionStats', 'contextPressure', 'tokenUsage', 'conversationContinuation', 'llmRetry']
+// Verified DSH 0.2.2-rc.5 wire keys. 只有声明了 `wire` 的投影才会被 snapshot 折叠、
+// 也只有它们会推给插件：sessionStats / contextPressure / llmRetry / turnBoundary 都是
+// Host-only（没有 wire），读它们只会拿到 undefined。所以「进度」只用可见的几项拼：
+// turnOutline 给回合序号，contextBreakdown 给上下文构成，tokenUsage 给累计输出，
+// todos 给当前在做的待办。工具数与工具耗时没有可见投影，只能回读日志，留给后续。
+// approval 没有 wire 投影，靠自己的 scoped waterfall 观察。
+const KEYS = ['title', 'sessionListMetadata', 'inbox', 'goal', 'userQuestions', 'turnOutline', 'contextBreakdown', 'tokenUsage', 'todos', 'conversationContinuation']
 const text = (value: any, limit = 240): string => typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, limit) : ''
 const time = (value: any): number => Number.isFinite(value) ? value : 0
 // 灵动岛/桌宠展示的是「实时活动」：结束或暂停的会话只留最近半小时，判定为「正在跑」的
@@ -26,22 +27,15 @@ interface PendingRequest {
 export type WaitReason = 'approval' | 'question' | 'goal-paused' | 'goal-blocked' | 'goal-limit' | 'queued'
 
 /**
- * 正在进行的进度：全部来自宿主投影，不需要回读日志。
- * 宿主没有「当前工具」的事件，但 `sessionStats.pendingCalls` 记着在飞的工具数
- * （callId → 派发时刻），够说清「几个工具在跑、最久那个跑了多久」。
+ * 正在进行的进度：只挑有 `wire` 的投影，不需要回读日志。
+ * 工具数与工具耗时来自 `sessionStats`，而它没有 wire、插件读不到，所以这里没有。
  */
 export interface ActivityProgress {
-  /** 本回合序号（`sessionStats.openStep.turn`）。 */
+  /** 本回合序号（`turnOutline` 最后一条的 `turn`）。 */
   turn?: number
-  /** 本步序号（`sessionStats.openStep.step`）。 */
-  step?: number
-  /** 本步已用时（毫秒）。 */
-  stepMs?: number
-  /** 在飞工具数（`sessionStats.pendingCalls` 的条目数）。 */
-  tools?: number
-  /** 最早那个在飞工具已跑多久（毫秒）。 */
-  toolMs?: number
-  /** 下一次请求的上下文大小（`contextPressure.projectedTokens`，缺省退到 pressureTokens）。 */
+  /** 当前在做的待办（`todos` 里 `in_progress` 那条的文案）。 */
+  todo?: string
+  /** 上下文大小（`contextBreakdown` 的系统/工具/消息三部分之和）。 */
   contextTokens?: number
   /** 整个会话累计输出 token（`tokenUsage.outputTokens`）。 */
   outputTokens?: number
@@ -78,8 +72,6 @@ interface ActivityFacts {
   queued: number
   interrupted: boolean
   progress: ActivityProgress
-  /** 上游正在重试（`llmRetry` 有未清的条目）。 */
-  retrying: boolean
   /** 上一回合失败且可以空提示重跑（`conversationContinuation` 给了失败回合的 seq）。 */
   continuable: boolean
 }
@@ -209,7 +201,7 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
     }
     const aggregate = (row: ActivityRow, seen = new Set<string>()): ActivityFacts => {
       // 成环保护：这个结果只参与下面的 `||=` 合并（waiting/detail/pending/error 都是「无」），不会进快照。
-      if (seen.has(row.sessionId)) return { running: false, waiting: false, pending: undefined, error: undefined, detail: '', updatedAt: 0, waitReason: undefined, queued: 0, interrupted: false, progress: {}, retrying: false, continuable: false }
+      if (seen.has(row.sessionId)) return { running: false, waiting: false, pending: undefined, error: undefined, detail: '', updatedAt: 0, waitReason: undefined, queued: 0, interrupted: false, progress: {}, continuable: false }
       seen.add(row.sessionId)
       const own = facts(row, { liveIds, eventLive, now, freshMs: LIVE_FRESH })
       for (const child of children.get(row.sessionId) ?? []) {
@@ -224,7 +216,6 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
         own.interrupted ||= next.interrupted
         // 子代理正在跑时徽标要能看出「不止一个在干活」，否则并行度完全不可见。
         if (next.running) own.progress.subagents = (own.progress.subagents ?? 0) + 1
-        own.retrying ||= next.retrying
         own.updatedAt = Math.max(own.updatedAt, next.updatedAt)
         if (next.pending && (!own.pending || next.pending.kind === 'permission')) own.pending = next.pending
       }
@@ -241,7 +232,7 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
       // 重试中仍是「在跑」，所以只作为 running 的细分；可继续则是一个独立的结束态
       // （宿主清掉 error 事件后，只有 conversationContinuation 还记得上一回合是失败的）。
       const status = state.pending || state.waiting ? 'waiting'
-        : state.running ? (state.retrying ? 'retrying' : 'running')
+        : state.running ? 'running'
         : state.error ? 'failed' : state.continuable ? 'continuable' : state.interrupted ? 'interrupted' : 'completed'
       next.push({ id: row.sessionId, title: text(row.values.title, 160) || 'Untitled session', status,
         detail: state.pending?.detail || (status === 'failed' ? text(state.error) : state.detail),
@@ -251,7 +242,7 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
         ...(state.queued ? { queued: state.queued } : {}),
         ...(Object.keys(state.progress).length ? { progress: state.progress } : {}) })
     }
-    const rank: Record<string, number> = { waiting: 0, running: 1, retrying: 1, failed: 2, continuable: 2, interrupted: 2, completed: 2 }
+    const rank: Record<string, number> = { waiting: 0, running: 1, failed: 2, continuable: 2, interrupted: 2, completed: 2 }
     next.sort((a, b) => rank[a.status] - rank[b.status] || b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
     const bounded = next.slice(0, 20)
     if (JSON.stringify(bounded) === JSON.stringify(current)) return
@@ -467,20 +458,18 @@ function facts(row: ActivityRow, { liveIds = new Set<string>(), eventLive = new 
   else if (stuckQueue) waitReason = 'queued'
   // 用户按了停止：回合正常收尾（completed/failed）与「被打断」在快照里必须能分开。
   const interrupted = !runningNow && !starting && !goalStarting && (row.ending?.kind === 'aborted' || row.ending?.kind === 'interrupted')
-  // llm/retry 会把条目写进 llmRetry，step/start 或 turn/end 时清空 —— 有未清条目就是此刻在重试。
-  const retries = Object.values(row.values.llmRetry ?? {}).filter((entry: any) => Number(entry?.retry) > 0)
-  const retrying = retries.length > 0 && Boolean(runningNow || starting || goalStarting)
   // 失败回合被宿主折叠成「空提示可重跑」的 seq；error 事件不一定会留下来，所以它是独立信号。
   const continuable = !runningNow && !starting && !goalStarting && typeof row.values.conversationContinuation === 'number'
-  const stats = row.values.sessionStats
-  const openStep = stats?.openStep
-  const dispatched = Object.values(stats?.pendingCalls ?? {}).filter(Number.isFinite) as number[]
-  const pressure = row.values.contextPressure
-  const contextTokens = Number(pressure?.projectedTokens ?? pressure?.pressureTokens)
+  const turns = row.values.turnOutline
+  const lastTurn = Array.isArray(turns) && turns.length ? Number(turns[turns.length - 1]?.turn) : NaN
+  const breakdown = row.values.contextBreakdown
+  const contextTokens = breakdown ? Number(breakdown.systemTokens) + Number(breakdown.toolsTokens) + Number(breakdown.messageTokens) : NaN
   const outputTokens = Number(row.values.tokenUsage?.outputTokens)
+  const todos = row.values.todos
+  const activeTodo = Array.isArray(todos) ? todos.find((entry: any) => entry?.status === 'in_progress') : undefined
   const progress: ActivityProgress = {
-    ...(openStep ? { turn: Number(openStep.turn), step: Number(openStep.step), stepMs: Math.max(0, now - Number(openStep.startTime)) } : {}),
-    ...(dispatched.length ? { tools: dispatched.length, toolMs: Math.max(0, now - Math.min(...dispatched)) } : {}),
+    ...(Number.isFinite(lastTurn) ? { turn: lastTurn } : {}),
+    ...(text(activeTodo?.content, 40) ? { todo: text(activeTodo?.content, 40) } : {}),
     ...(Number.isFinite(contextTokens) && contextTokens > 0 ? { contextTokens } : {}),
     ...(Number.isFinite(outputTokens) && outputTokens > 0 ? { outputTokens } : {}),
   }
@@ -488,6 +477,6 @@ function facts(row: ActivityRow, { liveIds = new Set<string>(), eventLive = new 
     ? stuckQueue ? 'Input queued' : text(goal?.goal?.blockedReason?.message) || (exhausted ? 'Goal round limit reached' : 'Goal paused')
     : queued ? 'Input queued' : goalStarting ? 'Goal in progress' : runningNow ? 'Working' : 'Turn finished'
   return { running: Boolean(runningNow || starting || goalStarting), waiting, pending, error: row.error, detail,
-    waitReason, queued: queueCount, interrupted, progress, retrying, continuable,
+    waitReason, queued: queueCount, interrupted, progress, continuable,
     updatedAt: Math.max(row.updatedAt, time(goal?.updatedAt)) }
 }
