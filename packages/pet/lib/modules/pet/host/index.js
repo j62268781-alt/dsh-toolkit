@@ -15,7 +15,8 @@ import { API_PATH } from './constants.js';
 export const name = 'dsh-toolkit-pet';
 export const inject = ['webServer', 'connection', 'sessionController', 'sessionProjections', 'sessions', 'settings'];
 export { API_PATH } from './constants.js';
-const PET_IDS = ['deepseek-whale'];
+// 内置形象随插件打包：Petdex 社区的 aoi-shark-maid（DeepSeek酱），8 列 × 11 行精灵表。
+const PET_IDS = ['aoi-shark-maid'];
 const PETDEX_PREFIX = 'petdex:';
 /** 显式类型谓词：loose 程序（`strictNullChecks:false`）不会按 `ok` 判别式自动收窄 `!result.ok`。 */
 function installFailed(result) {
@@ -47,10 +48,12 @@ async function loadPets() {
     const builtin = await Promise.all(PET_IDS.map(async (id) => {
         const assetDir = fileURLToPath(new URL(`./runtime/pets/${id}/`, import.meta.url));
         const manifest = JSON.parse(await readFile(new URL(`./runtime/pets/${id}/pet.json`, import.meta.url), 'utf8'));
-        return { id, name: manifest.displayName || id, assetDir, manifest, source: 'builtin', sheetFile: 'spritesheet.png' };
+        // 内置形象也可以是 Petdex 那种 webp 精灵表，文件名以清单里的声明为准。
+        return { id, name: manifest.displayName || id, assetDir, manifest, source: 'builtin', sheetFile: manifest.spritesheetPath || 'spritesheet.png' };
     }));
     const { pets: installed, skipped } = await listInstalled(petsRoot());
-    const custom = installed.map(({ slug, dir, manifest, sheetFile }) => ({
+    // 同名的已安装副本不再重复列出：内置的那一份已经在，下拉里出现两只一模一样的没有意义。
+    const custom = installed.filter(({ slug }) => !PET_IDS.includes(slug)).map(({ slug, dir, manifest, sheetFile }) => ({
         id: `${PETDEX_PREFIX}${slug}`, name: manifest.displayName || slug, assetDir: dir, manifest, source: 'petdex', sheetFile,
     }));
     return { pets: [...builtin, ...custom], skipped };
@@ -77,6 +80,9 @@ export async function createPetService(ctx, initialConfig = {}) {
             .catch(() => { });
     };
     let { pets, skipped: petdexSkipped } = await loadPets();
+    // 旧配置里可能记着已经下架的形象（原来的内置鲸鱼）；启动时就换回列表里第一个，别留着无效 ID。
+    if (pets.length && !pets.some((pet) => pet.id === settings.activePet))
+        settings = { ...settings, activePet: pets[0].id };
     const catalog = createCatalog();
     const previews = createPreviewStore({ root: petHome() });
     let installing = false;

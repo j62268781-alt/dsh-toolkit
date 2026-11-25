@@ -16,11 +16,11 @@ export interface PetSettings {
   islandHeight: number
 }
 
-export const DEFAULT_SETTINGS = Object.freeze({ activePet: 'deepseek-whale', petEnabled: false, petSize: 100, bubbleWidth: 280, islandEnabled: false, islandIdle: true, islandAllDisplays: true, islandWidth: 100, islandHeight: 100 })
+export const DEFAULT_SETTINGS = Object.freeze({ activePet: 'aoi-shark-maid', petEnabled: false, petSize: 100, bubbleWidth: 280, islandEnabled: false, islandIdle: true, islandAllDisplays: true, islandWidth: 100, islandHeight: 100 })
 export const LIMITS = Object.freeze({ petSize: [50, 100, 10], bubbleWidth: [240, 480, 20], islandWidth: [75, 150, 1], islandHeight: [75, 150, 1] })
 export function readSettings(snapshot): PetSettings {
   const value = snapshot?.value ?? snapshot ?? {}
-  // 显式 `PetSettings`：`Object.freeze` 会把字面量收成 `'deepseek-whale'` 这类单值类型，
+  // 显式 `PetSettings`：`Object.freeze` 会把字面量收成 `'aoi-shark-maid'` 这类单值类型，
   // 不标注的话下面按 key 赋值（`activePet` 可能是任意字符串）全部报错。
   const result: PetSettings = { ...DEFAULT_SETTINGS }
   for (const key of Object.keys(result)) {

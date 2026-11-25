@@ -8,6 +8,20 @@ const { readEnvironment, publicState, islandGeometry, islandAnchor, islandPlacem
 const { notchForDisplay } = require('../../src/modules/pet/host/runtime/native.cjs')
 const env = { DSH_TOOLKIT_PET_URL:'http://127.0.0.1:1234', DSH_TOOLKIT_PET_TOKEN:'secret', DSH_TOOLKIT_HOST_PID:'123' }
 
+function webpSize(buffer) {
+  if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WEBP') return [0, 0]
+  for (let offset = 12; offset + 8 <= buffer.length;) {
+    const size = buffer.readUInt32LE(offset + 4)
+    const id = buffer.toString('ascii', offset, offset + 4)
+    const data = offset + 8
+    if (id === 'VP8X') return [1 + buffer.readUIntLE(data + 4, 3), 1 + buffer.readUIntLE(data + 7, 3)]
+    if (id === 'VP8L') { const bits = buffer.readUInt32LE(data + 1); return [1 + (bits & 0x3fff), 1 + ((bits >>> 14) & 0x3fff)] }
+    if (id === 'VP8 ') return [buffer.readUInt16LE(data + 6) & 0x3fff, buffer.readUInt16LE(data + 8) & 0x3fff]
+    offset += 8 + size + (size & 1)
+  }
+  return [0, 0]
+}
+
 function webpFrameCount(buffer) {
   if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WEBP') return 0
   let count = 0
@@ -25,12 +39,14 @@ test('helper only accepts authenticated loopback origin and valid host pid', () 
   assert.throws(() => readEnvironment({ ...env, DSH_TOOLKIT_HOST_PID:'NaN' }))
   assert.throws(() => readEnvironment({ ...env, DSH_TOOLKIT_PET_TOKEN:'' }))
 })
-test('built-in state motion clips keep enough encoded frames to stay visibly animated', async () => {
-  const root = new URL('../../src/modules/pet/host/runtime/pets/deepseek-whale/motion/', import.meta.url)
-  for (const [motion, minimum] of [['running', 12], ['waiting', 8], ['approval', 12], ['question', 4]]) {
-    const bytes = await readFile(new URL(`${motion}.webp`, root))
-    assert.ok(webpFrameCount(bytes) >= minimum, `${motion} must retain at least ${minimum} distinct frames`)
-  }
+test('bundled pet ships a v2 sheet of 8 columns × 11 rows at 192×208 per cell', async () => {
+  const dir = new URL('../../src/modules/pet/host/runtime/pets/aoi-shark-maid/', import.meta.url)
+  const manifest = JSON.parse(await readFile(new URL('pet.json', dir), 'utf8'))
+  assert.equal(manifest.spritesheetPath, 'spritesheet.webp')
+  assert.equal(manifest.spriteVersionNumber, 2)
+  const [width, height] = webpSize(await readFile(new URL(manifest.spritesheetPath, dir)))
+  assert.equal(width, 192 * 8)
+  assert.equal(height, 208 * 11)
 })
 
 test('renderer snapshot does not expose filesystem or Host secrets and ranks sessions', () => {
@@ -58,7 +74,7 @@ test('a Petdex pet keeps its own id and webp sheet without exposing its director
   assert.equal(JSON.stringify(projected).includes('/pets/boba'), false)
   assert.equal(assetPath(state, projected.pets[0].spritesheet), '/pets/boba/spritesheet.webp')
   // 只有登记过的那一个文件可读：换成 pet.json 或别的宠物都不行。
-  for (const url of ['pet-asset://pet/petdex%3Aboba/pet.json', 'pet-asset://pet/petdex%3Aboba/spritesheet.png', 'pet-asset://pet/deepseek-whale/spritesheet.webp']) assert.equal(assetPath(state, url), null)
+  for (const url of ['pet-asset://pet/petdex%3Aboba/pet.json', 'pet-asset://pet/petdex%3Aboba/spritesheet.png', 'pet-asset://pet/duck/spritesheet.webp']) assert.equal(assetPath(state, url), null)
 })
 test('a pet may register 60 fps motion clips next to its sheet', () => {
   const state = { pets:[{ id:'whale', name:'Whale', assetDir:'/assets/whale', sheetFile:'spritesheet.png', manifest:{ spriteVersionNumber:2, animations:{ idle:'motion/idle.webp', running:'motion/running.webp', jumping:'motion/jumping.webp', approval:'motion/approval.webp', question:'motion/question.webp' } } }] }
