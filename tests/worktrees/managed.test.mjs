@@ -3,10 +3,11 @@ import { EventEmitter } from 'node:events'
 import { mkdir, mkdtemp, realpath, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { PassThrough, Readable } from 'node:stream'
 import { test } from 'node:test'
 import { setImmediate } from 'node:timers/promises'
 import { registerManagedWorktreesRoute } from '../../src/modules/worktrees/host/routes/managed.js'
-import { MANAGED_WORKTREE_CHECK_PATH, MANAGED_WORKTREES_PATH } from '../../src/modules/worktrees/host/constants.js'
+import { MANAGED_WORKTREE_CHECK_PATH, MANAGED_WORKTREE_SNAPSHOTS_PATH, MANAGED_WORKTREES_PATH } from '../../src/modules/worktrees/host/constants.js'
 
 const record = (id) => ({ header: { id } })
 const entry = (branch, path = 'checkout-one', owned = true) => ({
@@ -23,7 +24,7 @@ function setup(services, connection = { admit() {} }) {
     effect(fn) { fn() },
     webServer: { register(value) { routes.set(value.path, value) } },
   })
-  assert.deepEqual([...routes.keys()], [MANAGED_WORKTREE_CHECK_PATH, MANAGED_WORKTREES_PATH])
+  assert.deepEqual([...routes.keys()], [MANAGED_WORKTREE_CHECK_PATH, MANAGED_WORKTREE_SNAPSHOTS_PATH, MANAGED_WORKTREES_PATH])
   for (const route of routes.values()) assert.equal(route.auth, connection.requestRejection ? undefined : 'required')
   function open(peer, method = 'GET', url = MANAGED_WORKTREES_PATH, req = {}) {
     const res = new EventEmitter()
@@ -79,7 +80,7 @@ test('returns latest owned native records by path without inspecting unauthorize
   assert.deepEqual(await api.request(), [401, undefined])
   assert.deepEqual(await api.request({ ...owner, principal: { kind: 'guest' } }), [403, undefined])
   assert.equal(api.lookups, 0)
-  assert.deepEqual(await api.request(owner), [200, { ok: true, cleanupCheck: true, worktrees: [
+  assert.deepEqual(await api.request(owner), [200, { ok: true, cleanupCheck: true, snapshots: true, worktrees: [
     { path: checkout, branch: 'second', repositoryRoot: '/repo', sessionId: 'latest', sessionTitle: 'Newest session', sessionArchived: true, status: 'present' },
     { path: missing, branch: 'current', repositoryRoot: '/repo', sessionId: 'latest', sessionTitle: 'Newest session', sessionArchived: true, status: 'missing' },
   ] }])
@@ -93,7 +94,7 @@ test('distinguishes unavailable and failed projections from a valid empty list',
     sessionQuery: { listSessions: async () => [], inspectSession: async () => {} },
     sessionProjections: { snapshot() {} },
   }
-  assert.deepEqual(await setup(services).request(owner), [200, { ok: true, cleanupCheck: true, worktrees: [] }])
+  assert.deepEqual(await setup(services).request(owner), [200, { ok: true, cleanupCheck: true, snapshots: true, worktrees: [] }])
   services.sessionQuery.listSessions = async () => [record('missing')]
   assert.deepEqual(await setup(services).request(owner), [500, { ok: false, reason: 'managed-worktrees-failed' }])
 })
@@ -203,7 +204,7 @@ test('overlaps at most four reads, scans the whole corpus and merges in corpus o
   reads.get('a').finish([])
   reads.get('newest').finish([entry('newest')])
   await request.finished
-  assert.deepEqual(request.replies, [[200, { ok: true, cleanupCheck: true, worktrees: [
+  assert.deepEqual(request.replies, [[200, { ok: true, cleanupCheck: true, snapshots: true, worktrees: [
     { path: 'checkout-one', branch: 'newest', repositoryRoot: '/repo', sessionId: 'newest', status: 'unknown' },
     { path: 'checkout-last', branch: 'last', repositoryRoot: '/repo', sessionId: 'last', status: 'unknown' },
   ] }]])
@@ -248,12 +249,12 @@ test('a failed inspection cancels sibling reads and a subsequent request reads f
   await setImmediate()
   reads.get('queued').finish([entry('fresh', 'checkout-fresh')])
   await second.finished
-  assert.deepEqual(second.replies, [[200, { ok: true, cleanupCheck: true, worktrees: [
+  assert.deepEqual(second.replies, [[200, { ok: true, cleanupCheck: true, snapshots: true, worktrees: [
     { path: 'checkout-fresh', branch: 'fresh', repositoryRoot: '/repo', sessionId: 'queued', status: 'unknown' },
   ] }]])
 })
 
-function checkFixture(repositoryRoot, path) {
+function checkFixture(repositoryRoot, path, route = MANAGED_WORKTREE_CHECK_PATH) {
   const selected = { repositoryRoot, path, branch: 'topic', baseCommit: 'a'.repeat(40) }
   const reference = { owned: true, worktree: selected }
   const views = { target: { worktree: [reference], workingDirectory: repositoryRoot } }
@@ -268,7 +269,7 @@ function checkFixture(repositoryRoot, path) {
     sessionProjections: { snapshot(session) { return { values: views[session.header.id] } } },
   }
   const api = setup(services)
-  const url = (change = {}) => `${MANAGED_WORKTREE_CHECK_PATH}?${new URLSearchParams({ sessionId: 'target', repositoryRoot, path, ...change })}`
+  const url = (change = {}) => `${route}?${new URLSearchParams({ sessionId: 'target', repositoryRoot, path, ...change })}`
   return { selected, reference, views, inspected, services, api, url, get scans() { return scans } }
 }
 
@@ -354,4 +355,144 @@ test('check forwards peer cancellation to the fresh projection and never replies
   assert.deepEqual(request.replies, [])
   assert.equal(request.res.destroyed, true)
   assert.equal(request.res.listenerCount('close'), 0)
+})
+
+const snapshotCommit = 'b'.repeat(40)
+const snapshotInvalid = [400, { ok: false, reason: 'invalid-worktree-snapshot' }]
+const snapshotUnavailable = [409, { ok: false, reason: 'snapshot-unavailable' }]
+
+function snapshotBody(raw = JSON.stringify({ commit: snapshotCommit, branch: 'recovered' })) {
+  let consumed = false
+  const req = Readable.from(function* () { consumed = true; yield Buffer.from(raw) }())
+  req.headers = { 'content-type': 'application/json' }
+  return { req, get consumed() { return consumed } }
+}
+
+async function snapshotFixture(t) {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'managed-snapshots-')))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await mkdir(join(root, '.git', 'objects'), { recursive: true })
+  const f = checkFixture(root, join(root, 'removed-checkout'), MANAGED_WORKTREE_SNAPSHOTS_PATH)
+  const gitCalls = []
+  f.services.sandbox = {
+    async confine(argv, policy) {
+      assert.deepEqual(policy, { mode: 'read-only', workspaceRoot: root })
+      return { enforcement: 'full', argv }
+    },
+  }
+  f.services.subprocess = {
+    async resolveExecutable(name) {
+      gitCalls.push(name)
+      return join(root, 'fake-git')
+    },
+    spawn({ argv, cwd }) {
+      gitCalls.push(argv)
+      assert.equal(cwd, root)
+      assert.ok(argv.includes('for-each-ref'))
+      const prefix = argv.at(-1)
+      return {
+        done: Promise.resolve({ exitCode: 0, signal: null }),
+        collected: {
+          stdout: { readFrom: () => ({ text: `${prefix}${snapshotCommit}\0${snapshotCommit}\0commit\0\n`, lossy: false }) },
+          stderr: { readFrom: () => ({ text: '', lossy: false }) },
+        },
+        terminate() {},
+        async waitForExit() { return true },
+      }
+    },
+  }
+  return { ...f, gitCalls }
+}
+
+test('snapshots route rejects unauthenticated uploads before reading the body on either host auth path', async () => {
+  const url = `${MANAGED_WORKTREE_SNAPSHOTS_PATH}?${new URLSearchParams({ sessionId: 'target', repositoryRoot: '/repo', path: '/repo/checkout' })}`
+  const api = setup({})
+  const guest = { ...owner, principal: { kind: 'guest' } }
+  const revoked = { ...owner, signal: AbortSignal.abort() }
+  for (const [peer, status] of [[undefined, 401], [guest, 403], [revoked, 403]]) {
+    const body = snapshotBody('{')
+    assert.deepEqual(await api.request(peer, 'POST', url, body.req), [status, undefined])
+    assert.equal(body.consumed, false)
+    assert.equal(body.req.listenerCount('data'), 0)
+  }
+  assert.equal(api.lookups, 0)
+
+  const legacy = setup({}, { requestRejection: () => 403 })
+  const denied = snapshotBody('{')
+  assert.deepEqual(await legacy.request(owner, 'POST', url, denied.req), [403, undefined])
+  assert.equal(denied.consumed, false)
+  assert.equal(denied.req.listenerCount('data'), 0)
+  assert.equal(legacy.lookups, 0)
+
+  const admitted = snapshotBody('{')
+  assert.deepEqual(await api.request(owner, 'POST', url, admitted.req), snapshotInvalid)
+  assert.equal(admitted.consumed, true)
+})
+
+test('snapshots route does not invoke Git for invalid selectors, denied access, inherited or unarchived ownership', async t => {
+  const f = await snapshotFixture(t)
+  for (const method of ['GET', 'POST']) {
+    const request = (url = f.url()) => f.api.request(owner, method, url, snapshotBody().req)
+    assert.deepEqual(await request(`${f.url()}&path=/arbitrary`), snapshotInvalid)
+    assert.deepEqual(f.inspected, [])
+
+    f.services.remoteAccess = { allows: () => false }
+    assert.deepEqual(await request(), checkMissing)
+    assert.deepEqual(f.inspected, [])
+    delete f.services.remoteAccess
+
+    assert.deepEqual(await request(f.url({ repositoryRoot: '/arbitrary' })), checkMissing)
+    f.reference.owned = false
+    assert.deepEqual(await request(), checkMissing)
+    f.reference.owned = true
+
+    f.services.workspaceRegistry.archivedSessionIds = []
+    assert.deepEqual(await request(), snapshotUnavailable)
+    f.services.workspaceRegistry.archivedSessionIds = ['target']
+    assert.deepEqual(f.inspected.splice(0), ['target', 'target', 'target'])
+    assert.deepEqual(f.gitCalls, [])
+  }
+})
+
+test('snapshot restore does not trust archive state from before the upload completes', async t => {
+  const f = await snapshotFixture(t)
+  const req = new PassThrough()
+  req.headers = { 'content-type': 'application/json' }
+  const request = f.api.open(owner, 'POST', f.url(), req)
+  req.write(`{"commit":"${snapshotCommit}",`)
+  await setImmediate()
+  assert.deepEqual(request.replies, [])
+
+  f.services.workspaceRegistry.archivedSessionIds = []
+  req.complete = true
+  req.end('"branch":"recovered"}')
+  await request.finished
+  assert.deepEqual(request.replies, [snapshotUnavailable])
+  assert.ok(f.inspected.includes('target'))
+  assert.deepEqual(f.gitCalls, [])
+})
+
+test('snapshots lists pins without a checkout and revalidates the archived owner before replying', async t => {
+  const f = await snapshotFixture(t)
+  const listed = f.api.open(owner, 'GET', f.url())
+  await listed.finished
+  assert.deepEqual(listed.replies, [[200, { ok: true, commits: [snapshotCommit] }]])
+  assert.equal(listed.headers['cache-control'], 'no-store')
+  assert.deepEqual(f.inspected.splice(0), ['target', 'target'])
+  assert.equal(f.gitCalls.length, 2)
+
+  const subprocess = f.services.subprocess
+  const spawn = subprocess.spawn
+  for (const [change, reset, expected] of [
+    [() => { f.selected.branch = 'reassigned' }, () => { f.selected.branch = 'topic' }, checkMissing],
+    [() => { f.services.workspaceRegistry.archivedSessionIds = [] }, () => { f.services.workspaceRegistry.archivedSessionIds = ['target'] }, snapshotUnavailable],
+  ]) {
+    subprocess.spawn = options => {
+      change()
+      return spawn(options)
+    }
+    assert.deepEqual(await f.api.request(owner, 'GET', f.url()), expected)
+    assert.deepEqual(f.inspected.splice(0), ['target', 'target'])
+    reset()
+  }
 })

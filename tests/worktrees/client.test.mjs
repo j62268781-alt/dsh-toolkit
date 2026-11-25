@@ -5,9 +5,9 @@ import React from 'react'
 import { readFile } from 'node:fs/promises'
 import vm from 'node:vm'
 import { WORKTREES_COPY } from '../../src/modules/worktrees/client/locale.js'
-import { MANAGED_WORKTREE_CHECK_PATH, MANAGED_WORKTREES_PATH, WORKTREE_CONFIG_PATH } from '../../src/modules/worktrees/host/constants.js'
+import { MANAGED_WORKTREE_CHECK_PATH, MANAGED_WORKTREE_SNAPSHOTS_PATH, MANAGED_WORKTREES_PATH, WORKTREE_CONFIG_PATH } from '../../src/modules/worktrees/host/constants.js'
 
-test('independent settings handle retention, saved-config conflicts and managed-list refresh and cleanup checks', async (t) => {
+test('independent settings handle retention, saved-config conflicts, managed-list refresh and snapshot recovery', async (t) => {
   const dom = new JSDOM('<div id="root"></div>', { url: 'https://dsh.example.test', pretendToBeVisual: true })
   for (const [key, value] of Object.entries({
     window: dom.window, document: dom.window.document, IS_REACT_ACT_ENVIRONMENT: true,
@@ -28,6 +28,9 @@ test('independent settings handle retention, saved-config conflicts and managed-
   let finishCheck
   let checkSignal
   let checkReads = 0
+  const commits = ['a'.repeat(40), 'b'.repeat(64)]
+  const snapshotRequests = []
+  let finishRestore
   const navigation = []
   let failOpen = true
   t.mock.method(globalThis, 'fetch', async (url, options) => {
@@ -49,7 +52,7 @@ test('independent settings handle retention, saved-config conflicts and managed-
       case MANAGED_WORKTREES_PATH: {
         const request = ++managedReads
         if (request === 3) return new Promise(resolve => { finishRefresh = resolve })
-        return Response.json({ ok: true, cleanupCheck: request !== 1, worktrees: request === 1 ? [] : [
+        return Response.json({ ok: true, cleanupCheck: request !== 1, snapshots: request !== 1, worktrees: request === 1 ? [] : [
           { path: '/repo/.agents/worktrees/one', repositoryRoot: '/repo', branch: 'dsh-one', status: 'present',
             sessionId: 'one', sessionTitle: 'Active topic', sessionArchived: false },
           { path: '/second/three', repositoryRoot: '/second', branch: 'dsh-three', status: 'unknown',
@@ -70,6 +73,12 @@ test('independent settings handle retention, saved-config conflicts and managed-
           return new Promise(resolve => { finishCheck = resolve })
         }
         throw new Error('Unexpected repeated check')
+      case MANAGED_WORKTREE_SNAPSHOTS_PATH: {
+        const method = options.method ?? 'GET'
+        snapshotRequests.push({ method, target: Object.fromEntries(parsedUrl.searchParams), body: options.body })
+        if (method === 'GET') return Response.json({ ok: true, commits })
+        return new Promise(resolve => { finishRestore = resolve })
+      }
       default: throw new Error(`Unexpected URL ${url}`)
     }
   })
@@ -162,6 +171,46 @@ test('independent settings handle retention, saved-config conflicts and managed-
     assert.ok(!archived.querySelector('[aria-label^="打开会话"]'))
     assert.match(groups[1].nextElementSibling.textContent, /dsh-three.*无法确认目录状态.*three/)
     assert.ok(!groups[1].nextElementSibling.querySelector('[aria-label^="打开会话"]'))
+
+    const { snapshotLoad, restoreCreate, restoreSucceeded } = WORKTREES_COPY.zh
+    const recoveryButtons = [...doc.querySelectorAll('button')].filter(node => node.textContent === snapshotLoad)
+    assert.equal(recoveryButtons.length, 1, 'only a confirmed archived row offers recovery')
+    const [load] = recoveryButtons
+    assert.ok(archived.contains(load))
+    assert.ok(!archived.querySelector('form'))
+    assert.deepEqual(snapshotRequests, [], 'listing managed worktrees does not read snapshots')
+    await act(async () => load.click())
+    const target = { sessionId: 'two', repositoryRoot: '/repo', path: '/repo/two' }
+    assert.deepEqual(snapshotRequests, [{ method: 'GET', target, body: undefined }])
+    const form = archived.querySelector('form')
+    assert.equal(form.getAttribute('aria-label'), restoreCreate)
+    const select = form.querySelector('select')
+    assert.deepEqual([...select.options].map(option => option.value), commits)
+    const branch = form.querySelector('input')
+    const submit = form.querySelector('[type="submit"]')
+    await act(async () => submit.click())
+    assert.equal(snapshotRequests.length, 1, 'an empty branch cannot be submitted')
+    await act(async () => {
+      select.value = commits[1]
+      select.dispatchEvent(new dom.window.Event('change', { bubbles: true }))
+      change(branch, 'recover/two')
+    })
+    assert.equal(snapshotRequests.length, 1, 'editing the form does not create a branch')
+    await act(async () => {
+      // Submit twice before React commits the disabled state, exercising the request guard.
+      form.requestSubmit(submit)
+      form.requestSubmit(submit)
+    })
+    assert.equal(snapshotRequests.length, 2)
+    const restore = snapshotRequests[1]
+    assert.equal(restore.method, 'POST')
+    assert.deepEqual(restore.target, target)
+    assert.deepEqual(JSON.parse(restore.body), { branch: 'recover/two', commit: commits[1] })
+    assert.equal(submit.disabled, true)
+    await act(async () => finishRestore(Response.json({ ok: true, branch: 'recover/two', commit: commits[1] })))
+    const status = [...archived.querySelectorAll('[role="status"]')]
+    assert.ok(status.some(node => node.textContent.includes(restoreSucceeded) && node.textContent.includes('recover/two')))
+    assert.equal(submit.disabled, false)
 
     assert.equal(checkReads, 0)
     const check = archived.querySelector('[aria-label^="检查清理条件"]')

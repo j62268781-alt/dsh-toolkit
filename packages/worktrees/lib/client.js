@@ -231,6 +231,20 @@ window.__ModuleLoader__.load({
         cleanupPrunable: "不可清理：Git 将此工作树标记为可修剪。",
         cleanupDirty: "不可清理：存在修改、未跟踪文件或无法安全核实的文件。",
         cleanupUnavailable: "不可清理：无法安全确认工作树状态。",
+        snapshotLoad: "查看恢复快照",
+        snapshotWorking: "正在处理…",
+        snapshotEmpty: "此记录没有可用的恢复快照。",
+        snapshotReadFailed: "无法读取快照。请刷新列表后重试。",
+        snapshotCommit: "快照提交",
+        snapshotUnavailable: "无法验证所选快照或安全完成恢复。请重新读取快照。",
+        restoreBranch: "新分支名",
+        restoreCreate: "恢复为新分支",
+        restoreHelp: "只在来源仓库创建本地分支，不检出、不覆盖现有分支。快照只包含已提交内容。",
+        restoreInvalidBranch: "分支名不符合 Git 规则。",
+        restoreBranchInUse: "此分支名已被占用。请使用不同的名称。",
+        restoreNotWritable: "原会话没有覆盖来源仓库的工作区写入权限，或该权限已发生变化。",
+        restoreUnconfirmed: "无法确认恢复结果。请先在 Git 中检查新分支，再重试。",
+        restoreSucceeded: "已创建本地分支（未检出）：",
         repository: "来源仓库"
       },
       en: {
@@ -282,6 +296,20 @@ window.__ModuleLoader__.load({
         cleanupPrunable: "Cannot clean up: Git marked this worktree as prunable.",
         cleanupDirty: "Cannot clean up: there are changes, untracked files, or files that could not be safely verified.",
         cleanupUnavailable: "Cannot clean up: the worktree state could not be safely verified.",
+        snapshotLoad: "View recovery snapshots",
+        snapshotWorking: "Working…",
+        snapshotEmpty: "There are no recovery snapshots for this record.",
+        snapshotReadFailed: "Could not read snapshots. Refresh the list and try again.",
+        snapshotCommit: "Snapshot commit",
+        snapshotUnavailable: "Could not verify the selected snapshot or safely restore it. Reload snapshots before trying again.",
+        restoreBranch: "New branch name",
+        restoreCreate: "Restore to new branch",
+        restoreHelp: "Creates a local branch in the source repository without checking it out or overwriting a branch. Snapshots contain committed changes only.",
+        restoreInvalidBranch: "The branch name does not follow Git’s naming rules.",
+        restoreBranchInUse: "This branch name is already in use. Choose a different name.",
+        restoreNotWritable: "The original session does not have workspace write access to the source repository, or its permissions changed.",
+        restoreUnconfirmed: "Could not confirm the result. Check whether the branch exists in Git before retrying.",
+        restoreSucceeded: "Created a local branch without checking it out:",
         repository: "Source repository"
       }
     };
@@ -427,6 +455,7 @@ window.__ModuleLoader__.load({
     var WORKTREE_CONFIG_PATH = `${API_PREFIX}/config`;
     var MANAGED_WORKTREES_PATH = `${API_PREFIX}/managed`;
     var MANAGED_WORKTREE_CHECK_PATH = `${MANAGED_WORKTREES_PATH}/check`;
+    var MANAGED_WORKTREE_SNAPSHOTS_PATH = `${MANAGED_WORKTREES_PATH}/snapshots`;
 
     // src/modules/worktrees/client/surfaces/settings/config.tsx
     var fields = ["directory", "namePrefix"];
@@ -559,7 +588,113 @@ window.__ModuleLoader__.load({
     }
 
     // src/modules/worktrees/client/surfaces/settings/managed.tsx
+    var import_react4 = __toESM(require("react"), 1);
+
+    // src/modules/worktrees/client/surfaces/settings/recovery.tsx
     var import_react3 = __toESM(require("react"), 1);
+    var restoreErrors = /* @__PURE__ */ new Map([
+      ["invalid-branch", "restoreInvalidBranch"],
+      ["branch-in-use", "restoreBranchInUse"],
+      ["snapshot-unavailable", "snapshotUnavailable"],
+      ["restore-not-writable", "restoreNotWritable"]
+    ]);
+    function SnapshotRecovery({ entry, disabled, t }) {
+      const id = import_react3.default.useId();
+      const request = import_react3.default.useRef(null);
+      const [busy, setBusy] = import_react3.default.useState(false);
+      const [commits, setCommits] = import_react3.default.useState(null);
+      const [commit, setCommit] = import_react3.default.useState("");
+      const [branch, setBranch] = import_react3.default.useState("");
+      const [notice, setNotice] = import_react3.default.useState("");
+      const [created, setCreated] = import_react3.default.useState("");
+      const { sessionId, repositoryRoot, path } = entry;
+      const url = `${MANAGED_WORKTREE_SNAPSHOTS_PATH}?${new URLSearchParams({ sessionId, repositoryRoot, path })}`;
+      import_react3.default.useEffect(() => () => {
+        request.current?.abort();
+        request.current = null;
+      }, []);
+      async function run(restore) {
+        if (disabled || request.current || restore && (!commits?.includes(commit) || !branch)) return;
+        const controller = new AbortController();
+        request.current = controller;
+        setBusy(true);
+        setNotice("");
+        setCreated("");
+        if (!restore) setCommits(null);
+        let message = restore ? "restoreUnconfirmed" : "snapshotReadFailed";
+        try {
+          const response = await fetchJson(url, {
+            signal: controller.signal,
+            timeoutMs: 22e3,
+            ...restore ? { json: { branch, commit } } : {}
+          });
+          const payload = await response.json();
+          if (request.current !== controller) return;
+          if (restore) {
+            if (response.ok && payload?.ok === true && payload.branch === branch && payload.commit === commit) {
+              setCreated(branch);
+              message = "restoreSucceeded";
+            } else message = restoreErrors.get(payload?.reason) ?? message;
+          } else if (response.ok && payload?.ok === true && Array.isArray(payload.commits) && payload.commits.every((value) => typeof value === "string" && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value))) {
+            const listed = payload.commits;
+            setCommits(listed);
+            setCommit((previous) => listed.includes(previous) ? previous : listed[0] ?? "");
+            message = listed.length ? "" : "snapshotEmpty";
+          }
+        } catch {
+        } finally {
+          if (request.current === controller) {
+            request.current = null;
+            setBusy(false);
+            setNotice(message);
+          }
+        }
+      }
+      return /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-worktrees__recovery" }, /* @__PURE__ */ __dshReact.createElement("div", { className: "sk-worktrees__actions" }, /* @__PURE__ */ __dshReact.createElement(
+        "button",
+        {
+          className: "sk-worktrees__button",
+          type: "button",
+          "aria-disabled": disabled || busy,
+          "aria-label": `${t("snapshotLoad")}: ${entry.branch} (${path})`,
+          onClick: () => void run(false)
+        },
+        t("snapshotLoad")
+      ), busy && /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-repo-settings__hint" }, t("snapshotWorking"))), !!commits?.length && /* @__PURE__ */ __dshReact.createElement(
+        "form",
+        {
+          className: "sk-worktrees__recovery",
+          "aria-label": t("restoreCreate"),
+          onSubmit: (event) => {
+            event.preventDefault();
+            void run(true);
+          }
+        },
+        /* @__PURE__ */ __dshReact.createElement("p", { id: `${id}-help`, className: "sk-repo-settings__hint" }, t("restoreHelp")),
+        /* @__PURE__ */ __dshReact.createElement("label", { htmlFor: `${id}-commit` }, t("snapshotCommit")),
+        /* @__PURE__ */ __dshReact.createElement("select", { className: "sk-repo-settings__input", id: `${id}-commit`, value: commit, disabled: disabled || busy, onChange: (event) => setCommit(event.currentTarget.value) }, commits.map((value) => /* @__PURE__ */ __dshReact.createElement("option", { key: value, value }, value))),
+        /* @__PURE__ */ __dshReact.createElement("label", { htmlFor: `${id}-branch` }, t("restoreBranch")),
+        /* @__PURE__ */ __dshReact.createElement(
+          "input",
+          {
+            className: "sk-repo-settings__input",
+            id: `${id}-branch`,
+            type: "text",
+            required: true,
+            maxLength: 200,
+            autoComplete: "off",
+            spellCheck: false,
+            "aria-describedby": `${id}-help`,
+            value: branch,
+            readOnly: disabled || busy,
+            onChange: (event) => setBranch(event.currentTarget.value)
+          }
+        ),
+        /* @__PURE__ */ __dshReact.createElement("div", null, /* @__PURE__ */ __dshReact.createElement("button", { className: "sk-worktrees__button", type: "submit", disabled: disabled || busy }, t("restoreCreate")))
+      ), /* @__PURE__ */ __dshReact.createElement("span", { role: "status", className: "sk-worktrees__check-status" }, notice && /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-repo-settings__hint" }, t(notice), created && /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, " ", /* @__PURE__ */ __dshReact.createElement("code", null, created)))));
+    }
+
+    // src/modules/worktrees/client/surfaces/settings/managed.tsx
     var cleanupReasons = /* @__PURE__ */ new Map([
       ["archive-unknown", "cleanupArchiveUnknown"],
       ["not-archived", "cleanupNotArchived"],
@@ -572,10 +707,10 @@ window.__ModuleLoader__.load({
       ["check-unavailable", "cleanupUnavailable"]
     ]);
     function CleanupCheck({ entry, sessionId, revision, disabled, t }) {
-      const request = import_react3.default.useRef(null);
-      const [pending, setPending] = import_react3.default.useState(false);
-      const [result, setResult] = import_react3.default.useState("");
-      import_react3.default.useEffect(() => {
+      const request = import_react4.default.useRef(null);
+      const [pending, setPending] = import_react4.default.useState(false);
+      const [result, setResult] = import_react4.default.useState("");
+      import_react4.default.useEffect(() => {
         setPending(false);
         setResult("");
         return () => {
@@ -626,13 +761,14 @@ window.__ModuleLoader__.load({
       ), pending && /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-repo-settings__hint" }, t("cleanupChecking")), /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-worktrees__check-status", role: "status" }, !disabled && result && /* @__PURE__ */ __dshReact.createElement("span", { className: "sk-repo-settings__hint" }, t(result))));
     }
     function ManagedWorktrees({ t, openSession }) {
-      const [entries, setEntries] = import_react3.default.useState(null);
-      const [cleanupSupported, setCleanupSupported] = import_react3.default.useState(false);
-      const [error, setError] = import_react3.default.useState(null);
-      const [openError, setOpenError] = import_react3.default.useState(false);
-      const [revision, refresh] = import_react3.default.useReducer((value) => value + 1, 0);
-      const [loading, setLoading] = import_react3.default.useState(true);
-      import_react3.default.useEffect(() => {
+      const [entries, setEntries] = import_react4.default.useState(null);
+      const [cleanupSupported, setCleanupSupported] = import_react4.default.useState(false);
+      const [snapshotsSupported, setSnapshotsSupported] = import_react4.default.useState(false);
+      const [error, setError] = import_react4.default.useState(null);
+      const [openError, setOpenError] = import_react4.default.useState(false);
+      const [revision, refresh] = import_react4.default.useReducer((value) => value + 1, 0);
+      const [loading, setLoading] = import_react4.default.useState(true);
+      import_react4.default.useEffect(() => {
         const controller = new AbortController();
         void (async () => {
           try {
@@ -648,6 +784,7 @@ window.__ModuleLoader__.load({
             if (payload?.ok === true && Array.isArray(payload.worktrees)) {
               setEntries(payload.worktrees);
               setCleanupSupported(payload.cleanupCheck === true);
+              setSnapshotsSupported(payload.snapshots === true);
               setError(null);
             } else setError("managedFailed");
           } catch {
@@ -708,6 +845,14 @@ window.__ModuleLoader__.load({
             disabled: loading || !!error,
             t
           }
+        ), snapshotsSupported && sessionId && sessionArchived === true && /* @__PURE__ */ __dshReact.createElement(
+          SnapshotRecovery,
+          {
+            key: JSON.stringify([sessionId, entry.branch]),
+            entry: { ...entry, sessionId },
+            disabled: loading || !!error,
+            t
+          }
         ));
       }))))));
     }
@@ -716,7 +861,7 @@ window.__ModuleLoader__.load({
     var repository_default = '.sk-repo-settings {\n  max-width: 760px;\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n  color: var(--dsw-alias-label-primary);\n}\n\n.sk-repo-settings__groupLead { margin-top: 8px; }\n\n.sk-repo-settings__field {\n  display: flex;\n  flex-direction: column;\n  align-items: stretch;\n  gap: 4px;\n  width: 260px;\n  max-width: 100%;\n}\n\n.sk-repo-settings__input {\n  width: 100%;\n  box-sizing: border-box;\n  font: inherit;\n  font-size: 13px;\n  line-height: 20px;\n  color: var(--dsw-alias-label-primary);\n  padding: 6px 10px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background-color: rgba(128, 128, 128, 0.08);\n}\n\n.sk-repo-settings__input:focus-visible,\n.sk-repo-settings__switch:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n.sk-repo-settings__input[aria-invalid="true"] {\n  border-color: var(--dsw-alias-state-danger-primary, #d0453f);\n}\n\n.sk-repo-settings__input:disabled { opacity: 0.6; }\n\n.sk-repo-settings__hint {\n  margin: 0;\n  font-size: 12px;\n  line-height: 18px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n.sk-repo-settings__hint:empty { display: none; }\n.sk-repo-settings__hint--error { color: var(--dsw-alias-state-danger-primary, #d0453f); }\n\n/* Only used when the host does not expose its Switch primitive. */\n.sk-repo-settings__switch {\n  flex: none;\n  position: relative;\n  width: 36px;\n  height: 20px;\n  padding: 0;\n  border: 0;\n  border-radius: 999px;\n  corner-shape: round;\n  background-color: rgba(128, 128, 128, 0.45);\n  cursor: pointer;\n}\n\n.sk-repo-settings__switch[aria-checked="true"] {\n  background-color: var(--dsw-alias-state-business-primary, #3a6fd8);\n}\n\n.sk-repo-settings__switch:disabled { opacity: 0.5; cursor: default; }\n\n.sk-repo-settings__switchThumb {\n  position: absolute;\n  inset: 2px auto auto 2px;\n  width: 16px;\n  height: 16px;\n  border-radius: 50%;\n  corner-shape: round;\n  background-color: #fff;\n}\n\n.sk-repo-settings__switch[aria-checked="true"] .sk-repo-settings__switchThumb {\n  transform: translateX(16px);\n}\n';
 
     // src/modules/worktrees/client/surfaces/settings/style.css
-    var style_default2 = '.sk-worktrees__stack {\n  flex-direction: column;\n  align-items: stretch;\n  gap: 8px;\n}\n\n.sk-worktrees__button {\n  padding: 2px 8px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background: var(--dsw-alias-bg-layer-1);\n  color: inherit;\n  font: inherit;\n  font-size: 12px;\n  line-height: 20px;\n}\n\n.sk-worktrees__button { cursor: pointer; }\n.sk-worktrees__button:is(:disabled, [aria-disabled="true"]) { opacity: 0.6; cursor: default; }\n.sk-worktrees__button:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, currentColor);\n  outline-offset: 1px;\n}\n\n.sk-worktrees__actions {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 6px 10px;\n}\n\n/* Keep the status in the accessibility tree without adding an empty flex item. */\n.sk-worktrees__check-status:empty { position: absolute; }\n\n.sk-worktrees__repository {\n  margin: 8px 0;\n  font-size: 13px;\n  font-weight: 600;\n  overflow-wrap: anywhere;\n}\n\n.sk-worktrees__entries {\n  margin: 0;\n  padding: 0;\n  list-style: none;\n  overflow-wrap: anywhere;\n}\n\n.sk-worktrees__entries > li {\n  padding-block: 8px;\n  border-top: 0.5px solid var(--dsw-alias-border-l3);\n}\n';
+    var style_default2 = '.sk-worktrees__stack {\n  flex-direction: column;\n  align-items: stretch;\n  gap: 8px;\n}\n\n.sk-worktrees__button {\n  padding: 2px 8px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-md);\n  background: var(--dsw-alias-bg-layer-1);\n  color: inherit;\n  font: inherit;\n  font-size: 12px;\n  line-height: 20px;\n}\n\n.sk-worktrees__button { cursor: pointer; }\n.sk-worktrees__button:is(:disabled, [aria-disabled="true"]) { opacity: 0.6; cursor: default; }\n.sk-worktrees__button:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, currentColor);\n  outline-offset: 1px;\n}\n\n.sk-worktrees__actions {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 6px 10px;\n}\n\n.sk-worktrees__recovery {\n  display: grid;\n  gap: 6px;\n  min-width: 0;\n  margin-top: 6px;\n}\n\n.sk-worktrees__recovery .sk-repo-settings__input {\n  min-width: 0;\n  width: min(100%, 52ch);\n}\n\n/* Keep the status in the accessibility tree without adding an empty flex item. */\n.sk-worktrees__check-status:empty { position: absolute; }\n\n.sk-worktrees__repository {\n  margin: 8px 0;\n  font-size: 13px;\n  font-weight: 600;\n  overflow-wrap: anywhere;\n}\n\n.sk-worktrees__entries {\n  margin: 0;\n  padding: 0;\n  list-style: none;\n  overflow-wrap: anywhere;\n}\n\n.sk-worktrees__entries > li {\n  padding-block: 8px;\n  border-top: 0.5px solid var(--dsw-alias-border-l3);\n}\n';
 
     // src/modules/worktrees/client/surfaces/settings/index.tsx
     var CSS = `${settingsStyles("sk")}

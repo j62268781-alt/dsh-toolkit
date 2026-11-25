@@ -29,6 +29,18 @@
   gap: 6px 10px;
 }
 
+.sk-worktrees__recovery {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 6px;
+}
+
+.sk-worktrees__recovery .sk-repo-settings__input {
+  min-width: 0;
+  width: min(100%, 52ch);
+}
+
 /* Keep the status in the accessibility tree without adding an empty flex item. */
 .sk-worktrees__check-status:empty { position: absolute; }
 

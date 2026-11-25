@@ -1,16 +1,20 @@
 import { realpath } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
-import { sendJson } from '../../../../host/http.js'
+import type { SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
+import { readBody, sendJson } from '../../../../host/http.js'
 import { httpFailure, registerAuthenticatedRoute } from '../../../../host/routes.js'
-import { MANAGED_WORKTREE_CHECK_PATH, MANAGED_WORKTREES_PATH } from '../constants.js'
-import { checkManagedCheckout, checkoutPresence, type WorktreeCheckReason, type WorktreeCheckRecord } from '../worktree/check.js'
+import { MANAGED_WORKTREE_CHECK_PATH, MANAGED_WORKTREE_SNAPSHOTS_PATH, MANAGED_WORKTREES_PATH } from '../constants.js'
+import { checkManagedCheckout, checkoutPresence, commitId, type WorktreeCheckReason, type WorktreeCheckRecord } from '../worktree/check.js'
 import { readCheckoutStatuses } from '../worktree/checkout-status.js'
 import { createManagedWorktreeIndex, type WorktreeRevision, type WorktreeSessionRecord } from '../worktree/managed.js'
+import { listWorktreeSnapshots, restoreWorktreeSnapshot } from '../worktree/snapshot.js'
 
 const unavailable = httpFailure(404, 'managed-worktrees-unavailable')
 const failed = httpFailure(500, 'managed-worktrees-failed')
 const invalidCheck = httpFailure(400, 'invalid-worktree-check')
 const missingCheck = httpFailure(404, 'managed-worktree-not-found')
+const invalidSnapshot = httpFailure(400, 'invalid-worktree-snapshot')
+const snapshotUnavailable = httpFailure(409, 'snapshot-unavailable')
 const CHECK_TIMEOUT_MS = 20_000
 const CHECK_CONCURRENCY = 4
 
@@ -65,7 +69,9 @@ function archivedSessionIds(registry: any): Set<string> | undefined {
   } catch {}
 }
 
-async function checkAdmission(ctx: any, selector: CheckSelector, signal: AbortSignal, scanOthers = false): Promise<WorktreeCheckReason | WorktreeCheckRecord> {
+async function checkAdmission(ctx: any, selector: CheckSelector, signal: AbortSignal, scanOthers = false,
+  onOwner?: (session: SessionReference) => void,
+): Promise<WorktreeCheckReason | WorktreeCheckRecord> {
   const get = (name: string) => ctx.get?.(name)
   const query = get('sessionQuery')
   const projections = get('sessionProjections')
@@ -82,6 +88,7 @@ async function checkAdmission(ctx: any, selector: CheckSelector, signal: AbortSi
     const { values } = projections.snapshot(session, ['worktree'])
     const latest = readWorktreeReferences(values.worktree).findLast(entry => entry.owned && entry.worktree.path === path)?.worktree
     if (latest?.repositoryRoot !== repositoryRoot) return null
+    onOwner?.(session)
     return { ...latest }
   }, signal)
   signal.throwIfAborted()
@@ -203,8 +210,73 @@ function registerManagedWorktreeCheckRoute(ctx: any): void {
   })
 }
 
+function registerManagedWorktreeSnapshotsRoute(ctx: any): void {
+  registerAuthenticatedRoute(ctx, {
+    kind: 'exact',
+    path: MANAGED_WORKTREE_SNAPSHOTS_PATH,
+    async handler(req, res, peer) {
+      res.setHeader('cache-control', 'no-store')
+      if (req.method !== 'GET' && req.method !== 'POST') {
+        sendJson(res, 404, { ok: false, reason: 'not-found' })
+        return
+      }
+      const closed = new AbortController()
+      const onClose = () => closed.abort()
+      res.once('close', onClose)
+      const request = peer?.signal ? AbortSignal.any([closed.signal, peer.signal]) : closed.signal
+      const signal = AbortSignal.any([request, AbortSignal.timeout(CHECK_TIMEOUT_MS)])
+      const stopUpload = () => { if (!req.complete) req.destroy() }
+      try {
+        signal.throwIfAborted()
+        const selector = checkSelector(req.url)
+        const readOwner = async () => {
+          let policy: SandboxExecutionPolicy | undefined
+          const candidate = await checkAdmission(ctx, selector, signal, false, req.method === 'POST' ? session => {
+            policy = ctx.get?.('sandboxPolicy')?.resolve?.({ session })
+          } : undefined)
+          if (typeof candidate === 'string') throw snapshotUnavailable
+          return { owner: { ...candidate, sessionId: selector.sessionId }, policy }
+        }
+        if (req.method === 'GET') {
+          const { owner } = await readOwner()
+          const commits = await listWorktreeSnapshots(ctx, owner, signal)
+          const fresh = await readOwner()
+          if (fresh.owner.branch !== owner.branch || fresh.owner.baseCommit !== owner.baseCommit) throw missingCheck
+          signal.throwIfAborted()
+          sendJson(res, 200, { ok: true, commits })
+          return
+        }
+        if (req.headers['content-type']?.split(';')[0]?.trim().toLowerCase() !== 'application/json') throw invalidSnapshot
+        let body: any
+        signal.addEventListener('abort', stopUpload, { once: true })
+        try { body = JSON.parse(await readBody(req, 4096)) }
+        catch { throw invalidSnapshot }
+        finally { signal.removeEventListener('abort', stopUpload) }
+        if (typeof body?.commit !== 'string' || !commitId.test(body.commit) || typeof body.branch !== 'string') throw invalidSnapshot
+        const { owner, policy } = await readOwner()
+        const result = await restoreWorktreeSnapshot(ctx, owner, body.commit, body.branch, policy, async () => {
+          const fresh = await readOwner()
+          if (fresh.owner.branch !== owner.branch || fresh.owner.baseCommit !== owner.baseCommit) return undefined
+          return fresh.policy
+        }, signal)
+        if (request.aborted || res.destroyed) return
+        sendJson(res, result.ok === true ? 201 : result.reason === 'invalid-branch' ? 400 : 409, result)
+      } catch (error) {
+        if (request.aborted || res.destroyed) return
+        const failure = error === invalidCheck || error === invalidSnapshot ? invalidSnapshot : error === missingCheck ? missingCheck : snapshotUnavailable
+        sendJson(res, failure.status, { ok: false, reason: failure.reason })
+      } finally {
+        closed.abort()
+        res.off('close', onClose)
+        if (peer?.signal?.aborted && !res.destroyed) res.destroy()
+      }
+    },
+  })
+}
+
 export function registerManagedWorktreesRoute(ctx: any): void {
   registerManagedWorktreeCheckRoute(ctx)
+  registerManagedWorktreeSnapshotsRoute(ctx)
   let listManagedWorktrees = createManagedWorktreeIndex()
   let projectionGeneration: unknown
   const liveIdentities = new WeakMap<SessionReference, symbol>()
@@ -314,6 +386,7 @@ export function registerManagedWorktreesRoute(ctx: any): void {
         if (!signal.aborted && !res.destroyed) sendJson(res, 200, {
           ok: true,
           cleanupCheck: true,
+          snapshots: true,
           worktrees: worktrees.filter(worktree => canRead(worktree.sessionId)).map(worktree => ({
             ...worktree,
             ...(archived === undefined ? {} : { sessionArchived: archived.has(worktree.sessionId) }),

@@ -2,6 +2,7 @@ import React from "react";
 import { fetchJson } from "../../../../../client/http.js";
 import { CardSection } from "../../../../../client/ui/components/settings-parts/index.jsx";
 import { MANAGED_WORKTREE_CHECK_PATH, MANAGED_WORKTREES_PATH } from "../../../host/constants.js";
+import { SnapshotRecovery } from "./recovery.js";
 
 const cleanupReasons = new Map([
   ["archive-unknown", "cleanupArchiveUnknown"],
@@ -94,6 +95,7 @@ function CleanupCheck({ entry, sessionId, revision, disabled, t }: {
 export function ManagedWorktrees({ t, openSession }: Props) {
   const [entries, setEntries] = React.useState<Entry[] | null>(null);
   const [cleanupSupported, setCleanupSupported] = React.useState(false);
+  const [snapshotsSupported, setSnapshotsSupported] = React.useState(false);
   const [error, setError] = React.useState<"managedUnavailable" | "managedFailed" | null>(null);
   const [openError, setOpenError] = React.useState(false);
   const [revision, refresh] = React.useReducer((value: number) => value + 1, 0);
@@ -114,6 +116,7 @@ export function ManagedWorktrees({ t, openSession }: Props) {
         if (payload?.ok === true && Array.isArray(payload.worktrees)) {
           setEntries(payload.worktrees);
           setCleanupSupported(payload.cleanupCheck === true);
+          setSnapshotsSupported(payload.snapshots === true);
           setError(null);
         } else setError("managedFailed");
       } catch {
@@ -165,6 +168,8 @@ export function ManagedWorktrees({ t, openSession }: Props) {
               </div>}
               {cleanupSupported && sessionId && <CleanupCheck key={sessionId}
                 entry={entry} sessionId={sessionId} revision={revision} disabled={loading || !!error} t={t} />}
+              {snapshotsSupported && sessionId && sessionArchived === true && <SnapshotRecovery
+                key={JSON.stringify([sessionId, entry.branch])} entry={{ ...entry, sessionId }} disabled={loading || !!error} t={t} />}
             </li>;
           })}
         </ul>
