@@ -50,6 +50,8 @@ export interface ResizableDialogProps extends DialogOptions {
   toolbar?: any
   children?: any
   footer?: any
+  /** 列表滚动到接近底部时的回调；宠物库靠它做滚动续拉，不用分页。 */
+  onBodyScroll?: (event: any) => void
   closeLabel?: string
   resizeLabel?: string
   storageKey?: string
@@ -141,6 +143,7 @@ export function ResizableDialog({
   toolbar,
   children,
   footer,
+  onBodyScroll,
   closeLabel = 'Close',
   resizeLabel = 'Resize dialog',
   storageKey,
@@ -332,7 +335,7 @@ export function ResizableDialog({
         </button>
       </div>
       {toolbar && <div className="tk-dialogToolbar">{toolbar}</div>}
-      <div className="tk-dialogBody">{children}</div>
+      <div className="tk-dialogBody" onScroll={onBodyScroll}>{children}</div>
       {footer && <div className="tk-dialogFoot">{footer}</div>}
       <button
         type="button"
