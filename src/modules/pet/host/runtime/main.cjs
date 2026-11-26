@@ -8,7 +8,7 @@ const { pathToFileURL } = require('node:url')
 const { readEnvironment, publicState, islandGeometry, islandPlacement, islandOffset, assetPath, validatedAction, consumeEvents } = require('./core.cjs')
 const { notchForDisplay, queryNativeScreens } = require('./native.cjs')
 
-protocol.registerSchemesAsPrivileged([{ scheme: 'pet-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
+protocol.registerSchemesAsPrivileged([{ scheme: 'pet-asset', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }])
 let config
 try { config = readEnvironment(process.env) } catch { process.stderr.write('Invalid pet helper environment\n'); app.exit(1) }
 const abort = new AbortController()
@@ -165,7 +165,11 @@ app.whenReady().then(async () => {
     try {
       const file = assetPath(state, requestInfo.url)
       if (!file) return new Response('', { status: 404 })
-      return await net.fetch(pathToFileURL(file).href)
+      const response = await net.fetch(pathToFileURL(file).href)
+      // The file:// renderer has a null origin and reads sprite alpha for hit testing.
+      const headers = new Headers(response.headers)
+      headers.set('Access-Control-Allow-Origin', 'null')
+      return new Response(response.body, { status: response.status, headers })
     } catch { return new Response('', { status: 404 }) }
   })
   nativeScreens = await queryNativeScreens()
@@ -231,6 +235,20 @@ app.whenReady().then(async () => {
       report.independentHover.push({ key, onlySourceExpanded: true, allCollapsedOnLeave: true })
     }
     for (const [key, entry] of windows) {
+      if (entry.kind === 'pet') {
+        report.petHitTest = await entry.win.webContents.executeJavaScript(`(() => {
+          const box = canvas.getBoundingClientRect()
+          const button = cap.getBoundingClientRect()
+          const y = box.top + box.height / 2
+          const padding = withinPad(button.left + 2, y)
+          const transparent = withinPad(box.left + 1, box.top + 1)
+          let opaque = false
+          for (let dy = 0.25; dy < 0.8 && !opaque; dy += 0.1) {
+            opaque = withinPad(box.left + box.width / 2, box.top + box.height * dy)
+          }
+          return { padding, transparent, opaque }
+        })()`)
+      }
       if (entry.kind === 'island') {
         entry.win.setIgnoreMouseEvents(false)
         entry.win.show(); entry.win.focus()

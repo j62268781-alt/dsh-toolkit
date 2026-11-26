@@ -120,6 +120,7 @@ function setExpanded(value) {
   document.body.classList.toggle('closing', previous && !expanded)
   clearTimeout(hoverTimer)
   layout()
+  if (previous && !expanded && state?.kind === 'pet' && !drag) release()
 }
 function element(tag, text, className) { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node }
 async function action(value, button) {
@@ -308,7 +309,8 @@ function update(next) {
   document.body.toggleAttribute('data-clips', Boolean(pet && Object.keys(pet.animations || {}).length))
   preloadClips()
   if (pet && imageKey !== pet.spritesheet) {
-    imageKey = pet.spritesheet; image = new Image(); image.onload = draw; image.onerror = () => { $('error').textContent = t('error') }; image.src = imageKey
+    hitMasks.clear()
+    imageKey = pet.spritesheet; image = new Image(); image.crossOrigin = 'anonymous'; image.onload = draw; image.onerror = () => { $('error').textContent = t('error') }; image.src = imageKey
   }
   renderActivity(); layout(); animate()
 }
@@ -350,6 +352,10 @@ function showSheet() {
   if (!clip) { canvas.hidden = false; return }
   clip = ''; film.hidden = true; film.removeAttribute('src'); canvas.hidden = false
 }
+function spriteCell() {
+  const dir = look ?? gaze ?? 0
+  return motion === 'look' ? [9 + Math.floor(dir / 8), dir % 8] : [animations[motion]?.[0] || 0, frame]
+}
 function draw() {
   const playing = clipFor(motion)
   if (playing) { showFilm(playing); return }
@@ -358,8 +364,7 @@ function draw() {
   if (!image?.complete || !image.naturalWidth) return
   const rows = selectedPet()?.spriteVersionNumber === 2 ? 11 : 9
   const cw = image.naturalWidth / 8, ch = image.naturalHeight / rows
-  const dir = look ?? gaze ?? 0
-  const cell = motion === 'look' ? [9 + Math.floor(dir / 8), dir % 8] : [animations[motion]?.[0] || 0, frame]
+  const cell = spriteCell()
   ctx.drawImage(image, cell[1] * cw, cell[0] * ch, cw, ch, 0, 0, canvas.width, canvas.height)
   // 慢动作行的补间：把下一帧按进度叠在当前帧上，5 fps 的呼吸就变成连续的了。
   if (!(blend > 0) || reduced.matches || !TWEEN_ROWS.has(motion)) return
@@ -406,7 +411,13 @@ function animate() {
   if (tweening) { timer = setTimeout(animate, state.kind === 'island' ? TWEEN_STEP_ISLAND : TWEEN_STEP); return }
   timer = setTimeout(() => { frame = (frame + 1) % delays.length; animate() }, wait)
 }
-cap.onclick = () => { if (drag?.moved || !state) return; if (state.kind === 'island' && !state.sessions.length) return; setExpanded(!expanded) }
+cap.onclick = event => {
+  if (drag?.moved || !state) return
+  if (state.kind === 'island' && !state.sessions.length) return
+  if (state.kind === 'pet' && event.detail && !drag && !hitsSprite(event.clientX, event.clientY)) return
+  setExpanded(!expanded)
+  if (state.kind === 'pet') release()
+}
 surface.onpointerenter = event => {
   lastInput = performance.now()
   // 透明窗口的矩形远大于可见内容：只有指针真的落在胶囊/内容上才算「悬停」，
@@ -421,6 +432,35 @@ surface.onpointerenter = event => {
   if (inside && state?.kind === 'island' && state.sessions.length) hoverTimer = setTimeout(() => setExpanded(true), 300)
 }
 function typing() { const active = document.activeElement; return Boolean(active && active !== cap && surface.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) }
+// Only sample the sheet on demand, once per cell. Reading the animated canvas
+// on every pointer move would force repeated readbacks during the tween.
+const hitMasks = new Map()
+let maskContext
+function hitsSprite(x, y) {
+  const target = canvas.hidden ? film : canvas
+  const rect = target.getBoundingClientRect()
+  if (!rect.width || !rect.height || x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) return false
+  // Animated WebP cannot share the sheet's frame mask; its image box is the fallback handle.
+  if (target === film) return true
+  if (!image?.complete || !image.naturalWidth) return false
+  const [row, column] = spriteCell()
+  const size = 64
+  const offset = 4 * (Math.floor((y - rect.top) / rect.height * size) * size + Math.floor((x - rect.left) / rect.width * size)) + 3
+  const alpha = (col) => {
+    const key = row * 8 + col
+    if (!hitMasks.has(key)) {
+      maskContext ??= document.createElement('canvas').getContext('2d', { willReadFrequently: true })
+      const cw = image.naturalWidth / 8, ch = image.naturalHeight / (selectedPet()?.spriteVersionNumber === 2 ? 11 : 9)
+      maskContext.clearRect(0, 0, size, size)
+      maskContext.drawImage(image, col * cw, row * ch, cw, ch, 0, 0, size, size)
+      try { hitMasks.set(key, maskContext.getImageData(0, 0, size, size).data) }
+      catch { hitMasks.set(key, null) }
+    }
+    return hitMasks.get(key)?.[offset] ?? 255
+  }
+  if (alpha(column) >= 32) return true
+  return blend > 0 && !reduced.matches && TWEEN_ROWS.has(motion) && alpha((column + 1) % animations[motion][1].length) * blend * blend * (3 - 2 * blend) >= 32
+}
 // 命中区必须贴住真正画出来的东西：胶囊，展开时再加内容块，外扩 6px。
 // 透明窗口是整块矩形，命中区一旦算大，鼠标落在这块透明区域时窗口就会吃掉点击，
 // 底下别的 App 的按钮会集体失灵 —— 所以只认可见区域，宁可小不可大。
@@ -437,6 +477,12 @@ function contentRect() {
   return { left: left - 6, top: top - 6, right: right + 6, bottom: bottom + 6 }
 }
 function withinPad(x, y) {
+  if (state?.kind === 'pet') {
+    if (hitsSprite(x, y)) return true
+    if (!expanded) return false
+    const rect = activity.getBoundingClientRect()
+    return x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom
+  }
   const area = contentRect()
   return Boolean(area) && x >= area.left && x <= area.right && y >= area.top && y <= area.bottom
 }
@@ -465,10 +511,21 @@ document.addEventListener('pointermove', event => {
   }
   animate()
 })
-// 桌宠和灵动岛都按住胶囊拖动；移动超过 4px 就不再当成点击（点击仍然是展开/收起）。
-cap.onpointerdown = event => { if (!state || event.button !== 0) return; cap.setPointerCapture(event.pointerId); drag = { x:event.screenX, y:event.screenY, direction:0, moved:false }; bridge.drag('start') }
-cap.onpointerup = () => { if (!drag) return; bridge.drag('end'); setTimeout(() => { drag = null; animate() }, 0) }
-cap.onpointercancel = () => { if (drag) bridge.drag('end'); drag = null; animate() }
+// 桌宠只从角色上开始拖动；灵动岛仍用胶囊。移动超过 4px 后不再当成点击。
+cap.onpointerdown = event => {
+  if (!state || event.button !== 0 || drag) return
+  if (state.kind === 'pet' && !hitsSprite(event.clientX, event.clientY)) return
+  cap.setPointerCapture(event.pointerId)
+  drag = { x:event.screenX, y:event.screenY, direction:0, moved:false }
+  bridge.drag('start')
+}
+function clearDrag() {
+  drag = null
+  animate()
+  if (state?.kind === 'pet') release()
+}
+cap.onpointerup = () => { if (!drag) return; bridge.drag('end'); setTimeout(clearDrag, 0) }
+cap.onpointercancel = () => { if (drag) bridge.drag('end'); clearDrag() }
 document.addEventListener('keydown', event => { if (event.key === 'Escape') { document.activeElement?.blur(); setExpanded(false) } })
 window.addEventListener('blur', () => { if (!typing()) setExpanded(false) })
 document.addEventListener('visibilitychange', animate)

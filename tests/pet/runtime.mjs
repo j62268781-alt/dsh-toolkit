@@ -461,6 +461,57 @@ test('dragging the island pill moves the window instead of expanding it', async 
   fire(cap, 'click')
   assert.equal(dom.window.document.body.classList.contains('expanded'), false)
 })
+test('only visible sprite pixels start a pet drag; the open card only takes clicks', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html' })
+  t.after(() => dom.window.close())
+  const { document } = dom.window
+  const alpha = new Uint8ClampedArray(64 * 64 * 4)
+  alpha[(32 * 64 + 32) * 4 + 3] = 255
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {}, getImageData: () => ({ data: alpha }) })
+  dom.window.Image = class { complete = true; naturalWidth = 1536; naturalHeight = 2288 }
+  dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+  const drags = [], interactive = []
+  const state = { kind: 'pet', settings: { activePet: 'duck' }, pets: [{ id: 'duck', spritesheet: 'duck.webp', spriteVersionNumber: 2 }], sessions: [] }
+  dom.window.pet = { initial: async () => state, interactive: value => interactive.push(value), drag: value => drags.push(value), onState() {}, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const cap = document.getElementById('cap'), sprite = document.getElementById('sprite'), activity = document.getElementById('activity')
+  const rect = (left, top, width, height) => ({ x: left, y: top, left, top, width, height, right: left + width, bottom: top + height })
+  sprite.getBoundingClientRect = () => rect(180, 150, 128, 128)
+  activity.getBoundingClientRect = () => rect(28, 35, 280, 100)
+  cap.setPointerCapture = () => {}
+  const fire = (target, type, x, y) => {
+    const event = new dom.window.MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, screenX: x, screenY: y, detail: 1 })
+    target.dispatchEvent(event)
+  }
+  for (const [x, y] of [[50, 200], [181, 151]]) {
+    fire(cap, 'pointermove', x, y)
+    assert.equal(interactive.at(-1), false)
+    fire(cap, 'pointerdown', x, y)
+    fire(cap, 'click', x, y)
+    assert.equal(document.body.classList.contains('expanded'), false)
+  }
+  assert.deepEqual(drags, [])
+  fire(sprite, 'pointermove', 244, 214)
+  assert.equal(interactive.at(-1), true)
+  fire(sprite, 'pointerdown', 244, 214)
+  fire(cap, 'pointermove', 320, 290)
+  assert.equal(interactive.at(-1), true, 'pointer capture keeps a drag active beyond the sprite')
+  fire(cap, 'pointercancel', 320, 290)
+  assert.deepEqual(drags, ['start', 'move', 'end'])
+  assert.equal(interactive.at(-1), false)
+  fire(sprite, 'click', 244, 214)
+  assert.equal(document.body.classList.contains('expanded'), true)
+  fire(activity, 'pointermove', 60, 80)
+  assert.equal(interactive.at(-1), true)
+  fire(activity, 'pointerdown', 60, 80)
+  assert.deepEqual(drags, ['start', 'move', 'end'])
+  fire(cap, 'pointermove', 244, 143)
+  assert.equal(interactive.at(-1), false, 'gap between the panel and pet stays click-through')
+})
+
 test('island hover and collapse stay local when session updates reach both displays', async (t) => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
