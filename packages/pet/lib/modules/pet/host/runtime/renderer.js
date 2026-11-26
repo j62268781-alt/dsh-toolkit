@@ -17,6 +17,12 @@ const badges = {
   en: { running:'Working', waiting:'Needs you', completed:'New result', failed:'Failed', interrupted:'Stopped', continuable:'Can continue' },
 }
 let state, expanded = false, hovered = false, image, imageKey = '', frame = 0, motion = '', look = null, timer, hoverTimer, leaveTimer, waveUntil = performance.now() + 2600, drag = null, padChecks = 0, lastPointer = null, signature = '', clip = '', preloaded = ''
+// 精灵表是逐帧硬切的，慢动作行（呼吸、等待、收尾）跳到 60fps 也只会来回闪，所以在两帧之间做交叉淡化。
+// 跑、跳、哭这些行相邻帧差太大（平均 RGB 差 37–87），补间会拖出两条腿的重影，保持原来的硬切。
+const TWEEN_ROWS = new Set(['idle', 'waiting', 'review'])
+// 桌宠按 60 fps 补，灵动岛只有 27×29 像素、又在刘海边上，30 fps 就够且更省电。
+const TWEEN_STEP = 16, TWEEN_STEP_ISLAND = 33
+let frameStart = 0, blend = 0
 // 久坐：桌宠长时间没被打扰就放慢 idle 并偶尔瞟一眼（复用 v2 精灵表第 9–10 行的视线帧）。
 const QUIET_AFTER = 8000, GAZE_HOLD = 900, GAZE_GAP_MIN = 3200, GAZE_GAP_SPAN = 2600
 let gaze = null, gazeUntil = 0, nextGaze = 0, lastInput = performance.now()
@@ -355,6 +361,13 @@ function draw() {
   const dir = look ?? gaze ?? 0
   const cell = motion === 'look' ? [9 + Math.floor(dir / 8), dir % 8] : [animations[motion]?.[0] || 0, frame]
   ctx.drawImage(image, cell[1] * cw, cell[0] * ch, cw, ch, 0, 0, canvas.width, canvas.height)
+  // 慢动作行的补间：把下一帧按进度叠在当前帧上，5 fps 的呼吸就变成连续的了。
+  if (!(blend > 0) || reduced.matches || !TWEEN_ROWS.has(motion)) return
+  const delays = (animations[motion] || animations.idle)[1]
+  const eased = blend * blend * (3 - 2 * blend)
+  ctx.globalAlpha = eased
+  ctx.drawImage(image, ((frame + 1) % delays.length) * cw, cell[0] * ch, cw, ch, 0, 0, canvas.width, canvas.height)
+  ctx.globalAlpha = 1
 }
 function animate() {
   clearTimeout(timer)
@@ -369,9 +382,18 @@ function animate() {
   }
   if (gaze !== null && now >= gazeUntil) gaze = null
   const next = currentMotion()
-  if (motion !== next) { motion = next; frame = 0 }
+  if (motion !== next) { motion = next; frame = 0; frameStart = 0; blend = 0 }
   // 和 Qoder 一样把当前动作写进 DOM，方便配 CSS 与排查。
   document.body.dataset.motion = next
+  const delays = (animations[next] || animations.idle)[1]
+  const wait = quiet && next === 'idle' ? Math.round(delays[frame] * 1.8) : delays[frame]
+  const tweening = TWEEN_ROWS.has(next) && !reduced.matches && !clip && next !== 'look'
+  if (tweening) {
+    // 固定节拍重绘：帧长仍按 delays，帧之间靠 blend 插值，所以观感是连续呼吸而不是 5 fps 跳格。
+    if (!frameStart) { frameStart = now; blend = 0 }
+    else if (now - frameStart >= wait) { frame = (frame + 1) % delays.length; frameStart = now; blend = 0 }
+    else blend = Math.min(1, (now - frameStart) / wait)
+  }
   draw()
   if (reduced.matches) return
   // 片段自己会按 60 fps 播放，这里只需低频复核动作（悬停、拖拽、问候窗结束都会主动触发）。
@@ -381,8 +403,7 @@ function animate() {
     if (gaze !== null) timer = setTimeout(animate, Math.max(50, gazeUntil - performance.now() + 1))
     return
   }
-  const delays = (animations[next] || animations.idle)[1]
-  const wait = quiet && next === 'idle' ? Math.round(delays[frame] * 1.8) : delays[frame]
+  if (tweening) { timer = setTimeout(animate, state.kind === 'island' ? TWEEN_STEP_ISLAND : TWEEN_STEP); return }
   timer = setTimeout(() => { frame = (frame + 1) % delays.length; animate() }, wait)
 }
 cap.onclick = () => { if (drag?.moved || !state) return; if (state.kind === 'island' && !state.sessions.length) return; setExpanded(!expanded) }
