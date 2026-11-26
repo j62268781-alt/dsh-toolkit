@@ -6,6 +6,7 @@
   "description": "Deepseek的娘化形象",
   "spriteVersionNumber": 2,
   "spritesheetPath": "spritesheet.webp",
+  "animations": { "running": "motion/running.webp" },
   "author": "Petdex 社区（slug aoi-shark-maid）",
   "license": "未声明，来源与授权见 ../NOTICE.md",
   "source": "https://petdex.dev/pets/aoi-shark-maid",

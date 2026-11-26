@@ -58,7 +58,7 @@ body.pet #surface{bottom:10px;top:auto;background:transparent;border-radius:0;bo
 
 /* 60 fps 片段只负责姿态（眨眼、拍鳍、喷水）；呼吸式的上下浮动交给合成层，
    这样它在 60/120 Hz 的屏幕上按刷新率连续运动，而不是被帧数限制在每秒十几次。
-   `data-clips` 只在宠物声明了动画片段时出现，避免和第三方精灵表里烘焙的位移叠加。 */
+   `data-clips` 只用于带空闲动画片段的整套形象，工作台和精灵表姿态不叠加浮动。 */
 body[data-clips] #brand{--bob:.7px;will-change:transform}
 body[data-clips].pet #brand{--bob:calc(var(--pet-size,128px) * .025)}
 body[data-clips][data-motion="idle"] #brand,body[data-clips][data-motion="review"] #brand,body[data-clips][data-motion="waiting"] #brand,body[data-clips][data-motion="waving"] #brand,body[data-clips][data-motion="look"] #brand{animation:tk-bob 2s ease-in-out infinite}

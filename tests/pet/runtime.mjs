@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { readFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
 import { JSDOM } from 'jsdom'
 const require = createRequire(import.meta.url)
 const { readEnvironment, publicState, islandGeometry, islandAnchor, islandPlacement, islandOffset, assetPath, validatedAction, consumeEvents } = require('../../src/modules/pet/host/runtime/core.cjs')
@@ -22,15 +23,16 @@ function webpSize(buffer) {
   return [0, 0]
 }
 
-function webpFrameCount(buffer) {
-  if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WEBP') return 0
-  let count = 0
+function webpAnimation(buffer) {
+  let frames = 0, duration = 0, loop
   for (let offset = 12; offset + 8 <= buffer.length;) {
     const size = buffer.readUInt32LE(offset + 4)
-    if (buffer.toString('ascii', offset, offset + 4) === 'ANMF') count++
+    const id = buffer.toString('ascii', offset, offset + 4)
+    if (id === 'ANIM') loop = buffer.readUInt16LE(offset + 12)
+    if (id === 'ANMF') { frames++; duration += buffer.readUIntLE(offset + 20, 3) }
     offset += 8 + size + (size & 1)
   }
-  return count
+  return { frames, duration, loop }
 }
 
 test('helper only accepts authenticated loopback origin and valid host pid', () => {
@@ -47,6 +49,26 @@ test('bundled pet ships a v2 sheet of 8 columns × 11 rows at 192×208 per cell'
   const [width, height] = webpSize(await readFile(new URL(manifest.spritesheetPath, dir)))
   assert.equal(width, 192 * 8)
   assert.equal(height, 208 * 11)
+})
+
+test('bundled DeepSeek work clip routes to a 4.8-second animated WebP', async () => {
+  const dir = new URL('../../src/modules/pet/host/runtime/pets/aoi-shark-maid/', import.meta.url)
+  const manifest = JSON.parse(await readFile(new URL('pet.json', dir), 'utf8'))
+  const id = manifest.id
+  const state = { settings: { activePet: id }, pets: [{ id, assetDir: fileURLToPath(dir), manifest, sheetFile: manifest.spritesheetPath }] }
+  const source = publicState(state, 'pet', { bounds: { width: 1000, height: 800 } }).pets[0].animations
+  assert.deepEqual(Object.keys(source).sort(), ['running'])
+  for (const [motion, expectedDuration, expectedLoop] of [['running', 4800, 0]]) {
+    assert.equal(source[motion], `pet-asset://pet/${id}/motion/${motion}.webp`)
+    const file = assetPath(state, source[motion])
+    assert.equal(file, fileURLToPath(new URL(`motion/${motion}.webp`, dir)).replaceAll('\\', '/'))
+    const buffer = await readFile(file)
+    assert.deepEqual(webpSize(buffer), [192, 208])
+    const { frames, duration, loop } = webpAnimation(buffer)
+    assert.ok(frames > 6)
+    assert.equal(duration, expectedDuration)
+    assert.equal(loop, expectedLoop)
+  }
 })
 
 test('renderer snapshot does not expose filesystem or Host secrets and ranks sessions', () => {
@@ -726,6 +748,17 @@ test('a pet with motion clips plays the 60 fps WebP instead of redrawing the she
   update({ ...base, pets: [pet] })
   assert.equal(film.hidden, true, 'reduced-motion users must not receive animated WebP clips')
   assert.equal(canvas.hidden, false, 'reduced-motion falls back to the sprite sheet')
+
+  reducedMotion = false
+  const workOnly = { ...base, pets: [{ ...pet, animations: { running: clips.running } }] }
+  update(workOnly)
+  assert.equal(doc.body.hasAttribute('data-clips'), false, 'a work-only clip must not make the desk bob')
+  assert.equal(film.hidden, false)
+  film.dispatchEvent(new dom.window.Event('error'))
+  assert.equal(film.hidden, true, 'a failed work clip falls back to the sheet')
+  assert.equal(canvas.hidden, false)
+  update(workOnly)
+  assert.equal(film.hidden, true, 'subsequent work updates do not retry a broken asset')
 })
 
 test('continuable, session count and progress are all readable', async (t) => {

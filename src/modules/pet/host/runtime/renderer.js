@@ -305,8 +305,8 @@ function update(next) {
   cap.title = hint
   cap.setAttribute('aria-label', status === 'idle' ? t('idle') : hint)
   const pet = selectedPet()
-  // 有动画片段的宠物把上下浮动交给 CSS 合成动画，精灵表回退路径则沿用帧里烘焙的位移。
-  document.body.toggleAttribute('data-clips', Boolean(pet && Object.keys(pet.animations || {}).length))
+  // 带空闲片段的整套形象才用 CSS 浮动。只带工作片段的工作台不浮动，其余姿态沿用精灵表。
+  document.body.toggleAttribute('data-clips', Boolean(pet?.animations?.idle))
   preloadClips()
   if (pet && imageKey !== pet.spritesheet) {
     hitMasks.clear()
@@ -329,18 +329,24 @@ function currentMotion() {
   if (!hovered && (look ?? gaze) !== null && selectedPet()?.spriteVersionNumber === 2) return 'look'
   return status
 }
-// 60 fps 动画 WebP：宠物包在 manifest 里登记了动作片段就直接播片段（Qoder 内置宠同款做法），
-// 没登记的（第三方 Petdex 宠物）以及 reduced-motion 才回退到精灵表逐帧绘制。
+// 已登记的动作优先播放动画 WebP；减少动态效果、未登记或加载失败则用精灵表。
+const failedClips = new Set()
 function clipFor(name) {
   if (reduced.matches) return ''
-  const map = selectedPet()?.animations
-  return map && typeof map === 'object' ? map[name] || '' : ''
+  const source = selectedPet()?.animations?.[name]
+  return source && !failedClips.has(source) ? source : ''
+}
+film.crossOrigin = 'anonymous'
+film.onerror = () => {
+  if (!clip) return
+  failedClips.add(clip)
+  animate()
 }
 function preloadClips() {
   const pet = selectedPet(), key = pet?.id || ''
   if (preloaded === key) return
   preloaded = key
-  for (const source of Object.values(pet?.animations || {})) { const warm = new Image(); warm.src = source }
+  for (const source of Object.values(pet?.animations || {})) { const warm = new Image(); warm.crossOrigin = 'anonymous'; warm.src = source }
 }
 function showFilm(source) {
   if (clip !== source) { clip = source; film.src = source }
@@ -400,7 +406,7 @@ function animate() {
   }
   draw()
   if (reduced.matches) return
-  // 片段自己会按 60 fps 播放，这里只需低频复核动作（悬停、拖拽、问候窗结束都会主动触发）。
+  // 片段自行播放，这里只需低频复核动作（悬停、拖拽、问候窗结束都会主动触发）。
   if (clip) { timer = setTimeout(animate, 400); return }
   if (next === 'look') {
     // 视线帧是静止的：只有久坐张望才需要自己排一个定时器收尾。
@@ -431,32 +437,34 @@ surface.onpointerenter = event => {
   if (inside && state?.kind === 'island' && state.sessions.length) hoverTimer = setTimeout(() => setExpanded(true), 300)
 }
 function typing() { const active = document.activeElement; return Boolean(active && active !== cap && surface.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) }
-// Only sample the sheet on demand, once per cell. Reading the animated canvas
-// on every pointer move would force repeated readbacks during the tween.
+// Cache the alpha mask per sheet cell or clip poster; don't read back on every pointer move.
 const hitMasks = new Map()
+const MASK_SIZE = 64
 let maskContext
+function hitMask(key, source, x, y, width, height) {
+  if (!hitMasks.has(key)) {
+    maskContext ??= document.createElement('canvas').getContext('2d', { willReadFrequently: true })
+    maskContext.clearRect(0, 0, MASK_SIZE, MASK_SIZE)
+    maskContext.drawImage(source, x, y, width, height, 0, 0, MASK_SIZE, MASK_SIZE)
+    try { hitMasks.set(key, maskContext.getImageData(0, 0, MASK_SIZE, MASK_SIZE).data) }
+    catch { hitMasks.set(key, null) }
+  }
+  return hitMasks.get(key)
+}
 function hitsSprite(x, y) {
   const target = canvas.hidden ? film : canvas
   const rect = target.getBoundingClientRect()
   if (!rect.width || !rect.height || x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) return false
-  // Animated WebP cannot share the sheet's frame mask; its image box is the fallback handle.
-  if (target === film) return true
+  const offset = 4 * (Math.floor((y - rect.top) / rect.height * MASK_SIZE) * MASK_SIZE + Math.floor((x - rect.left) / rect.width * MASK_SIZE)) + 3
+  if (target === film) {
+    if (!film.complete || !film.naturalWidth) return false
+    // Canvas samples the default frame of an animated image. The workstation's furniture and body stay in place.
+    return (hitMask(clip, film, 0, 0, film.naturalWidth, film.naturalHeight)?.[offset] ?? 0) >= 32
+  }
   if (!image?.complete || !image.naturalWidth) return false
   const [row, column] = spriteCell()
-  const size = 64
-  const offset = 4 * (Math.floor((y - rect.top) / rect.height * size) * size + Math.floor((x - rect.left) / rect.width * size)) + 3
-  const alpha = (col) => {
-    const key = row * 8 + col
-    if (!hitMasks.has(key)) {
-      maskContext ??= document.createElement('canvas').getContext('2d', { willReadFrequently: true })
-      const cw = image.naturalWidth / 8, ch = image.naturalHeight / (selectedPet()?.spriteVersionNumber === 2 ? 11 : 9)
-      maskContext.clearRect(0, 0, size, size)
-      maskContext.drawImage(image, col * cw, row * ch, cw, ch, 0, 0, size, size)
-      try { hitMasks.set(key, maskContext.getImageData(0, 0, size, size).data) }
-      catch { hitMasks.set(key, null) }
-    }
-    return hitMasks.get(key)?.[offset] ?? 255
-  }
+  const cw = image.naturalWidth / 8, ch = image.naturalHeight / (selectedPet()?.spriteVersionNumber === 2 ? 11 : 9)
+  const alpha = col => hitMask(row * 8 + col, image, col * cw, row * ch, cw, ch)?.[offset] ?? 255
   if (alpha(column) >= 32) return true
   return blend > 0 && !reduced.matches && TWEEN_ROWS.has(motion) && alpha((column + 1) % animations[motion][1].length) * blend * blend * (3 - 2 * blend) >= 32
 }
