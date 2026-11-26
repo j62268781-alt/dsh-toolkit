@@ -9,7 +9,9 @@
   "animations": {
     "running": "motion/running.webp",
     "approval": "motion/approval.webp",
-    "question": "motion/question.webp"
+    "question": "motion/question.webp",
+    "review": "motion/review.webp",
+    "failed": "motion/failed.webp"
   },
   "author": "Petdex 社区（slug aoi-shark-maid）",
   "license": "未声明，来源与授权见 ../NOTICE.md",
