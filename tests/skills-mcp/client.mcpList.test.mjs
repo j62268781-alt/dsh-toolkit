@@ -20,6 +20,22 @@ const row = (entryId, serverName, scope, target = `https://${serverName}.invalid
   enabled: true, phase: 'active',
 })
 
+test('导入扫描失败：错误留在导入卡片上，不重复弹 toast', { skip: skipWithoutBundle() }, async () => {
+  const reason = '无法读取来源配置文件'
+  const panel = await bootPanel(emptyDoc({ importResultPayload: { ok: false, files: [], servers: [], error: reason } }))
+  try {
+    panel.click(panel.byText('选择来源'))
+    panel.click(panel.byText('扫描'))
+    await panel.settle()
+    assert.deepEqual(panel.findAll((node) => node.props.role === 'alert').map(textOf), [reason])
+    assert.deepEqual(panel.toasts(), [])
+    assert.equal(panel.findAll((node) => textOf(node).startsWith('新增 0 个')).length, 0)
+    assert.equal(panel.byText('扫描').props.disabled, false)
+  } finally {
+    panel.restore()
+  }
+})
+
 const GLOBAL_ROW = row('mcp-context7', 'context7', '')
 const PROJECT_ROW = row('mcp-gitnexus', 'gitnexus', '/p/tcl', 'http://x/mcp/coding')
 

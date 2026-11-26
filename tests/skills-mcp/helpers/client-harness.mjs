@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
 /** Built client bundle, relative to the repository root. */
-export const BUNDLE = join(here, '..', '..', '..', 'lib', 'modules', 'skills-mcp', 'client.js')
+export const BUNDLE = process.env.DSH_SKILLS_MCP_TEST_BUNDLE ?? join(here, '..', '..', '..', 'lib', 'modules', 'skills-mcp', 'client.js')
 /** Skip reason for a test that needs the bundle, or `false` when it is present. */
 export const skipWithoutBundle = () => (existsSync(BUNDLE) ? false : '缺少 lib/modules/skills-mcp/client.js（先跑 pnpm build:client）')
 

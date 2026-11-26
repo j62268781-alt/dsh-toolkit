@@ -164,7 +164,7 @@ export function skillDialogView({
       {pending ? (
         <div className="smp-pendingHint" key="pending">正在与磁盘同步…</div>
       ) : null}
-      {error !== '' ? <div className="smp-error" key="err" style={{ marginTop: 8 }}>{error}</div> : null}
+      {error !== '' ? <div className="smp-error" role="alert" key="err" style={{ marginTop: 8 }}>{error}</div> : null}
       </div>
     </Modal>
   )

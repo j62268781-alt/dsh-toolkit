@@ -413,6 +413,34 @@ test('新增服务器后立刻出现第三张卡片（不等投影回传）', { 
   }
 })
 
+test('编辑失败：保留草稿和内联错误，不重复弹 toast，允许重试', { skip: skipWithoutBundle() }, async () => {
+  const reason = '配置行暂时无法写入'
+  const panel = await bootPanel(emptyDoc({ profileServers: [PROFILE_ROW], rowCommandResult: { ok: false, reason } }))
+  try {
+    panel.click(panel.find((node) => node.props.className === 'smp-moreTrigger'))
+    panel.click(panel.byText('编辑'))
+    const name = panel.byPlaceholder('例如 test，最多 32 字符')
+    panel.change(name, 'keep-draft')
+    panel.click(panel.byText('保存到配置行'))
+    assert.equal(panel.byText('保存中…').props.disabled, true)
+    await panel.settle()
+
+    assert.equal(panel.byPlaceholder('例如 test，最多 32 字符').props.value, 'keep-draft')
+    const alerts = panel.findAll((node) => node.props.role === 'alert')
+    assert.deepEqual(alerts.map(textOf), [reason])
+    assert.deepEqual(panel.toasts(), [])
+
+    panel.doc.rowCommandResult = { ok: true, servers: [PROFILE_ROW] }
+    panel.click(panel.byText('保存到配置行'))
+    await panel.settle()
+    assert.equal(panel.doc.rowCommands.length, 2)
+    assert.equal(panel.doc.rowCommands[1].serverName, 'keep-draft')
+    assert.equal(panel.byText('保存到配置行'), null)
+  } finally {
+    panel.restore()
+  }
+})
+
 test('新增遇到 500：拦截重复提交、保留草稿并显示错误，允许重试', { skip: skipWithoutBundle() }, async () => {
   /**
    * 原来写的是 `if (!response.ok) throw ...`，而那个 throw 被外层 catch 接住、落进
@@ -458,9 +486,7 @@ test('新增遇到 500：拦截重复提交、保留草稿并显示错误，允�
     const alerts = inside(modal, (node) => node.props.role === 'alert')
     assert.equal(alerts.length, 1, '弹窗内应有内联错误提醒')
     assert.match(textOf(alerts[0]), /patch 被占用/)
-    const reported = panel.toasts().filter((entry) => entry.tone === 'error')
-    assert.equal(reported.length, 1, '必须保留错误 toast')
-    assert.match(reported[0].text, /patch 被占用/, '必须把 Host 的失败原因显示出来')
+    assert.deepEqual(panel.toasts(), [], '弹窗已显示 Host 原因，不重复弹 toast')
     assert.equal(panel.byPlaceholder('例如 test，最多 32 字符')?.props.value, 'broken')
     assert.equal(panel.byPlaceholder('https://…/mcp')?.props.value, 'https://x.invalid/mcp')
     assert.equal(disclosure(panel, '认证请求头', 'Authorization=').props.value, 'Authorization=Bearer retry')

@@ -107,10 +107,12 @@ export function importCardView({
               {`${file.exists ? "✓" : "✗"} ${file.path}${file.exists ? ` · 识别 ${file.servers.length} 个${file.unsupported > 0 ? `（${file.unsupported} 个形态不支持）` : ""}` : " · 文件不存在"}${file.error !== null && file.error !== "" ? ` · ${file.error}` : ""}`}
             </div>
           ))}
-          {result.error !== null && result.error !== "" ? <div className="smp-error" key="err">{result.error}</div> : null}
-          <div className="smp-cardDescription" key="sum">
-            {`新增 ${freshServers.length} 个：${freshServers.map((server) => server.serverName).join("、") || "—"}`}
-          </div>
+          {result.error ? <div className="smp-error" role="alert" key="err">{result.error}</div> : null}
+          {result.ok === false ? null : (
+            <div className="smp-cardDescription" key="sum">
+              {`新增 ${freshServers.length} 个：${freshServers.map((server) => server.serverName).join("、") || "—"}`}
+            </div>
+          )}
           {skippedServers.length > 0 ? (
             <div className="smp-cardDescription" key="skip">
               {`已存在 ${skippedServers.length} 个（跳过，不覆盖）：${skippedServers.map((server) => server.serverName).join("、")}`}

@@ -39,6 +39,7 @@
 .smp-addServerDialog .smp-addServerContent{min-block-size:0;overflow:auto;overscroll-behavior:contain}
 .smp-addServerBody{container:smp-add-server / inline-size}
 .smp-addServerBody fieldset{border:0;margin:0;padding:2px;min-inline-size:0}
+.smp-inlineServerFields{border:0;margin:0;padding:0;min-inline-size:0}
 .smp-addServerBody :is(.smp-input,.smp-select){inline-size:100%;min-inline-size:0}
 .smp-addServerExtras{grid-column:1 / -1;border-top:.5px solid var(--dsw-alias-border-l2);padding-block-start:8px}
 .smp-addServerExtras summary{cursor:pointer;font-size:13px;color:var(--dsw-alias-label-secondary);padding-block:4px}
@@ -100,7 +101,6 @@
 .smp-menuItem:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .smp-menuItem:disabled{opacity:.5;cursor:default}
 .smp-menuItem[data-variant=danger]{color:var(--dsw-alias-state-error-primary,#d92d20)}
-.smp-menuError{display:block;padding:4px 10px;font-size:11px;line-height:16px;color:var(--dsw-alias-state-error-primary,#d92d20);white-space:normal;max-width:220px}
 .smp-reconnect{display:inline-flex;align-items:center;gap:6px}
 .smp-reconnect .smp-error{max-width:280px;white-space:normal}
 /* 展开区里的工具清单：数据来自 harness 工具注册表，只读展示。

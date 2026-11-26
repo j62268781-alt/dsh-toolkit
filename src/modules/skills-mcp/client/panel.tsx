@@ -68,10 +68,9 @@ export function createPanel(React, primitives) {
     const [draft, setDraft] = useState({})
     const [scopeDraft, setScopeDraft] = useState({ value: '', custom: false })
     const [busy, setBusy] = useState(false)
-    const [error, setError] = useState('')
-    const [addError, setAddError] = useState('')
-    const [addPending, setAddPending] = useState(false)
-    const addPendingRef = useRef(false)
+    const [serverFormError, setServerFormError] = useState('')
+    const [serverFormPending, setServerFormPending] = useState(false)
+    const serverFormPendingRef = useRef(false)
     const [confirming, setConfirming] = useState('')
     const [deleteDialog, setDeleteDialog] = useState(null)
     const [reconnectState, setReconnectState] = useState({})
@@ -91,9 +90,6 @@ export function createPanel(React, primitives) {
     const [skillDialog, setSkillDialog] = useState(null)
     const [skillDraft, setSkillDraft] = useState({ name: "", description: "", body: "" })
     const [skillError, setSkillError] = useState("")
-    // 一次性失败同时进全局 toast：卡片里那行红字会把下面整段设置往下顶，而模态框里仍留着就地的一份。
-    const fail = (message: string) => { setError(message); toast.error(message) }
-    const failSkill = (message: string) => { setSkillError(message); toast.error(message) }
     const [skillNonce, setSkillNonce] = useState("")
     const skillSentAtRef = useRef(0)
     // Reset only when opening or closing a dialog; an active save keeps its markers.
@@ -115,7 +111,7 @@ export function createPanel(React, primitives) {
           setRemovedKeys((list) => hideSkillUntilGone(list, target.name, target.scopeKey))
         }
       } else {
-        failSkill(String(delResult?.reason ?? "删除失败"))
+        toast.error(String(delResult?.reason ?? "删除失败"))
         if (target !== null) setOptimistic((list) => dropOptimisticSkill(list, target.name))
       }
       deleteTargetRef.current = null
@@ -162,7 +158,7 @@ export function createPanel(React, primitives) {
       const timer = setTimeout(() => {
         setSkillPendingPath("")
         setDeletePending(false)
-        failSkill("删除没有回执（应用可能正在重载），请刷新后再确认一次")
+        toast.error("删除没有回执（应用可能正在重载），请刷新后再确认一次")
       }, 15000)
       return () => clearTimeout(timer)
     }, [skillPendingPath])
@@ -172,7 +168,7 @@ export function createPanel(React, primitives) {
         editBodyTaskRef.current.invalidate()
         setEditBodyPending(false)
         setEditBodyNonce("")
-        failSkill("读取正文没有回执（应用可能正在重载），请关掉重开一次")
+        setSkillError("读取正文没有回执（应用可能正在重载），请关掉重开一次")
       }, 15000)
       return () => clearTimeout(timer)
     }, [editBodyPending, editBodyNonce])
@@ -259,7 +255,7 @@ export function createPanel(React, primitives) {
         scanTaskRef.current.invalidate()
         setScanPending(false)
         setScanNonce('')
-        fail('扫描超时')
+        setImportScan({ ok: false, source: importSource, scope: importScope, project: importProject, files: [], servers: [], error: '扫描超时' })
       }, 15000)
       return () => clearTimeout(timer)
     }, [scanPending, scanNonce])
@@ -384,7 +380,6 @@ export function createPanel(React, primitives) {
 
     async function write(field_, value) {
       setBusy(true)
-      setError('')
       try {
         if (typeof form?.set === 'function') await acceptConfigWrite(() => form.set(field_, value), field_)
         else if (typeof props.mutate === 'function') await acceptConfigWrite(() => props.mutate(props.entryId ?? NS, [{ op: 'set', path: ROOT_ENTRIES.includes(props.entryId) ? ['skillsMcp', field_] : [field_], value }]), field_)
@@ -392,7 +387,7 @@ export function createPanel(React, primitives) {
         refresh()
         bumpRefresh()
       } catch (cause) {
-        fail(String(cause?.message ?? cause))
+        toast.error(String(cause?.message ?? cause))
       } finally {
         setBusy(false)
       }
@@ -464,33 +459,26 @@ export function createPanel(React, primitives) {
       const RECONNECTABLE = new Set(['gave-up', 'failed', 'retrying', 'pending'])
       if (!lazyEnabled && (item === null || !RECONNECTABLE.has(item.status))) return null
       const key = JSON.stringify([tier, scope, serverName]);
-      const state = reconnectState[key] ?? {}
-      const waiting = state.pending === true
-      const failure = String(state.error ?? '')
-      return {
-        node: (
-          <button
-            type="button" className="smp-menuItem" key="reconnect" disabled={busy || waiting}
-            onClick={() => {
-              setReconnectState((current) => ({ ...current, [key]: { pending: true, error: '' } }))
-              void sendReconnect({ tier, serverName, scope: scope ?? '' }).then((result) => {
-                setReconnectState((current) => ({
-                  ...current,
-                  [key]: { pending: false, error: result.ok ? '' : String(result.reason ?? (lazyEnabled ? "刷新工具清单失败" : "重连失败")) },
-                }))
-                if (result.ok) bumpRefresh()
-              })
-            }}
-          >
-            {lazyEnabled ? (waiting ? "刷新工具清单中…" : "刷新工具清单") : (waiting ? "重连中…" : "重连")}
-          </button>
-        ),
-        failure,
-      }
+      const waiting = reconnectState[key] === true
+      return (
+        <button
+          type="button" className="smp-menuItem" key="reconnect" disabled={busy || waiting}
+          onClick={() => {
+            setReconnectState((current) => ({ ...current, [key]: true }))
+            void sendReconnect({ tier, serverName, scope: scope ?? '' }).then((result) => {
+              setReconnectState((current) => ({ ...current, [key]: false }))
+              if (result?.ok) bumpRefresh()
+              else toast.error(String(result?.reason || (lazyEnabled ? "刷新工具清单失败" : "重连失败")))
+            })
+          }}
+        >
+          {lazyEnabled ? (waiting ? "刷新工具清单中…" : "刷新工具清单") : (waiting ? "重连中…" : "重连")}
+        </button>
+      )
     }
 
     // Confirmed optimistic rows remain until the runtime projection catches up.
-    const commandRowOp = (op, entryId) => {
+    const commandRowOp = (op, entryId, onFailure: (reason: string) => void = toast.error) => {
       const key = inflightKeyForRow(entryId)
       return sendRowOp(op).then((result) => {
         if (result.ok) {
@@ -506,7 +494,7 @@ export function createPanel(React, primitives) {
           delete next[key]
           return next
         })
-        fail(result.reason)
+        onFailure(result.reason)
         return result
       })
     }
@@ -580,15 +568,15 @@ export function createPanel(React, primitives) {
         mcp: profileRows.length,
         skills: discoveredOnly.length,
       },
-      onSelect: (next) => { setTab(next); setEditing(null); setExpanded('') },
+      onSelect: (next) => { if (!serverFormPendingRef.current) { setTab(next); setEditing(null); setExpanded('') } },
     })
 
     const mcpAddButton = () => (
       <button
         className="smp-button" data-variant="primary" key="add" disabled={busy}
         onClick={() => {
-          if (addPendingRef.current) return
-          setAddError("")
+          if (serverFormPendingRef.current) return
+          setServerFormError("")
           setEditing({ kind: "mcp", tier: "global", id: undefined })
           setDraft({
             transport: "streamable-http",
@@ -735,12 +723,14 @@ export function createPanel(React, primitives) {
         </button>
       ) : null
       const menuItems = [
-        reconnect === null ? null : reconnect.node,
+        reconnect,
         oauthMenuItem,
         <button
           className="smp-menuItem" key="edit" disabled={busy}
           onClick={() => {
+            if (serverFormPendingRef.current) return
             setMenuFor('')
+            setServerFormError("")
             setEditing({ kind: "mcp", tier, profile: row.entryId, id: row.entryId, original: row })
             setDraft(draftFromRow(row))
             const rowScope = row.scope && row.scope !== 'global' ? row.scope : ''
@@ -774,9 +764,6 @@ export function createPanel(React, primitives) {
         >
           删除
         </button>,
-        reconnect?.failure ? (
-          <span className="smp-menuError" key="reconnectError">{reconnect.failure}</span>
-        ) : null,
       ]
       return profileCardView({
         row, tier, rowKey, rowOpen, rowStatusScope, setExpanded, scopeTagLabel, statusDot,
@@ -799,18 +786,12 @@ export function createPanel(React, primitives) {
         setImportScan(null)
         setScanPending(true)
         setScanNonce(nonce)
-        setError("")
         void scanImport({ ...target, signal: task.signal }).then((payload) => {
           if (!task.isCurrent()) return
-          setImportScan({ ...payload, ...target })
+          const error = payload?.ok === true ? payload.error : String(payload?.error || "扫描失败")
+          setImportScan({ files: [], servers: [], ...payload, ...target, error })
           setScanPending(false)
           setScanNonce("")
-          if (payload?.ok !== true) fail(String(payload?.error ?? "扫描失败"))
-        }).catch((error) => {
-          if (!task.isCurrent()) return
-          setScanPending(false)
-          setScanNonce("")
-          fail(String(error?.message ?? error))
         })
       },
       onImport: ({ scope, target, result }) => {
@@ -829,7 +810,7 @@ export function createPanel(React, primitives) {
             env: server.env ?? "", headers: server.headers ?? "",
             scope: scope === "global" ? "" : target,
             scopeChanged: scope !== "global",
-          })).then((outcome) => { if (!outcome.ok) fail(outcome.reason) })
+          })).then((outcome) => { if (!outcome.ok) toast.error(outcome.reason) })
         }
         setImportScan(null)
       },
@@ -840,13 +821,22 @@ export function createPanel(React, primitives) {
       const compact = profileEntry === null
       return serverFormView({
         tier, editing, draft, setDraft, scopeDraft, setScopeDraft, projectChoices,
-        error: compact ? addError : error, busy, switchControl, compact, primitives,
-        pending: compact && addPending,
+        error: serverFormError, busy, switchControl, compact, primitives,
+        pending: serverFormPending,
         onCancel: () => {
-          if (compact && addPendingRef.current) return
+          if (serverFormPendingRef.current) return
           editBodyTaskRef.current.invalidate(); setEditBodyPending(false); setEditBodyNonce(""); setEditing(null)
         },
         onSave: () => {
+          if (serverFormPendingRef.current) return
+          serverFormPendingRef.current = true
+          setServerFormPending(true)
+          setServerFormError("")
+          const finish = (result) => {
+            serverFormPendingRef.current = false
+            setServerFormPending(false)
+            if (result.ok) setEditing(null)
+          }
           const transport = draft.transport ?? "streamable-http"
           if (profileEntry !== null) {
             setInflight((m) => ({ ...m, [inflightKeyForRow(profileEntry)]: { kind: "update", at: Date.now(), expectName: draft.serverName ?? "" } }))
@@ -858,12 +848,8 @@ export function createPanel(React, primitives) {
               args: transport === "stdio" ? String(draft.args ?? "") : "",
               env: transport === "stdio" ? String(draft.env ?? "") : "",
               headers: transport === "stdio" ? "" : String(draft.headers ?? ""),
-            }, editing.original), profileEntry)
+            }, editing.original), profileEntry, setServerFormError).then(finish)
           } else {
-            if (addPendingRef.current) return
-            addPendingRef.current = true
-            setAddPending(true)
-            setAddError("")
             const optimisticKey = inflightKeyForRow(rowEntryId(draft.serverName))
             setInflight((m) => ({
               ...m,
@@ -882,15 +868,8 @@ export function createPanel(React, primitives) {
               headers: transport === "stdio" ? "" : String(draft.headers ?? ""),
               scope: scopeDraft.value,
               scopeChanged: true,
-            }), optimisticKey).then((result) => {
-              addPendingRef.current = false
-              setAddPending(false)
-              if (result.ok) setEditing(null)
-              else setAddError(result.reason)
-            })
-            return
+            }), optimisticKey, setServerFormError).then(finish)
           }
-          setEditing(null)
         },
       })
     }
@@ -1023,7 +1002,7 @@ export function createPanel(React, primitives) {
         }))
         setEditBodyPending(false)
         setEditBodyNonce("")
-        if (result.ok !== true) failSkill(String(result.reason ?? "读取正文失败"))
+        if (result.ok !== true) setSkillError(String(result.reason ?? "读取正文失败"))
       })
     }
 
@@ -1097,7 +1076,7 @@ export function createPanel(React, primitives) {
             bumpRefresh()
             return
           }
-          failSkill(String(result.reason ?? "写入失败"))
+          setSkillError(String(result.reason ?? "写入失败"))
         })
       },
     })

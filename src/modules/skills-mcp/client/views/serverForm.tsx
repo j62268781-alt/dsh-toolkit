@@ -363,8 +363,8 @@ export function serverFormView({
   return (
     <li className="smp-card" key="form" data-wide="true">
       <div className="smp-cardDetails" key="body">
-        {fields}
-        {error ? <div className="smp-error" role={compact ? "alert" : undefined} key="err" style={{ marginTop: 8 }}>{error}</div> : null}
+        <fieldset className="smp-inlineServerFields" disabled={pending}>{fields}</fieldset>
+        {error ? <div className="smp-error" role="alert" key="err" style={{ marginTop: 8 }}>{error}</div> : null}
         {profileEntry !== null ? (
           <p className="smp-note" key="note" style={{ marginTop: 8 }}>
             {`改的是配置文件行 ${profileEntry.replace(/^include:/, "")}，Host 会写回 profile patch（自动备份）。`}
@@ -376,9 +376,9 @@ export function serverFormView({
             disabled={busy || pending || (!compact && !draft.serverName)}
             onClick={save}
           >
-            {profileEntry !== null ? "保存到配置行" : "保存"}
+            {pending ? "保存中…" : profileEntry !== null ? "保存到配置行" : "保存"}
           </button>
-          <button className="smp-button" data-variant="outline" key="cancel" onClick={onCancel}>
+          <button className="smp-button" data-variant="outline" key="cancel" disabled={pending} onClick={onCancel}>
             取消
           </button>
         </div>

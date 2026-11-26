@@ -171,29 +171,27 @@ test('开关：点一下把 toggle 命令发给 Host（乐观显示为关，无�
   }
 })
 
-test('开关：Host 拒绝时回滚乐观状态并说明原因', { skip: skipWithoutBundle() }, async () => {
-  /**
-   * 乐观 UI 只有在**失败可见**时才诚实。卡片/开关在点击瞬间就动了，所以被拒绝的命令必须
-   * 把它放回去 —— 否则用户看到的是一个配置文件里并不存在的状态，比原来的等待更糟。
-   */
-  const panel = await bootPanel(emptyDoc({
-    profileServers: [project()], currentWorkspace: '/p/tcl', rowOpsReady: true, reconnectReady: true,
-    serverStatus: [statusEntry()],
-    rowCommandResult: { ok: false, reason: 'row "mcp-gitnexus" not found in the profile patch' },
-  }))
-  try {
-    panel.click(findSwitch(panel))
-    await panel.settle()
-    assert.equal(findSwitch(panel).props['aria-checked'], true, '命令失败后开关应回到原状态')
-    // 原因走全局 toast：卡片收起时页面里没有那一行文案，而列表高度一旦被文案顶开就会跳。
-    assert.ok(
-      panel.toasts().some((entry) => entry.tone === 'error' && /not found in the profile patch/.test(entry.text)),
-      '失败原因要显示出来',
-    )
-  } finally {
-    panel.restore()
-  }
-})
+for (const enabled of [true, false]) {
+  test(`开关：${enabled ? '停用' : '启用'}被 Host 拒绝时回滚并只弹 toast`, { skip: skipWithoutBundle() }, async () => {
+    const reason = 'row "mcp-gitnexus" not found in the profile patch'
+    const panel = await bootPanel(emptyDoc({
+      profileServers: [project({ enabled })], currentWorkspace: '/p/tcl', rowOpsReady: true, reconnectReady: true,
+      serverStatus: [statusEntry()], rowCommandResult: { ok: false, reason },
+    }))
+    try {
+      panel.click(findSwitch(panel))
+      assert.equal(findSwitch(panel).props['aria-checked'], !enabled, '等待回执时仍乐观更新')
+      await panel.settle()
+      assert.equal(findSwitch(panel).props['aria-checked'], enabled, '命令失败后开关应回到原状态')
+      assert.deepEqual(panel.toasts(), [{ tone: 'error', text: reason }])
+      openMenuText(panel)
+      panel.click(panel.byText('编辑'))
+      assert.doesNotMatch(bodyText(panel), /not found in the profile patch/, '开关错误不能串进后来打开的编辑表单')
+    } finally {
+      panel.restore()
+    }
+  })
+}
 
 test('重连在 popup 里：点了 POST /reconnect（带 tier/scope）', { skip: skipWithoutBundle() }, async () => {
   const panel = await bootPanel(emptyDoc({
@@ -267,7 +265,32 @@ test('重连：Host 没有路由时，点击后把失败原因显示出来（不
     panel.click(panel.findAll((node) => String(node.props.className ?? '') === 'smp-moreTrigger')[0])
     panel.click(panel.byText('重连'))
     await panel.settle()
-    assert.match(panel.text(), /没有重连路由/, 'Host 不支持时要把原因显示出来')
+    assert.equal(panel.toasts().length, 1)
+    assert.equal(panel.toasts()[0].tone, 'error')
+    assert.match(panel.toasts()[0].text, /没有重连路由/)
+    assert.doesNotMatch(bodyText(panel), /没有重连路由/, '失败原因不能留在菜单或卡片里')
+    assert.match(statusTextOf(panel, 'danger'), /已放弃重试/, '连接诊断仍显示在卡片上')
+    assert.equal(panel.byText('重连').props.disabled, false, '失败后能重试')
+  } finally {
+    panel.restore()
+  }
+})
+
+test('按需启动：刷新工具清单失败只弹 toast，连接诊断保留', { skip: skipWithoutBundle() }, async () => {
+  const panel = await bootPanel(emptyDoc({
+    profileServers: [project({ lazy: true })], currentWorkspace: '/p/tcl',
+    serverStatus: [statusEntry({ status: 'lazy-idle', detail: '工具清单来自缓存' })],
+    reconnectResult: { ok: false },
+  }))
+  try {
+    openMenuText(panel)
+    panel.click(panel.byText('刷新工具清单'))
+    assert.equal(panel.byText('刷新工具清单中…').props.disabled, true)
+    await panel.settle()
+    assert.deepEqual(panel.toasts(), [{ tone: 'error', text: '刷新工具清单失败' }])
+    assert.doesNotMatch(bodyText(panel), /刷新工具清单失败/)
+    assert.equal(panel.byText('刷新工具清单').props.disabled, false)
+    assert.equal(panel.find((node) => node.props.className === 'smp-status').props.title, '工具清单来自缓存')
   } finally {
     panel.restore()
   }
