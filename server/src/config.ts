@@ -180,3 +180,27 @@ export function normalizeTransports(value: unknown): TransportName[] {
   if (!names.includes('relay')) names.push('relay')
   return names
 }
+
+const LOCAL_ATTENTION_WEBHOOK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]'])
+
+/** Validate the optional target without echoing a URL that may contain secrets. */
+export function parseAttentionWebhookUrl(value: unknown): URL | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'string') throw new Error('Invalid DSH_SERVER_ATTENTION_WEBHOOK_URL: expected a URL string.')
+  const trimmed = value.trim()
+  if (trimmed === '') return undefined
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    throw new Error('Invalid DSH_SERVER_ATTENTION_WEBHOOK_URL: malformed URL.')
+  }
+  if (parsed.username !== '' || parsed.password !== '') {
+    throw new Error('Invalid DSH_SERVER_ATTENTION_WEBHOOK_URL: embedded credentials are not allowed.')
+  }
+  if (parsed.protocol === 'https:') return parsed
+  if (parsed.protocol === 'http:' && LOCAL_ATTENTION_WEBHOOK_HOSTS.has(parsed.hostname)) return parsed
+  throw new Error(
+    'Invalid DSH_SERVER_ATTENTION_WEBHOOK_URL: must use https: (or http://127.0.0.1, http://localhost, or http://[::1]).',
+  )
+}

@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { deviceRegistrationRequestSchema, deviceRefreshRequestSchema, parseWireJson } from './protocol/index.js'
 import { ApiError, Store, equal, hash, secret } from './store.js'
 import { Gateway } from './gateway.js'
+import { AttentionWebhookDispatcher, type AttentionWebhookOptions } from './attention-webhook.js'
 import { buildIceServers, parseIceConfig, type IceConfig } from './ice.js'
 import { Logger, type LogLevel } from './logger.js'
 import { PairingService, PAIRING_GUIDE_HTML, type PairingSessionKeys } from './pairing.js'
@@ -26,6 +27,7 @@ import {
   normalizeMaxFramesPerSec,
   normalizeSlowConsumerBytes,
   normalizeTransports,
+  parseAttentionWebhookUrl,
   type TransportName,
 } from './config.js'
 
@@ -46,6 +48,8 @@ export interface Config {
   /** Transport capabilities to advertise (`DSH_SERVER_TRANSPORTS`); relay is always kept. */
   transports?: readonly string[]
   ice?: IceConfig
+  attentionWebhookUrl?: string
+  attentionWebhookOptions?: Omit<AttentionWebhookOptions, 'logger'>
   /** Pairing session lifetime in ms; production keeps the protocol's 180s. */
   pairingSessionTtlMs?: number
   /** Pairing requests per minute per address; defaults follow the protocol doc. */
@@ -99,6 +103,7 @@ export {
   normalizeForceTerminateGraceMs,
   normalizeMaxFramesPerSec,
   normalizeSlowConsumerBytes,
+  parseAttentionWebhookUrl,
   HELLO_TIMEOUT_MS_RANGE,
   HEARTBEAT_INTERVAL_MS_RANGE,
   HEARTBEAT_DISCONNECT_MS_MAX,
@@ -211,6 +216,7 @@ export function createRemoteServer(config: Config) {
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('DSH_SERVER_PUBLIC_URL must be an HTTP(S) origin.')
   const trustedProxyIps = normalizeTrustedProxyIps(config.trustedProxyIps)
   const ice = config.ice ?? parseIceConfig({})
+  const attentionWebhookUrl = parseAttentionWebhookUrl(config.attentionWebhookUrl)
   const store = new Store(config.dataFile, config.account.trim(), config.password)
   const assets = readAssets(config.webRoot ?? defaultWebRoot)
   const sessions = new Map<string, number>()
@@ -255,6 +261,12 @@ export function createRemoteServer(config: Config) {
     })
   })
   const logger = new Logger('server', config.logLevel ?? 'info')
+  const attentionWebhook = attentionWebhookUrl
+    ? new AttentionWebhookDispatcher(attentionWebhookUrl, {
+        ...config.attentionWebhookOptions,
+        logger: logger.child('attention-webhook'),
+      })
+    : undefined
   // Normalize at this boundary as well: a programmatic caller may pass NaN,
   // Infinity or a negative value straight through the Config object.
   const timing = normalizeGatewayOptions({
@@ -271,9 +283,22 @@ export function createRemoteServer(config: Config) {
     logger: logger.child('gateway'),
     turnEnabled: ice.turnUrls.length > 0,
     transports: config.transports,
+    onAttentionSignal: attentionWebhook
+      ? (hostId, hostName, digest) => attentionWebhook.notify(hostId, hostName, digest)
+      : undefined,
+    onAttentionClear: attentionWebhook
+      ? hostId => attentionWebhook.cancel(hostId)
+      : undefined,
   })
   function descriptor(d: ReturnType<Store['get']>) {
-    return { ...d.descriptor, membershipId: `account:${hash(store.account).slice(0, 16)}`, online: gateway.peers.has(d.descriptor.deviceId), lastSeenAt: d.lastSeenAt }
+    const attentionDigest = gateway.attentionDigest(d.descriptor.deviceId)
+    return {
+      ...d.descriptor,
+      membershipId: `account:${hash(store.account).slice(0, 16)}`,
+      online: gateway.peers.has(d.descriptor.deviceId),
+      lastSeenAt: d.lastSeenAt,
+      ...(attentionDigest !== undefined ? { attentionDigest } : {}),
+    }
   }
   async function route(req: IncomingMessage, res: ServerResponse) {
     const requestUrl = new URL(req.url ?? '/', url)
@@ -323,6 +348,15 @@ export function createRemoteServer(config: Config) {
     }
     if (method === 'GET' && path === '/api/v1/account/devices') {
       accountAuth(req); json(res, 200, { items: store.list().map(descriptor), serverUrl: url.origin, transport: 'webrtc' }); return
+    }
+    const accountDeviceMatch = /^\/api\/v1\/account\/devices\/([^/]+)$/.exec(path)
+    if (method === 'DELETE' && accountDeviceMatch) {
+      accountAuth(req)
+      // Account management revokes the selected device, not its paired peers.
+      let deviceId: string
+      try { deviceId = decodeURIComponent(accountDeviceMatch[1]!) } catch { throw new ApiError('INVALID_MESSAGE') }
+      store.revoke(deviceId)
+      json(res, 200, { status: 'revoked' }); return
     }
     if (method === 'POST' && (path === '/api/v1/devices/register' || path === '/api/v1/devices/register-owned-role')) {
       const source = path.endsWith('register-owned-role') ? deviceAuth(req) : undefined
@@ -395,11 +429,18 @@ export function createRemoteServer(config: Config) {
       // not be reachable, let alone trusted.
       if (!store.hasPair(source.descriptor.deviceId, target.descriptor.deviceId)) throw new ApiError('MEMBERSHIP_REQUIRED', 403)
       const d = descriptor(target)
-      json(res, 200, match[2] ? { deviceId: d.deviceId, online: d.online, lastSeenAt: d.lastSeenAt } : d); return
+      json(res, 200, match[2]
+        ? {
+            deviceId: d.deviceId,
+            online: d.online,
+            lastSeenAt: d.lastSeenAt,
+            ...(d.attentionDigest !== undefined ? { attentionDigest: d.attentionDigest } : {}),
+          }
+        : d); return
     }
     throw new ApiError('METHOD_NOT_FOUND', 404)
   }
-  return { server, store, gateway, logger, pairing, close: async () => { pairing.close(); gateway.close(); server.closeAllConnections(); await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())) } }
+  return { server, store, gateway, logger, pairing, close: async () => { pairing.close(); attentionWebhook?.close(); gateway.close(); server.closeAllConnections(); await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())) } }
 }
 function json(res: ServerResponse, status: number, value: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value))

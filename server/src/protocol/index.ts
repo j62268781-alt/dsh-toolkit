@@ -1,9 +1,39 @@
 export { LAN_UPLOAD_CAPABILITY, LAN_UPLOAD_MIN_BYTES, LAN_UPLOAD_TICKET_MS, LAN_UPLOAD_CONNECT_MS, lanUploadScopeSchema, lanUploadRequestSchema, lanUploadOfferSchema, isLanUploadAddress, validateLanUploadOffer, createLanUploadPrologue, type LanUploadOffer } from './lan-upload.js'
+export {
+  TRANSPORT_UPGRADE_CAPABILITY,
+  UPGRADE_SEQUENCE_HEADER_BYTES,
+  MAX_REORDER_BUFFERED_FRAMES,
+  MAX_REORDER_BUFFERED_BYTES,
+  DEFAULT_REORDER_GAP_TIMEOUT_MS,
+  DEFAULT_PREVIOUS_LEG_DRAIN_MS,
+  transportUpgradeCandidateSchema,
+  transportUpgradeOfferSchema,
+  transportUpgradeIceSchema,
+  transportUpgradeActivateSchema,
+  transportUpgradeDrainSchema,
+  transportUpgradeAbortSchema,
+  transportTierRank,
+  wireFromTransportTier,
+  wrapUpgradedTransportFrame,
+  unwrapUpgradedTransportFrame,
+  SequencedCiphertextReorderBuffer,
+  type TransportTier,
+} from './transport-upgrade.js'
 import { encodeBinaryUpload, decodeBinaryUpload } from './binary-upload.js'
 export { BINARY_UPLOAD_CAPABILITY, BINARY_UPLOAD_CHUNK_BYTES } from './binary-upload.js'
 export * from './loopback.js'
 import { parseWireJson } from './wire-json.js'
 export { parseWireJson } from './wire-json.js'
+import {
+  ATTENTION_SIGNAL_CAPABILITY,
+  PUSH_WAKE_CAPABILITY,
+  attentionDigestSchema,
+  attentionRpcMethods,
+  hostAttentionSignalPayloadSchema,
+  type AttentionDigest,
+} from './attention.js'
+export * from './attention.js'
+import { WORKSPACE_GIT_METHODS } from './workspace-git.js'
 import { z } from 'zod'
 
 export const WEBRTC_RESUME_CAPABILITY = 'transport.webrtc.resume.v1'
@@ -113,6 +143,40 @@ export interface AcpSessionModels {
   groups: Array<{ id: string; name: string; models: Array<{ id: string; name: string; reasoning?: { efforts: Array<{ id: string; name: string }>; defaultEffort?: string } }> }>;
   failures: Array<{ id: string; name: string; message: string }>;
 }
+export interface AcpModeOption { id: string; name: string; description?: string }
+export interface AcpSessionModes { currentModeId?: string; availableModes: AcpModeOption[] }
+export interface AcpAvailableCommand { name: string; description?: string; input?: { hint?: string } }
+export interface AcpAuthMethod {
+  id: string
+  name: string
+  description?: string
+  type?: 'terminal' | (string & {})
+  args?: string[]
+}
+export interface AcpAuthDiagnostic {
+  authStatus: 'authenticated' | 'auth_required' | 'unknown'
+  errorCode?: string
+  guidance?: string
+  loginCommand?: string
+  loginUrl?: string
+  authMethods?: AcpAuthMethod[]
+}
+export interface AcpUsageSummary {
+  inputTokens?: number
+  outputTokens?: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
+  reasoningTokens?: number
+  totalTokens?: number
+}
+export interface AcpContextUsage { used: number; size: number }
+export interface AcpWorkspaceRecord {
+  path: string
+  title?: string
+  sessionCount?: number
+  order?: number
+  updatedAt?: string
+}
 export const MAX_ACP_PROMPT_BYTES = 64 * 1024
 export const MAX_ACP_UPDATE_BYTES = 512 * 1024
 
@@ -144,12 +208,27 @@ export const controlFrameTypes = [
   'connection.lease.request',
   'connection.lease.ack',
   'connection.lease.close',
+  'host.attention.signal',
   'ping',
   'pong',
   'error',
 ] as const
 
+export const sessionTransferMethods = [
+  'session.transfer.export.open',
+  'session.transfer.export.read',
+  'session.transfer.export.close',
+  'session.transfer.import.open',
+  'session.transfer.import.chunk',
+  'session.transfer.import.commit',
+  'session.transfer.import.status',
+  'session.transfer.import.abort',
+] as const
+
 export const rpcMethods = [
+  ...sessionTransferMethods,
+  ...attentionRpcMethods,
+  ...WORKSPACE_GIT_METHODS,
   'workspace.upload.lan.open',
   'workspace.upload.open',
   'workspace.upload.chunk',
@@ -157,6 +236,10 @@ export const rpcMethods = [
   'workspace.upload.commit',
   'workspace.upload.abort',
   'harness.transport.describe',
+  'dsh.web.open',
+  'dsh.web.close',
+  'dsh.web.lan.direct.open',
+  'dsh.web.lan.direct.close',
   'remote.history.configure',
   'harness.api.call',
   'harness.api.transfer.open',
@@ -221,6 +304,8 @@ export const remoteEvents = [
   'acp.session.update',
   'acp.session.request_permission',
   'acp.session.closed',
+  'remote.transport.upgrade.ice',
+  'attention.follow.event',
 ] as const
 
 export const errorCodes = [
@@ -407,6 +492,8 @@ export interface ConnectIncomingPayload {
 }
 
 export interface ConnectAcceptedPayload {
+  webrtcFallbackTimeoutMs?: number
+  parallelConnections?: boolean
   relayRecoveryTicket?: string
   recoveryTicket?: string
   connectionId: string
@@ -491,6 +578,15 @@ export const transportCapabilities = [
   'transport.relay',
 ] as const
 
+/** Known control-channel capabilities negotiated in ``hello`` / ``hello.ack``. */
+export const controlCapabilities = [
+  ...transportCapabilities,
+  WEBRTC_RESUME_CAPABILITY,
+  RELAY_RESUME_CAPABILITY,
+  ATTENTION_SIGNAL_CAPABILITY,
+  PUSH_WAKE_CAPABILITY,
+] as const
+
 /**
  * Universe of known harness/transfer/file-viewer/codex capability values (§17).
  *
@@ -500,6 +596,8 @@ export const transportCapabilities = [
  * harness.remote.v3); advertising both is a protocol violation.
  */
 export const harnessCapabilityValues = [
+  'session.transfer.export.v1',
+  'session.transfer.import.v1',
   'remote.history.compact.v1',
   'remote.compaction.async.v1',
   'remote.session.events.v1',
@@ -518,6 +616,7 @@ export const harnessCapabilityValues = [
 ] as const
 
 export type TransportCapability = typeof transportCapabilities[number]
+export type ControlCapability = typeof controlCapabilities[number]
 export type HarnessCapabilityValue = typeof harnessCapabilityValues[number]
 
 export function selectProtocolVersion(
@@ -601,6 +700,14 @@ export interface DeviceDescriptor {
   identityKey: string
   clientVersion: string
   harnessVersion?: string
+  attentionDigest?: AttentionDigest
+}
+
+export interface DevicePresenceResponse {
+  deviceId: string
+  online: boolean
+  lastSeenAt?: number | null
+  attentionDigest?: AttentionDigest
 }
 
 export interface TransportStats {
@@ -812,6 +919,8 @@ export interface RemoteHistoryConfigureParams {
 export interface HarnessTransportDescription {
   capabilities: string[]
   workspaceTypes?: RemoteWorkspaceTypeDescription[]
+  sameLinkIpv6Endpoints?: string[]
+  sameLinkIpv6PairProbe?: true
 }
 
 export type CodexPermissionPreset = 'workspace-write' | 'danger-full-access'
@@ -898,13 +1007,13 @@ export interface AgentAcpRespondParams {
 export type AcpWorkspaceToolCallEndpoint = 'workspaceFiles/list' | 'workspaceFiles/stat' | 'workspaceFiles/read' | 'workspaceFiles/readBytes' | 'workspaceFiles/readAll'
   | 'terminal/environment' | 'terminal/shells' | 'terminal/list' | 'terminal/create' | 'terminal/write' | 'terminal/resize' | 'terminal/rename' | 'terminal/close'
 export type AcpWorkspaceToolStreamEndpoint = 'workspaceFiles/changes' | 'terminal/follow' | 'terminal/retain'
-export interface AcpWorkspaceToolParams { sessionId: string; backend: 'cursor' | 'antigravity' | 'pi' | 'opencode' | 'claude' | 'hermes'; endpoint: AcpWorkspaceToolCallEndpoint; args: Record<string, unknown> }
-export interface AcpModelParams { sessionId: string; backend: 'cursor' | 'claude' | 'antigravity' | 'pi' | 'opencode' }
+export interface AcpWorkspaceToolParams { sessionId: string; backend: AcpBackend; endpoint: AcpWorkspaceToolCallEndpoint; args: Record<string, unknown> }
+export interface AcpModelParams { sessionId: string; backend: AcpBackend }
 export interface AcpModelSelectionParams extends AcpModelParams { model: string; reasoningEffort?: string }
 export interface AgentAcpStreamOpenParams {
   streamId: string
   sessionId: string
-  tool?: { backend: 'cursor' | 'antigravity' | 'pi' | 'opencode' | 'claude' | 'hermes'; endpoint: AcpWorkspaceToolStreamEndpoint; args: Record<string, unknown> }
+  tool?: { backend: AcpBackend; endpoint: AcpWorkspaceToolStreamEndpoint; args: Record<string, unknown> }
 }
 
 export interface AgentAcpStreamCloseParams {
@@ -1011,6 +1120,24 @@ export const accountDeviceDescriptorSchema: z.ZodType<AccountDeviceDescriptor> =
   hostDeviceDescriptorSchema,
   clientDeviceDescriptorSchema,
 ])
+
+export const deviceDescriptorSchema: z.ZodType<DeviceDescriptor> = z.object({
+  deviceId: deviceIdSchema,
+  name: deviceNameSchema,
+  role: z.enum(['host', 'client']),
+  platform: devicePlatformSchema,
+  identityKey: identityKeySchema,
+  clientVersion: deviceVersionSchema,
+  harnessVersion: deviceVersionSchema.optional(),
+  attentionDigest: attentionDigestSchema.optional(),
+})
+
+export const devicePresenceResponseSchema: z.ZodType<DevicePresenceResponse> = z.object({
+  deviceId: z.string().min(1),
+  online: z.boolean(),
+  lastSeenAt: z.number().int().min(0).safe().nullable().optional(),
+  attentionDigest: attentionDigestSchema.optional(),
+})
 
 export const deviceRegistrationRequestSchema: z.ZodType<DeviceRegistrationRequest> = z.object({
   v: z.literal(PROTOCOL_VERSION),
@@ -1183,6 +1310,8 @@ export const connectIncomingPayloadSchema = z.object({
 })
 
 export const connectAcceptedPayloadSchema = z.object({
+  webrtcFallbackTimeoutMs: z.number().int().positive().max(2_147_483_647).optional(),
+  parallelConnections: z.boolean().optional(),
   relayRecoveryTicket: z.string().min(1).max(4096).optional(),
   recoveryTicket: z.string().min(1).max(4096).optional(),
   connectionId: z.string().min(1),
@@ -1275,6 +1404,7 @@ const controlFramePayloadSchemas: Record<ControlFrameType, z.ZodType> = {
   'connection.lease.request': connectionLeaseRequestSchema,
   'connection.lease.ack': connectionLeaseAckSchema,
   'connection.lease.close': z.object({ connectionId: z.string().min(1).max(128) }),
+  'host.attention.signal': hostAttentionSignalPayloadSchema,
   'ping': pingPongPayloadSchema,
   'pong': pingPongPayloadSchema,
   'error': controlErrorPayloadSchema,
@@ -1557,3 +1687,6 @@ function cryptoRandomId(): string {
   if (g?.randomUUID) return g.randomUUID()
   return `msg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`
 }
+
+export * from './dsh-web.js'
+export * from './workspace-git.js'

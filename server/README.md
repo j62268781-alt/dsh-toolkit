@@ -4,7 +4,7 @@
 
 A single-account, single-process DSH Remote Server: device registration and credential refresh, the Control channel, WebRTC (LAN / P2P) coordination, end-to-end encrypted Relay, and the **device-pairing v1** QR pairing flow added in this directory.
 
-> **Provenance**: this directory is vendored from [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote) (MIT, v0.6.5) with device-pairing v1 added (`src/pairing.ts`). The protocol layer is synced to upstream v0.6.5: `src/protocol/{binary-upload,lan-upload}.ts` (`workspace.upload.binary.v1`, `workspace.upload.lan.v1`), the async compaction contract (`harness.remote.compaction.submit|status|cancel`, `remote.compaction.async.v1`) and the `remote.session.events.v1` capability. The only local deviations are the two relaxed schemas for `deviceId` / `platform` (see "Differences from upstream"). Upstream ships as a pnpm workspace; here it is a standalone npm package: the protocol sources live in `src/protocol/`, the only runtime dependencies are `ws` and `zod`. The upstream React admin UI is vendored into `web/` and bundled into `dist/public` by `npm run build` (see "Web admin UI"). See [LICENSE](LICENSE).
+> **Provenance**: the standalone server and vendored protocol incorporate the [upstream v0.6.8](https://github.com/liguobao/ds-harness-remote/tree/v0.6.8) changes (MIT), while retaining local device-pairing v1, relaxed `deviceId` / `platform` schemas, and the `lan,relay` default. Protocol schemas do not by themselves enable Host or client features; the self-hosted WebSocket relay still forwards text frames only. This standalone npm package uses `ws` and `zod` at runtime and builds the React admin UI into `dist/public` with `npm run build`. See [LICENSE](LICENSE).
 
 ## What it is for
 
@@ -45,14 +45,14 @@ The admin UI is the upstream `web/` app (React + antd 5 + Vite), vendored unchan
 | --- | --- |
 | `/` | Landing page: product intro, "开始使用" entry, light/dark toggle. |
 | `/app/login` | Account + password login (`DSH_SERVER_ACCOUNT` / `DSH_SERVER_PASSWORD`), 8-hour HttpOnly cookie session. |
-| `/app/remote` | Device list: **every** device registered on this Server (name, online state, role, platform, plugin version, Harness version) with inline rename, refresh and sign-out. |
+| `/app/remote` | Device list: **every** device registered on this Server (name, online state, role, platform, plugin version, Harness version) with inline rename, revocation, refresh and sign-out. |
 
 Notes:
 
-- The login credential is the one global account; there are no separate users, and the page can list and rename every device, so only expose it on a trusted network or behind access control. Devices still unbind themselves with `DELETE /api/v1/devices/self`; like upstream there is no "kick" button.
+- The login credential is the one global account; there are no separate users, and the page can list, rename, and revoke every active device, so only expose it on a trusted network or behind access control. Admin revocation closes only the selected device's socket and invalidates its tokens. Device-initiated unbinding with `DELETE /api/v1/devices/self` retains the local pairing behavior.
 - Rename calls `POST /api/v1/devices/{id}/name`; the desktop panel and the phone pick the new name up on their next refresh.
 - `DSH_SERVER_WEB_ROOT` points at a different build directory if you want to ship your own; when it is missing every page answers 404 `METHOD_NOT_FOUND` while the API keeps working.
-- QR pairing and the device list are independent: phone and desktop each get a device token from pairing, and the admin UI is only for looking at and renaming devices.
+- QR pairing and the device list are independent: phone and desktop each get a device token from pairing, and the admin UI manages existing devices without issuing pairing credentials.
 
 ## Environment variables
 
@@ -73,8 +73,9 @@ Notes:
 | `DSH_SERVER_SLOW_CONSUMER_BYTES` | `16777216` | Socket backlog that marks a peer as gone (`SLOW_CONSUMER`; 1 MiB-64 MiB). Frames are up to 1 MiB, so a brief cellular stall must not close the socket; worst-case memory is this limit per connection. |
 | `DSH_SERVER_FORCE_TERMINATE_GRACE_MS` | `1000` | Grace period before a half-closed socket is force-terminated (100-10000). |
 | `DSH_SERVER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` / `silent`. |
+| `DSH_SERVER_ATTENTION_WEBHOOK_URL` | empty (disabled) | Optional notification destination: HTTPS or loopback HTTP, no embedded credentials or redirects. Sends the Host ID, name, and opaque attention digest, not conversation content. Use only a trusted receiver. |
 | `DSH_SERVER_STUN_URLS` | empty | Comma-separated STUN URLs. Empty means only same-LAN sessions connect directly and everything else goes through Relay; `.env.example` ships a tested mainland-China public list. |
-| `DSH_SERVER_TRANSPORTS` | `lan,relay` | Transports advertised to peers; `relay` is always kept. `p2p` needs hole punching, which carrier CGNAT usually blocks — a failed attempt costs a 12s WebRTC deadline before the Relay is used, so it stays off by default; enable it as `lan,p2p,relay` when both ends have a public address (public IPv6). `turn` requires a TURN server of your own and is not covered here. |
+| `DSH_SERVER_TRANSPORTS` | `lan,relay` | Transports advertised to peers; `relay` is always kept. `p2p` needs hole punching, which carrier CGNAT usually blocks — even a failed direct attempt delays Relay fallback, so it stays off by default; enable it as `lan,p2p,relay` when both ends have a public address (public IPv6). `turn` requires a TURN server of your own and is not covered here. |
 
 Out-of-range optional values log one warning and fall back to the default, so startup still succeeds; missing or invalid `ACCOUNT` / `PASSWORD` fail startup, and an unset `PUBLIC_URL` falls back to `http://localhost:<port>`. See [.env.example](.env.example) for the annotated list.
 
@@ -104,14 +105,15 @@ Pairing session actions (all require `X-DSH-Pairing-Proof` except creation and `
 
 Unbind propagation: a successful pairing records the Host ↔ phone relation in the state file (`pairs`). `DELETE /api/v1/devices/self` on either end revokes the other end too — without it, removing the device in DSH-Go would leave the desktop showing "connected". The Host sees `4004 DEVICE_REVOKED`, clears its local credentials and its panel reports that authorization was removed; scanning a fresh QR pairs again (a revoked slot can be re-claimed by the same identity).
 
-Account and device routes (unchanged from upstream):
+Account and device routes:
 
 | Method | Path | Auth |
 | --- | --- | --- |
 | POST | `/api/v1/auth/login` | Email + password → 8-hour HttpOnly cookie and an account token; 20 requests/minute per IP. |
 | GET | `/api/v1/auth/me` | Cookie session. |
 | POST | `/api/v1/auth/logout` | Cookie session. |
-| GET | `/api/v1/account/devices` | Cookie session; lists every device. |
+| GET | `/api/v1/account/devices` | Cookie session or account token; lists every active device. |
+| DELETE | `/api/v1/account/devices/{id}` | Cookie session or account token; no request body. Revokes only the selected device, closes its socket with `4004 DEVICE_REVOKED`, and returns `{status:'revoked'}`. |
 | POST | `/api/v1/devices/register` | Account token; registers a device. |
 | POST | `/api/v1/devices/register-owned-role` | Device token; registers the counterpart device with the opposite role. |
 | POST | `/api/v1/auth/refresh` | `{deviceId, refreshToken}`; rotates and recovers from a lost response. |
@@ -120,7 +122,7 @@ Account and device routes (unchanged from upstream):
 | GET | `/api/v1/devices` | Client device token; lists available Hosts. |
 | GET | `/api/v1/devices/{id}`, `/presence` | Subscribe to its own device, or read presence of same-account devices. |
 | POST | `/api/v1/devices/{id}/name` | Account token; rename. |
-| WS | `/ws/v1/connect` | Control channel (hello → hello.ack, heartbeat, connect, signal, relay, ping). |
+| WS | `/ws/v1/connect` | Control channel (hello → hello.ack, heartbeat, connect, signal, relay, ping). Planned shutdown closes with code `4009` and reason `server shutdown`. With WebRTC negotiated and no available TURN transport, the server advertises a 3-second fallback budget; the actual fallback also depends on the client. |
 
 Every `/api/v1/*` request also shares a 240/minute/IP budget and returns 429 `RATE_LIMITED` when exceeded. Errors are always `{"error":{"code","message","requestId","retryable"}}`.
 
@@ -198,7 +200,7 @@ Known deviations and risks:
 
 - **`deviceId` and `platform` validation is relaxed** in `src/protocol/index.ts`. Upstream accepts only ULID/UUID ids and `^[a-z0-9][a-z0-9._-]*$` platforms; the pairing protocol allows any 1..128 identifier and mixed-case platform names (`macOS`, `iOS`). Official clients send UUIDv7 plus lowercase platforms, so neither direction breaks them — the relaxation only lets third-party clients register.
 - **Error codes**: proof failures return 403 `PAIRING_FORBIDDEN` here (the protocol doc names 401 `PAIRING_PROOF_INVALID`; the doc allows either), and bodies over 8192 bytes return 413 `FRAME_TOO_LARGE` (the doc names 422 `INVALID_MESSAGE`).
-- **Device registration precedes token issuance**: `confirm` re-runs the store's device checks (256-device cap, immutable identity, revoked devices cannot return). An invalid descriptor therefore ends the session as `state=failed` with `failureReason=PAIRING_DEVICE_CONFLICT` instead of issuing partial credentials.
+- **Device registration precedes token issuance**: `confirm` re-runs the store's device checks (256 active devices, 4,096 total records including revoked identities, and immutable identity; a revoked record can only be reused by the same identity). An invalid descriptor therefore ends the session as `state=failed` with `failureReason=PAIRING_DEVICE_CONFLICT` instead of issuing partial credentials.
 - **`dsh-Go`**: this checkout of upstream contains no Dart client (`packages/dsh_remote` is not implemented yet), so the phone side was validated against the protocol document and the desktop client's parsing logic only — no on-device integration test.
 
 Not done: upstream test scenarios that need the client stack (Noise, WebRTC, the Plugin HTTP client) are not ported — equivalent behaviour is asserted at the raw HTTP/WebSocket level instead. The admin UI is covered by build/hosting checks and a manual click-through, not by front-end unit tests.

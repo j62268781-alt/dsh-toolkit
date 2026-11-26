@@ -124,11 +124,18 @@ export class Store {
    * overflow. Shared by `register` and the pairing transaction.
    */
   private reserveDevice(state: StoreState, descriptor: AccountDeviceDescriptor): void {
-    const old = state.devices[descriptor.deviceId]
+    const old = Object.hasOwn(state.devices, descriptor.deviceId) ? state.devices[descriptor.deviceId] : undefined
     // A revoked slot may be claimed again by the SAME identity: revocation ends
     // the authorization, not the device identity, and re-pairing proves the key.
     if (old && (old.descriptor.identityKey !== descriptor.identityKey || old.descriptor.role !== descriptor.role)) throw new ApiError('PEER_IDENTITY_MISMATCH', 409)
-    if (!old && Object.keys(state.devices).length >= 256) throw new ApiError('RATE_LIMITED', 429)
+    if (!old || old.revoked) {
+      const devices = Object.values(state.devices)
+      // Revocation frees an active slot, but keep a separate bound on tombstones
+      // so immutable device identities cannot make the state file grow forever.
+      if (devices.filter(device => !device.revoked).length >= 256 || (!old && devices.length >= 4096)) {
+        throw new ApiError('RATE_LIMITED', 429)
+      }
+    }
     state.devices[descriptor.deviceId] = { descriptor, revoked: false, lastSeenAt: old?.lastSeenAt ?? 0 }
   }
   /**

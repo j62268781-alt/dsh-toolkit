@@ -1,8 +1,8 @@
-// Simplified upstream HostsPage + product AppHeader. No remote/open/admin actions.
+// Simplified upstream HostsPage + product AppHeader. No remote workspace access.
 import { Alert, Button, Card, Empty, Input, Layout, Space, Table, Tag, Typography } from 'antd'
 import { EditOutlined, GithubOutlined } from '@ant-design/icons'
 import type { TableColumnsType } from 'antd'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, RequestError, type Device, type DeviceList } from './api'
 import { ThemeToggle } from './ThemeToggle'
 import { SiteFooter } from './SiteFooter'
@@ -16,6 +16,10 @@ export function DevicesPage({ account, onSignedOut }: { account: string; onSigne
   const [renaming, setRenaming] = useState<Device>()
   const [newName, setNewName] = useState('')
   const [savingName, setSavingName] = useState(false)
+  const [revokeTarget, setRevokeTarget] = useState<Device>()
+  const [revoking, setRevoking] = useState(false)
+  const revokeDialog = useRef<HTMLDialogElement>(null)
+  const refresh = useRef<HTMLButtonElement>(null)
   const load = useCallback(async () => {
     setLoading(true); setError('')
     try { const data = await api<DeviceList>('/account/devices'); setResult(data); setUpdated(new Date().toLocaleTimeString('zh-CN')) }
@@ -32,6 +36,28 @@ export function DevicesPage({ account, onSignedOut }: { account: string; onSigne
     finally { setSavingName(false) }
   }
   useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    const dialog = revokeDialog.current
+    if (!revokeTarget || !dialog || dialog.open) return
+    dialog.returnValue = ''
+    dialog.showModal()
+    dialog.querySelector<HTMLButtonElement>('button[value="cancel"]')?.focus()
+  }, [revokeTarget])
+  async function closeRevokeDialog() {
+    const target = revokeTarget
+    setRevokeTarget(undefined)
+    if (!target || revokeDialog.current?.returnValue !== 'revoke') return
+    setRevoking(true); setError('')
+    try {
+      await api(`/account/devices/${encodeURIComponent(target.deviceId)}`, undefined, 'DELETE')
+      refresh.current?.focus()
+      if (renaming?.deviceId === target.deviceId) setRenaming(undefined)
+      await load()
+    } catch (err) {
+      if (err instanceof RequestError && err.status === 401) onSignedOut()
+      else setError(err instanceof Error ? err.message : '撤销失败，请重试。')
+    } finally { setRevoking(false) }
+  }
   async function logout() {
     setLoggingOut(true)
     try { await api('/auth/logout', {}); onSignedOut() }
@@ -54,12 +80,13 @@ export function DevicesPage({ account, onSignedOut }: { account: string; onSigne
     { title: '系统', dataIndex: 'platform', key: 'platform', render: (platform: string) => ({ darwin: 'macOS', win32: 'Windows', linux: 'Linux', android: 'Android' })[platform] ?? platform },
     { title: '插件版本', dataIndex: 'clientVersion', key: 'clientVersion' },
     { title: 'Harness 版本', dataIndex: 'harnessVersion', key: 'harnessVersion', render: (value?: string) => value || '—' },
+    { title: '操作', key: 'actions', render: (_, d) => <Button danger type="text" size="small" disabled={revoking} aria-label={`撤销设备 ${d.name}`} onClick={() => setRevokeTarget(d)}>撤销</Button> },
   ]
   return <>
     <Layout.Header className="topbar product-topbar"><div className="topbar-inner"><div className="topbar-brand-group is-product"><a className="topbar-brand" href="/" aria-label="返回首页"><img className="topbar-brand-mark" src="/brand-whale.webp" alt="" width="40" height="40" /><span className="topbar-brand-copy"><Title level={3}>DeepSeek Harness Remote</Title><small>安全远程访问</small></span></a></div><div className="topbar-actions"><a className="topbar-github-link product-github-link" href="https://github.com/liguobao/dsh-harness-remote" target="_blank" rel="noreferrer" aria-label="GitHub"><GithubOutlined /> GitHub</a><ThemeToggle /><Button type="text" loading={loggingOut} onClick={() => void logout()}>退出登录</Button></div></div></Layout.Header>
     <Layout.Content className="product-content selfhost-content" id="main-content">
       <div className="app-area"><div className="workspace-view"><div className="hosts-page">
-        <header className="workspace-page-header"><div><Title level={2}>我的设备</Title><Paragraph className="selfhost-account">{account}</Paragraph></div><Space className="workspace-page-actions" wrap><Button onClick={() => void load()} loading={loading}>刷新</Button></Space></header>
+        <header className="workspace-page-header"><div><Title level={2}>我的设备</Title><Paragraph className="selfhost-account">{account}</Paragraph></div><Space className="workspace-page-actions" wrap><Button ref={refresh} onClick={() => void load()} loading={loading}>刷新</Button></Space></header>
         {error && <Alert className="selfhost-error" type="error" showIcon message={error} />}
         <Card className="page-card selfhost-connection" title="服务地址"><Paragraph><Text code className="selfhost-address">{result?.serverUrl ?? '加载中…'}</Text></Paragraph><Paragraph>Host 和客户端使用此地址。</Paragraph></Card>
         <Card className="page-card hosts-list-card" title="设备状态" extra={result ? <Text type="secondary">{devices.filter(d => d.online).length} / {devices.length} 台在线</Text> : undefined}>
@@ -67,6 +94,14 @@ export function DevicesPage({ account, onSignedOut }: { account: string; onSigne
         </Card>
         {updated && <Paragraph className="selfhost-caption" type="secondary">更新于 {updated}</Paragraph>}
       </div></div></div>
+      <dialog ref={revokeDialog} className="selfhost-revoke-dialog" aria-labelledby="revoke-device-title" onClose={() => void closeRevokeDialog()}>
+        <Title id="revoke-device-title" level={3}>撤销设备</Title>
+        <Paragraph>撤销「{revokeTarget?.name}」后，该设备将断开并失去访问权限，其他设备不受影响。</Paragraph>
+        <form method="dialog">
+          <Button htmlType="submit" value="cancel" autoFocus>取消</Button>
+          <Button htmlType="submit" value="revoke" type="primary" danger>确认撤销</Button>
+        </form>
+      </dialog>
     </Layout.Content><SiteFooter />
   </>
 }

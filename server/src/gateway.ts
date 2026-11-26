@@ -2,8 +2,11 @@ import { randomUUID } from 'node:crypto'
 import type { Server } from 'node:http'
 import { WebSocket, WebSocketServer } from 'ws'
 import {
+  ATTENTION_SIGNAL_CAPABILITY,
   createControlFrame,
   decodeControlFrame,
+  hostAttentionSignalPayloadSchema,
+  type AttentionDigest,
   MAX_CONTROL_FRAME_BYTES,
   MAX_RELAY_FRAME_BYTES,
   SERVER_SHUTDOWN_CLOSE_CODE,
@@ -47,6 +50,9 @@ export interface GatewayOptions extends GatewayTimingOptions {
    * deadlines before landing on the relay it would use anyway.
    */
   transports?: readonly string[]
+  /** Called on accepted Host digest updates and when the Host disconnects. */
+  onAttentionSignal?: (hostId: string, hostName: string, digest: AttentionDigest) => void
+  onAttentionClear?: (hostId: string) => void
 }
 
 /**
@@ -78,9 +84,14 @@ export function backpressureExceeded(bufferedAmount: number, limitBytes: number)
   return bufferedAmount > limitBytes
 }
 
-type Peer = { ws: WebSocket; id: string; role: 'host' | 'client'; capabilities: string[]; version: string; lastPong: number; nonce?: string; evictedTombstoneUntil?: number }
+type Peer = { ws: WebSocket; id: string; role: 'host' | 'client'; capabilities: string[]; version: string; lastPong: number; pendingNonces: string[]; evictedTombstoneUntil?: number }
 type Link = { id: string; host: string; client: string; stage: 'pending' | 'accepted' | 'handshake' | 'ready'; created: number; counters: Map<string, number>; preferredTransports: TransportName[]; iceCandidates: number }
 type DroppedLink = { host: string; client: string; expiresAt: number; droppedFrames: number }
+type HostAttentionState = { digest: AttentionDigest; tokens: number; lastRefillAt: number }
+
+/** Silent throttle of notification fan-out, not of the cached digest. */
+const ATTENTION_SIGNAL_BURST = 5
+const ATTENTION_SIGNAL_REFILL_PER_SEC = 1
 
 /** Keep tombstones long enough for late in-flight frames to drain without CONNECTION_NOT_FOUND storms. */
 const DROPPED_LINK_TTL_MS = 300_000
@@ -89,8 +100,10 @@ const MAX_DROPPED_LINKS = 16_384
 
 /** Protocol v1 default: at most 256 ICE candidates per logical connection. */
 export const MAX_ICE_CANDIDATES_PER_CONNECTION = 256
-/** Mirrors docs/protocol.md: Clients use max(server, local) and default to 12 s. */
+/** Default budget with configured TURN or when WebRTC is disabled. */
 const WEBRTC_FALLBACK_TIMEOUT_MS = 12_000
+/** Direct-only deployments give LAN/P2P a shorter window before falling back. */
+const DIRECT_ONLY_WEBRTC_FALLBACK_TIMEOUT_MS = 3_000
 const SUPPORTED_TRANSPORTS = ['transport.lan', 'transport.p2p', 'transport.turn', 'transport.relay'] as const
 
 function modernHost(version: string): boolean {
@@ -150,6 +163,9 @@ export class Gateway {
   readonly peers = new Map<string, Peer>()
   private links = new Map<string, Link>()
   private droppedLinks = new Map<string, DroppedLink>()
+  private attentionStates = new Map<string, HostAttentionState>()
+  private readonly onAttentionSignal?: GatewayOptions['onAttentionSignal']
+  private readonly onAttentionClear?: GatewayOptions['onAttentionClear']
   private wss = new WebSocketServer({ noServer: true, maxPayload: MAX_RELAY_FRAME_BYTES, perMessageDeflate: false })
   private heartbeat: ReturnType<typeof setInterval>
   private closed = false
@@ -177,6 +193,10 @@ export class Gateway {
     this.logger = options.logger ?? new Logger('gateway', options.logLevel ?? 'info')
     this.turnEnabled = options.turnEnabled === true
     this.transports = normalizeTransports(options.transports)
+    this.onAttentionSignal = options.onAttentionSignal
+    this.onAttentionClear = options.onAttentionClear
+    const publicUrl = new URL(origin)
+    const portlessOrigin = publicUrl.port === '' ? undefined : `${publicUrl.protocol}//${publicUrl.hostname}`
 
     store.onInvalidate = (id, reason) => this.disconnect(id, reason)
     server.on('upgrade', (req, socket, head) => {
@@ -184,7 +204,11 @@ export class Gateway {
       // The route still requires an exact match: a query string is rejected
       // (exactly as before) but only its parsed pathname is ever logged.
       const pathRejected = req.url !== '/ws/v1/connect'
-      const originRejected = Boolean(req.headers.origin) && req.headers.origin !== origin
+      const requestOrigin = req.headers.origin
+      // HarmonyOS NetStack omits the port from Origin; browsers cannot set the companion header.
+      const harmonyOrigin = portlessOrigin !== undefined && requestOrigin === portlessOrigin
+        && req.headers['x-dsh-native-origin'] === origin
+      const originRejected = Boolean(requestOrigin) && requestOrigin !== origin && !harmonyOrigin
       if (pathRejected || originRejected || this.wss.clients.size >= 256) {
         this.logger.warn('ws_upgrade_rejected', {
           // Parsed pathname only: the raw URL may carry credentials in its query.
@@ -217,8 +241,10 @@ export class Gateway {
           this.disconnect(peer.id, 'CONNECTION_FAILED')
           continue
         }
-        peer.nonce = randomUUID()
-        this.send(peer, createControlFrame('ping', { nonce: peer.nonce }))
+        const nonce = randomUUID()
+        peer.pendingNonces.push(nonce)
+        if (peer.pendingNonces.length > 2) peer.pendingNonces.shift()
+        this.send(peer, createControlFrame('ping', { nonce }))
       }
       for (const link of this.links.values()) {
         if (link.stage !== 'ready' && Date.now() - link.created > 30_000) this.drop(link, 'CONNECTION_FAILED')
@@ -272,7 +298,7 @@ export class Gateway {
   }
 
   private isDroppedLinkFrame(peer: Peer, frame: ControlFrame): boolean {
-    if (frame.type === 'ping' || frame.type === 'pong' || frame.type === 'connect.request') return false
+    if (frame.type === 'ping' || frame.type === 'pong' || frame.type === 'connect.request' || frame.type === 'host.attention.signal') return false
     const p = frame.payload as Record<string, unknown>
     const id = p.connectionId
     if (typeof id !== 'string' || this.links.has(id)) return false
@@ -317,6 +343,7 @@ export class Gateway {
   disconnect(id: string, code: string): void {
     const peer = this.peers.get(id)
     this.peers.delete(id)
+    if (this.attentionStates.delete(id)) this.onAttentionClear?.(id)
     for (const link of this.links.values()) if (link.host === id || link.client === id) this.drop(link, code)
     if (!peer) return
     this.logger.info('ws_peer_disconnected', { peerId: id, code })
@@ -332,23 +359,30 @@ export class Gateway {
   }
 
   /**
-   * Authorize a REST `/api/v1/turn/credentials` request. Only the two devices
-   * of an active logical connection may obtain credentials, and only while
-   * that connection is still being established.
+   * Only the two live devices of an active link may obtain ICE credentials:
+   * either during establishment or for an in-band upgrade of a ready link that
+   * negotiated at least one WebRTC transport.
    */
   authorizeIce(deviceId: string, connectionId: string): boolean {
     const link = this.links.get(connectionId)
     if (link === undefined) return false
     if (link.host !== deviceId && link.client !== deviceId) return false
-    if (link.stage !== 'accepted' && link.stage !== 'handshake') return false
+    if (link.stage === 'pending') return false
+    if (link.stage === 'ready' && !link.preferredTransports.some(transport => transport !== 'relay')) return false
     return this.peers.has(link.host) && this.peers.has(link.client)
+  }
+  attentionDigest(deviceId: string): AttentionDigest | undefined {
+    if (!this.peers.has(deviceId)) return undefined
+    const digest = this.attentionStates.get(deviceId)?.digest
+    return digest ? { ...digest } : undefined
   }
   private supportedCapabilities(): string[] {
     const enabled = new Set<string>(this.transports)
-    return SUPPORTED_TRANSPORTS.filter(
-      capability =>
-        enabled.has(capability.slice('transport.'.length)) && (capability !== 'transport.turn' || this.turnEnabled),
-    )
+    return [
+      ...SUPPORTED_TRANSPORTS.filter(capability =>
+        enabled.has(capability.slice('transport.'.length)) && (capability !== 'transport.turn' || this.turnEnabled)),
+      ATTENTION_SIGNAL_CAPABILITY,
+    ]
   }
   private negotiatedCapabilities(offered: readonly string[]): string[] {
     return this.supportedCapabilities().filter(capability => offered.includes(capability))
@@ -476,7 +510,7 @@ export class Gateway {
           // Keep the negotiated set (what hello.ack advertises), so a link can
           // never coordinate a transport this Server did not offer — e.g. TURN
           // while no TURN deployment is configured.
-          peer = { ws, id: device.deviceId, role: device.role, capabilities: this.negotiatedCapabilities(p.capabilities), version: p.clientVersion ?? device.clientVersion, lastPong: Date.now() }
+          peer = { ws, id: device.deviceId, role: device.role, capabilities: this.negotiatedCapabilities(p.capabilities), version: p.clientVersion ?? device.clientVersion, lastPong: Date.now(), pendingNonces: [] }
           this.peers.set(peer.id, peer)
           this.store.touch(peer.id, p.clientVersion, p.harnessVersion)
           this.logger.info('ws_hello_authenticated', {
@@ -485,6 +519,9 @@ export class Gateway {
             clientVersion: safeText(peer.version),
             capabilities: peer.capabilities.filter(capability => typeof capability === 'string' && SAFE_TEXT.test(capability)).slice(0, 8),
           })
+          const webrtcEnabled = peer.capabilities.some(capability =>
+            capability === 'transport.lan' || capability === 'transport.p2p' || capability === 'transport.turn')
+          const turnAvailable = this.turnEnabled && this.transports.includes('turn')
           this.send(peer, createControlFrame('hello.ack', {
             protocol: 1,
             serverVersion: 'self-hosted/0.1.0',
@@ -492,9 +529,11 @@ export class Gateway {
             heartbeatIntervalMs: this.heartbeatIntervalMs,
             maxControlFrameBytes: MAX_CONTROL_FRAME_BYTES,
             maxRelayFrameBytes: MAX_RELAY_FRAME_BYTES,
-            capabilities: this.negotiatedCapabilities(p.capabilities),
-            webrtcEnabled: this.transports.some(name => name !== 'relay'),
-            webrtcFallbackTimeoutMs: WEBRTC_FALLBACK_TIMEOUT_MS,
+            capabilities: peer.capabilities,
+            webrtcEnabled,
+            webrtcFallbackTimeoutMs: webrtcEnabled && !turnAvailable
+              ? DIRECT_ONLY_WEBRTC_FALLBACK_TIMEOUT_MS
+              : WEBRTC_FALLBACK_TIMEOUT_MS,
           }))
           return
         }
@@ -544,7 +583,15 @@ export class Gateway {
     const p = frame.payload as Record<string, unknown>
     if (frame.type === 'ping') { this.send(peer, createControlFrame('pong', { nonce: p.nonce })); return }
     if (frame.type === 'pong') {
-      if (peer.nonce && p.nonce === peer.nonce) { peer.lastPong = Date.now(); peer.nonce = undefined }
+      const index = typeof p.nonce === 'string' ? peer.pendingNonces.indexOf(p.nonce) : -1
+      if (index !== -1) {
+        peer.lastPong = Date.now()
+        peer.pendingNonces.splice(0, index + 1)
+      }
+      return
+    }
+    if (frame.type === 'host.attention.signal') {
+      this.handleAttentionSignal(peer, frame.payload)
       return
     }
     if (frame.type === 'connect.request') {
@@ -635,6 +682,32 @@ export class Gateway {
     } else throw new ApiError('INVALID_MESSAGE')
     this.send(other, frame)
   }
+  private handleAttentionSignal(peer: Peer, rawPayload: unknown): void {
+    if (peer.role !== 'host') throw new ApiError('MEMBERSHIP_REQUIRED')
+    if (!peer.capabilities.includes(ATTENTION_SIGNAL_CAPABILITY)) throw new ApiError('CAPABILITY_NOT_SUPPORTED')
+    const { digest } = hostAttentionSignalPayloadSchema.parse(rawPayload)
+    const previous = this.attentionStates.get(peer.id)
+    if (previous && digest.revision <= previous.digest.revision) return
+
+    const now = Date.now()
+    const elapsedMs = previous ? Math.max(0, now - previous.lastRefillAt) : 0
+    const tokens = Math.min(
+      ATTENTION_SIGNAL_BURST,
+      (previous?.tokens ?? ATTENTION_SIGNAL_BURST) + (elapsedMs / 1000) * ATTENTION_SIGNAL_REFILL_PER_SEC,
+    )
+    const state = { digest, tokens, lastRefillAt: now }
+    this.attentionStates.set(peer.id, state)
+
+    // Always cache the latest digest; excess ordinary updates skip webhook fan-out.
+    const isPriority = digest.urgency === 'critical' || digest.urgentKind === 'clear'
+    if (tokens < 1 && !isPriority) {
+      this.logger.debug('ws_attention_signal_throttled', { peerId: safeText(peer.id), revision: digest.revision })
+      return
+    }
+    state.tokens = Math.max(0, tokens - 1)
+    const hostName = this.store.get(peer.id).descriptor.name
+    this.onAttentionSignal?.(peer.id, hostName, digest)
+  }
   /**
    * Forward WebRTC signaling only while the logical connection is being
    * established, and only for a transport this link actually negotiated. A
@@ -689,6 +762,12 @@ export class Gateway {
     this.closed = true
     clearInterval(this.heartbeat)
     this.logger.info('ws_gateway_closing', { clientCount: this.wss.clients.size })
+    // A planned shutdown must not report its closing peers as connection failures.
+    for (const id of this.attentionStates.keys()) this.onAttentionClear?.(id)
+    this.attentionStates.clear()
+    this.peers.clear()
+    this.links.clear()
+    this.droppedLinks.clear()
     for (const ws of this.wss.clients) {
       // Give resumable clients an explicit, unambiguous shutdown signal. A
       // process restart is different from heartbeat failure (4001) and from

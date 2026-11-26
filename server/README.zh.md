@@ -4,7 +4,7 @@
 
 单账号、单进程的 DSH Remote Server：设备注册与凭据刷新、Control 控制通道、WebRTC（LAN / P2P）协商、端到端加密 Relay，以及本目录新增的 **device-pairing v1** 扫码配对。
 
-> **来源声明**：本目录 vendored 自 [liguobao/ds-harness-remote](https://github.com/liguobao/ds-harness-remote)（MIT，v0.6.5），并新增 `device-pairing v1`（`src/pairing.ts`）。协议层已同步到上游 v0.6.5：`src/protocol/{binary-upload,lan-upload}.ts`（`workspace.upload.binary.v1`、`workspace.upload.lan.v1`）、异步压缩契约（`harness.remote.compaction.submit|status|cancel`、`remote.compaction.async.v1`）与 `remote.session.events.v1` capability；本目录独有改动只有 `deviceId` / `platform` 两处 schema 放宽（见下文「与上游的差异」）。上游为 pnpm workspace 布局，这里改造为独立 npm 包：协议源码 vendored 到 `src/protocol/`，运行时只依赖 `ws` 与 `zod`；上游的 React 管理界面也一并 vendored 到 `web/`，由 `npm run build` 打包进 `dist/public`（见下文「Web 管理页」）。许可证见 [LICENSE](LICENSE)。
+> **来源声明**：独立 Server 及内置协议已补充同步 [上游 v0.6.8](https://github.com/liguobao/ds-harness-remote/tree/v0.6.8)（MIT），保留本地 `device-pairing v1`、放宽的 `deviceId` / `platform` 校验和默认 `lan,relay`。同步协议不等于启用 Host 或客户端功能；自建 WebSocket Relay 仍只转发文本帧。此独立 npm 包运行时仅依赖 `ws` 和 `zod`，React 管理页由 `npm run build` 打包进 `dist/public`。许可证见 [LICENSE](LICENSE)。
 
 ## 用途
 
@@ -45,14 +45,14 @@ npm start
 | --- | --- |
 | `/` | 落地页：产品介绍、「开始使用」入口、深浅色主题切换（入口文案已改为扫码配对流程）。 |
 | `/app/login` | 账号密码登录（`DSH_SERVER_ACCOUNT` / `DSH_SERVER_PASSWORD`），HttpOnly Cookie 会话 8 小时。 |
-| `/app/remote` | 设备列表：该服务器上**全部**已注册设备（名称、在线状态、角色、系统、插件版本、Harness 版本），支持行内改名、刷新、退出登录。 |
+| `/app/remote` | 设备列表：该服务器上**全部**已注册设备（名称、在线状态、角色、系统、插件版本、Harness 版本），支持行内改名、撤销设备、刷新、退出登录。 |
 
 要点：
 
-- 登录凭据就是那套**全局**账号密码，没有多账号；页面上能列出并改名所有设备，所以只应在内网或加访问控制后暴露。设备主动解绑走 `DELETE /api/v1/devices/self`（页面上没有「踢下线」入口，与上游一致）。
+- 登录凭据就是那套**全局**账号密码，没有多账号；页面可列出、改名和撤销所有有效设备，所以只应在内网或加访问控制后暴露。管理端撤销仅断开选中设备并作废其 token；设备主动调用 `DELETE /api/v1/devices/self` 仍按本地配对规则解绑。
 - 改名调 `POST /api/v1/devices/{id}/name`，改名后对应设备的桌面面板/手机端会在下次刷新时显示新名字。
 - 想换一份构建产物（例如自己改了配色）用 `DSH_SERVER_WEB_ROOT` 指向别的目录即可；目录缺失时所有页面返回 404 `METHOD_NOT_FOUND`，API 不受影响。
-- 扫码配对与「设备列表」互不依赖：手机与桌面各自通过配对拿 device token，管理页只用来查看与改名。
+- 扫码配对与「设备列表」互不依赖：手机与桌面各自通过配对拿 device token，管理页用于查看、改名与撤销设备。
 
 ## 环境变量
 
@@ -73,8 +73,9 @@ npm start
 | `DSH_SERVER_SLOW_CONSUMER_BYTES` | `16777216` | 判定 `SLOW_CONSUMER` 的发送积压字节数（1 MiB-64 MiB）。单帧最大 1 MiB，手机下行短暂卡顿不该直接断线；最坏内存约等于该值 × 连接数。 |
 | `DSH_SERVER_FORCE_TERMINATE_GRACE_MS` | `1000` | 半关闭连接的强制终止宽限（100-10000）。 |
 | `DSH_SERVER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` / `silent`。 |
+| `DSH_SERVER_ATTENTION_WEBHOOK_URL` | 空（关闭） | 可选通知目的地：HTTPS 或环回 HTTP，URL 不可嵌入凭据，不跟随重定向。发送 Host ID、名称及不透明提示摘要，不包含会话正文。仅配置信任的接收端。 |
 | `DSH_SERVER_STUN_URLS` | 空 | 逗号分隔的 STUN URL。留空则只有同局域网能直连、其余走 Relay；`.env.example` 里已备好一份国内实测可用的公共 STUN 列表。 |
-| `DSH_SERVER_TRANSPORTS` | `lan,relay` | 对外宣告的传输方式，`relay` 始终保留。`p2p` 需要打洞，国内移动网络多为 CGNAT + IPv4，打不通时要白等 12 秒才回落，所以默认不开；两端都有公网地址（如公网 IPv6）时可改成 `lan,p2p,relay`。`turn` 需自建 TURN 服务器，本文不覆盖。 |
+| `DSH_SERVER_TRANSPORTS` | `lan,relay` | 对外宣告的传输方式，`relay` 始终保留。`p2p` 需要打洞，国内移动网络多为 CGNAT + IPv4，打不通会延迟回落到 Relay，所以默认不开；两端都有公网地址（如公网 IPv6）时可改成 `lan,p2p,relay`。`turn` 需自建 TURN 服务器，本文不覆盖。 |
 
 越界或非法的可选值会打印一条 warning 并回退到默认值，启动不会失败；`ACCOUNT` / `PASSWORD` 缺失或非法会直接启动失败，`PUBLIC_URL` 不设置时代码会回落成 `http://localhost:<port>`（仅适合本机调试）。完整示例见 [.env.example](.env.example)。
 
@@ -104,14 +105,15 @@ npm start
 
 解绑联动：配对成功时，服务器会把「Host ↔ 手机」这条关系记进状态文件（`pairs`）。任何一端调用 `DELETE /api/v1/devices/self` 都会把另一端一起撤销——否则手机在 DSH-Go 里点「移除设备」后，桌面端会一直显示「已绑定」。撤销后宿主收到 `4004 DEVICE_REVOKED`，会清掉本地凭据并在面板上提示「授权已被移除」；重新扫码即可再次配对（同一身份可以重新占用被撤销的设备槽）。
 
-账号 / 设备（沿用上游）：
+账号 / 设备：
 
 | 方法 | 路径 | 认证 |
 | --- | --- | --- |
 | POST | `/api/v1/auth/login` | 账号密码 → 8 小时 HttpOnly Cookie + 账号 token；按 IP 20 次/分钟。 |
 | GET | `/api/v1/auth/me` | Cookie 会话。 |
 | POST | `/api/v1/auth/logout` | Cookie 会话。 |
-| GET | `/api/v1/account/devices` | Cookie 会话，列出全部设备。 |
+| GET | `/api/v1/account/devices` | Cookie 会话或账号 token，列出全部有效设备。 |
+| DELETE | `/api/v1/account/devices/{id}` | Cookie 会话或账号 token，无请求体；仅撤销选中设备并以 `4004 DEVICE_REVOKED` 关闭其连接，返回 `{status:'revoked'}`。 |
 | POST | `/api/v1/devices/register` | 账号 token，注册一台设备。 |
 | POST | `/api/v1/devices/register-owned-role` | 设备 token，以相反角色注册自己的另一台设备。 |
 | POST | `/api/v1/auth/refresh` | `{deviceId, refreshToken}`，轮换并可从丢失的响应中恢复。 |
@@ -120,7 +122,7 @@ npm start
 | GET | `/api/v1/devices` | Client 设备 token，列出可用 Host。 |
 | GET | `/api/v1/devices/{id}`、`/presence` | 订阅自己的设备或查询同账号设备的在线状态。 |
 | POST | `/api/v1/devices/{id}/name` | 账号 token，改名。 |
-| WS | `/ws/v1/connect` | 控制通道（hello → hello.ack，心跳、connect、signal、relay、ping）。 |
+| WS | `/ws/v1/connect` | 控制通道（hello → hello.ack，心跳、connect、signal、relay、ping）。计划停机时用 关闭码 `4009` 和原因 `server shutdown` 关闭连接；协商了 WebRTC 但无可用 TURN 时，服务器提示 3 秒回退预算，实际时长也取决于客户端。 |
 
 此外所有 `/api/v1/*` 共享 240 次/分钟/IP 的上限，超出返回 429 `RATE_LIMITED`。错误统一为 `{"error":{"code","message","requestId","retryable"}}`。
 
@@ -205,7 +207,7 @@ npm test          # vitest run，真实起 HTTP server（端口 0），全程离
 
 - **`deviceId` 与 `platform` 校验被放宽**（`src/protocol/index.ts`）：上游只接受 ULID/UUID 和 `^[a-z0-9][a-z0-9._-]*$`，配对协议允许任意 1..128 标识与大小写平台名（`macOS` / `iOS`）。官方客户端发的是 UUIDv7 + 小写平台，因此收紧或放宽都不影响现有链路；放宽只是为了让第三方客户端也能注册。
 - **错误码**：proof 失败这里返回 403 `PAIRING_FORBIDDEN`（协议文档写作 401 `PAIRING_PROOF_INVALID`），文档本身允许实现二选一；超过 8192 字节返回 413 `FRAME_TOO_LARGE`（文档写作 422 `INVALID_MESSAGE`）。
-- **设备注册前置校验**：`confirm` 时设备会再走一遍 store 的设备校验（256 台上限、identity 不可变更、已撤销不可复用）。若官方客户端送来非法描述，会话会以 `state=failed` + `failureReason=PAIRING_DEVICE_CONFLICT` 结束，而不是签发半个凭据。
+- **设备注册前置校验**：`confirm` 时设备会再走一遍 store 的设备校验（最多 256 台有效设备、含撤销记录在内最多 4,096 条、identity 不可变更；只有原身份可复用撤销记录）。若官方客户端送来非法描述，会话会以 `state=failed` + `failureReason=PAIRING_DEVICE_CONFLICT` 结束，而不是签发半个凭据。
 - **扫码端 `dsh-Go`**：本机上游 checkout 里没有 Dart 客户端（`packages/dsh_remote` 尚未实现），手机侧只按协议文档与桌面端解析逻辑验证，未做真机联调。
 
 未完成项：上游依赖 client-stack（Noise / WebRTC / Plugin HTTP 客户端）的测试场景未移植，等价行为用原始 HTTP/WebSocket 断言覆盖；管理页只验证了构建与托管（页面在真实浏览器里点通），没有前端单测。

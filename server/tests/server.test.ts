@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID, randomBytes, createHmac } from 'node:crypto'
@@ -9,6 +9,8 @@ import { request as httpRequest } from 'node:http'
 import { WebSocket } from 'ws'
 import {
   MAX_CONTROL_FRAME_BYTES,
+  SERVER_SHUTDOWN_CLOSE_CODE,
+  SERVER_SHUTDOWN_CLOSE_REASON,
   createControlFrame,
 } from '../src/protocol/index.js'
 import {
@@ -77,10 +79,10 @@ async function start(pass = password, trustedProxyIps: readonly string[] = [], c
 }
 
 /** Send a raw HTTP/1.1 request so duplicate header lines stay separate (fetch merges them). */
-async function rawStatus(headerLines: string[]): Promise<number> {
+async function rawStatus(headerLines: string[], path = '/api/v1/auth/me'): Promise<number> {
   const port = (app.server.address() as { port: number }).port
   const crlf = String.fromCharCode(13, 10)
-  const lines = ['GET /api/v1/auth/me HTTP/1.1', `Host: 127.0.0.1:${port}`, ...headerLines, 'Connection: close', '', '']
+  const lines = [`GET ${path} HTTP/1.1`, `Host: 127.0.0.1:${port}`, ...headerLines, `Connection: ${path === '/ws/v1/connect' ? 'Upgrade' : 'close'}`, '', '']
   return await new Promise<number>((resolve, reject) => {
     const socket = createConnection(port, '127.0.0.1')
     const timer = setTimeout(() => { socket.destroy(); reject(new Error('raw request timed out')) }, 5000)
@@ -96,9 +98,9 @@ async function rawStatus(headerLines: string[]): Promise<number> {
   })
 }
 
-async function device(role: 'host' | 'client' = 'client') {
+async function device(role: 'host' | 'client' = 'client', deviceId: string = randomUUID()) {
   const keys = deviceKeys()
-  const descriptor = { deviceId: randomUUID(), identityKey: keys.identityKey, name: 'test-device', role, platform: 'linux', clientVersion: '0.4.15' }
+  const descriptor = { deviceId, identityKey: keys.identityKey, name: 'test-device', role, platform: 'linux', clientVersion: '0.4.15' }
   const result = await request('/devices/register', 'POST', { v: 1, device: descriptor }, accountToken)
   expect(result.status).toBe(200)
   return { ...descriptor, keys, ...result.data }
@@ -150,7 +152,7 @@ async function connection(options: { hostCapabilities?: string[]; clientCapabili
   const host = await socket(h, options.hostCapabilities === undefined ? {} : { capabilities: options.hostCapabilities })
   const client = await socket(c, options.clientCapabilities === undefined ? {} : { capabilities: options.clientCapabilities })
   const ack = await host.next('hello.ack')
-  expect(ack).toMatchObject({ webrtcEnabled: true })
+  expect(ack).toMatchObject({ webrtcEnabled: (options.hostCapabilities ?? fullCapabilities).some(capability => capability === 'transport.lan' || capability === 'transport.p2p') })
   expect(ack.capabilities).toEqual(expect.arrayContaining(['transport.relay']))
   await client.next('hello.ack')
   client.send('connect.request', { hostDeviceId: h.deviceId, preferredTransports: options.preferredTransports ?? ['relay'] })
@@ -227,6 +229,63 @@ describe('account and device authorization', () => {
     expect(result.data.error.code).toBe('INVALID_MESSAGE')
   })
 
+  it('reclaims revoked slots, applies the active quota atomically to pairing, and bounds tombstones', async () => {
+    const file = join(dir, 'state.json')
+    const state = JSON.parse(readFileSync(file, 'utf8'))
+    const descriptor = { deviceId: 'quota-device', identityKey: deviceKeys().identityKey, name: 'Quota device', role: 'client' as const, platform: 'linux', clientVersion: '0.4.15' }
+    for (let i = 0; i < 4095; i++) {
+      const deviceId = `seed-${i}`
+      state.devices[deviceId] = { descriptor: { ...descriptor, deviceId }, revoked: i >= 255, lastSeenAt: 0 }
+    }
+    await app.close()
+    writeFileSync(file, JSON.stringify(state))
+    await start()
+    const host = { ...descriptor, deviceId: 'quota-host', role: 'host' as const }
+    const rateLimited = expect.objectContaining({ code: 'RATE_LIMITED' })
+    expect(() => app.store.registerPairing([host, descriptor], [host.deviceId, descriptor.deviceId])).toThrow(rateLimited)
+    expect(app.store.isActive(host.deviceId)).toBe(false)
+    expect(app.store.list()).toHaveLength(255)
+
+    app.store.register(descriptor)
+    expect(app.store.list()).toHaveLength(256)
+    const revoked = { ...descriptor, deviceId: 'seed-255' }
+    expect(() => app.store.register(revoked)).toThrow(rateLimited)
+    app.store.revoke(descriptor.deviceId)
+    expect(() => app.store.register(host)).toThrow(rateLimited)
+    expect(() => app.store.register({ ...descriptor, identityKey: deviceKeys().identityKey })).toThrow(expect.objectContaining({ code: 'PEER_IDENTITY_MISMATCH' }))
+    app.store.register(revoked)
+    expect(app.store.list()).toHaveLength(256)
+  })
+
+  it('revokes one paired device through the account cookie without revoking its Host', async () => {
+    const host = await device('host')
+    const target = await device('client', 'phone:paired')
+    app.store.pairDevices(host.deviceId, target.deviceId)
+    const wire = await socket(target)
+    await wire.next('hello.ack')
+    const path = `/account/devices/${encodeURIComponent(target.deviceId)}`
+    const headers = { Cookie: `dsh_session=${accountToken}`, Origin: 'http://localhost:8080' }
+    for (const token of [undefined, target.accessToken]) {
+      const unauthorized = await request(path, 'DELETE', undefined, token)
+      expect(unauthorized).toMatchObject({ status: 401, data: { error: { code: 'ACCOUNT_AUTH_REQUIRED' } } })
+    }
+    for (const foreign of [{ ...headers, Origin: 'http://localhost' }, { ...headers, 'Sec-Fetch-Site': 'cross-site' }]) {
+      expect((await request(path, 'DELETE', undefined, undefined, foreign)).status).toBe(403)
+    }
+    const list = async () => (await request('/account/devices', 'GET', undefined, undefined, headers)).data.items.map((item: { deviceId: string }) => item.deviceId)
+    expect(await list()).toEqual([host.deviceId, target.deviceId])
+    const closed = once(wire.ws, 'close')
+    expect(await request(path, 'DELETE', undefined, undefined, headers)).toMatchObject({ status: 200, data: { status: 'revoked' } })
+    const [code, reason] = await closed
+    expect([code, reason.toString()]).toEqual([4004, 'DEVICE_REVOKED'])
+    expect(await list()).toEqual([host.deviceId])
+    expect((await request('/me', 'GET', undefined, host.accessToken)).status).toBe(200)
+    expect(await request('/me', 'GET', undefined, target.accessToken)).toMatchObject({ status: 403, data: { error: { code: 'DEVICE_REVOKED' } } })
+    expect(await request('/auth/refresh', 'POST', { deviceId: target.deviceId, refreshToken: target.refreshToken })).toMatchObject({ status: 403, data: { error: { code: 'DEVICE_REVOKED' } } })
+    expect(await request(path, 'DELETE', undefined, accountToken)).toMatchObject({ status: 403, data: { error: { code: 'DEVICE_REVOKED' } } })
+    expect(await request('/account/devices/missing', 'DELETE', undefined, accountToken)).toMatchObject({ status: 404, data: { error: { code: 'DEVICE_NOT_FOUND' } } })
+  })
+
   it('separates account, cookie and device credentials; rejects cross-origin requests', async () => {
     expect((await request('/auth/login', 'POST', { email: account, password: 'wrong' })).status).toBe(401)
     expect((await request('/auth/login', 'POST', { email: account, password }, undefined, { Origin: 'https://attacker.example' })).status).toBe(403)
@@ -298,6 +357,58 @@ describe('account and device authorization', () => {
 })
 
 describe('control authorization and relay routing', () => {
+  it('requires the exact companion origin when Harmony NetStack omits a non-default WebSocket port', async () => {
+    const origin = 'Origin: http://localhost'
+    const hint = 'X-DSH-Native-Origin: http://localhost:8080'
+    const upgrade = ['Upgrade: websocket', 'Sec-WebSocket-Version: 13', 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==']
+    const cases: Array<[string[], number]> = [
+      [[], 101],
+      [['Origin: http://localhost:8080'], 101],
+      [[origin, hint], 101],
+      [[origin], 403],
+      [[origin, 'X-DSH-Native-Origin: http://localhost:8081'], 403],
+      [['Origin: http://other.example', hint], 403],
+      [['Origin: https://localhost', hint], 403],
+      [[origin, hint, hint], 403],
+    ]
+    for (const [headers, status] of cases) {
+      expect(await rawStatus([...upgrade, ...headers], '/ws/v1/connect'), headers.join(', ')).toBe(status)
+    }
+    await app.close()
+    await start(password, [], { publicUrl: 'https://example.test' })
+    expect(await rawStatus([...upgrade, 'Origin: http://example.test', 'X-DSH-Native-Origin: https://example.test'], '/ws/v1/connect')).toBe(403)
+  })
+
+  it('closes established links on planned shutdown without emitting CONNECTION_FAILED', async () => {
+    const ctx = await connection()
+    await ready(ctx)
+    const info = vi.spyOn(app.gateway.logger, 'info')
+    const closes = [once(ctx.host.ws, 'close'), once(ctx.client.ws, 'close')]
+    await app.close()
+    for (const [code, reason] of await Promise.all(closes)) {
+      expect([code, reason.toString()]).toEqual([SERVER_SHUTDOWN_CLOSE_CODE, SERVER_SHUTDOWN_CLOSE_REASON])
+    }
+    await vi.waitFor(() => expect(info.mock.calls.filter(([event]) => event === 'ws_connection_closed')).toHaveLength(2))
+    expect(info.mock.calls.some(([event]) => event === 'ws_peer_disconnected')).toBe(false)
+    for (const wire of [ctx.host, ctx.client]) expect(wire.messages.filter(frame => frame.type === 'error')).toEqual([])
+    await start()
+    const host = await socket(ctx.h), client = await socket(ctx.c)
+    expect((await host.next('hello.ack')).capabilities).not.toContain('transport.webrtc.resume.v1')
+    await client.next('hello.ack')
+    client.send('relay', { connectionId: ctx.connectionId, targetDeviceId: ctx.h.deviceId, counter: 0, ciphertext: 'AQIDBA' })
+    expect((await client.next('error')).code).toBe('CONNECTION_NOT_FOUND')
+  })
+
+  it('still drops an established link when the Host control socket fails', async () => {
+    const ctx = await connection()
+    await ready(ctx)
+    ctx.host.ws.terminate()
+    expect(await ctx.client.next('error')).toMatchObject({ code: 'CONNECTION_FAILED', connectionId: ctx.connectionId, retryable: true })
+    ctx.client.send('relay', { connectionId: ctx.connectionId, targetDeviceId: ctx.h.deviceId, counter: 0, ciphertext: 'AQIDBA' })
+    ctx.client.send('ping', { nonce: 'stale-link-barrier' })
+    expect(await ctx.client.next('pong')).toEqual({ nonce: 'stale-link-barrier' })
+    expect(ctx.client.messages.filter(frame => frame.type === 'error')).toEqual([])
+  })
   it('rejects invalid Control messages at the WebSocket boundary', async () => {
     const reasons = ['unsupported-version', 'binary-control', 'oversized-control', 'unknown-frame-type', 'duplicate-payload-field', 'noncanonical-handshake'] as const
     for (const reason of reasons) {
@@ -434,7 +545,7 @@ describe('webrtc signaling and TURN credentials', () => {
     expect(await partial.next('hello.ack')).toMatchObject({
       capabilities: ['transport.p2p', 'transport.relay'],
       webrtcEnabled: true,
-      webrtcFallbackTimeoutMs: 12_000,
+      webrtcFallbackTimeoutMs: 3_000,
     })
     const withoutTurn = await socket(await device(), { capabilities: fullCapabilities })
     expect(await withoutTurn.next('hello.ack')).toMatchObject({
@@ -451,7 +562,7 @@ describe('webrtc signaling and TURN credentials', () => {
     })
     accountToken = (await request('/auth/login', 'POST', { email: account, password })).data.token
     const withTurn = await socket(await device(), { capabilities: fullCapabilities })
-    expect(await withTurn.next('hello.ack')).toMatchObject({ capabilities: fullCapabilities })
+    expect(await withTurn.next('hello.ack')).toMatchObject({ capabilities: fullCapabilities, webrtcEnabled: true, webrtcFallbackTimeoutMs: 12_000 })
   })
 
   it('forwards ordered WebRTC signaling and transport selection', async () => {
@@ -558,6 +669,15 @@ describe('webrtc signaling and TURN credentials', () => {
     expect((await request(`/turn/credentials?connection_id=${ctx.connectionId}`, 'GET', undefined, stranger.accessToken)).status).toBe(404)
     expect((await request(`/turn/credentials?connection_id=${randomUUID()}`, 'GET', undefined, ctx.c.accessToken)).status).toBe(404)
     expect((await request('/turn/credentials', 'GET', undefined, ctx.c.accessToken)).status).toBe(400)
+
+    await ready(ctx)
+    for (const token of [ctx.h.accessToken, ctx.c.accessToken]) {
+      expect((await request(`/turn/credentials?connection_id=${ctx.connectionId}`, 'GET', undefined, token)).status).toBe(200)
+    }
+    expect((await request(`/turn/credentials?connection_id=${ctx.connectionId}`, 'GET', undefined, stranger.accessToken)).status).toBe(404)
+    const relayOnly = await connection({ preferredTransports: ['relay'] })
+    await ready(relayOnly)
+    expect((await request(`/turn/credentials?connection_id=${relayOnly.connectionId}`, 'GET', undefined, relayOnly.c.accessToken)).status).toBe(404)
   })
 
   it('issues configured static TURN credentials', async () => {
@@ -620,10 +740,7 @@ describe('webrtc signaling and TURN credentials', () => {
   })
 
   it('can advertise a subset of transports so peers skip direct attempts', async () => {
-    // A phone whose P2P/TURN attempts cannot succeed spends two full WebRTC
-    // deadlines (12s each) before it lands on the relay. Not advertising the
-    // transports removes those attempts instead of letting them time out.
-    // Shipped default (no override): LAN + relay only.
+    // Shipped default (no override): LAN + relay only, with the direct-only deadline.
     await app.close()
     await start(password, [], { transports: undefined })
     accountToken = (await request('/auth/login', 'POST', { email: account, password })).data.token
@@ -730,6 +847,43 @@ describe('reverse-proxy client IP rate limiting', () => {
 })
 
 describe('gateway hello timeout and state machine', () => {
+  it('accepts a delayed recent heartbeat pong but ignores older nonces and replays', async () => {
+    await app.close()
+    // Fake only the server heartbeat interval; keep the actual WS and polling live.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    try {
+      await start()
+      accountToken = (await request('/auth/login', 'POST', { email: account, password })).data.token
+      const d = await device()
+      const wire = await socket(d)
+      await wire.next('hello.ack')
+      const peer = (app.gateway as any).peers.get(d.deviceId)
+      const nonces: string[] = []
+      for (let i = 0; i < 3; i++) {
+        vi.advanceTimersByTime(app.gateway.heartbeatIntervalMs)
+        nonces.push((await wire.next('ping')).nonce)
+      }
+      const pong = async (nonce: string) => {
+        wire.send('pong', { nonce })
+        wire.send('ping', { nonce: 'heartbeat-test-barrier' })
+        await wire.next('pong')
+      }
+      const original = peer.lastPong
+      await pong(nonces[0]!)
+      expect(peer.lastPong).toBe(original)
+      peer.lastPong = original - 1
+      await pong(nonces[1]!)
+      expect(peer.lastPong).toBeGreaterThanOrEqual(original)
+      peer.lastPong = original - 1
+      await pong(nonces[1]!)
+      expect(peer.lastPong).toBe(original - 1)
+      await pong(nonces[2]!)
+      expect(peer.lastPong).toBeGreaterThanOrEqual(original)
+    } finally {
+      await app.close()
+      vi.useRealTimers()
+    }
+  })
   it('terminates unresponsive client with HELLO_TIMEOUT error frame and 4001 CONNECTION_FAILED close', async () => {
     await app.close()
     await start(password, [], { helloTimeoutMs: 1000 })
