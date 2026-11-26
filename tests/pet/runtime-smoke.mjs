@@ -46,6 +46,11 @@ try {
   assert.ok((await stat(path.join(output,islandName))).size>1000)
   const report = JSON.parse(await readFile(path.join(output, 'smoke-report.json'), 'utf8'))
   assert.deepEqual(report.petHitTest, { padding: false, transparent: false, opaque: true }, 'only the visible sprite takes mouse input')
+  assert.deepEqual(report.petGaze.slice(0, 2), [
+    { motion: 'look', cell: [9, 4], outsideHit: false },
+    { motion: 'look', cell: [10, 0], outsideHit: false },
+  ], 'screen coordinates beyond the right and bottom edges follow without intercepting clicks')
+  assert.equal(report.petGaze[2].motion, 'idle', 'a distant pointer clears the gaze')
   const allDisplays = process.env.PET_SMOKE_ALL_DISPLAYS === '1'
   assert.equal(report.islands.length, allDisplays ? report.displays : 1)
   assert.equal(report.compact.length, report.islands.length)
