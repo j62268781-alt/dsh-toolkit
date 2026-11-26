@@ -1,7 +1,20 @@
 import React from "react";
 import { fetchJson } from "../../../../../client/http.js";
 import { CardSection } from "../../../../../client/ui/components/settings-parts/index.jsx";
-import { MANAGED_WORKTREES_PATH } from "../../../host/constants.js";
+import { MANAGED_WORKTREE_CHECK_PATH, MANAGED_WORKTREES_PATH } from "../../../host/constants.js";
+import { SnapshotRecovery } from "./recovery.js";
+
+const cleanupReasons = new Map([
+  ["archive-unknown", "cleanupArchiveUnknown"],
+  ["not-archived", "cleanupNotArchived"],
+  ["in-use", "cleanupInUse"],
+  ["checkout-missing", "cleanupMissing"],
+  ["checkout-mismatch", "cleanupMismatch"],
+  ["locked", "cleanupLocked"],
+  ["prunable", "cleanupPrunable"],
+  ["dirty", "cleanupDirty"],
+  ["check-unavailable", "cleanupUnavailable"],
+]);
 
 interface Entry {
   path: string;
@@ -18,8 +31,71 @@ interface Props {
   openSession?: (id: string) => void;
 }
 
+function CleanupCheck({ entry, sessionId, revision, disabled, t }: {
+  entry: Entry;
+  sessionId: string;
+  revision: number;
+  disabled: boolean;
+  t: Props["t"];
+}) {
+  const request = React.useRef<AbortController | null>(null);
+  const [pending, setPending] = React.useState(false);
+  const [result, setResult] = React.useState("");
+  React.useEffect(() => {
+    setPending(false);
+    setResult("");
+    return () => {
+      request.current?.abort();
+      request.current = null;
+    };
+  }, [revision]);
+
+  async function check() {
+    if (disabled || request.current) return;
+    const controller = new AbortController();
+    request.current = controller;
+    setPending(true);
+    setResult("");
+    const { repositoryRoot, path } = entry;
+    const params = new URLSearchParams({ sessionId, repositoryRoot, path });
+    let message = "cleanupCheckFailed";
+    try {
+      const response = await fetchJson(`${MANAGED_WORKTREE_CHECK_PATH}?${params}`, {
+        signal: controller.signal, timeoutMs: 22_000,
+      });
+      if (response.ok) {
+        const payload = await response.json();
+        if (payload?.ok === true) {
+          if (payload.eligible === true && payload.reason === "clean") message = "cleanupClean";
+          else if (payload.eligible === false) message = cleanupReasons.get(payload.reason) ?? message;
+        }
+      }
+    } catch {
+      // An unavailable check is not evidence that the worktree is clean.
+    } finally {
+      if (request.current === controller) {
+        request.current = null;
+        setPending(false);
+        setResult(message);
+      }
+    }
+  }
+
+  return <div className="sk-worktrees__actions">
+    <button className="sk-worktrees__button" type="button" aria-disabled={disabled || pending}
+      aria-label={`${t("cleanupCheck")}: ${entry.branch} (${entry.path})`}
+      onClick={() => void check()}>{t("cleanupCheck")}</button>
+    {pending && <span className="sk-repo-settings__hint">{t("cleanupChecking")}</span>}
+    <span className="sk-worktrees__check-status" role="status">
+      {!disabled && result && <span className="sk-repo-settings__hint">{t(result)}</span>}
+    </span>
+  </div>;
+}
+
 export function ManagedWorktrees({ t, openSession }: Props) {
   const [entries, setEntries] = React.useState<Entry[] | null>(null);
+  const [cleanupSupported, setCleanupSupported] = React.useState(false);
+  const [snapshotsSupported, setSnapshotsSupported] = React.useState(false);
   const [error, setError] = React.useState<"managedUnavailable" | "managedFailed" | null>(null);
   const [openError, setOpenError] = React.useState(false);
   const [revision, refresh] = React.useReducer((value: number) => value + 1, 0);
@@ -39,6 +115,8 @@ export function ManagedWorktrees({ t, openSession }: Props) {
         if (controller.signal.aborted) return;
         if (payload?.ok === true && Array.isArray(payload.worktrees)) {
           setEntries(payload.worktrees);
+          setCleanupSupported(payload.cleanupCheck === true);
+          setSnapshotsSupported(payload.snapshots === true);
           setError(null);
         } else setError("managedFailed");
       } catch {
@@ -66,6 +144,7 @@ export function ManagedWorktrees({ t, openSession }: Props) {
         <span className="sk-repo-settings__hint" role="status">{status}</span>
       </div>
       <p className="sk-repo-settings__hint">{t("managedDescription")}</p>
+      {cleanupSupported && entries?.some(entry => entry.sessionId) && <p className="sk-repo-settings__hint">{t("cleanupCheckHelp")}</p>}
       {entries?.some(entry => entry.sessionArchived) && <p className="sk-repo-settings__hint">{t("originArchivedHelp")}</p>}
       {[...groups].map(([repository, group]) => <div key={repository}>
         <h4 className="sk-worktrees__repository">{t("repository")}: {repository}</h4>
@@ -87,6 +166,10 @@ export function ManagedWorktrees({ t, openSession }: Props) {
                   aria-label={`${t("originOpen")}: ${sessionLabel} (${entry.branch})`}
                   onClick={() => { try { openSession(sessionId); } catch { setOpenError(true); } }}>{t("originOpen")}</button>}
               </div>}
+              {cleanupSupported && sessionId && <CleanupCheck key={sessionId}
+                entry={entry} sessionId={sessionId} revision={revision} disabled={loading || !!error} t={t} />}
+              {snapshotsSupported && sessionId && sessionArchived === true && <SnapshotRecovery
+                key={JSON.stringify([sessionId, entry.branch])} entry={{ ...entry, sessionId }} disabled={loading || !!error} t={t} />}
             </li>;
           })}
         </ul>

@@ -1,9 +1,11 @@
 export interface WorktreeConfig {
     directory: string;
     namePrefix: string;
+    worktreePrefix?: string;
 }
-export interface WorktreeConfigUpdate extends WorktreeConfig {
+export interface WorktreeConfigUpdate extends Pick<WorktreeConfig, 'directory' | 'namePrefix'> {
     expected: WorktreeConfig;
+    syncNamePrefix?: true;
 }
 type RawConfig = Record<string, unknown>;
 interface Entry {
