@@ -138,6 +138,8 @@ ipcMain.on('pet:drag', (event, value) => {
   const point = screen.getCursorScreenPoint()
   if (value === 'start') { const [x, y] = entry.win.getPosition(); entry.dragging = { dx: point.x - x, dy: point.y - y }; return }
   if (!entry.dragging) return
+  if (entry.kind === 'pet' && value === 'end' && !entry.dragging.moved) { entry.dragging = null; return }
+  if (value === 'move') entry.dragging.moved = true
   // 桌宠可以拖到任意屏幕；灵动岛只属于它自己的屏幕，拖动被夹在该屏幕内，避免拖丢或跨屏重影。
   const area = entry.kind === 'island' ? entry.display.bounds : screen.getDisplayNearestPoint(point).workArea
   const [w, h] = entry.win.getSize()

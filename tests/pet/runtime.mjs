@@ -486,7 +486,7 @@ test('dragging the island pill moves the window instead of expanding it', async 
 test('only visible sprite pixels start a pet drag; the open card only takes clicks', async (t) => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
-  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html' })
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
   t.after(() => dom.window.close())
   const { document } = dom.window
   const alpha = new Uint8ClampedArray(64 * 64 * 4)
@@ -495,8 +495,9 @@ test('only visible sprite pixels start a pet drag; the open card only takes clic
   dom.window.Image = class { complete = true; naturalWidth = 1536; naturalHeight = 2288 }
   dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
   const drags = [], interactive = []
-  const state = { kind: 'pet', settings: { activePet: 'duck' }, pets: [{ id: 'duck', spritesheet: 'duck.webp', spriteVersionNumber: 2 }], sessions: [] }
-  dom.window.pet = { initial: async () => state, interactive: value => interactive.push(value), drag: value => drags.push(value), onState() {}, onCollapse() {} }
+  const state = { kind: 'pet', settings: { activePet: 'duck' }, pets: [{ id: 'duck', spritesheet: 'duck.webp', spriteVersionNumber: 2 }], sessions: [{ id: 'wait', status: 'waiting', pendingKind: 'permission' }] }
+  let update
+  dom.window.pet = { initial: async () => state, interactive: value => interactive.push(value), drag: value => drags.push(value), onState(fn) { update = fn }, onCollapse() {} }
   dom.window.eval(script)
   await new Promise(resolve => setImmediate(resolve))
   const cap = document.getElementById('cap'), sprite = document.getElementById('sprite'), activity = document.getElementById('activity')
@@ -518,18 +519,46 @@ test('only visible sprite pixels start a pet drag; the open card only takes clic
   assert.deepEqual(drags, [])
   fire(sprite, 'pointermove', 244, 214)
   assert.equal(interactive.at(-1), true)
+  const motion = () => document.body.dataset.motion
   fire(sprite, 'pointerdown', 244, 214)
-  fire(cap, 'pointermove', 320, 290)
+  fire(cap, 'pointermove', 246, 214)
+  assert.equal(motion(), 'approval', 'small movements are still a click')
+  fire(cap, 'pointermove', 230, 220)
+  assert.equal(motion(), 'runningLeft', 'drag temporarily overrides the workstation cue')
+  fire(cap, 'pointermove', 231, 260)
+  assert.equal(motion(), 'runningLeft', 'vertical movement with small horizontal drift keeps facing')
+  fire(cap, 'pointermove', 250, 280)
+  assert.equal(motion(), 'runningRight', 'a deliberate reversal changes facing')
   assert.equal(interactive.at(-1), true, 'pointer capture keeps a drag active beyond the sprite')
-  fire(cap, 'pointercancel', 320, 290)
-  assert.deepEqual(drags, ['start', 'move', 'end'])
+  update({ ...state, sessions: [{ id: 'wait', status: 'waiting', pendingKind: 'question' }] })
+  assert.equal(motion(), 'runningRight', 'a new question does not interrupt the drag')
+  fire(cap, 'pointerup', 250, 280)
+  assert.equal(motion(), 'question', 'release immediately restores the latest state')
   assert.equal(interactive.at(-1), false)
+  fire(cap, 'click', 250, 280)
+  assert.equal(document.body.classList.contains('expanded'), false, 'release after a drag never opens the panel')
+  assert.deepEqual(drags, ['start', 'move', 'move', 'move', 'end'])
+
+  fire(sprite, 'pointerdown', 244, 214)
+  fire(cap, 'pointermove', 244, 220)
+  assert.equal(motion(), 'runningRight', 'a new vertical drag keeps the last facing')
+  fire(cap, 'lostpointercapture', 244, 220)
+  assert.equal(motion(), 'question', 'losing capture also restores the current state')
+  fire(cap, 'pointercancel', 244, 220)
+  assert.deepEqual(drags.slice(-3), ['start', 'move', 'end'], 'one native end per drag')
+
+  fire(sprite, 'pointerdown', 244, 214)
+  fire(cap, 'pointermove', 245, 214)
+  fire(cap, 'pointerup', 244, 214)
+  assert.equal(motion(), 'question')
+  assert.deepEqual(drags.slice(-2), ['start', 'end'], 'a click never sends a move')
   fire(sprite, 'click', 244, 214)
   assert.equal(document.body.classList.contains('expanded'), true)
   fire(activity, 'pointermove', 60, 80)
   assert.equal(interactive.at(-1), true)
+  const before = drags.length
   fire(activity, 'pointerdown', 60, 80)
-  assert.deepEqual(drags, ['start', 'move', 'end'])
+  assert.equal(drags.length, before)
   fire(cap, 'pointermove', 244, 143)
   assert.equal(interactive.at(-1), false, 'gap between the panel and pet stays click-through')
 })
