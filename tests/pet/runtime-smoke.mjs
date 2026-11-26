@@ -45,6 +45,7 @@ try {
   assert.ok(islandName,'missing island image')
   assert.ok((await stat(path.join(output,islandName))).size>1000)
   const report = JSON.parse(await readFile(path.join(output, 'smoke-report.json'), 'utf8'))
+  assert.deepEqual(report.petHitTest, { padding: false, transparent: false, opaque: true }, 'only the visible sprite takes mouse input')
   const allDisplays = process.env.PET_SMOKE_ALL_DISPLAYS === '1'
   assert.equal(report.islands.length, allDisplays ? report.displays : 1)
   assert.equal(report.compact.length, report.islands.length)
