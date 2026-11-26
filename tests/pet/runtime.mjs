@@ -698,3 +698,68 @@ test('continuable, session count and progress are all readable', async (t) => {
   show([{ id: 'a', title: 'A', status: 'running', running: true, progress: { turn: 1, subagents: 2 } }])
   assert.equal(doc.querySelector('.row-open .note').textContent, '正在执行 · 第 1 轮 · 2 个子代理')
 })
+
+test('slow rows cross-fade between frames instead of stepping at 5 fps', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  let clock = 10_000
+  Object.defineProperty(dom.window.performance, 'now', { value: () => clock, configurable: true })
+  const timers = new Map()
+  dom.window.setTimeout = (fn, ms) => { timers.set(ms, fn); return ms }
+  dom.window.clearTimeout = id => timers.delete(id)
+  dom.window.Math.random = () => 0.5
+  dom.window.matchMedia = () => ({ matches: false, addEventListener() {} })
+  dom.window.Image = class {
+    set src(value) { this._src = value; this.complete = true; this.naturalWidth = 1536; this.naturalHeight = 2288; queueMicrotask(() => this.onload?.()) }
+    get src() { return this._src }
+  }
+  const drawn = []
+  dom.window.HTMLCanvasElement.prototype.getContext = function () {
+    const context = { globalAlpha: 1, clearRect() {}, drawImage(_image, ...args) { drawn.push({ cell: [args[0] / 192, args[1] / 192], alpha: context.globalAlpha }) } }
+    return context
+  }
+  const pet = { id: 'maid', name: 'Maid', spritesheet: 'pet-asset://pet/maid/spritesheet.webp', spriteVersionNumber: 2 }
+  const base = { settings: { language: 'zh', activePet: 'maid' }, pets: [pet], kind: 'pet', sessions: [] }
+  let update
+  dom.window.pet = { initial: async () => base, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState(fn) { update = fn }, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  clock = 14_000
+  update(base)
+  assert.equal(dom.window.document.body.dataset.motion, 'idle', 'the greeting is over')
+  assert.equal(timers.has(16), true, 'the desktop pet ticks at 60 fps')
+  assert.equal(timers.has(33), false, 'the pet is not on the power-saving island cadence')
+  // idle 首帧 280ms：走到一半时应该同时画当前帧和下一帧，后者带半透明。
+  const half = timers.get(16)
+  timers.clear(); drawn.length = 0
+  clock += 140
+  half()
+  assert.equal(drawn.length, 2, 'a half-elapsed frame draws both neighbours')
+  assert.deepEqual(drawn[0].cell, [0, 0], 'the current frame is drawn fully')
+  assert.equal(drawn[0].alpha, 1)
+  assert.deepEqual(drawn[1].cell, [1, 0], 'the next frame is layered on top')
+  assert.ok(drawn[1].alpha > 0.3 && drawn[1].alpha < 0.7, `the fade sits near half way: ${drawn[1].alpha}`)
+  // 帧走完的瞬间画新帧本身（blend 归零），下一拍才开始往再下一帧淡。
+  const ahead = timers.get(16)
+  timers.clear(); drawn.length = 0
+  clock += 200
+  ahead()
+  assert.equal(drawn[0].cell[0], 1, 'the frame advanced')
+  assert.equal(drawn.length, 1, 'the new frame lands clean before fading')
+  const fade = timers.get(16)
+  timers.clear(); drawn.length = 0
+  clock += 55
+  fade()
+  assert.equal(drawn.length, 2, 'the next fade starts one tick later')
+  assert.deepEqual(drawn[1].cell, [2, 0], 'and it fades toward the following frame')
+  // 跑动行帧差太大，补间会拖影，所以仍旧逐帧硬切并保持原来的 120ms 节拍。
+  update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'running', running: true }] })
+  assert.equal(dom.window.document.body.dataset.motion, 'running')
+  assert.equal(timers.has(16), false, 'fast rows keep their original frame timer')
+  assert.equal(timers.has(120), true)
+  // 灵动岛是小尺寸，补间降频到 30 fps。
+  update({ ...base, kind: 'island', display: { island: { compact: 320, expanded: 560, height: 32 } } })
+  assert.equal(timers.has(33), true, 'the island half-rates the tween')
+})
