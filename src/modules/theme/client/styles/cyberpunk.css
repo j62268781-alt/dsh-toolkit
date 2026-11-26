@@ -1,93 +1,113 @@
-/* Cyberpunk pack: the Night City dusk key art under a black-and-yellow game UI.
+/* Cyberpunk pack: Night City dusk art behind a cool shell with yellow actions and cyan signals.
  * Shell rules follow the selected pack; artwork is scene-scoped so every card
  * thumbnail paints independently. Explicit preview modes own scene brightness.
  */
 
-html[data-sk-palette="cyberpunk"] body {
-  --sk-cyberpunk-line: color-mix(in srgb, var(--dsw-alias-border-l3) 82%, #c9a227);
-  --sk-cyberpunk-menu: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 95%, #e8c23f);
-  --sk-cyberpunk-content: color-mix(in srgb, var(--dsw-alias-bg-base) 98%, #f0d27a);
+/* Share swatches, not host token overrides, with independent light/dark previews. */
+html[data-sk-palette="cyberpunk"] body,
+[data-preview-palette="cyberpunk"] {
+  --sk-cyberpunk-action: #fcee0a;
+  --sk-cyberpunk-action-ink: #101418;
+  --sk-cyberpunk-signal: #006578;
+  --sk-cyberpunk-rail: #e5ebef;
+  --sk-cyberpunk-input: #fcfeff;
+  --sk-cyberpunk-frame: #b9c9d1;
+}
 
-  /* The DSH system layer follows the pack: send key, primary buttons and
-   * focus rings pick up the game-yellow accents, and primary labels flip to
-   * ink so a yellow fill keeps its warning-tape contrast. Mocks stay neutral. */
+html[data-sk-palette="cyberpunk"] body[data-ds-dark-theme],
+[data-preview-palette="cyberpunk"][data-preview-mode="dark"] {
+  --sk-cyberpunk-signal: #49ddea;
+  --sk-cyberpunk-rail: #10161e;
+  --sk-cyberpunk-input: #17212b;
+  --sk-cyberpunk-frame: #314651;
+}
+
+html[data-sk-palette="cyberpunk"] body {
+  --sk-cyberpunk-menu: var(--dsw-alias-bg-layer-1);
+  --sk-cyberpunk-content: var(--dsw-alias-bg-base);
+
+  /* Yellow marks actions; cyan marks focus and navigation. Primary labels
+   * use ink because the send key stays bright in both modes. */
   --dsw-alias-brand-primary-new-colorprimary-new-color: #e6b800;
   --dsw-alias-brand-primary-new-color: #e6b800;
   --dsw-alias-brand-primary: #e6b800;
-  --dsw-alias-state-business-primary: #e6b800;
-  --dsw-alias-state-focus-primary: #e6b800;
-  --dsw-focus-ring-color: #e6b800;
-  --dsw-alias-button-primary-fill: #fcee0a;
-  --dsw-alias-button-primary-hover: #ffe93c;
-  --dsw-alias-label-primary-foreground: #12100a;
-  --dsw-alias-interactive-bg-hover: color-mix(in srgb, #fcee0a 14%, transparent);
-  --dsw-alias-interactive-bg-active: color-mix(in srgb, #fcee0a 24%, transparent);
+  --dsw-alias-state-business-primary: var(--sk-cyberpunk-signal);
+  --dsw-alias-state-focus-primary: var(--sk-cyberpunk-signal);
+  --dsw-focus-ring-color: var(--sk-cyberpunk-signal);
+  --dsw-alias-button-primary-fill: var(--sk-cyberpunk-action);
+  --dsw-alias-button-primary-hover: #fff23c;
+  --dsw-alias-label-primary-foreground: var(--sk-cyberpunk-action-ink);
+  --dsw-alias-interactive-bg-hover: color-mix(in srgb, var(--sk-cyberpunk-signal) 8%, transparent);
+  --dsw-alias-interactive-bg-active: color-mix(in srgb, var(--sk-cyberpunk-signal) 14%, transparent);
 
-  /* Conversation surfaces — warm bone sheets under the warning-tape yellow,
-   * one step brighter than the rail so the conversation stays the lit page. */
-  --dsw-alias-bg-base: #f2f0ea;
-  --dsw-alias-bg-layer-1: #faf9f4;
-  --dsw-alias-bg-layer-2: #f0ede4;
-  --dsw-alias-bg-layer-3: #e7e3d7;
-  --dsw-alias-bg-l1: #f5f3ec;
-  --dsw-alias-border-l2: #e2ddcf;
-  --dsw-alias-border-l3: #d0c9b5;
-  --dsw-alias-border-l4: #bcb39a;
-  --dsh-bg-secondary: rgb(217 169 0 / 0.06);
+  --dsw-alias-bg-base: #f0f4f6;
+  --dsw-alias-bg-layer-1: #f8fafb;
+  --dsw-alias-bg-layer-2: #edf2f5;
+  --dsw-alias-bg-layer-3: #e1e9ee;
+  --dsw-alias-bg-l1: #f4f7f9;
+  --dsw-alias-border-l2: #d4dfe5;
+  --dsw-alias-border-l3: var(--sk-cyberpunk-frame);
+  --dsw-alias-border-l4: #97acb8;
+  --dsh-bg-secondary: var(--dsw-alias-interactive-bg-hover);
 
   /* Surfaces the host paints from its own tokens: the rail, the title bar, the
    * sender bubble, the composer card, the send key and the status strip all
    * read those, never the alias palette above. They have to be declared on
    * body — the host declares the same names on body, and a custom property set
    * on html loses to the nearer body declaration. */
-  --dsw-specific-sidebar-fill: #ece9e0;
-  --dsw-specific-bubble: #f5f0e0;
-  --dsw-specific-bubble-highlight: #ede5c8;
-  --dsw-specific-input-major: #fffdf5;
-  --dsw-specific-selector: #eae6d8;
-  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #e6b800 13%, transparent);
-  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, #e6b800 20%, transparent);
-  --dsw-alias-button-info-fill: #e6b800;
-  --dsw-alias-button-info-hover: #c99a00;
-  --dsw-alias-markdown-code-block: #f4f1e6;
-  --dsw-alias-markdown-code-block-banner: #eae5d2;
+  --dsw-specific-sidebar-fill: var(--sk-cyberpunk-rail);
+  --dsw-specific-bubble: #eaf0f3;
+  --dsw-specific-bubble-highlight: #dae9ee;
+  --dsw-specific-input-major: var(--sk-cyberpunk-input);
+  --dsw-specific-selector: #e1e9ee;
+  --dsw-specific-sidebar-nav-item-active: var(--dsw-alias-interactive-bg-active);
+  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, var(--sk-cyberpunk-signal) 20%, transparent);
+  --dsw-alias-markdown-code-block: #eef3f5;
+  --dsw-alias-markdown-code-block-banner: #e1e9ee;
   /* The hero artwork runs behind the blank header row: the dusk sky up there is
      bright, so the glyph takes warm ink with a light halo. */
   --sk-hero-fg: #241c10;
   --sk-hero-halo: rgb(255 250 240 / 0.55);
   /* Windows draws the caption buttons itself, over the strip the shell fills with
      --dsw-specific-sidebar-fill; this is the glyph tone that sits on that strip. */
-  --sk-caption-fg: #574715;
+  --sk-caption-fg: #334d5b;
 }
 
-/* Dark keeps the same hue family around the host-dark canvas so bubbles still
- * read as raised cards. */
+/* Keep conversation layers distinct without competing with the key art. */
 html[data-sk-palette="cyberpunk"] body[data-ds-dark-theme] {
-  --dsw-alias-bg-base: #14120e;
-  --dsw-alias-bg-layer-1: #201d17;
-  --dsw-alias-bg-layer-2: #191611;
-  --dsw-alias-bg-layer-3: #12100c;
-  --dsw-alias-bg-l1: #262219;
-  --dsw-alias-border-l2: #3a3428;
-  --dsw-alias-border-l3: #4a4232;
-  --dsw-alias-border-l4: #5c5240;
-  --dsh-bg-secondary: rgb(247 228 99 / 0.08);
+  --dsw-alias-bg-base: #111820;
+  --dsw-alias-bg-layer-1: #1a232d;
+  --dsw-alias-bg-layer-2: #151d26;
+  --dsw-alias-bg-layer-3: #10161e;
+  --dsw-alias-bg-l1: #202c36;
+  --dsw-alias-border-l2: #293843;
+  --dsw-alias-border-l4: #476275;
 
-  --dsw-specific-sidebar-fill: #12100c;
-  --dsw-specific-bubble: #2a2418;
-  --dsw-specific-bubble-highlight: #3a3222;
-  --dsw-specific-input-major: #1e1a13;
-  --dsw-specific-selector: #2e281c;
-  --dsw-specific-sidebar-nav-item-active: color-mix(in srgb, #fcee0a 16%, transparent);
-  --dsw-specific-sidebar-nav-item-active-accent: color-mix(in srgb, #fcee0a 24%, transparent);
-  --dsw-alias-button-info-fill: #fcee0a;
-  --dsw-alias-button-info-hover: #fff23c;
-  --dsw-alias-markdown-code-block: #211d15;
-  --dsw-alias-markdown-code-block-banner: #2a251a;
+  --dsw-specific-bubble: #1e2b36;
+  --dsw-specific-bubble-highlight: #273d48;
+  --dsw-specific-selector: #22303c;
+  --dsw-alias-markdown-code-block: #161f28;
+  --dsw-alias-markdown-code-block-banner: #202c37;
   /* The dimmed dusk sky inverts the halo: a pale glyph on a dark veil. */
-  --sk-hero-fg: #f5ecd8;
+  --sk-hero-fg: #e9f5fa;
   --sk-hero-halo: rgb(0 0 0 / 0.5);
-  --sk-caption-fg: #e8d48a;
+  --sk-caption-fg: #b5d2e0;
+}
+
+/* Host composer actions use info-fill and on-color, unlike generic primary buttons. */
+html[data-sk-palette="cyberpunk"] body [data-composer-card] [class*="_trailing"] > button[class*="_primary"] {
+  --dsw-alias-button-info-fill: var(--sk-cyberpunk-action);
+  --dsw-alias-button-info-hover: var(--dsw-alias-button-primary-hover);
+  --dsw-alias-label-on-color: var(--sk-cyberpunk-action-ink);
+}
+
+/* Keep checked tracks yellow across the host Switch and toolkit fallbacks without recoloring other status accents. */
+html[data-sk-palette="cyberpunk"] body button[role="switch"][aria-checked="true"]:is([class*="_switch_"], .boot-switch, .pet-switch, .ntf-switch, .smp-switch, .mbm-switch, .sk-git__switch) {
+  background-color: var(--sk-cyberpunk-action);
+}
+
+html[data-sk-palette="cyberpunk"] body button[role="switch"][aria-checked="true"]:is([class*="_switch_"], .boot-switch, .pet-switch, .ntf-switch, .smp-switch, .mbm-switch, .sk-git__switch) > :is([class*="_thumb_"], .boot-switch-thumb, .pet-switch > span, .ntf-switchKnob, .smp-switchKnob, .mbm-switchKnob, .sk-git__switchThumb) {
+  background-color: var(--sk-cyberpunk-action-ink);
 }
 
 /* The status strip is the shell.bottom seat: a full-width row under the three
@@ -99,7 +119,7 @@ html[data-sk-palette="cyberpunk"] [data-shell-bottom] {
 
 html[data-sk-palette="cyberpunk"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > nav {
   background: var(--sk-cyberpunk-menu);
-  border-inline-end-color: var(--sk-cyberpunk-line);
+  border-inline-end-color: var(--sk-cyberpunk-frame);
 }
 
 html[data-sk-palette="cyberpunk"] :is([data-shortcut-modal="settings"], [data-sk-settings-snapshot]) > :is([class*="_content"], [class*="_header"], [class*="_options"]) {
@@ -107,47 +127,42 @@ html[data-sk-palette="cyberpunk"] :is([data-shortcut-modal="settings"], [data-sk
 }
 
 html[data-sk-palette="cyberpunk"] .sk-setnav__search {
-  border-color: var(--sk-cyberpunk-line);
+  border-color: color-mix(in srgb, var(--sk-cyberpunk-signal) 80%, var(--dsw-alias-bg-base));
   background: var(--dsw-alias-bg-base);
 }
 
 html[data-sk-palette="cyberpunk"] .sk-setnav__item[aria-current="true"] {
-  box-shadow: inset 2px 0 0 #c9a227;
+  box-shadow: inset 2px 0 0 var(--sk-cyberpunk-signal);
 }
 
 /* Preview surfaces are local: selecting another card never borrows this pack. */
 [data-preview-palette="cyberpunk"] {
   --sk-cyberpunk-preview-radius: 4px;
-  --sk-cyberpunk-preview-rail: #ece9e0;
-  --sk-cyberpunk-preview-composer: #fffdf5;
-  --sk-cyberpunk-preview-line: rgb(117 100 45 / 0.22);
-}
-
-[data-preview-palette="cyberpunk"][data-preview-mode="dark"] {
-  --sk-cyberpunk-preview-rail: #12100c;
-  --sk-cyberpunk-preview-composer: #1e1a13;
-  --sk-cyberpunk-preview-line: rgb(230 200 90 / 0.22);
 }
 
 .sk-theme-card__art[data-preview-palette="cyberpunk"] { border-radius: 3px; }
 .sk-theme-preview-window[data-preview-palette="cyberpunk"] { border-radius: var(--sk-cyberpunk-preview-radius); }
 
 .sk-theme-preview-window[data-preview-palette="cyberpunk"] .sk-theme-preview-rail {
-  background: var(--sk-cyberpunk-preview-rail);
-  border-right-color: var(--sk-cyberpunk-preview-line);
+  background: var(--sk-cyberpunk-rail);
+  border-right-color: var(--sk-cyberpunk-frame);
 }
 
 .sk-theme-preview-window[data-preview-palette="cyberpunk"] .sk-theme-preview-logo {
   border-radius: 2px;
-  background: #fcee0a;
+  background: var(--sk-cyberpunk-action);
 }
 
 .sk-theme-preview-window[data-preview-palette="cyberpunk"] .sk-theme-preview-nav { border-radius: 1px; }
 
+.sk-theme-preview-window[data-preview-palette="cyberpunk"] .sk-theme-preview-nav--short {
+  border-inline-start: 2px solid var(--sk-cyberpunk-signal);
+}
+
 .sk-theme-preview-window[data-preview-palette="cyberpunk"] .sk-theme-preview-composer {
   border-radius: var(--sk-cyberpunk-preview-radius);
-  border-color: var(--sk-cyberpunk-preview-line);
-  background: var(--sk-cyberpunk-preview-composer);
+  border-color: var(--sk-cyberpunk-frame);
+  background: var(--sk-cyberpunk-input);
   box-shadow: none;
 }
 
@@ -155,8 +170,8 @@ html[data-sk-palette="cyberpunk"] .sk-setnav__item[aria-current="true"] {
  * arrow on it must read black, not the host's default white. */
 .sk-theme-preview-window[data-preview-palette="cyberpunk"] .sk-theme-preview-send {
   border-radius: 3px;
-  background: #fcee0a;
-  color: #12100a;
+  background: var(--sk-cyberpunk-action);
+  color: var(--sk-cyberpunk-action-ink);
 }
 
 /* Light is the scene default, including Light previews inside a dark page. */
@@ -164,8 +179,8 @@ html[data-sk-palette="cyberpunk"] .sk-setnav__item[aria-current="true"] {
   --sk-cyberpunk-art-x: 50%;
   --sk-cyberpunk-art-y: 50%;
   --sk-cyberpunk-art-dim: rgb(255 244 220 / 0);
-  --sk-cyberpunk-glow: rgb(255 210 140 / 0.22);
-  --sk-cyberpunk-scrim: rgb(246 240 230 / 0.66);
+  --sk-cyberpunk-glow: rgb(255 216 157 / 0.12);
+  --sk-cyberpunk-scrim: rgb(240 246 249 / 0.66);
   isolation: isolate;
   pointer-events: none;
 }
@@ -174,9 +189,9 @@ body[data-ds-dark-theme] .sk-scene--cyberpunk:not([data-preview-mode="light"] *)
 [data-preview-mode="dark"] .sk-scene--cyberpunk {
   --sk-cyberpunk-art-x: 50%;
   --sk-cyberpunk-art-y: 52%;
-  --sk-cyberpunk-art-dim: rgb(12 10 8 / 0.38);
-  --sk-cyberpunk-glow: rgb(255 190 110 / 0.1);
-  --sk-cyberpunk-scrim: rgb(14 11 8 / 0.66);
+  --sk-cyberpunk-art-dim: rgb(8 17 28 / 0.42);
+  --sk-cyberpunk-glow: rgb(85 197 222 / 0.09);
+  --sk-cyberpunk-scrim: rgb(10 19 29 / 0.68);
 }
 
 .sk-scene--cyberpunk > * {

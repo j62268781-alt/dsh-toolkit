@@ -144,6 +144,55 @@ function renderedClasses(scene) {
   return classes
 }
 
+test('HUD focus and action colors keep their contrast in both modes', () => {
+  const tokens = (...selectors) => new Map(stylesheet.rules
+    .filter((rule) => ruleSelectors(rule).some((selector) => selectors.includes(selector)))
+    .flatMap((rule) => [...declarations(rule.body)]))
+  const shellScope = `${PALETTE_SCOPE} body`
+  const light = tokens(shellScope)
+  const dark = tokens(shellScope, `${shellScope}[data-ds-dark-theme]`)
+  for (const [mode, preview] of [[light, tokens(PREVIEW_SCOPE)], [dark, tokens(PREVIEW_SCOPE, `${PREVIEW_SCOPE}[data-preview-mode="dark"]`)]]) {
+    for (const name of ['action', 'action-ink', 'signal', 'rail', 'input', 'frame']) {
+      const token = `--sk-cyberpunk-${name}`
+      assert.ok(mode.has(token), `missing shell swatch ${token}`)
+      assert.equal(preview.get(token), mode.get(token), `preview diverges for ${token}`)
+    }
+    assert.equal(mode.get('--dsw-focus-ring-color'), 'var(--sk-cyberpunk-signal)')
+    assert.equal(mode.get('--dsw-alias-state-focus-primary'), 'var(--sk-cyberpunk-signal)')
+  }
+  const luminance = (hex) => hex.slice(1).match(/../g).reduce((sum, channel, index) => {
+    const v = Number.parseInt(channel, 16) / 255
+    return sum + [0.2126, 0.7152, 0.0722][index] * (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+  }, 0)
+  const contrast = (a, b) => {
+    const [low, high] = [luminance(a), luminance(b)].sort((x, y) => x - y)
+    return (high + 0.05) / (low + 0.05)
+  }
+  const composer = tokens(`${shellScope} [data-composer-card] [class*="_trailing"] > button[class*="_primary"]`)
+  assert.equal(composer.get('--dsw-alias-button-info-fill'), 'var(--sk-cyberpunk-action)')
+  assert.equal(composer.get('--dsw-alias-label-on-color'), 'var(--sk-cyberpunk-action-ink)')
+  assert.ok(!light.has('--dsw-alias-button-info-fill'), 'unrelated info controls retain host colors')
+  assert.notEqual(light.get('--sk-cyberpunk-signal'), dark.get('--sk-cyberpunk-signal'))
+  for (const mode of [light, dark]) {
+    assert.ok(contrast(mode.get('--sk-cyberpunk-action'), mode.get('--sk-cyberpunk-action-ink')) >= 4.5)
+    for (const surface of ['rail', 'input']) {
+      assert.ok(contrast(mode.get('--sk-cyberpunk-signal'), mode.get(`--sk-cyberpunk-${surface}`)) >= 3,
+        `focus ring contrast on the ${surface}`)
+    }
+  }
+})
+
+test('only checked host and toolkit switch tracks use the 2077 action yellow', () => {
+  const track = `${PALETTE_SCOPE} body button[role="switch"][aria-checked="true"]:is([class*="_switch_"], .boot-switch, .pet-switch, .ntf-switch, .smp-switch, .mbm-switch, .sk-git__switch)`
+  const thumb = `${track} > :is([class*="_thumb_"], .boot-switch-thumb, .pet-switch > span, .ntf-switchKnob, .smp-switchKnob, .mbm-switchKnob, .sk-git__switchThumb)`
+  const styles = (selector) => new Map(stylesheet.rules
+    .filter((rule) => ruleSelectors(rule).includes(selector))
+    .flatMap((rule) => [...declarations(rule.body)]))
+  assert.equal(styles(track).get('background-color'), 'var(--sk-cyberpunk-action)')
+  assert.equal(styles(thumb).get('background-color'), 'var(--sk-cyberpunk-action-ink)')
+  assert.ok(!styles(track).has('outline'), 'the host focus indicator stays independent')
+})
+
 /* ── the scene element contract ──────────────────────────────────────── */
 
 test('cyberpunk retains native DSH geometry and needs no Codex tokens', () => {
