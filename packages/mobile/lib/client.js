@@ -154,71 +154,29 @@ window.__ModuleLoader__.load({
     // src/modules/mobile/client/stream/canvas.ts
     var CHASSIS_INSET = 6;
     var VISIBILITY_MARGIN = "200px";
-    function supportsContentVisibility() {
-      try {
-        return typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("content-visibility", "auto") === true;
-      } catch {
-        return false;
-      }
-    }
-    function intrinsicSizeHint(element) {
-      const width = typeof element.offsetWidth === "number" ? element.offsetWidth : 0;
-      const height = typeof element.offsetHeight === "number" ? element.offsetHeight : 0;
-      return width > 0 && height > 0 ? `auto ${width}px ${height}px` : "auto";
-    }
     function watchCanvasVisibility(canvas, onChange) {
       const doc = typeof document === "undefined" ? null : document;
-      const element = canvas !== null && canvas !== void 0 && typeof canvas.addEventListener === "function" && typeof canvas.style === "object" ? canvas : null;
-      if (element === null) return () => {
-      };
+      const stage = canvas?.parentElement?.parentElement;
       const signals = {
         document: doc === null || doc.visibilityState !== "hidden",
-        intersect: true,
-        content: true
+        intersect: true
       };
       let visible = true;
-      let confirmed = false;
       const sync = () => {
-        const next = signals.document && signals.intersect && signals.content;
+        const next = signals.document && signals.intersect;
         if (next === visible) return;
         visible = next;
         onChange(next);
       };
       const disposers = [];
-      if (supportsContentVisibility()) {
-        element.style.contentVisibility = "auto";
-        element.style.containIntrinsicSize = intrinsicSizeHint(element);
-        disposers.push(() => {
-          element.style.contentVisibility = "";
-          element.style.containIntrinsicSize = "";
-        });
-      }
-      if ("oncontentvisibilityautostatechange" in element) {
-        const onState = (event) => {
-          if (typeof event?.skipped !== "boolean") return;
-          if (event.skipped === false) {
-            confirmed = true;
-            signals.content = true;
-          } else if (confirmed) {
-            signals.content = false;
-          }
-          sync();
-        };
-        element.addEventListener("contentvisibilityautostatechange", onState);
-        disposers.push(() => element.removeEventListener("contentvisibilityautostatechange", onState));
-      }
-      if (typeof IntersectionObserver === "function") {
+      if (stage && typeof IntersectionObserver === "function") {
         const observer = new IntersectionObserver((entries) => {
           const entry = entries[entries.length - 1];
           if (entry === void 0) return;
           signals.intersect = entry.isIntersecting === true;
-          if (signals.intersect) {
-            confirmed = true;
-            signals.content = true;
-          }
           sync();
         }, { rootMargin: VISIBILITY_MARGIN });
-        observer.observe(element);
+        observer.observe(stage);
         disposers.push(() => observer.disconnect());
       }
       if (doc !== null && typeof doc.addEventListener === "function") {
@@ -1431,7 +1389,7 @@ window.__ModuleLoader__.load({
     };
 
     // src/modules/mobile/client/panel.tsx
-    function createMobilePanel(React2, { primitives, api, CSS: CSS2, canvasRuntime, StreamView, icons, renderDeviceOptions }) {
+    function createMobilePanel(React2, { primitives, api, CSS, canvasRuntime, StreamView, icons, renderDeviceOptions }) {
       const h = React2.createElement;
       const { useState, useEffect, useRef, useCallback, useMemo } = React2;
       const { Button, Tooltip, IconChevronDownOutlineRegular } = primitives;
@@ -1742,7 +1700,7 @@ window.__ModuleLoader__.load({
         )));
         const status = h("div", { className: "mbm-status" }, booting ? h("span", null, h("i", { className: "mbm-dot", "data-on": "2" }), "正在启动设备…（首次可能要几分钟）") : h("span", null, h("i", { className: "mbm-dot", "data-on": streaming ? "1" : "0" }), streaming ? "实时" : "未串流"), active === null ? null : h("span", null, `${active.platform} · ${deviceKindLabel(active.type)} · ${active.version ?? "?"}`), format === "unknown" ? null : h("span", null, format === "h264" ? "H.264" : format === "mjpeg" ? "MJPEG" : format));
         const adbWarning = devices.length === 0 && adb !== null && adb.reason !== "ok" && adb.message ? h("div", { className: "mbm-adb" }, h("strong", null, "无法发现 Android 设备"), h("span", null, adb.message), adb.hint ? h("span", { className: "mbm-adbHint" }, adb.hint) : null, adb.path ? h("code", { className: "mbm-adbPath" }, `adb: ${adb.path}`) : null) : null;
-        return h("div", { className: "mbm-root", ref: rootRef }, h("style", null, CSS2), toolbar, adbWarning, h(
+        return h("div", { className: "mbm-root", ref: rootRef }, h("style", null, CSS), toolbar, adbWarning, h(
           StreamView,
           {
             key: activeId ?? "none",
@@ -2183,7 +2141,7 @@ window.__ModuleLoader__.load({
         }
         return payload;
       }
-      const CSS2 = '.mbm-root { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 8px; padding: 8px;\n  font-size: 12px; color: var(--dsw-alias-label-primary, #1f2329); }\n\n/* 设备下拉与动作按钮保持一行。 */\n.mbm-bar { display: flex; align-items: center; gap: 8px; }\n\n/* 原生下拉箭头关闭，自绘 chevron 保持左右视觉内边距。 */\n.mbm-selectWrap { position: relative; display: flex; flex: 1; min-width: 0; max-width: 220px; }\n.mbm-select { font: inherit; height: 28px; width: 100%; min-width: 0;\n  appearance: none; -webkit-appearance: none;\n  padding: 0 26px 0 8px; border-radius: var(--dsw-radius-sm, 6px);\n  border: 1px solid var(--dsw-alias-border-l2, #d0d5dd);\n  background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; cursor: pointer; }\n.mbm-select:disabled { opacity: .5; cursor: default; }\n\n.mbm-selectCaret { position: absolute; top: 50%; right: 6px; transform: translateY(-50%);\n  width: 16px; height: 16px; pointer-events: none;\n  color: var(--dsw-alias-label-tertiary, #98a2b3); }\n\n.mbm-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }\n\n/* 尺寸匹配宿主 sm Button；ghost 变体提供 hover 背景。 */\n.mbm-tool { width: 28px; padding: 0; color: var(--dsw-alias-label-secondary, #667085); }\n.mbm-tool:hover:not(:disabled) { color: var(--dsw-alias-label-primary, #1f2329); }\n.mbm-stage { position: relative; flex: 1; min-height: 120px; display: flex; align-items: center;\n  justify-content: center; overflow: hidden; border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-2, #f4f5f7);\n  border: 1px solid var(--dsw-alias-border-l2, #e4e7ec); }\n\n/* 只抵消底部根内边距；横向留白对称，2px padding 接住外伸侧键。 */\n.mbm-stage[data-frame="device"] {\n\n  margin: 0 0 -8px; padding: 2px; border: none; border-radius: 0;\n\n  background: transparent;\n}\n.mbm-stage[data-frame="frameless"] { border: none; background: transparent; }\n\n/* JS 按帧比例写入尺寸；flex:none 防止拉伸，max-* 保留未测量时的兜底。 */\n.mbm-media { display: block; flex: none; max-width: 100%; max-height: 100%; }\n\n.mbm-media:focus { outline: none; }\n.mbm-media:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary, #4d6bfe);\n  outline-offset: 2px; }\n.mbm-stage[data-frame="bezel"] .mbm-media { border-radius: 10px; }\n\n.mbm-stage[data-frame="device"] .mbm-media { border-radius: var(--mbm-device-radius, 14px); }\n\n/* 非 device 模式不生成外壳布局盒，保持 canvas 的百分比尺寸参照。 */\n.mbm-chassis { display: contents; }\n\n/* padding:5px + border:1px 与 stream/canvas.js 的 CHASSIS_INSET=6 同步。 */\n.mbm-stage[data-frame="device"] .mbm-chassis {\n  position: relative; display: inline-flex; flex: none; padding: 5px;\n  border: 1px solid rgba(255, 255, 255, .14);\n  border-radius: calc(var(--mbm-device-radius, 14px) + 6px);\n\n  background: linear-gradient(160deg, #1c1f24 0%, #121419 45%, #0a0b0e 100%);\n  box-shadow: 0 12px 28px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .35);\n}\n\n/* 首帧前只隐藏机身，保留布局尺寸。 */\n.mbm-stage[data-frame="device"] .mbm-chassis[data-media="off"] { opacity: 0; }\n\n/* 装饰节点不拦指针；坐标始终按 canvas 的矩形换算。 */\n.mbm-sideKey, .mbm-island, .mbm-punch { display: none; }\n\n.mbm-stage[data-frame="device"] .mbm-sideKey {\n  display: block; position: absolute; width: 3px; border-radius: 2px;\n  pointer-events: none;\n\n  background: linear-gradient(180deg, #565c66 0%, #3a3f47 55%, #262a30 100%);\n  box-shadow: 0 0 3px rgba(0, 0, 0, .7);\n}\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="power"] {\n  right: -2px; top: 22%; height: 7.5%; }\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="volumeUp"] {\n  left: -2px; top: 18%; height: 5.5%; }\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="volumeDown"] {\n  left: -2px; top: 26%; height: 5.5%; }\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="ios"] .mbm-island {\n  display: block; position: absolute; top: 7px; left: 50%;\n  transform: translateX(-50%); width: 30%; height: 4.3%;\n  min-height: 13px; max-height: 26px; border-radius: 999px;\n  background: #05060a; pointer-events: none;\n  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);\n}\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="ios"] .mbm-island::after {\n  content: ""; position: absolute; right: 12%; top: 50%;\n  transform: translateY(-50%); width: 4px; height: 4px; border-radius: 50%;\n  background: radial-gradient(circle at 35% 30%, #24406e, #05070c 70%); }\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="android"] .mbm-punch {\n  display: block; position: absolute; top: 9px; left: 50%;\n  transform: translateX(-50%); width: 4%; min-width: 9px; max-width: 16px;\n  aspect-ratio: 1 / 1; border-radius: 50%;\n  background: #05060a; pointer-events: none;\n  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); }\n.mbm-hint { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 6px;\n  align-items: center; justify-content: center; text-align: center; padding: 16px;\n  color: var(--dsw-alias-label-tertiary, #667085); line-height: 1.6; }\n.mbm-hint[data-overlay="1"] { background: rgba(16,17,20,.72); color: #fff; }\n\n/* 已有画面时提示贴底且不拦点击，单行省略避免遮住内容。 */\n.mbm-hint[data-floating="1"] {\n  inset: auto 8px 8px; display: block; padding: 5px 10px;\n  border-radius: 999px; background: rgba(16,17,20,.66); color: #fff;\n  font-size: 11px; line-height: 1.5; text-align: center;\n\n  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\n  pointer-events: none; backdrop-filter: blur(6px); }\n.mbm-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }\n.mbm-dot[data-on="1"] { background: #22c55e; }\n.mbm-dot[data-on="0"] { background: #9aa4b2; }\n\n/* 启动中使用琥珀色呼吸动画。 */\n.mbm-dot[data-on="2"] { background: #f59e0b; animation: mbm-pulse 1.2s ease-in-out infinite; }\n@keyframes mbm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }\n.mbm-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;\n  color: var(--dsw-alias-label-tertiary, #667085); font-size: 11px; }\n\n.mbm-adb { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px;\n  border-radius: var(--dsw-radius-sm, 6px); line-height: 1.6;\n  border: 1px solid var(--dsw-alias-state-warning-border, #f7d08a);\n  background: var(--dsw-alias-state-warning-bg, #fff8e6);\n  color: var(--dsw-alias-label-primary, #1f2329); }\n.mbm-adbHint { color: var(--dsw-alias-label-secondary, #667085); }\n.mbm-adbPath { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 10px; color: var(--dsw-alias-label-tertiary, #98a2b3);\n  word-break: break-all; }\n\n/* 宿主 tabTitle 已提供间距，这里只防止图标被压缩。 */\n.mbm-title-icon { flex: none; }\n';
+      const CSS = '.mbm-root { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 8px; padding: 8px;\n  font-size: 12px; color: var(--dsw-alias-label-primary, #1f2329); }\n\n/* 设备下拉与动作按钮保持一行。 */\n.mbm-bar { display: flex; align-items: center; gap: 8px; }\n\n/* 原生下拉箭头关闭，自绘 chevron 保持左右视觉内边距。 */\n.mbm-selectWrap { position: relative; display: flex; flex: 1; min-width: 0; max-width: 220px; }\n.mbm-select { font: inherit; height: 28px; width: 100%; min-width: 0;\n  appearance: none; -webkit-appearance: none;\n  padding: 0 26px 0 8px; border-radius: var(--dsw-radius-sm, 6px);\n  border: 1px solid var(--dsw-alias-border-l2, #d0d5dd);\n  background: var(--dsw-alias-bg-layer-1, #fff); color: inherit; cursor: pointer; }\n.mbm-select:disabled { opacity: .5; cursor: default; }\n\n.mbm-selectCaret { position: absolute; top: 50%; right: 6px; transform: translateY(-50%);\n  width: 16px; height: 16px; pointer-events: none;\n  color: var(--dsw-alias-label-tertiary, #98a2b3); }\n\n.mbm-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }\n\n/* 尺寸匹配宿主 sm Button；ghost 变体提供 hover 背景。 */\n.mbm-tool { width: 28px; padding: 0; color: var(--dsw-alias-label-secondary, #667085); }\n.mbm-tool:hover:not(:disabled) { color: var(--dsw-alias-label-primary, #1f2329); }\n.mbm-stage { position: relative; flex: 1; min-height: 120px; display: flex; align-items: center;\n  justify-content: center; overflow: hidden; border-radius: 10px;\n  background: var(--dsw-alias-bg-layer-2, #f4f5f7);\n  border: 1px solid var(--dsw-alias-border-l2, #e4e7ec); }\n\n/* 只抵消底部根内边距；横向留白对称，2px padding 接住外伸侧键。 */\n.mbm-stage[data-frame="device"] {\n\n  margin: 0 0 -8px; padding: 2px; border: none; border-radius: 0;\n\n  background: transparent;\n}\n.mbm-stage[data-frame="frameless"] { border: none; background: transparent; }\n\n/* JS 按帧比例写入尺寸；flex:none 防止拉伸，max-* 保留未测量时的兜底。 */\n.mbm-media { display: block; flex: none; max-width: 100%; max-height: 100%; }\n\n.mbm-media:focus { outline: none; }\n.mbm-media:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary, #4d6bfe);\n  outline-offset: 2px; }\n.mbm-stage[data-frame="bezel"] .mbm-media { border-radius: 10px; }\n\n.mbm-stage[data-frame="device"] .mbm-media { border-radius: var(--mbm-device-radius, 14px); }\n\n/* 非 device 模式不生成外壳布局盒，保持 canvas 的百分比尺寸参照。 */\n.mbm-chassis { display: contents; }\n\n/* padding:5px + border:1px 与 stream/canvas.js 的 CHASSIS_INSET=6 同步。 */\n.mbm-stage[data-frame="device"] .mbm-chassis {\n  position: relative; display: inline-flex; flex: none; padding: 5px;\n  border: 1px solid rgba(255, 255, 255, .14);\n  border-radius: calc(var(--mbm-device-radius, 14px) + 6px);\n\n  background: linear-gradient(160deg, #1c1f24 0%, #121419 45%, #0a0b0e 100%);\n  box-shadow: 0 12px 28px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .35);\n}\n\n/* 首帧前只隐藏机身，保留布局尺寸。 */\n.mbm-stage[data-frame="device"] .mbm-chassis[data-media="off"] { opacity: 0; }\n\n/* 装饰节点不拦指针；坐标始终按 canvas 的矩形换算。 */\n.mbm-sideKey, .mbm-island, .mbm-punch { display: none; }\n\n.mbm-stage[data-frame="device"] .mbm-sideKey {\n  display: block; position: absolute; width: 3px; border-radius: 2px;\n  pointer-events: none;\n\n  background: linear-gradient(180deg, #565c66 0%, #3a3f47 55%, #262a30 100%);\n  box-shadow: 0 0 3px rgba(0, 0, 0, .7);\n}\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="power"] {\n  right: -2px; top: 22%; height: 7.5%; }\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="volumeUp"] {\n  left: -2px; top: 18%; height: 5.5%; }\n.mbm-stage[data-frame="device"] .mbm-sideKey[data-side="volumeDown"] {\n  left: -2px; top: 26%; height: 5.5%; }\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="ios"] .mbm-island {\n  display: block; position: absolute; top: 7px; left: 50%;\n  transform: translateX(-50%); width: 30%; height: 4.3%;\n  min-height: 13px; max-height: 26px; border-radius: 999px;\n  background: #05060a; pointer-events: none;\n  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);\n}\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="ios"] .mbm-island::after {\n  content: ""; position: absolute; right: 12%; top: 50%;\n  transform: translateY(-50%); width: 4px; height: 4px; border-radius: 50%;\n  background: radial-gradient(circle at 35% 30%, #24406e, #05070c 70%); }\n\n.mbm-stage[data-frame="device"] .mbm-chassis[data-device-kind="android"] .mbm-punch {\n  display: block; position: absolute; top: 9px; left: 50%;\n  transform: translateX(-50%); width: 4%; min-width: 9px; max-width: 16px;\n  aspect-ratio: 1 / 1; border-radius: 50%;\n  background: #05060a; pointer-events: none;\n  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); }\n.mbm-hint { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 6px;\n  align-items: center; justify-content: center; text-align: center; padding: 16px;\n  color: var(--dsw-alias-label-tertiary, #667085); line-height: 1.6; }\n.mbm-hint[data-overlay="1"] { background: rgba(16,17,20,.72); color: #fff; }\n\n/* 已有画面时提示贴底且不拦点击，单行省略避免遮住内容。 */\n.mbm-hint[data-floating="1"] {\n  inset: auto 8px 8px; display: block; padding: 5px 10px;\n  border-radius: 999px; background: rgba(16,17,20,.66); color: #fff;\n  font-size: 11px; line-height: 1.5; text-align: center;\n\n  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\n  pointer-events: none; backdrop-filter: blur(6px); }\n.mbm-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }\n.mbm-dot[data-on="1"] { background: #22c55e; }\n.mbm-dot[data-on="0"] { background: #9aa4b2; }\n\n/* 启动中使用琥珀色呼吸动画。 */\n.mbm-dot[data-on="2"] { background: #f59e0b; animation: mbm-pulse 1.2s ease-in-out infinite; }\n@keyframes mbm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }\n.mbm-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;\n  color: var(--dsw-alias-label-tertiary, #667085); font-size: 11px; }\n\n.mbm-adb { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px;\n  border-radius: var(--dsw-radius-sm, 6px); line-height: 1.6;\n  border: 1px solid var(--dsw-alias-state-warning-border, #f7d08a);\n  background: var(--dsw-alias-state-warning-bg, #fff8e6);\n  color: var(--dsw-alias-label-primary, #1f2329); }\n.mbm-adbHint { color: var(--dsw-alias-label-secondary, #667085); }\n.mbm-adbPath { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 10px; color: var(--dsw-alias-label-tertiary, #98a2b3);\n  word-break: break-all; }\n\n/* 宿主 tabTitle 已提供间距，这里只防止图标被压缩。 */\n.mbm-title-icon { flex: none; }\n';
       const canvasRuntime = createCanvasRuntime();
       const { maxMediaCssWidth } = canvasRuntime;
       const icons = createIcons(React2);
@@ -2191,7 +2149,7 @@ window.__ModuleLoader__.load({
       const renderDeviceOptions = createDeviceOptions(React2);
       const useH264Canvas = createUseH264Canvas(React2, canvasRuntime);
       const StreamView = createStreamView(React2, { api, prefix: API_PREFIX, useH264Canvas });
-      const MobilePanel = createMobilePanel(React2, { primitives, api, CSS: CSS2, canvasRuntime, StreamView, icons, renderDeviceOptions });
+      const MobilePanel = createMobilePanel(React2, { primitives, api, CSS, canvasRuntime, StreamView, icons, renderDeviceOptions });
       const MobileSettings = createMobileSettings(React2, { primitives });
       function MobileTitle({ useTabInfo }) {
         const { tab } = useTabInfo();

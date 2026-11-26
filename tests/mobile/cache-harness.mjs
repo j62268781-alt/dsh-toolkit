@@ -12,6 +12,7 @@ import { callDaemon, DaemonRpc, isSafeCliFallbackError } from "../../src/modules
 import { createScreenSizeLookup } from "../../src/modules/mobile/host/stream/screen-size.ts";
 import { createMobileLoopTool } from "../../src/modules/mobile/host/agent/tools.ts";
 import { createUseH264Canvas } from "../../src/modules/mobile/client/stream/use-h264-canvas.ts";
+import { watchCanvasVisibility } from '../../src/modules/mobile/client/stream/canvas.js'
 
 const deferred = () => {
   let resolve, reject;
@@ -299,6 +300,56 @@ export async function runMobileCacheTests(test) {
       assert.equal(mounted.unwatched(), 1); assert.equal(mounted.timers.timeouts.size, 0); assert.equal(mounted.timers.intervals.size, 0);
     } finally { mounted.restore(); }
   });
+
+  await test('H264 starts with a hidden canvas, pauses offscreen, and resumes on return', async () => {
+    const stage = { style: { display: 'flex' } }
+    const canvas = Object.assign(new EventTarget(), {
+      style: { display: 'none' }, parentElement: { parentElement: stage },
+      oncontentvisibilityautostatechange: null,
+    })
+    let deliverIntersection, observed, disconnected = false
+    const requests = []
+    const restore = globals({
+      IntersectionObserver: class {
+        constructor(callback) { deliverIntersection = callback }
+        observe(target) { observed = target }
+        disconnect() { disconnected = true }
+      },
+      fetch(_url, { signal }) {
+        const work = deferred()
+        requests.push({ ...work, signal })
+        signal.addEventListener('abort', () => work.reject(signal.reason), { once: true })
+        return work.promise
+      },
+      VideoDecoder: class {},
+    })
+    let stop
+    try {
+      const useH264Canvas = createUseH264Canvas({ useEffect(fn) { stop = fn() } }, {
+        watchStageSize: () => () => {}, watchCanvasVisibility,
+      })
+      useH264Canvas('/stream', { current: canvas }, () => {}, { current: null })
+      deliverIntersection([{ isIntersecting: observed.style.display !== 'none' }])
+      canvas.dispatchEvent(Object.assign(new Event('contentvisibilityautostatechange'), { skipped: true }))
+      await flush()
+      assert.equal(requests.length, 1)
+      assert.equal(requests[0].signal.aborted, false, 'first frame must not depend on the canvas being visible')
+      assert.equal(observed, stage)
+      deliverIntersection([{ isIntersecting: false }])
+      await flush()
+      assert.equal(requests[0].signal.aborted, true)
+      assert.equal(requests.length, 1, 'do not reconnect while the panel is offscreen')
+      deliverIntersection([{ isIntersecting: true }])
+      await flush()
+      assert.equal(requests.length, 2)
+      assert.equal(requests[1].signal.aborted, false)
+    } finally {
+      stop?.()
+      await flush()
+      restore()
+    }
+    assert.equal(disconnected, true)
+  })
 
   await test("H264 cleanup releases reader, queued frames, decoder, rAF and watchdog", async () => {
     const reading = deferred(), frames = [], decoders = []; let cancelled = 0, released = 0, firstRead = true;

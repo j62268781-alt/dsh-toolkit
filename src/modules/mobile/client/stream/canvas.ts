@@ -4,90 +4,31 @@ export const CHASSIS_INSET = 6;
 // 与 200px 的「提前量」一致：面板滚出这么多才算不可见，避免临界处反复停/启。
 const VISIBILITY_MARGIN = "200px";
 
-function supportsContentVisibility() {
-  try {
-    return typeof CSS !== "undefined" && typeof CSS.supports === "function" &&
-      CSS.supports("content-visibility", "auto") === true;
-  } catch {
-    return false;
-  }
-}
-
-/** 被跳过时用 `auto` 记住最后一次真实尺寸，免得外壳被 contain 塌成 0。 */
-function intrinsicSizeHint(element) {
-  const width = typeof element.offsetWidth === "number" ? element.offsetWidth : 0;
-  const height = typeof element.offsetHeight === "number" ? element.offsetHeight : 0;
-  return width > 0 && height > 0 ? `auto ${width}px ${height}px` : "auto";
-}
-
-/**
- * 画面元素的可见性：文档隐藏 / 滚出视口 / content-visibility 跳过，任一成立即视为不可见。
- *
- * 三个信号任意一个拿不到就当作「可见」，所以不支持这些 API 的浏览器行为与改造前一致。
- * 事件必须直接挂在该元素上：`contentvisibilityautostatechange` 不冒泡，挂到别处收不到。
- *
- * 两个刻意的加固：
- * - 首次布局前的 `skipped: true` 是假的（画布还没渲染），确认过一次可见之后才信这个信号；
- * - `IntersectionObserver` 说它可见时顺手清掉 content 信号：宁可信「看得见」，
- *   否则一个陈旧的 skipped 就能让画面永远停住。
- */
+/** 文档隐藏或投屏区域滚出视口时暂停取流。 */
 export function watchCanvasVisibility(canvas, onChange) {
   const doc = typeof document === "undefined" ? null : document;
-  const element = canvas !== null && canvas !== void 0 &&
-    typeof canvas.addEventListener === "function" && typeof canvas.style === "object" ? canvas : null;
-  if (element === null) return () => {
-  };
+  // 首帧前 canvas 没有布局盒；观察它会在收到首帧前中止取流。
+  const stage = canvas?.parentElement?.parentElement;
   const signals = {
     document: doc === null || doc.visibilityState !== "hidden",
-    intersect: true,
-    content: true
+    intersect: true
   };
   let visible = true;
-  // 见过一次「确实可见」的证据（IO 命中 或 事件报 skipped:false）才敢按 skipped:true 停流。
-  let confirmed = false;
   const sync = () => {
-    const next = signals.document && signals.intersect && signals.content;
+    const next = signals.document && signals.intersect;
     if (next === visible) return;
     visible = next;
     onChange(next);
   };
   const disposers = [];
-  if (supportsContentVisibility()) {
-    element.style.contentVisibility = "auto";
-    element.style.containIntrinsicSize = intrinsicSizeHint(element);
-    disposers.push(() => {
-      element.style.contentVisibility = "";
-      element.style.containIntrinsicSize = "";
-    });
-  }
-  // canvas 是替换元素，content-visibility 不一定对它生效，事件也可能永远不来；
-  // 下面的 IntersectionObserver 与 visibilitychange 就是那种情况下的兜底。
-  if ("oncontentvisibilityautostatechange" in element) {
-    const onState = (event) => {
-      if (typeof event?.skipped !== "boolean") return;
-      if (event.skipped === false) {
-        confirmed = true;
-        signals.content = true;
-      } else if (confirmed) {
-        signals.content = false;
-      }
-      sync();
-    };
-    element.addEventListener("contentvisibilityautostatechange", onState);
-    disposers.push(() => element.removeEventListener("contentvisibilityautostatechange", onState));
-  }
-  if (typeof IntersectionObserver === "function") {
+  if (stage && typeof IntersectionObserver === "function") {
     const observer = new IntersectionObserver((entries) => {
       const entry = entries[entries.length - 1];
       if (entry === void 0) return;
       signals.intersect = entry.isIntersecting === true;
-      if (signals.intersect) {
-        confirmed = true;
-        signals.content = true;
-      }
       sync();
     }, { rootMargin: VISIBILITY_MARGIN });
-    observer.observe(element);
+    observer.observe(stage);
     disposers.push(() => observer.disconnect());
   }
   if (doc !== null && typeof doc.addEventListener === "function") {
