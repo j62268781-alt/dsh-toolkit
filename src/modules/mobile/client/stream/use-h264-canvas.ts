@@ -134,6 +134,8 @@ export function createUseH264Canvas(React, canvasRuntime) {
       const run = async () => {
         // 退避计时器可能在暂停之后才到点：这一轮直接跳过，别白取一次流。
         if (paused) return;
+        // 同一个 URL 自动重连不会重挂 hook，新一轮首帧仍须恢复播放状态。
+        reportedPlaying = false;
         report("connecting");
         endedCleanly = false;
         // 每次取流一条独立信号：暂停时只掐断这一次，不影响外层取消语义。

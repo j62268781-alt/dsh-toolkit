@@ -396,6 +396,57 @@ export async function runMobileCacheTests(test) {
     }
   });
 
+  await test('H264 reports playing again after automatic reconnect and a new frame', async () => {
+    const packet = new Uint8Array([0,0,1,0x67,0x42,0,0x1f,0,0,1,0x68,0,0,0,1,0x65,0x11,0,0,1,0x61,0x22])
+    const reads = []
+    class Decoder {
+      constructor({ output }) { this.output = output }
+      configure() {}
+      decode() { this.output({ displayWidth: 100, displayHeight: 200, close() {} }) }
+      close() {}
+    }
+    const mounted = mountH264(async () => {
+      const pending = deferred()
+      reads.push(pending)
+      let first = true
+      return { ok: true, body: { getReader: () => ({
+        read() {
+          if (!first) return pending.promise
+          first = false
+          return Promise.resolve({ done: false, value: packet })
+        },
+        cancel() { pending.resolve({ done: true }) },
+      }) } }
+    }, Decoder)
+    let now = 100
+    const restoreTime = globals({ performance: { now: () => now } })
+    const draw = () => {
+      const entry = mounted.timers.frames.entries().next().value
+      assert.ok(entry, 'expected a frame after receiving bytes')
+      mounted.timers.frames.delete(entry[0])
+      entry[1]()
+    }
+    try {
+      await flush()
+      draw()
+      assert.equal(mounted.states.at(-1)[0], 'playing')
+      reads[0].resolve({ done: true })
+      await flush()
+      assert.equal(mounted.states.at(-1)[0], 'connecting')
+      mounted.timers.fireTimeout()
+      await flush()
+      assert.equal(reads.length, 2)
+      now = 200
+      draw()
+      assert.equal(mounted.states.at(-1)[0], 'playing', 'new frame must clear the reconnect state')
+    } finally {
+      mounted.stop()
+      await flush()
+      restoreTime()
+      mounted.restore()
+    }
+  })
+
   await test("H264 cleanup clears reconnect delay and prevents a new fetch", async () => {
     let calls = 0;
     const mounted = mountH264(async () => { calls += 1; throw new Error("network unavailable"); });

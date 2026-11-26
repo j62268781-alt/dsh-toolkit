@@ -535,6 +535,7 @@ window.__ModuleLoader__.load({
           };
           const run = async () => {
             if (paused) return;
+            reportedPlaying = false;
             report("connecting");
             endedCleanly = false;
             const attempt = new AbortController();
