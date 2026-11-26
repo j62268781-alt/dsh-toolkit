@@ -28,6 +28,7 @@ test('raiseWindow：桌面壳里启动同一个 exe，并摘掉 ELECTRON_RUN_AS_
   const spy = createSpawnSpy()
   const raised = raiseWindow({
     spawnProcess: spy.spawnProcess,
+    platform: 'win32',
     execPath: 'D:\\软件\\deepseek\\DeepSeek Harness.exe',
     versions: { electron: '44.7.0', node: '24.21.0' },
     env: { ELECTRON_RUN_AS_NODE: '1', PATH: 'C:\\Windows' },
@@ -45,6 +46,33 @@ test('raiseWindow：桌面壳里启动同一个 exe，并摘掉 ELECTRON_RUN_AS_
   assert.equal(launch.unrefd, true, '不能拖住宿主退出')
 })
 
+test('raiseWindow：macOS 用 Launch Services 将 dsh://open 送到当前 App，不直接启动 Electron', () => {
+  const spy = createSpawnSpy()
+  const app = '/Applications/DeepSeek Harness.app'
+  assert.equal(raiseWindow({
+    spawnProcess: spy.spawnProcess,
+    platform: 'darwin',
+    execPath: `${app}/Contents/MacOS/DeepSeek Harness`,
+    versions: { electron: '44.7.0' },
+    env: { ELECTRON_RUN_AS_NODE: '1' },
+  }), true)
+  assert.equal(spy.launches.length, 1)
+  assert.equal(spy.launches[0].execPath, '/usr/bin/open')
+  assert.deepEqual(spy.launches[0].args, ['-a', app, 'dsh://open'])
+  assert.equal(spy.launches[0].unrefd, true)
+})
+
+test('raiseWindow：macOS 无法定位 App bundle 时不回退到直接启动进程', () => {
+  const spy = createSpawnSpy()
+  assert.equal(raiseWindow({
+    spawnProcess: spy.spawnProcess,
+    platform: 'darwin',
+    execPath: '/usr/local/bin/electron',
+    versions: { electron: '44.7.0' },
+  }), false)
+  assert.deepEqual(spy.launches, [])
+})
+
 test('raiseWindow：纯 node 部署（无 electron 版本）直接跳过，不启动进程', () => {
   const spy = createSpawnSpy()
   assert.equal(raiseWindow({ spawnProcess: spy.spawnProcess, versions: { node: '24.21.0' }, env: {} }), false)
@@ -55,6 +83,7 @@ test('raiseWindow：启动失败只返回 false，不抛给调用方', () => {
   const spy = createSpawnSpy({ throws: true })
   assert.equal(raiseWindow({
     spawnProcess: spy.spawnProcess,
+    platform: 'win32',
     versions: { electron: '44.7.0' },
     env: {},
   }), false)
@@ -71,6 +100,7 @@ test('提窗路由：只接受 POST，走共享鉴权，不支持时如实返回
   const spy = createSpawnSpy()
   registerRaiseRoute(ctx, {
     spawnProcess: spy.spawnProcess,
+    platform: 'win32',
     versions: { electron: '44.7.0' },
     env: {},
   })

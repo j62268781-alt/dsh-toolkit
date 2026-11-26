@@ -3,14 +3,22 @@ export function raiseWindow(options = {}) {
     const spawnProcess = options.spawnProcess ?? spawn;
     const execPath = options.execPath ?? process.execPath;
     const versions = options.versions ?? process.versions;
-    // 只有桌面壳能这么干：纯 node 部署（`dsh --host`）里再启动一次 execPath 没有意义，
-    // 而且 process.execPath 会指向 node 本身。process.versions.electron 是唯一可靠的判据。
+    // 纯 Node 部署没有可提起的桌面窗口。
     if (typeof versions?.electron !== 'string')
         return false;
+    let command = execPath;
+    let args = [];
+    if ((options.platform ?? process.platform) === 'darwin') {
+        const app = /^(\/.*\.app)\/Contents\/MacOS\/[^/]+$/.exec(execPath)?.[1];
+        if (!app)
+            return false;
+        command = '/usr/bin/open';
+        args = ['-a', app, 'dsh://open'];
+    }
     const env = { ...(options.env ?? process.env) };
     delete env.ELECTRON_RUN_AS_NODE;
     try {
-        const child = spawnProcess(execPath, [], {
+        const child = spawnProcess(command, args, {
             detached: true,
             stdio: 'ignore',
             windowsHide: true,

@@ -9,7 +9,7 @@ import { spawn } from 'node:child_process'
  * 也没有任何「点击系统通知 → 提升窗口」的实现（`windows_toast_notification.cc` 只把点击转成
  * 渲染进程的 `NotificationClicked` 事件）。
  *
- * 唯一被系统允许的做法是「再启动一次本应用」：第二个实例拿不到单实例锁 → 立刻退出，
+ * Windows 上用「再启动一次本应用」绕过这个限制：第二个实例拿不到单实例锁 → 立刻退出，
  * 而第一个实例会收到 `second-instance` 事件并执行 `focusPrimaryWindow()`（`app.asar/lib/main.js`
  * 里是 `window.restore() + show() + focus()`）。实测从最小化+被记事本遮挡的状态下
  * 约 400ms 内恢复并拿到前台，见 docs/notification/README.md 的验证记录。
@@ -17,32 +17,42 @@ import { spawn } from 'node:child_process'
  * host 侧本身就是 `ELECTRON_RUN_AS_NODE=1` 跑在同一个 exe 下的 Node 子进程，所以
  * `process.execPath` 就是这个桌面端 exe；启动时必须**去掉** `ELECTRON_RUN_AS_NODE`，
  * 否则新进程会以纯 Node 方式运行 `[]`（等于什么都不做）。
+ * macOS 则由 Launch Services 把 `dsh://open` 交给现有实例，避免直接启动 Electron 产生额外 Dock 图标。
  *
  * @param {object} [options] 依赖注入（测试用）。
  * @param {Function} [options.spawnProcess] child_process.spawn 替身。
- * @param {string} [options.execPath] 要启动的可执行文件，缺省 process.execPath。
+ * @param {string} [options.execPath] 当前 Electron 可执行文件，缺省 process.execPath。
  * @param {Record<string, string|undefined>} [options.env] 环境变量，缺省 process.env。
  * @param {Record<string, string|undefined>} [options.versions] process.versions 替身。
- * @returns {boolean} 是否真的发起了一次启动。
+ * @param {string} [options.platform] 系统平台，缺省 process.platform。
+ * @returns {boolean} 是否发出了提窗请求。
  */
 export interface RaiseWindowOptions {
   spawnProcess?: typeof spawn
   execPath?: string
   env?: Record<string, string | undefined>
   versions?: Record<string, string | undefined>
+  platform?: NodeJS.Platform
 }
 
 export function raiseWindow(options: RaiseWindowOptions = {}): boolean {
   const spawnProcess = options.spawnProcess ?? spawn
   const execPath = options.execPath ?? process.execPath
   const versions = options.versions ?? process.versions
-  // 只有桌面壳能这么干：纯 node 部署（`dsh --host`）里再启动一次 execPath 没有意义，
-  // 而且 process.execPath 会指向 node 本身。process.versions.electron 是唯一可靠的判据。
+  // 纯 Node 部署没有可提起的桌面窗口。
   if (typeof versions?.electron !== 'string') return false
+  let command = execPath
+  let args: string[] = []
+  if ((options.platform ?? process.platform) === 'darwin') {
+    const app = /^(\/.*\.app)\/Contents\/MacOS\/[^/]+$/.exec(execPath)?.[1]
+    if (!app) return false
+    command = '/usr/bin/open'
+    args = ['-a', app, 'dsh://open']
+  }
   const env = { ...(options.env ?? process.env) }
   delete env.ELECTRON_RUN_AS_NODE
   try {
-    const child = spawnProcess(execPath, [], {
+    const child = spawnProcess(command, args, {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,

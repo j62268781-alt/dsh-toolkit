@@ -184,16 +184,12 @@ var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层�
 切过去之后如果发现宿主有模态弹层开着（`[role="dialog"][aria-modal="true"]`），补一个 document 级
 `Escape` 把它关掉 —— 否则会话是在弹层背后切的，用户看到的仍是弹层。
 
-**提窗（为什么不是 `window.focus()`）**：Windows 的前台锁只允许「当前持有前台权的进程」把窗口
-抢到最前，后台进程调 `window.focus()` / `SetForegroundWindow` 会被系统直接忽略；Electron 全链路
-也没有任何「点击系统通知 → 提升窗口」的实现（`windows_toast_notification.cc` 只把点击转成渲染进程
-的 `NotificationClicked`）。桌面壳里唯一被系统允许的做法是**再启动一次本应用**：第二个实例拿不到
-单实例锁立刻退出，第一个实例收到 `second-instance` 后执行 `focusPrimaryWindow()`
-（`window.restore() + show() + focus()`，见 `app.asar/lib/main.js`）。所以 client 点击时 `POST`
-`/api/plugins/toolkit/notification/raise`，host 侧用
-`spawn(process.execPath, [], { detached: true, stdio: 'ignore', env: 去掉 ELECTRON_RUN_AS_NODE })`
-起一个新实例（`src/modules/notification/host/raise.js`）。实测从「最小化 + 被记事本遮挡」到拿到
-前台约 400ms；浏览器部署下这条路由如实返回 `unsupported`，提窗静默跳过。
+**提窗（为什么不是 `window.focus()`）**：点击通知时，客户端 `POST`
+`/api/plugins/toolkit/notification/raise`，由 host 按平台处理（见 `src/modules/notification/host/raise.ts`）。
+
+- **macOS**：通过 `/usr/bin/open -a <当前 App bundle> dsh://open` 让 Launch Services 将激活请求交给已运行的桌面壳，由桌面壳恢复并聚焦窗口，不直接启动另一个 Electron 进程。
+- **Windows**：前台锁可能忽略后台进程的 `window.focus()`。host 启动同一个桌面 exe（去掉 `ELECTRON_RUN_AS_NODE`），第二个实例拿不到单实例锁便退出，主实例通过 `second-instance` 恢复窗口并聚焦。从「最小化 + 被记事本遮挡」到前台实测约 400ms。
+- **浏览器部署**：路由返回 `unsupported`，只切换会话，不要求 host 提窗。
 
 ### 提示音
 
@@ -230,9 +226,7 @@ var(--dsw-alias-border-l2)`、控件靠右 `gap:24px`），标题/副标题层�
 
 ## 已知限制
 
-- **提窗靠「再启动一次应用」**：Windows 前台锁不允许后台进程抢焦点，所以点击通知时 host 会
-  `spawn` 一个新实例，让主实例走 `second-instance → focusPrimaryWindow()`。代价是新进程启动约有
-  400ms 延迟，且浏览器部署下无效（路由返回 `unsupported`，只切会话不提窗）。
+- **Windows 提窗约有 400ms 延迟**：需要等待第二个实例启动并通知主实例。macOS 不走这条路径；浏览器部署只切会话。
 - 系统通知在应用前台时的**投递与点击**由系统决定，无法从页面观测；窗口在前台时本模块刻意不发通知
   （但提示音照响）。
 - **撤旧通知只能收横幅**：`Notification.close()` 在 Toast 仍显示时只让 Windows 收起横幅
