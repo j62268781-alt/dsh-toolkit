@@ -1,4 +1,4 @@
-/* Original helper renderer; sprite artwork is licensed CC0-1.0 (see pets/NOTICE.md). */
+/* Original helper renderer; see pets/NOTICE.md for sprite artwork attribution and licensing. */
 'use strict'
 const bridge = window.pet
 const $ = id => document.getElementById(id)

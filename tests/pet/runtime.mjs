@@ -618,7 +618,8 @@ test('pet motions follow Qoder: greet, review on completion, and a quiet desktop
   const base = { settings: { language: 'zh', activePet: 'whale' }, pets: [pet], kind: 'pet', sessions: [] }
   let update
   dom.window.Image = class { complete = true; naturalWidth = 1536; naturalHeight = 2288 }
-  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {}, getImageData: () => ({ data: new Uint8ClampedArray(64 * 64 * 4).fill(255) }) })
+  let sourceRow
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage(_image, _x, y, _width, height) { sourceRow = y / height }, getImageData: () => ({ data: new Uint8ClampedArray(64 * 64 * 4).fill(255) }) })
   dom.window.matchMedia = () => ({ matches: false, addEventListener() {} })
   dom.window.pet = { initial: async () => base, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState(fn) { update = fn }, onCollapse() {} }
   dom.window.eval(script)
@@ -633,6 +634,7 @@ test('pet motions follow Qoder: greet, review on completion, and a quiet desktop
   assert.equal(doc.body.dataset.motion, 'waiting')
   update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'running' }] })
   assert.equal(doc.body.dataset.motion, 'running', 'active work takes precedence over the launch greeting')
+  assert.equal(sourceRow, 7, 'work uses the dedicated typing row, not the directional drag rows')
   clock = 5000
   update({ ...base, sessions: [{ id: 'a', title: 'A', status: 'completed' }] })
   assert.equal(doc.body.dataset.motion, 'review', 'a finished turn uses the review row instead of falling back to idle')
