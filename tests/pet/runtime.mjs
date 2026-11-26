@@ -51,14 +51,14 @@ test('bundled pet ships a v2 sheet of 8 columns × 11 rows at 192×208 per cell'
   assert.equal(height, 208 * 11)
 })
 
-test('bundled DeepSeek work clip routes to a 4.8-second animated WebP', async () => {
+test('bundled DeepSeek work loops and both waiting cues play just once', async () => {
   const dir = new URL('../../src/modules/pet/host/runtime/pets/aoi-shark-maid/', import.meta.url)
   const manifest = JSON.parse(await readFile(new URL('pet.json', dir), 'utf8'))
   const id = manifest.id
   const state = { settings: { activePet: id }, pets: [{ id, assetDir: fileURLToPath(dir), manifest, sheetFile: manifest.spritesheetPath }] }
   const source = publicState(state, 'pet', { bounds: { width: 1000, height: 800 } }).pets[0].animations
-  assert.deepEqual(Object.keys(source).sort(), ['running'])
-  for (const [motion, expectedDuration, expectedLoop] of [['running', 4800, 0]]) {
+  assert.deepEqual(Object.keys(source).sort(), ['approval', 'question', 'running'])
+  for (const [motion, expectedDuration, expectedLoop] of [['running', 4800, 0], ['approval', 680, 1], ['question', 680, 1]]) {
     assert.equal(source[motion], `pet-asset://pet/${id}/motion/${motion}.webp`)
     const file = assetPath(state, source[motion])
     assert.equal(file, fileURLToPath(new URL(`motion/${motion}.webp`, dir)).replaceAll('\\', '/'))
@@ -703,6 +703,39 @@ test('an old sprite sheet keeps the question fallback inside its nine rows', asy
   assert.ok(sourceRect, 'the legacy sheet frame is drawn')
   assert.equal(sourceRect[1], 6 * 104, 'question falls back to the shared waiting row')
   assert.ok(sourceRect[1] + sourceRect[3] <= 936, 'the source frame remains within the nine-row sheet')
+})
+
+test('bundled waiting poses keep precedence over other running sessions when motion is reduced', async (t) => {
+  const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
+  const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
+  t.after(() => dom.window.close())
+  const manifest = JSON.parse(await readFile(new URL('../../src/modules/pet/host/runtime/pets/aoi-shark-maid/pet.json', import.meta.url), 'utf8'))
+  const base = { settings: { activePet: manifest.id }, pets: [{ id: manifest.id, manifest, sheetFile: manifest.spritesheetPath }] }
+  const running = { id: 'a', title: 'A', status: 'running', updatedAt: 100 }
+  const render = (...waiting) => publicState({ ...base, sessions: [running, ...waiting] }, 'pet', { bounds: { width: 1000, height: 800 } })
+  let update, sourceCell
+  dom.window.Image = class { complete = true; naturalWidth = 1536; naturalHeight = 2288 }
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage(_image, x, y, w, h) { sourceCell = [x / w, y / h] } })
+  dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
+  dom.window.pet = { initial: async () => render(), interactive() {}, onState(fn) { update = fn }, onCollapse() {} }
+  dom.window.eval(script)
+  await new Promise(resolve => setImmediate(resolve))
+  const doc = dom.window.document
+  const check = (motion, cell) => {
+    assert.equal(doc.body.dataset.motion, motion)
+    assert.equal(doc.getElementById('film').hidden, true)
+    assert.deepEqual(sourceCell, cell)
+  }
+  check('running', [0, 7])
+  const permission = { id: 'b', title: 'B', status: 'waiting', pendingKind: 'permission', updatedAt: 50 }
+  const question = { id: 'c', title: 'C', status: 'waiting', pendingKind: 'question', updatedAt: 60 }
+  update(render(permission))
+  check('approval', [6, 6])
+  update(render(permission, question))
+  check('question', [7, 6])
+  update(render())
+  check('running', [0, 7])
 })
 
 test('a pet with motion clips plays the 60 fps WebP instead of redrawing the sheet', async (t) => {
