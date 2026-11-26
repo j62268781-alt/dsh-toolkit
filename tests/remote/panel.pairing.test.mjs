@@ -696,18 +696,50 @@ test('配对：手机 claim 后输入 8 位码，确认时带上 sessionId 与�
   }
 })
 
-test('配对：控制路由不存在时给出可读错误', async () => {
-  const panel = await mount({})
+test('配对：生成二维码的临时请求失败只弹 Toast', async () => {
+  const panel = await mount({
+    'settings.get': { config: { serverUrl: SERVER } },
+    'host.pairing.status': () => null,
+    'host.pairing.start': { __error: { code: 'internal', message: 'try again', details: {
+      remoteCode: 'PAIRING_UPSTREAM_UNAVAILABLE', retryable: true,
+    } } },
+  })
   try {
     const popover = panel.popover()
     const generate = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairGenerate')
     await panel.click(generate)
     await panel.flush()
-    const error = popover.querySelector('.wc-error')
-    assert.ok(error !== null, '404 时应显示错误行')
-    assert.match(error.textContent, /CONTROL_MISSING/)
+    assert.equal(popover.querySelector('.wc-error'), null)
+    const toast = panel.dom.window.document.querySelector('.sk-toast--error[role="alert"]')
+    assert.match(toast?.textContent ?? '', /PAIRING_UPSTREAM_UNAVAILABLE/)
   } finally {
     await panel.unmount()
+  }
+})
+
+test('配对：本机未提供主机配对时，状态检查和生成操作只显示一条面板提示', async () => {
+  const unavailable = { __error: {
+    code: 'internal', message: 'Host device pairing is unavailable.', details: { remoteCode: 'METHOD_NOT_ALLOWED' },
+  } }
+  for (const initialStatus of [unavailable, null]) {
+    const panel = await mount({
+      'settings.get': { config: { serverUrl: SERVER } },
+      'host.pairing.status': () => initialStatus,
+      'host.pairing.start': unavailable,
+    })
+    try {
+      const popover = panel.popover()
+      const generate = [...popover.querySelectorAll('.wc-button')].find((node) => node.textContent === 'pairGenerate')
+      assert.equal(generate.disabled, initialStatus === unavailable)
+      if (!generate.disabled) await panel.click(generate)
+      await panel.flush()
+      assert.equal(generate.disabled, true)
+      assert.equal(popover.querySelectorAll('.wc-error').length, 1)
+      assert.equal(popover.querySelector('.wc-error')?.textContent, 'pairHostUnavailable')
+      assert.equal(panel.dom.window.document.querySelector('.sk-toast--error'), null)
+    } finally {
+      await panel.unmount()
+    }
   }
 })
 

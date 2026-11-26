@@ -4,7 +4,7 @@
  * 约束：
  *   - 这里不持有 token，也不解析 token；服务端返回的账号信息已经是脱敏的。
  *   - 轮询只在面板打开时进行，关闭面板立即停止，避免常驻请求。
- *   - 所有失败都收敛成 { state: 'failed', error }，不向上抛，避免面板整块崩溃。
+ *   - 状态读取失败写入快照，按钮请求失败交给调用者提示。
  */
 
 import { API_PATH } from '../../host/constants.js'
@@ -154,6 +154,8 @@ export function createConnection({ onError = () => {} }: { onError?: (error: any
   const listeners = new Set<() => void>()
   let inflight
   let disposed = false
+  // 取码接口可能以 HTTP 200 返回刚失败的登录快照；同一次结果不能再由轮询画成红字。
+  let reportedQrError: { state: string; error: string } | undefined;
 
   const publish = (next) => {
     value = next
@@ -199,7 +201,11 @@ export function createConnection({ onError = () => {} }: { onError?: (error: any
     if (inflight !== undefined) return inflight
     inflight = request('status')
       .then((payload) => {
-        publish(normalize(payload))
+        const next = normalize(payload);
+        const alreadyReported = reportedQrError !== undefined
+          && next.state === reportedQrError.state && next.error === reportedQrError.error;
+        if (!alreadyReported) reportedQrError = undefined;
+        publish(alreadyReported ? { ...next, error: undefined } : next);
         return value
       })
       .catch((error) => {
@@ -215,14 +221,17 @@ export function createConnection({ onError = () => {} }: { onError?: (error: any
 
   /** 执行一个会改变状态的动作，并把结果直接写进存储。 */
   async function act(path, json?) {
-    try {
-      const payload = await request(path, { method: 'POST', ...(json === undefined ? {} : { json }) })
-      publish(normalize(payload))
-      return value
-    } catch (error) {
-      publish({ ...value, state: value.connected ? value.state : 'failed', error: String(error.message ?? error) })
-      throw error
+    // 请求失败由触发动作的界面处理，不能覆盖最后一次真实的连接快照。
+    const payload = await request(path, { method: 'POST', ...(json === undefined ? {} : { json }) });
+    const next = normalize(payload);
+    if (path === "login/start" && next.qr === undefined && next.error !== undefined) {
+      reportedQrError = { state: next.state, error: next.error };
+      publish({ ...next, error: undefined });
+      throw new Error(next.error);
     }
+    reportedQrError = undefined;
+    publish(next);
+    return value;
   }
 
   /**

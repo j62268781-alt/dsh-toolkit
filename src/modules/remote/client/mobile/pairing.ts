@@ -333,6 +333,9 @@ async function control(endpoint, payload = {}) {
     ? details.remoteCode
     : typeof result?.error?.code === 'string' ? result.error.code : 'PAIRING_FAILED'
   const message = typeof result?.error?.message === 'string' ? result.error.message : 'pairing request failed.'
+  if (endpoint.startsWith('host.pairing.') && code === 'METHOD_NOT_ALLOWED' && message === 'Host device pairing is unavailable.') {
+    throw new PairingError('HOST_PAIRING_UNAVAILABLE', message, details)
+  }
   throw new PairingError(code, message, details)
 }
 
@@ -340,7 +343,9 @@ async function control(endpoint, payload = {}) {
  * 配对状态存储：面板与子视图共享一份（useSyncExternalStore）。
  * `view` 直接是 ds-harness-remote 的 HostPairingView；没有会话时为 undefined。
  */
-export function createPairing() {
+type PairingFailure = { code: string; message: string; retryable: boolean; conflict: boolean };
+
+export function createPairing({ onActionError }: { onActionError?: (detail: PairingFailure) => void } = {}) {
   let value = {
     /** 首次状态读取是否已完成：用来避免面板先亮出「生成二维码」再翻成已连接。 */
     loaded: false,
@@ -402,11 +407,13 @@ export function createPairing() {
   async function refresh() {
     // 账号冲突这类致命错误不自动重试：证据已经摆在面板上，等用户点「解绑并重试」。
     if (value.halted) return undefined
-    set({ loading: value.view === undefined, error: undefined })
+    const unavailable = value.error?.code === 'HOST_PAIRING_UNAVAILABLE' ? value.error : undefined
+    set({ loading: value.view === undefined, error: unavailable })
     try {
       const view = await control('host.pairing.status')
       const paired = rememberPaired(view)
       set({
+        ...(unavailable !== undefined && value.error === unavailable ? { error: undefined } : {}),
         view: view ?? undefined,
         loading: false,
         ...paired === undefined ? {} : { lastPaired: paired },
@@ -488,7 +495,7 @@ export function createPairing() {
     }
   }
 
-  async function run(work) {
+  async function run(work, { notifyFailure = false, clearQrOnFailure = false } = {}) {
     // 这里刻意**不**先清 error。卡片是「底边贴着按钮、向上长」的（position.js 的 placePopover），
     // 每次点击先撤掉错误行、失败再画回来，整张卡片就会上下弹两次——真机连点
     // 「重新生成二维码」时看到的抖动就是这个。重试期间保持原样，成功后再清。
@@ -510,15 +517,23 @@ export function createPairing() {
       // 已经绑好的机器上，这类冲突来自一张过期的会话记录，绑定本身是好的——
       // 把它画成红字会变成「上面说已绑定、下面说配对失败」的自相矛盾画面。
       const ignored = detail.conflict === true && value.binding === true
+      const notify = notifyFailure && onActionError !== undefined
+        && !detail.conflict && detail.code !== 'RATE_LIMITED'
+        && detail.code !== 'CONTROL_MISSING' && detail.code !== 'CONTROL_UNAUTHORIZED'
+        && detail.code !== 'HOST_PAIRING_UNAVAILABLE'
+        && !AUTH_ERRORS.has(detail.code) && detail.code !== 'ACCOUNT_AUTH_REQUIRED';
       set({
-        error: ignored ? undefined : detail,
+        error: ignored ? undefined : notify ? value.error : detail,
         halted: detail.conflict === true,
+        // 宿主的 start 会先取消旧会话，失败后不能继续展示旧二维码。
+        ...(clearQrOnFailure && detail.retryable ? { view: undefined } : {}),
         // 429：server 回了 Retry-After: 60。冷却期内不再打宿主，按钮跟着禁用并倒计时。
         ...detail.code === 'RATE_LIMITED'
           ? { cooldownUntil: Date.now() + RATE_LIMIT_COOLDOWN_MS }
           : {},
-      })
-      return undefined
+      });
+      if (notify) onActionError(detail);
+      return undefined;
     } finally {
       set({ busy: false })
     }
@@ -555,7 +570,7 @@ export function createPairing() {
       // 连点「生成/刷新二维码」不该反复建会话：服务器对建会话限流 5 次/分钟/IP，
       // 第 6 次直接 429（真机就是连点几次后看到那句英文报错的）。
       // 现有二维码还没临期就复用它，重复点击因此是幂等的，一个配额都不烧。
-      if (value.busy) return undefined
+      if (value.busy || value.error?.code === 'HOST_PAIRING_UNAVAILABLE') return undefined
       const current = value.view
       const remaining = remainingMs(current)
       if (current?.state === 'created' && remaining !== undefined && remaining > REUSE_MIN_REMAINING_MS) {
@@ -564,19 +579,14 @@ export function createPairing() {
       }
       // 限流冷却期内再点也只会拿到 429：不出请求，面板把按钮禁用并倒计时。
       if ((value.cooldownUntil ?? 0) > Date.now()) return undefined
-      const started = await run(async () => {
+      return run(async () => {
         const view = await control('host.pairing.start')
         // 上一轮留下的授权失效已经和这次配对无关了：不清掉的话，配对一完成
         // （view 变成 completed、不再是「进行中」）那面红字卡会先闪一下再被下一次
         // hostStatus 抹掉，用户看到的就是「扫码后先报错、再变已绑定」。
         set({ view, authError: undefined })
         return view
-      })
-      // 宿主的 start 是「先取消旧会话，再建新会话」：限流/5xx 发生在取消之后，
-      // 旧二维码已经作废。继续把它画在面板上，用户会去扫一张注定失败的码；
-      // 收起来只留错误提示，下一次点「生成二维码」才是干净的一次。
-      if (started === undefined && value.error?.retryable === true) set({ view: undefined })
-      return started
+      }, { notifyFailure: true, clearQrOnFailure: true });
     },
 
     async confirm(code) {
@@ -606,7 +616,7 @@ export function createPairing() {
         const next = await control('host.pairing.cancel', { sessionId: view.sessionId })
         set({ view: next })
         return next
-      })
+      }, { notifyFailure: true });
     },
 
     /**
@@ -615,6 +625,7 @@ export function createPairing() {
      * `restart: true` 表示「更换手机」：解绑后立刻开一张新二维码，省得用户再点一次。
      */
     async unbind({ restart = false } = {}) {
+      if (restart && value.error?.code === 'HOST_PAIRING_UNAVAILABLE') return undefined
       return run(async () => {
         // 「更换手机」的终点是一张新二维码，可中间要先注销旧设备、清盘上残留、重读设置；
         // 这段时间 binding 已经掉了、view 也清了，面板会掉回未绑定首页再弹到二维码。
@@ -653,7 +664,7 @@ export function createPairing() {
         } finally {
           if (restart) set({ renewing: false })
         }
-      })
+      }, { notifyFailure: true });
     },
 
     /**

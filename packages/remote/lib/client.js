@@ -173,6 +173,7 @@ window.__ModuleLoader__.load({
       const listeners = /* @__PURE__ */ new Set();
       let inflight;
       let disposed = false;
+      let reportedQrError;
       const publish = (next) => {
         value = next;
         for (const listener of [...listeners]) {
@@ -211,7 +212,10 @@ window.__ModuleLoader__.load({
       function refresh() {
         if (inflight !== void 0) return inflight;
         inflight = request("status").then((payload) => {
-          publish(normalize(payload));
+          const next = normalize(payload);
+          const alreadyReported = reportedQrError !== void 0 && next.state === reportedQrError.state && next.error === reportedQrError.error;
+          if (!alreadyReported) reportedQrError = void 0;
+          publish(alreadyReported ? { ...next, error: void 0 } : next);
           return value;
         }).catch((error) => {
           onError(error);
@@ -223,14 +227,16 @@ window.__ModuleLoader__.load({
         return inflight;
       }
       async function act(path, json) {
-        try {
-          const payload = await request(path, { method: "POST", ...json === void 0 ? {} : { json } });
-          publish(normalize(payload));
-          return value;
-        } catch (error) {
-          publish({ ...value, state: value.connected ? value.state : "failed", error: String(error.message ?? error) });
-          throw error;
+        const payload = await request(path, { method: "POST", ...json === void 0 ? {} : { json } });
+        const next = normalize(payload);
+        if (path === "login/start" && next.qr === void 0 && next.error !== void 0) {
+          reportedQrError = { state: next.state, error: next.error };
+          publish({ ...next, error: void 0 });
+          throw new Error(next.error);
         }
+        reportedQrError = void 0;
+        publish(next);
+        return value;
       }
       async function probe() {
         try {
@@ -341,6 +347,7 @@ window.__ModuleLoader__.load({
         pairServerSave: "保存",
         pairServerSaving: "切换中…",
         pairError: "配对请求失败（{code}）：{reason}",
+        pairHostUnavailable: "这台电脑暂时无法生成配对二维码。请确认 ds-harness-remote 插件已启用并正常运行，再重新打开此面板。",
         pairRateLimited: "生成二维码太频繁了：这台电脑每分钟最多 5 次。请等一分钟左右再试。",
         pairCooldownWait: "还需等待 {s} 秒",
         pairSwitchBusy: "上一次服务器切换还没结束，请稍后再试。",
@@ -397,6 +404,7 @@ window.__ModuleLoader__.load({
         pairServerSave: "Save",
         pairServerSaving: "Switching…",
         pairError: "Pairing request failed ({code}): {reason}",
+        pairHostUnavailable: "Host pairing is unavailable on this computer. Check that the Remote plugin is enabled and running, then reopen this panel.",
         pairRateLimited: "Generated QR codes too often: this computer allows 5 per minute. Wait about a minute and try again.",
         pairCooldownWait: "Retry in {s}s",
         pairSwitchBusy: "A server switch is still in progress. Try again in a moment.",
@@ -607,6 +615,141 @@ window.__ModuleLoader__.load({
     function RemoteConnectionShape() {
       return /* @__PURE__ */ __dshReact.createElement(__dshReact.Fragment, null, /* @__PURE__ */ __dshReact.createElement("rect", { x: 2.2, y: 3.2, width: 10.6, height: 7.6, rx: 1.6 }), /* @__PURE__ */ __dshReact.createElement("path", { d: "M6.5 13.2h3.4M7.6 10.8v2.4M9.4 10.8v2.4" }), /* @__PURE__ */ __dshReact.createElement("rect", { x: 10.9, y: 8.6, width: 4.9, height: 6.6, rx: 1.3 }));
     }
+
+    // src/client/ui/toast.css
+    var toast_default = '/*\n * Toast 的宿主外壳。挂在 document.body 上，所以在面板之外 —— 只能全局注入\n * （`toast.ts` 的 ensureStyles 按 `data-plugin-css` 幂等插一次）。\n *\n * 位置、尺寸与配色都对齐宿主自己的 `._toast_*` 规则（top:40px、居中、深色胶囊），\n * 差别只有一处：宿主一次只渲染一个，这里是一个纵向栈，所以外层是 flex 列。\n *\n * 两条路径共用同一套类名：\n * - 原生路径：栈是 `popover="manual"`（top layer），单条靠 `@starting-style` + `transition` 进出场；\n * - 退化路径（jsdom、没有 popover 的宿主）：就是改造前的固定定位栈 + 两个 `@keyframes`。\n */\n.sk-toast-stack {\n  position: fixed;\n  top: 40px;\n  left: 50%;\n  z-index: 1100;\n  flex-direction: column;\n  align-items: center;\n  gap: 8px;\n  width: max-content;\n  max-width: min(640px, calc(100vw - 48px));\n  transform: translateX(-50%);\n  /* 整层不可点：toast 盖在设置页上方，点不穿会挡住下面的按钮。 */\n  pointer-events: none;\n}\n\n/* display 只跟着「栈开着」走：popover 关闭时 UA 是 display:none，作者样式不能把它顶回来。 */\n.sk-toast-stack:not([popover]),\n.sk-toast-stack:popover-open {\n  display: flex;\n}\n\n/* popover 在 top layer 里，UA 会给 position:fixed + inset:0 + margin:auto + 边框/背景，\n   这里全部按原布局收回来，只保留 `top:40px / left:50%` 的居中胶囊位置。 */\n.sk-toast-stack[popover] {\n  inset: auto;\n  top: 40px;\n  left: 50%;\n  margin: 0;\n  padding: 0;\n  border: 0;\n  background: transparent;\n  color: inherit;\n  overflow: visible;\n}\n\n.sk-toast {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  max-width: 100%;\n  padding: 12px 16px;\n  border-radius: var(--dsw-radius-lg, 12px);\n  background: var(--dsw-alias-toast-bg, #21252b);\n  color: var(--dsw-alias-toast-label, #f5f6f8);\n  box-shadow: var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.28));\n  font-size: 13px;\n  line-height: 20px;\n}\n\n/* 退化路径：没有 `:popover-open` 的宿主继续用关键帧，行为与改造前一致。 */\n@supports not (selector(:popover-open)) {\n  .sk-toast {\n    animation: sk-toast-in 0.16s ease-out;\n  }\n\n  .sk-toast--leaving {\n    animation: sk-toast-out 0.18s ease-in forwards;\n  }\n}\n\n/* 原生路径：进场由 `@starting-style` 给出起点，退场由 `--leaving` 的目标值给出终点。\n   `transition-behavior: allow-discrete` 必须是独立声明，并进 `transition` 简写会让整条声明失效。 */\n@supports (selector(:popover-open)) {\n  .sk-toast {\n    transition: opacity 0.16s ease-out, transform 0.16s ease-out;\n    transition-behavior: allow-discrete;\n  }\n\n  @starting-style {\n    .sk-toast {\n      opacity: 0;\n      transform: translateY(-6px);\n    }\n  }\n}\n\n.sk-toast--leaving {\n  opacity: 0;\n  transform: translateY(-4px);\n}\n\n/* 减弱动效：过渡与关键帧都不跑，节点靠 `toast.ts` 的兜底定时器收掉。 */\n@media (prefers-reduced-motion: reduce) {\n  .sk-toast,\n  .sk-toast--leaving {\n    animation: none;\n    transition: none;\n  }\n}\n\n.sk-toast__text {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  white-space: pre-wrap;\n}\n\n.sk-toast__icon {\n  display: inline-flex;\n  flex: none;\n  align-items: center;\n  justify-content: center;\n  width: 14px;\n  height: 14px;\n  border-radius: 50%;\n  /* 宿主注入 `@supports (corner-shape:superellipse(1.5))`，不写这一句圆会被画成超椭圆。 */\n  corner-shape: round;\n  color: #fff;\n  font-size: 10px;\n  font-weight: 600;\n  line-height: 1;\n}\n\n.sk-toast--error .sk-toast__icon {\n  background: #e5484d;\n}\n\n.sk-toast--success .sk-toast__icon {\n  background: #30a46c;\n}\n\n@keyframes sk-toast-in {\n  from {\n    opacity: 0;\n    transform: translateY(-6px);\n  }\n  to {\n    opacity: 1;\n    transform: none;\n  }\n}\n\n@keyframes sk-toast-out {\n  to {\n    opacity: 0;\n    transform: translateY(-4px);\n  }\n}\n';
+
+    // src/client/ui/toast.ts
+    var HOST_KEY = "__dshToolkitToast__";
+    var STYLE_ID = "dsh-toolkit-toast";
+    var MAX_VISIBLE = 3;
+    var MAX_TEXT = 300;
+    var EXIT_MS = 180;
+    var HOLD_MS = { info: 4e3, success: 2400, error: 6e3 };
+    function resolveHost() {
+      if (typeof document === "undefined" || document.body == null || typeof document.createElement !== "function") return null;
+      const scope = globalThis;
+      const existing = scope[HOST_KEY];
+      if (existing !== void 0 && existing.root.isConnected && existing.root.ownerDocument === document) return existing;
+      const root = document.createElement("div");
+      root.className = "sk-toast-stack";
+      root.setAttribute("role", "region");
+      root.setAttribute("aria-label", "通知");
+      const popover = typeof root.showPopover === "function";
+      if (popover) root.setAttribute("popover", "manual");
+      document.body.appendChild(root);
+      const created = { root, entries: [], popover, shown: false };
+      scope[HOST_KEY] = created;
+      return created;
+    }
+    function ensureStyles() {
+      try {
+        if (document.querySelector(`style[data-plugin-css="${STYLE_ID}/styles.css"]`) !== null) return;
+      } catch {
+      }
+      installStylesheet(toast_default, STYLE_ID);
+    }
+    function normalizeHold(tone, holdMs) {
+      if (typeof holdMs !== "number" || !Number.isFinite(holdMs) || holdMs < 0) return HOLD_MS[tone];
+      return holdMs;
+    }
+    function clamp(text) {
+      return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
+    }
+    function openStack(host) {
+      if (!host.popover || host.shown) return;
+      try {
+        host.root.showPopover();
+        host.shown = true;
+      } catch {
+      }
+    }
+    function closeStack(host) {
+      if (!host.popover || !host.shown) return;
+      host.shown = false;
+      try {
+        host.root.hidePopover();
+      } catch {
+      }
+    }
+    function dismiss(host, entry) {
+      if (host.entries.indexOf(entry) === -1) return;
+      host.entries = host.entries.filter((item) => item !== entry);
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      entry.el.classList.add("sk-toast--leaving");
+      let done = false;
+      function finish() {
+        if (done) return;
+        done = true;
+        clearTimeout(timeout);
+        entry.el.removeEventListener("transitionend", onEnd);
+        entry.el.removeEventListener("animationend", onEnd);
+        entry.el.remove();
+        if (host.root.childElementCount === 0) closeStack(host);
+      }
+      function onEnd(event) {
+        if (event.target !== entry.el) return;
+        finish();
+      }
+      entry.el.addEventListener("transitionend", onEnd);
+      entry.el.addEventListener("animationend", onEnd);
+      const timeout = setTimeout(finish, EXIT_MS);
+      if (typeof entry.el.getAnimations === "function") {
+        try {
+          if (entry.el.getAnimations().length === 0) finish();
+        } catch {
+        }
+      }
+    }
+    function arm(host, entry, holdMs) {
+      if (entry.timer !== void 0) clearTimeout(entry.timer);
+      if (holdMs === 0) {
+        entry.timer = void 0;
+        return;
+      }
+      entry.timer = setTimeout(() => dismiss(host, entry), holdMs);
+    }
+    function showToast(text, options = {}) {
+      const message = clamp(String(text ?? "").trim());
+      if (message === "") return;
+      const host = resolveHost();
+      if (host === null) return;
+      ensureStyles();
+      const tone = options.tone ?? "info";
+      const holdMs = normalizeHold(tone, options.holdMs);
+      const duplicate = host.entries.find((entry2) => entry2.tone === tone && entry2.text === message);
+      if (duplicate !== void 0) {
+        arm(host, duplicate, holdMs);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = `sk-toast sk-toast--${tone}`;
+      el.dataset.tone = tone;
+      el.setAttribute("role", tone === "error" ? "alert" : "status");
+      if (tone !== "info") {
+        const icon = document.createElement("span");
+        icon.className = "sk-toast__icon";
+        icon.setAttribute("aria-hidden", "true");
+        icon.textContent = tone === "error" ? "!" : "✓";
+        el.appendChild(icon);
+      }
+      const body = document.createElement("span");
+      body.className = "sk-toast__text";
+      body.textContent = message;
+      el.appendChild(body);
+      host.root.appendChild(el);
+      openStack(host);
+      const entry = { tone, text: message, el, timer: void 0 };
+      host.entries.push(entry);
+      while (host.entries.length > MAX_VISIBLE) dismiss(host, host.entries[0]);
+      arm(host, entry, holdMs);
+    }
+    var toast = {
+      show: showToast,
+      info: (text, options = {}) => showToast(text, { ...options, tone: "info" }),
+      success: (text, options = {}) => showToast(text, { ...options, tone: "success" }),
+      error: (text, options = {}) => showToast(text, { ...options, tone: "error" })
+    };
 
     // src/modules/remote/client/qrcode.ts
     var EC_CODEWORDS_PER_BLOCK_M = { 1: 10, 2: 16, 3: 26, 4: 18, 5: 24, 6: 16, 7: 18, 8: 22, 9: 22, 10: 26 };
@@ -978,7 +1121,7 @@ window.__ModuleLoader__.load({
     // src/modules/remote/client/position.ts
     var POPOVER_MARGIN = 8;
     var POPOVER_GAP = 2;
-    var clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    var clamp2 = (value, min, max) => Math.max(min, Math.min(max, value));
     function placePopover({ anchor, size, viewport, gap = POPOVER_GAP, margin = POPOVER_MARGIN }) {
       const width = Math.max(0, size?.width ?? 0);
       const height = Math.max(0, size?.height ?? 0);
@@ -986,10 +1129,10 @@ window.__ModuleLoader__.load({
       const viewHeight = Math.max(0, viewport?.height ?? 0);
       const maxHeight = Math.max(0, viewHeight - margin * 2);
       if (anchor === void 0 || anchor === null) return { left: margin, top: margin, maxHeight };
-      const left = clamp(anchor.right, margin, Math.max(margin, viewWidth - margin - width));
+      const left = clamp2(anchor.right, margin, Math.max(margin, viewWidth - margin - width));
       const above = anchor.top - gap - height;
       const placed = above >= margin ? above : anchor.bottom + gap;
-      const top = clamp(placed, margin, Math.max(margin, viewHeight - margin - height));
+      const top = clamp2(placed, margin, Math.max(margin, viewHeight - margin - height));
       return { left, top, maxHeight };
     }
 
@@ -1188,9 +1331,12 @@ window.__ModuleLoader__.load({
       const details = result?.error?.details;
       const code = typeof details?.remoteCode === "string" ? details.remoteCode : typeof result?.error?.code === "string" ? result.error.code : "PAIRING_FAILED";
       const message = typeof result?.error?.message === "string" ? result.error.message : "pairing request failed.";
+      if (endpoint.startsWith("host.pairing.") && code === "METHOD_NOT_ALLOWED" && message === "Host device pairing is unavailable.") {
+        throw new PairingError("HOST_PAIRING_UNAVAILABLE", message, details);
+      }
       throw new PairingError(code, message, details);
     }
-    function createPairing() {
+    function createPairing({ onActionError } = {}) {
       let value = {
         /** 首次状态读取是否已完成：用来避免面板先亮出「生成二维码」再翻成已连接。 */
         loaded: false,
@@ -1248,11 +1394,13 @@ window.__ModuleLoader__.load({
       });
       async function refresh() {
         if (value.halted) return void 0;
-        set({ loading: value.view === void 0, error: void 0 });
+        const unavailable = value.error?.code === "HOST_PAIRING_UNAVAILABLE" ? value.error : void 0;
+        set({ loading: value.view === void 0, error: unavailable });
         try {
           const view = await control("host.pairing.status");
           const paired = rememberPaired(view);
           set({
+            ...unavailable !== void 0 && value.error === unavailable ? { error: void 0 } : {},
             view: view ?? void 0,
             loading: false,
             ...paired === void 0 ? {} : { lastPaired: paired }
@@ -1311,7 +1459,7 @@ window.__ModuleLoader__.load({
           return void 0;
         }
       }
-      async function run(work) {
+      async function run(work, { notifyFailure = false, clearQrOnFailure = false } = {}) {
         const pending = value.error;
         set({ busy: true });
         try {
@@ -1327,12 +1475,16 @@ window.__ModuleLoader__.load({
         } catch (error) {
           const detail = fail(error);
           const ignored = detail.conflict === true && value.binding === true;
+          const notify = notifyFailure && onActionError !== void 0 && !detail.conflict && detail.code !== "RATE_LIMITED" && detail.code !== "CONTROL_MISSING" && detail.code !== "CONTROL_UNAUTHORIZED" && detail.code !== "HOST_PAIRING_UNAVAILABLE" && !AUTH_ERRORS.has(detail.code) && detail.code !== "ACCOUNT_AUTH_REQUIRED";
           set({
-            error: ignored ? void 0 : detail,
+            error: ignored ? void 0 : notify ? value.error : detail,
             halted: detail.conflict === true,
+            // 宿主的 start 会先取消旧会话，失败后不能继续展示旧二维码。
+            ...clearQrOnFailure && detail.retryable ? { view: void 0 } : {},
             // 429：server 回了 Retry-After: 60。冷却期内不再打宿主，按钮跟着禁用并倒计时。
             ...detail.code === "RATE_LIMITED" ? { cooldownUntil: Date.now() + RATE_LIMIT_COOLDOWN_MS } : {}
           });
+          if (notify) onActionError(detail);
           return void 0;
         } finally {
           set({ busy: false });
@@ -1360,7 +1512,7 @@ window.__ModuleLoader__.load({
         settings,
         hostStatus,
         async start() {
-          if (value.busy) return void 0;
+          if (value.busy || value.error?.code === "HOST_PAIRING_UNAVAILABLE") return void 0;
           const current = value.view;
           const remaining = remainingMs(current);
           if (current?.state === "created" && remaining !== void 0 && remaining > REUSE_MIN_REMAINING_MS) {
@@ -1368,13 +1520,11 @@ window.__ModuleLoader__.load({
             return current;
           }
           if ((value.cooldownUntil ?? 0) > Date.now()) return void 0;
-          const started = await run(async () => {
+          return run(async () => {
             const view = await control("host.pairing.start");
             set({ view, authError: void 0 });
             return view;
-          });
-          if (started === void 0 && value.error?.retryable === true) set({ view: void 0 });
-          return started;
+          }, { notifyFailure: true, clearQrOnFailure: true });
         },
         async confirm(code) {
           const view = value.view;
@@ -1400,7 +1550,7 @@ window.__ModuleLoader__.load({
             const next = await control("host.pairing.cancel", { sessionId: view.sessionId });
             set({ view: next });
             return next;
-          });
+          }, { notifyFailure: true });
         },
         /**
          * 解绑当前服务器上的账号。
@@ -1408,6 +1558,7 @@ window.__ModuleLoader__.load({
          * `restart: true` 表示「更换手机」：解绑后立刻开一张新二维码，省得用户再点一次。
          */
         async unbind({ restart = false } = {}) {
+          if (restart && value.error?.code === "HOST_PAIRING_UNAVAILABLE") return void 0;
           return run(async () => {
             if (restart) set({ renewing: true });
             try {
@@ -1432,7 +1583,7 @@ window.__ModuleLoader__.load({
             } finally {
               if (restart) set({ renewing: false });
             }
-          });
+          }, { notifyFailure: true });
         },
         /**
          * 改配对服务器地址（写入 ds-harness-remote 的 settings）。
@@ -1483,7 +1634,7 @@ window.__ModuleLoader__.load({
       TURN: "pairModeTurn",
       RELAY: "pairModeRelay"
     };
-    function createPairingTab({ React: React2, t, useCountdown, QrCode, pairing }) {
+    function createPairingTab({ React: React2, t, useCountdown, QrCode }) {
       const { useEffect, useRef, useState, useSyncExternalStore } = React2;
       const SERVER_URL_ERROR_KEYS = {
         empty: "pairServerUrlEmpty",
@@ -1587,6 +1738,7 @@ window.__ModuleLoader__.load({
         return "pairAuthFailed";
       }
       function pairErrorText(error) {
+        if (error.code === "HOST_PAIRING_UNAVAILABLE") return t("pairHostUnavailable");
         if (error.code === "RATE_LIMITED") return t("pairRateLimited");
         if (error.code === "PAIRING_BUSY") return t("pairServerBusy");
         if (error.code === "SERVER_SWITCH_BUSY") return t("pairSwitchBusy");
@@ -1594,11 +1746,13 @@ window.__ModuleLoader__.load({
         if (serverUrlRejection(error.message) !== void 0) return t(serverUrlRejection(error.message));
         return t("pairError", { code: error.code, reason: error.message });
       }
+      const pairing = createPairing({ onActionError: (error) => toast.error(pairErrorText(error)) });
       function PairingTab({ active }) {
         const value = useSyncExternalStore(pairing.subscribe, pairing.getSnapshot, pairing.getSnapshot);
         const view = value.view;
         const state = view?.state;
         const busy = value.busy;
+        const hostUnavailable = value.error?.code === "HOST_PAIRING_UNAVAILABLE";
         const [code, setCode] = useState("");
         const [confirmAction, setConfirmAction] = useState(null);
         const codeRef = useRef(null);
@@ -1669,7 +1823,7 @@ window.__ModuleLoader__.load({
           h("button", {
             type: "button",
             className: "wc-button wc-button--half wc-button--danger-solid",
-            disabled: busy,
+            disabled: busy || hostUnavailable && confirmAction === "change",
             onClick: confirmAction === "change" ? changePhone : unbind
           }, t(confirmAction === "unbind" ? "pairUnbindNowConfirm" : "pairChangeNow"))
         ) : h(
@@ -1678,7 +1832,7 @@ window.__ModuleLoader__.load({
           h("button", {
             type: "button",
             className: "wc-button wc-button--half",
-            disabled: busy,
+            disabled: busy || hostUnavailable,
             onClick: () => setConfirmAction("change")
           }, t("pairChangePhone")),
           h("button", {
@@ -1715,7 +1869,7 @@ window.__ModuleLoader__.load({
                 h("button", {
                   type: "button",
                   className: "wc-button wc-button--primary",
-                  disabled: busy,
+                  disabled: busy || hostUnavailable,
                   onClick: start
                 }, t("pairAgain"))
               ),
@@ -1834,7 +1988,7 @@ window.__ModuleLoader__.load({
                 h("button", {
                   type: "button",
                   className: "wc-button",
-                  disabled: busy || cooling,
+                  disabled: busy || cooling || hostUnavailable,
                   onClick: start
                 }, cooling ? t("pairCooldownWait", { s: cooldown }) : t("refresh")),
                 h("button", { type: "button", className: "wc-button", disabled: busy, onClick: cancel }, t("cancel"))
@@ -1886,14 +2040,14 @@ window.__ModuleLoader__.load({
           return h(
             "div",
             { className: "wc-body" },
-            h("div", { className: "wc-hint" }, terminal ? t(terminalHint, { reason: failureReason ?? "—" }) : t("pairIdleHint")),
+            hostUnavailable ? null : h("div", { className: "wc-hint" }, terminal ? t(terminalHint, { reason: failureReason ?? "—" }) : t("pairIdleHint")),
             h(
               "div",
               { className: "wc-actions" },
               h("button", {
                 type: "button",
                 className: "wc-button wc-button--primary",
-                disabled: busy || cooling,
+                disabled: busy || cooling || hostUnavailable,
                 onClick: start
               }, cooling ? t("pairCooldownWait", { s: cooldown }) : terminal ? t("pairRegenerate") : t("pairGenerate"))
             ),
@@ -1911,7 +2065,7 @@ window.__ModuleLoader__.load({
           value.error === void 0 ? null : h(
             "div",
             { className: "wc-body" },
-            h("div", { className: "wc-error" }, pairErrorText(value.error)),
+            h("div", { className: "wc-error", role: hostUnavailable ? "status" : void 0 }, pairErrorText(value.error)),
             value.error.conflict === true ? h("div", { className: "wc-hint" }, t("pairConflictHint")) : null,
             value.error.conflict === true ? h(
               "div",
@@ -1984,7 +2138,7 @@ window.__ModuleLoader__.load({
           )
         );
       }
-      function NeedCode({ busy, attempts, onSubmit, onCancel }) {
+      function NeedCode({ busy, attempts, error, onSubmit, onCancel }) {
         const [code, setCode] = useState("");
         const inputRef = useRef(null);
         useEffect(() => {
@@ -2008,6 +2162,7 @@ window.__ModuleLoader__.load({
               inputMode: "numeric",
               pattern: "[0-9]*",
               placeholder: t("codePlaceholder"),
+              "aria-describedby": error === void 0 ? void 0 : "wc-wechat-code-error",
               value: code,
               disabled: busy,
               onChange: (event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 8)),
@@ -2023,6 +2178,7 @@ window.__ModuleLoader__.load({
               onClick: submit
             }, t("codeSubmit"))
           ),
+          error === void 0 ? null : h("div", { id: "wc-wechat-code-error", className: "wc-error", role: "alert" }, error),
           attempts > 0 ? h("div", { className: "wc-countdown" }, `#${attempts}`) : null,
           h(
             "div",
@@ -2108,7 +2264,6 @@ window.__ModuleLoader__.load({
       const { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } = React2;
       const h = React2.createElement;
       const QrCode = createQrCode(React2);
-      const pairing = createPairing();
       const noopSubscribe = () => () => {
       };
       const allEnabled = { phone: true, wechat: true };
@@ -2141,7 +2296,7 @@ window.__ModuleLoader__.load({
         );
       }
       const { Disconnected, Waiting, NeedCode, Connected } = createWechatViews({ React: React2, t, useCountdown, QrCode });
-      const { PairingTab } = createPairingTab({ React: React2, t, useCountdown, QrCode, pairing });
+      const { PairingTab } = createPairingTab({ React: React2, t, useCountdown, QrCode });
       function TabBar({ tab, onTab }) {
         const all = [["pair", t("tabPair")], ["claw", t("tabClaw")]];
         const index = Math.max(0, all.findIndex(([key]) => key === tab));
@@ -2168,7 +2323,7 @@ window.__ModuleLoader__.load({
       function Popover({ anchor, closing, onClose }) {
         const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot);
         const [busy, setBusy] = useState(false);
-        const [localError, setLocalError] = useState(void 0);
+        const [codeError, setCodeError] = useState(void 0);
         const nodeRef = useRef(null);
         const [box, setBox] = useState(void 0);
         const [viewport, setViewport] = useState(readViewport);
@@ -2217,13 +2372,15 @@ window.__ModuleLoader__.load({
           window.addEventListener("keydown", onKey);
           return () => window.removeEventListener("keydown", onKey);
         }, [onClose]);
-        const run = useCallback(async (work) => {
+        const run = useCallback(async (work, keepInline = false) => {
           setBusy(true);
-          setLocalError(void 0);
+          setCodeError(void 0);
           try {
             await work();
           } catch (error2) {
-            setLocalError(String(error2?.message ?? error2));
+            const reason = String(error2?.message ?? error2);
+            if (keepInline) setCodeError(reason);
+            else toast.error(t("failed", { reason }));
           } finally {
             setBusy(false);
           }
@@ -2252,7 +2409,7 @@ window.__ModuleLoader__.load({
         }, []);
         const state = value.state;
         const connected = value.connected === true;
-        const error = localError ?? value.error ?? value.credentialError;
+        const error = value.error ?? value.credentialError;
         const clawBody = (() => {
           if (!ready) {
             return h(
@@ -2278,7 +2435,8 @@ window.__ModuleLoader__.load({
             return h(NeedCode, {
               busy,
               attempts: value.code?.attempts ?? 0,
-              onSubmit: (next) => run(() => connection.submitCode(next)),
+              error: codeError === void 0 ? void 0 : t("failed", { reason: codeError }),
+              onSubmit: (next) => run(() => connection.submitCode(next), true),
               onCancel: () => run(() => connection.cancelLogin())
             });
           }

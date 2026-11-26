@@ -111,7 +111,7 @@ function fakeConnection(initial) {
   }
 }
 
-async function mountPanel({ initial, open = true, tab = 'claw', features } = {}) {
+async function mountPanel({ initial, open = true, tab = 'claw', features, connection = fakeConnection(initial) } = {}) {
   const { createPanel } = await loadPanel()
 
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
@@ -132,7 +132,6 @@ async function mountPanel({ initial, open = true, tab = 'claw', features } = {})
 
   const { createRoot } = await import('react-dom/client')
   const { createPortal } = await import('react-dom')
-  const connection = fakeConnection(initial)
   const Entry = createPanel(React, {
     // 假翻译：原样返回 key（带插值时附上 JSON），方便断言「渲染的是哪个键」。
     t: (key, vars) => String(vars === undefined ? key : `${key}:${JSON.stringify(vars)}`),
@@ -261,6 +260,43 @@ test('Waiting: 已扫码在二维码上盖「连接中」蒙层', async () => {
     assert.ok(popover.querySelector('.wc-qr') !== null, '蒙层下面应保留二维码')
   } finally {
     await panel.unmount()
+  }
+})
+
+test('微信：HTTP 失败和取码失败快照都只弹 Toast，后台状态错误仍就地显示', async () => {
+  const original = globalThis.fetch
+  let status = { state: 'idle' }
+  let action = { status: 503, body: { ok: false, error: 'request failed' } }
+  globalThis.fetch = async (url, init) => {
+    if (String(url).endsWith('/login/start')) return Response.json(action.body, { status: action.status })
+    if (String(url).endsWith('/remote/status')) return Response.json(status)
+    return new Response(null, { status: 404 })
+  }
+  const connection = createConnection()
+  let panel
+  try {
+    panel = await mountPanel({ connection })
+    const connect = () => panel.click(panel.popover().querySelector('.wc-button--primary'))
+    await connect()
+    assert.match(panel.document.querySelector('.sk-toast--error[role="alert"]')?.textContent ?? '', /request failed/)
+    assert.equal(connection.getSnapshot().state, 'idle')
+    assert.equal(panel.popover().querySelector('.wc-error'), null)
+
+    status = { state: 'failed', error: 'QR unavailable' }
+    action = { status: 200, body: status }
+    await connect()
+    assert.match(panel.document.querySelector('.sk-toast')?.parentElement.textContent ?? '', /QR unavailable/)
+    assert.equal(connection.getSnapshot().state, 'failed')
+    assert.equal(panel.popover().querySelector('.wc-error'), null)
+    await act(() => connection.refresh())
+    assert.equal(panel.popover().querySelector('.wc-error'), null)
+
+    status = { state: 'failed', error: 'authorization expired' }
+    await act(() => connection.refresh())
+    assert.match(panel.popover().querySelector('.wc-error')?.textContent ?? '', /authorization expired/)
+  } finally {
+    await panel?.unmount()
+    globalThis.fetch = original
   }
 })
 

@@ -3,8 +3,10 @@ import {
   PAIRING_IDLE_POLL_MS,
   PAIRING_POLL_MS,
   isPairingActive,
-} from './pairing.js'
-import { isComposingEvent } from '../../../../client/ime.js'
+  createPairing,
+} from "./pairing.js";
+import { isComposingEvent } from "../../../../client/ime.js";
+import { toast } from "../../../../client/ui/toast.js";
 
 /** 指纹按 4 字符分组，方便人眼比对（与 ds-harness-remote 自己的面板一致）。 */
 function shortFingerprint(value) {
@@ -32,7 +34,7 @@ const MODE_KEYS = {
  * 面板壳只负责把它放进 tab 与定位卡片，不掺和配对逻辑。
  * 组件定义在工厂闭包里只创建一次，避免每次渲染换掉组件类型、丢掉 hooks 状态。
  */
-export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
+export function createPairingTab({ React, t, useCountdown, QrCode }) {
   const { useEffect, useRef, useState, useSyncExternalStore } = React
 
   /** 服务器地址被拒的原因码（来自 normalizeServerUrlInput）→ 文案键。 */
@@ -158,6 +160,7 @@ export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
    * 其余仍保留原始 code/reason，方便定位。
    */
   function pairErrorText(error) {
+    if (error.code === 'HOST_PAIRING_UNAVAILABLE') return t('pairHostUnavailable')
     if (error.code === 'RATE_LIMITED') return t('pairRateLimited')
     if (error.code === 'PAIRING_BUSY') return t('pairServerBusy')
     // 上一次服务器切换还没走完又点保存，上游直接拒绝（见 control-runtime.js 的 setServer）。
@@ -168,6 +171,8 @@ export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
     if (serverUrlRejection(error.message) !== undefined) return t(serverUrlRejection(error.message))
     return t('pairError', { code: error.code, reason: error.message })
   }
+
+  const pairing = createPairing({ onActionError: (error) => toast.error(pairErrorText(error)) });
 
   /**
    * 手机配对 tab：对齐 ds-harness-remote 的配对状态机
@@ -181,6 +186,7 @@ export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
     const view = value.view
     const state = view?.state
     const busy = value.busy
+    const hostUnavailable = value.error?.code === 'HOST_PAIRING_UNAVAILABLE'
     const [code, setCode] = useState('')
     // 重新配对/解除绑定都是破坏性动作（会先把服务器上的旧绑定撤销掉），先就地确认一次。
     // 取值 null | 'repair' | 'unbind'。
@@ -275,14 +281,14 @@ export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
         h('button', {
           type: 'button',
           className: 'wc-button wc-button--half wc-button--danger-solid',
-          disabled: busy,
+          disabled: busy || (hostUnavailable && confirmAction === 'change'),
           onClick: confirmAction === 'change' ? changePhone : unbind,
         }, t(confirmAction === 'unbind' ? 'pairUnbindNowConfirm' : 'pairChangeNow')))
       : h('div', { className: 'wc-actions wc-actions--full' },
         h('button', {
           type: 'button',
           className: 'wc-button wc-button--half',
-          disabled: busy,
+          disabled: busy || hostUnavailable,
           onClick: () => setConfirmAction('change'),
         }, t('pairChangePhone')),
         h('button', {
@@ -315,7 +321,7 @@ export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
             h('button', {
               type: 'button',
               className: 'wc-button wc-button--primary',
-              disabled: busy,
+              disabled: busy || hostUnavailable,
               onClick: start,
             }, t('pairAgain'))),
           h(ServerRow, {
@@ -400,7 +406,7 @@ export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
             h('button', {
               type: 'button',
               className: 'wc-button',
-              disabled: busy || cooling,
+              disabled: busy || cooling || hostUnavailable,
               onClick: start,
             }, cooling ? t('pairCooldownWait', { s: cooldown }) : t('refresh')),
             h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: cancel }, t('cancel'))))
@@ -447,14 +453,14 @@ export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
       }
       // 两个 tab 都不再写状态行：二维码、蒙层、倒计时、信息行和主按钮已经把状态说完了。
       return h('div', { className: 'wc-body' },
-        h('div', { className: 'wc-hint' }, terminal
+        hostUnavailable ? null : h('div', { className: 'wc-hint' }, terminal
           ? t(terminalHint, { reason: failureReason ?? '—' })
           : t('pairIdleHint')),
         h('div', { className: 'wc-actions' },
           h('button', {
             type: 'button',
             className: 'wc-button wc-button--primary',
-            disabled: busy || cooling,
+            disabled: busy || cooling || hostUnavailable,
             onClick: start,
           }, cooling
             ? t('pairCooldownWait', { s: cooldown })
@@ -473,7 +479,7 @@ export function createPairingTab({ React, t, useCountdown, QrCode, pairing }) {
       value.error === undefined
         ? null
         : h('div', { className: 'wc-body' },
-          h('div', { className: 'wc-error' }, pairErrorText(value.error)),
+          h('div', { className: 'wc-error', role: hostUnavailable ? 'status' : undefined }, pairErrorText(value.error)),
           value.error.conflict === true
             ? h('div', { className: 'wc-hint' }, t('pairConflictHint'))
             : null,

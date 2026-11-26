@@ -1,8 +1,8 @@
 import { RemoteConnectionShape } from "../../../client/ui/components/settings-icon/remote-connection-shape.js";
+import { toast } from "../../../client/ui/toast.js";
 import { createQrCode } from './qr.jsx'
 import { pollInterval, toneOf } from './wechat/model.js'
 import { placePopover } from './position.js'
-import { createPairing } from './mobile/pairing.js'
 import { createPairingTab } from './mobile/tab.jsx'
 import { createWechatViews } from './wechat/views.jsx'
 
@@ -32,8 +32,6 @@ export function createPanel(React, { t, connection, portal, features }) {
   const { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } = React
   const h = React.createElement
   const QrCode = createQrCode(React)
-  // 手机配对的会话状态与微信连接彼此独立：一个 store 给 tab 与子视图共享。
-  const pairing = createPairing()
 
   // 没有 features（测试直接注入面板）时给一组稳定引用，让 hook 仍无条件调用。
   const noopSubscribe = () => () => {}
@@ -70,7 +68,7 @@ export function createPanel(React, { t, connection, portal, features }) {
 
   // 两个 tab 的视图从各自目录装配进来，共用同一个 React、翻译函数、倒计时 hook 与二维码渲染器。
   const { Disconnected, Waiting, NeedCode, Connected } = createWechatViews({ React, t, useCountdown, QrCode })
-  const { PairingTab } = createPairingTab({ React, t, useCountdown, QrCode, pairing })
+  const { PairingTab } = createPairingTab({ React, t, useCountdown, QrCode });
 
   /**
    * 顶部 tab：两个入口始终都在。
@@ -115,7 +113,7 @@ export function createPanel(React, { t, connection, portal, features }) {
   function Popover({ anchor, closing, onClose }) {
     const value = useSyncExternalStore(connection.subscribe, connection.getSnapshot, connection.getSnapshot)
     const [busy, setBusy] = useState(false)
-    const [localError, setLocalError] = useState(undefined)
+    const [codeError, setCodeError] = useState(undefined as string | undefined);
     const nodeRef = useRef(null)
     const [box, setBox] = useState(undefined)
     const [viewport, setViewport] = useState(readViewport)
@@ -174,17 +172,19 @@ export function createPanel(React, { t, connection, portal, features }) {
       return () => window.removeEventListener('keydown', onKey)
     }, [onClose])
 
-    const run = useCallback(async (work) => {
-      setBusy(true)
-      setLocalError(undefined)
+    const run = useCallback(async (work, keepInline = false) => {
+      setBusy(true);
+      setCodeError(undefined);
       try {
-        await work()
+        await work();
       } catch (error) {
-        setLocalError(String(error?.message ?? error))
+        const reason = String(error?.message ?? error);
+        if (keepInline) setCodeError(reason);
+        else toast.error(t("failed", { reason }));
       } finally {
-        setBusy(false)
+        setBusy(false);
       }
-    }, [])
+    }, []);
 
     // 首帧还没有实测尺寸（box === undefined），placePopover 会按 0×0 退化，
     // 随后 useLayoutEffect 在**同一次提交内**量到真实盒子并重排，所以看不到中间态。
@@ -220,7 +220,7 @@ export function createPanel(React, { t, connection, portal, features }) {
 
     const state = value.state
     const connected = value.connected === true
-    const error = localError ?? value.error ?? value.credentialError
+    const error = value.error ?? value.credentialError;
 
     const clawBody = (() => {
       if (!ready) {
@@ -244,7 +244,8 @@ export function createPanel(React, { t, connection, portal, features }) {
         return h(NeedCode, {
           busy,
           attempts: value.code?.attempts ?? 0,
-          onSubmit: (next) => run(() => connection.submitCode(next)),
+          error: codeError === undefined ? undefined : t("failed", { reason: codeError }),
+          onSubmit: (next) => run(() => connection.submitCode(next), true),
           onCancel: () => run(() => connection.cancelLogin()),
         })
       }

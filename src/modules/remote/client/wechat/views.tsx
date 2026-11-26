@@ -72,7 +72,7 @@ export function createWechatViews({ React, t, useCountdown, QrCode }) {
   }
 
   /** 需要数字校验码。 */
-  function NeedCode({ busy, attempts, onSubmit, onCancel }) {
+  function NeedCode({ busy, attempts, error, onSubmit, onCancel }) {
     const [code, setCode] = useState('')
     const inputRef = useRef(null)
     useEffect(() => {
@@ -92,6 +92,7 @@ export function createWechatViews({ React, t, useCountdown, QrCode }) {
           inputMode: 'numeric',
           pattern: '[0-9]*',
           placeholder: t('codePlaceholder'),
+          "aria-describedby": error === undefined ? undefined : "wc-wechat-code-error",
           value: code,
           disabled: busy,
           onChange: (event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 8)),
@@ -107,6 +108,7 @@ export function createWechatViews({ React, t, useCountdown, QrCode }) {
           disabled: busy || code === '',
           onClick: submit,
         }, t('codeSubmit'))),
+      error === undefined ? null : h('div', { id: 'wc-wechat-code-error', className: 'wc-error', role: 'alert' }, error),
       attempts > 0 ? h('div', { className: 'wc-countdown' }, `#${attempts}`) : null,
       h('div', { className: 'wc-actions' },
         h('button', { type: 'button', className: 'wc-button', disabled: busy, onClick: onCancel }, t('cancel'))))
