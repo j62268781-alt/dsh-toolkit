@@ -51,14 +51,14 @@ test('bundled pet ships a v2 sheet of 8 columns × 11 rows at 192×208 per cell'
   assert.equal(height, 208 * 11)
 })
 
-test('bundled DeepSeek work loops and both waiting cues play just once', async () => {
+test('bundled DeepSeek work loops while waiting and result cues play just once', async () => {
   const dir = new URL('../../src/modules/pet/host/runtime/pets/aoi-shark-maid/', import.meta.url)
   const manifest = JSON.parse(await readFile(new URL('pet.json', dir), 'utf8'))
   const id = manifest.id
   const state = { settings: { activePet: id }, pets: [{ id, assetDir: fileURLToPath(dir), manifest, sheetFile: manifest.spritesheetPath }] }
   const source = publicState(state, 'pet', { bounds: { width: 1000, height: 800 } }).pets[0].animations
-  assert.deepEqual(Object.keys(source).sort(), ['approval', 'question', 'running'])
-  for (const [motion, expectedDuration, expectedLoop] of [['running', 4800, 0], ['approval', 680, 1], ['question', 680, 1]]) {
+  assert.deepEqual(Object.keys(source).sort(), ['approval', 'failed', 'question', 'review', 'running'])
+  for (const [motion, expectedDuration, expectedLoop] of [['running', 4800, 0], ['approval', 680, 1], ['question', 680, 1], ['review', 680, 1], ['failed', 680, 1]]) {
     assert.equal(source[motion], `pet-asset://pet/${id}/motion/${motion}.webp`)
     const file = assetPath(state, source[motion])
     assert.equal(file, fileURLToPath(new URL(`motion/${motion}.webp`, dir)).replaceAll('\\', '/'))
@@ -723,7 +723,7 @@ test('an old sprite sheet keeps the question fallback inside its nine rows', asy
   assert.ok(sourceRect[1] + sourceRect[3] <= 936, 'the source frame remains within the nine-row sheet')
 })
 
-test('bundled waiting poses keep precedence over other running sessions when motion is reduced', async (t) => {
+test('bundled static poses respect waiting, running and result priority with reduced motion', async (t) => {
   const html = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.html', import.meta.url), 'utf8')
   const script = await readFile(new URL('../../src/modules/pet/host/runtime/renderer.js', import.meta.url), 'utf8')
   const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'file:///renderer.html', pretendToBeVisual: true })
@@ -731,12 +731,12 @@ test('bundled waiting poses keep precedence over other running sessions when mot
   const manifest = JSON.parse(await readFile(new URL('../../src/modules/pet/host/runtime/pets/aoi-shark-maid/pet.json', import.meta.url), 'utf8'))
   const base = { settings: { activePet: manifest.id }, pets: [{ id: manifest.id, manifest, sheetFile: manifest.spritesheetPath }] }
   const running = { id: 'a', title: 'A', status: 'running', updatedAt: 100 }
-  const render = (...waiting) => publicState({ ...base, sessions: [running, ...waiting] }, 'pet', { bounds: { width: 1000, height: 800 } })
+  const render = (...sessions) => publicState({ ...base, sessions }, 'pet', { bounds: { width: 1000, height: 800 } })
   let update, sourceCell
   dom.window.Image = class { complete = true; naturalWidth = 1536; naturalHeight = 2288 }
   dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage(_image, x, y, w, h) { sourceCell = [x / w, y / h] } })
   dom.window.matchMedia = () => ({ matches: true, addEventListener() {} })
-  dom.window.pet = { initial: async () => render(), interactive() {}, onState(fn) { update = fn }, onCollapse() {} }
+  dom.window.pet = { initial: async () => render(running), interactive() {}, onState(fn) { update = fn }, onCollapse() {} }
   dom.window.eval(script)
   await new Promise(resolve => setImmediate(resolve))
   const doc = dom.window.document
@@ -748,12 +748,18 @@ test('bundled waiting poses keep precedence over other running sessions when mot
   check('running', [0, 7])
   const permission = { id: 'b', title: 'B', status: 'waiting', pendingKind: 'permission', updatedAt: 50 }
   const question = { id: 'c', title: 'C', status: 'waiting', pendingKind: 'question', updatedAt: 60 }
-  update(render(permission))
+  const completed = { id: 'd', title: 'D', status: 'completed', updatedAt: 120 }
+  const failed = { id: 'e', title: 'E', status: 'failed', updatedAt: 130 }
+  update(render(running, completed, failed, permission))
   check('approval', [6, 6])
-  update(render(permission, question))
+  update(render(running, permission, question))
   check('question', [7, 6])
-  update(render())
+  update(render(completed, failed, running))
   check('running', [0, 7])
+  update(render(completed, failed))
+  check('failed', [7, 8])
+  update(render(completed))
+  check('review', [6, 8])
 })
 
 test('a pet with motion clips plays the 60 fps WebP instead of redrawing the sheet', async (t) => {
