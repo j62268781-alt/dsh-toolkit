@@ -617,7 +617,8 @@ test('pet motions follow Qoder: greet, review on completion, and a quiet desktop
   const pet = { id: 'whale', name: 'Whale', spritesheet: 'pet-asset://pet/whale/spritesheet.png', spriteVersionNumber: 2 }
   const base = { settings: { language: 'zh', activePet: 'whale' }, pets: [pet], kind: 'pet', sessions: [] }
   let update
-  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {} })
+  dom.window.Image = class { complete = true; naturalWidth = 1536; naturalHeight = 2288 }
+  dom.window.HTMLCanvasElement.prototype.getContext = () => ({ clearRect() {}, drawImage() {}, getImageData: () => ({ data: new Uint8ClampedArray(64 * 64 * 4).fill(255) }) })
   dom.window.matchMedia = () => ({ matches: false, addEventListener() {} })
   dom.window.pet = { initial: async () => base, action: async () => ({ ok: true }), interactive() {}, focus() {}, drag() {}, onState(fn) { update = fn }, onCollapse() {} }
   dom.window.eval(script)
@@ -637,6 +638,17 @@ test('pet motions follow Qoder: greet, review on completion, and a quiet desktop
   assert.equal(doc.body.dataset.motion, 'review', 'a finished turn uses the review row instead of falling back to idle')
   update({ ...base, sessions: [] })
   assert.equal(doc.body.dataset.motion, 'idle')
+  const surface = doc.getElementById('surface'), sprite = doc.getElementById('sprite')
+  sprite.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 128, bottom: 139, width: 128, height: 139 })
+  const move = (x, y) => surface.dispatchEvent(new dom.window.MouseEvent('pointermove', { bubbles: true, clientX: x, clientY: y }))
+  move(64, 160)
+  assert.equal(doc.body.dataset.motion, 'look', 'the pet still tracks the pointer outside its sprite box')
+  move(64, 138)
+  assert.equal(doc.body.dataset.motion, 'idle', 'approaching near the edge stops tracking even without a pointerenter')
+  surface.dispatchEvent(new dom.window.MouseEvent('pointerenter', { clientX: 64, clientY: 70 }))
+  assert.equal(doc.body.dataset.motion, 'idle', 'entering the sprite does not swap in jumping frames')
+  surface.dispatchEvent(new dom.window.MouseEvent('pointerleave', { clientX: 280, clientY: 70 }))
+  assert.equal(doc.body.dataset.motion, 'idle', 'leaving the sprite keeps the idle animation')
   // 久坐：桌宠 8 秒没被打扰后放慢 idle，并偶尔用 v2 表第 9–10 行瞟一眼（鲸鱼只动瞳孔）。
   clock = 15000
   update({ ...base, sessions: [] })
