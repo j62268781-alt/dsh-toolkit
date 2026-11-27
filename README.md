@@ -80,6 +80,7 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 ## 会话内存优化
 
 - 在 DSH `0.2.2-rc.5` 中，可在插件管理启用 [聊天滚动优化](packages/chat-scroll/README.md)。它随 Toolkit 安装，默认停用。如果已启用旧的 `@local/dsh-chat-scroll`，先停用旧包。
+- [`history-memory.rc5.patch.yml`](history-memory.rc5.patch.yml) 随主包提供。它将原生历史预处理缓存从 5 个会话减到 1 个。被移出的旧会话需要重新读取。CLI profile 可通过 `dsh --profile web --patch /absolute/path/to/history-memory.rc5.patch.yml` 启动，去掉参数即可回退。此补丁适用于 DSH `0.2.2-rc.5` 的默认查询配置。已有自定义查询配置时，可以在原配置中单独调整 `preparedSessionCacheSize`，以保留其他设置。
 
 ## 使用
 

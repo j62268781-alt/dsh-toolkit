@@ -42,6 +42,7 @@
     "contract.js",
     "remote-host.js",
     "cordis.patch.yml",
+    "history-memory.rc5.patch.yml",
     "locale/*.json",
     "icon.svg",
     "README.md",
