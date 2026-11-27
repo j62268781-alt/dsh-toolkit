@@ -77,6 +77,10 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 
 避免同时启用聚合包和同名模块的独立 bundle，以免重复声明。若升级来源是更早的 `shell-kit` 单体配置，请使用下文的[旧配置迁移](#旧配置迁移)。
 
+## 会话内存优化
+
+- 在 DSH `0.2.2-rc.5` 中，可在插件管理启用 [聊天滚动优化](packages/chat-scroll/README.md)。它随 Toolkit 安装，默认停用。如果已启用旧的 `@local/dsh-chat-scroll`，先停用旧包。
+
 ## 使用
 
 设置面板是主要入口；模块开关在插件管理中，每项功能的偏好在对应设置页中。
@@ -94,6 +98,7 @@ dsh plugin --profile web add /absolute/path/to/dsh-toolkit
 | Git 约定 | 设置 → Git | `dsh-toolkit-git` |
 | [工作树](<packages/worktrees/README.md>) | 设置 → 工作树 | `dsh-toolkit-worktrees` |
 | 会话面板增强 | 官方会话面板 → 技能与 MCP、网页查阅、产出、来源 | `dsh-toolkit-session-panel` |
+| [聊天滚动优化](packages/chat-scroll/README.md) | 插件管理，按需启用以减少长会话挂载的正文 | `dsh-toolkit-chat-scroll` |
 
 ### 启动动画与外观
 

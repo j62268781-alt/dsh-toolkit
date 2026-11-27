@@ -85,6 +85,7 @@
   "dependencies": {
     "dsh-toolkit-archived": "workspace:^",
     "dsh-toolkit-boot": "workspace:^",
+    "dsh-toolkit-chat-scroll": "workspace:^",
     "dsh-toolkit-git": "workspace:^",
     "dsh-toolkit-session-panel": "workspace:^",
     "dsh-toolkit-hooks": "workspace:^",

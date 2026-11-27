@@ -40,6 +40,9 @@ importers:
       dsh-toolkit-boot:
         specifier: workspace:^
         version: link:packages/boot
+      dsh-toolkit-chat-scroll:
+        specifier: workspace:^
+        version: link:packages/chat-scroll
       dsh-toolkit-git:
         specifier: workspace:^
         version: link:packages/git
@@ -177,6 +180,8 @@ importers:
   packages/archived: {}
 
   packages/boot: {}
+
+  packages/chat-scroll: {}
 
   packages/git: {}
 
