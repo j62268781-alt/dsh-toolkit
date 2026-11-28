@@ -135,7 +135,10 @@ export async function createPetService(ctx: any, initialConfig: any = {}): Promi
       stopActivity()
       return
     }
-    feed ??= createActivityFeed(ctx, publish, { seen, onSeen: persistSeen })
+    feed ??= createActivityFeed(ctx, () => {
+      publish()
+      void manager.setActivity(settings, Boolean(feed?.snapshot().length))
+    }, { seen, onSeen: persistSeen })
     return feed.ready
   }
   const markSeen = (sessionId: string): void => {
@@ -154,7 +157,7 @@ export async function createPetService(ctx: any, initialConfig: any = {}): Promi
     if (disposed) throw new Error('Desktop pet has stopped')
     if (['prepare', 'retry', 'start'].includes(input.action)) {
       // Preparation runs independently so a large first download never holds an HTTP request open.
-      if (input.action === 'prepare') void manager.prepare(config, manager.enabled)
+      if (input.action === 'prepare') void manager.prepare(config)
       else void manager.retry(config)
       return { ok: true }
     }
@@ -292,7 +295,7 @@ export async function createPetService(ctx: any, initialConfig: any = {}): Promi
     if (!pets.some((pet) => pet.id === settings.activePet)) settings = { ...settings, activePet: pets[0].id }
     const activityReady = updateActivity()
     publish()
-    await Promise.all([activityReady, manager.configure(config, settings)])
+    await Promise.all([activityReady, manager.configure(config, settings, Boolean(feed?.snapshot().length))])
   }
   const updateConfig = async (ns: string): Promise<void> => {
     if (disposed) return
@@ -308,7 +311,7 @@ export async function createPetService(ctx: any, initialConfig: any = {}): Promi
   try {
     unlisten = ctx.on('settings/document-updated', updateConfig, { global: true })
     await updateActivity()
-    void manager.configure(config, settings)
+    void manager.configure(config, settings, Boolean(feed?.snapshot().length))
   } catch (error) {
     unlisten?.()
     stopActivity()

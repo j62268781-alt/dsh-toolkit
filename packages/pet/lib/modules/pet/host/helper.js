@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { resolveElectron, helperEnvironment } from './electron.js';
 import { readElectronPath } from './config.js';
+// A short gap between activities should not force another Electron cold start.
+const IDLE_EXIT_DELAY = 30_000;
 /**
  * helper 进程入口的绝对路径，分隔符统一成 `/`。
  *
@@ -25,6 +27,9 @@ export class HelperManager {
     pending;
     config;
     restart;
+    wanted = false;
+    idleExit;
+    stopping;
     constructor({ onChange, bridge, resolve = resolveElectron, launch = spawn }) {
         this.onChange = onChange;
         this.bridge = bridge;
@@ -53,20 +58,15 @@ export class HelperManager {
         // 正在准备时以 prepare 为准；它结束后会自己写 available，探测结果反而可能是旧的。
         if (this.disposed || this.pending || this.state.status === 'starting' || this.state.status === 'running')
             return;
-        try {
-            const binary = await this.resolve({ electronPath: readElectronPath(config), download: false });
-            if (this.disposed || this.pending)
-                return;
+        const state = this.state;
+        // 配置路径无效时只降级为「不可用」；准备或启动后的新状态不能被迟到的探测覆盖。
+        const binary = await this.resolve({ electronPath: readElectronPath(config), download: false }).catch(() => undefined);
+        if (!this.disposed && this.state === state)
             this.update({ available: !!binary });
-        }
-        catch {
-            // 配置里写死的路径不可执行时 resolve 会抛错；探测只把它降级成「不可用」，
-            // 给人看的诊断仍由 prepare / start 的 catch 负责。
-            if (!this.disposed)
-                this.update({ available: false });
-        }
     }
-    async prepare(config, start = false) {
+    async prepare(config) {
+        if (this.stopping)
+            await this.stopping;
         if (this.disposed)
             return;
         if (this.pending)
@@ -85,7 +85,7 @@ export class HelperManager {
                 if (this.disposed || generation !== this.generation)
                     return;
                 this.update({ available: true, status: 'stopped', progress: undefined });
-                if (this.enabled)
+                if (this.wanted)
                     this.start(binary);
             }
             catch (error) {
@@ -95,21 +95,46 @@ export class HelperManager {
         })().finally(() => { this.pending = undefined; });
         return this.pending;
     }
-    async configure(config, settings) {
+    async configure(config, settings, hasActivity = false) {
         this.config = config;
         this.enabled = settings.petEnabled || settings.islandEnabled;
-        // 关着也要探一次：可用性不该取决于「这次有没有启用桌面端」。
         if (!this.enabled) {
+            this.wanted = false;
             await this.stop();
             await this.probe(config);
             return;
         }
+        const updating = this.setActivity(settings, hasActivity);
+        // A sleeping helper can still have a runtime installed.
+        if (!this.wanted && !this.child)
+            await this.probe(config);
+        await updating;
+    }
+    async setActivity(settings, hasActivity) {
+        if (this.disposed)
+            return;
+        this.wanted = this.enabled && (settings.petEnabled || settings.islandEnabled && (settings.islandIdle !== false || hasActivity));
+        if (!this.wanted) {
+            if (this.child && !this.idleExit) {
+                this.idleExit = setTimeout(() => {
+                    this.idleExit = undefined;
+                    if (!this.wanted)
+                        void this.stop();
+                }, IDLE_EXIT_DELAY);
+                this.idleExit.unref?.();
+            }
+            return;
+        }
+        clearTimeout(this.idleExit);
+        this.idleExit = undefined;
+        // If activity arrives during SIGTERM, wait for the old process to finish before spawning again.
+        await this.stopping;
         await this.pending;
-        if (this.enabled && !this.child && this.state.status !== 'error')
-            await this.prepare(this.config, true);
+        if (this.wanted && !this.disposed && !this.child && this.state.status !== 'error')
+            await this.prepare(this.config);
     }
     start(binary) {
-        if (this.child || this.disposed || !this.enabled)
+        if (this.child || this.disposed || !this.wanted || this.stopping)
             return;
         this.update({ status: 'starting', error: undefined, progress: undefined });
         let child;
@@ -155,7 +180,7 @@ export class HelperManager {
             if (this.child !== child)
                 return;
             this.child = undefined;
-            if (!this.enabled || this.disposed) {
+            if (!this.wanted || this.disposed) {
                 this.update({ status: 'stopped' });
                 return;
             }
@@ -164,8 +189,13 @@ export class HelperManager {
             this.failures += 1;
             this.update({ status: 'error', error: diagnostics.trim() || 'Desktop helper exited unexpectedly' });
             if (this.failures <= 3) {
-                this.restart = setTimeout(() => { this.restart = undefined; if (this.enabled && !this.disposed)
-                    void this.prepare(this.config, true); }, 750 * 2 ** (this.failures - 1));
+                this.restart = setTimeout(() => {
+                    this.restart = undefined;
+                    if (this.wanted && !this.disposed)
+                        void this.prepare(this.config);
+                    else if (!this.disposed)
+                        this.update({ status: 'stopped', error: undefined });
+                }, 750 * 2 ** (this.failures - 1));
                 this.restart.unref?.();
             }
         };
@@ -177,23 +207,33 @@ export class HelperManager {
         this.failures = 0;
         await this.stop();
         await this.pending;
-        return this.prepare(config, this.enabled);
+        return this.prepare(config);
     }
     async stop() {
+        clearTimeout(this.idleExit);
+        this.idleExit = undefined;
+        if (this.stopping)
+            return this.stopping;
         this.generation += 1;
         clearTimeout(this.restart);
+        this.restart = undefined;
         const child = this.child;
         this.child = undefined;
-        if (child)
-            await new Promise((resolve) => {
-                let timer;
-                const done = () => { clearTimeout(timer); resolve(); };
-                child.once('exit', done);
-                child.kill('SIGTERM');
-                timer = setTimeout(() => { child.kill('SIGKILL'); done(); }, 3000);
-                timer.unref?.();
-            });
-        this.update({ status: 'stopped', error: undefined, progress: undefined });
+        if (!child) {
+            this.update({ status: 'stopped', error: undefined, progress: undefined });
+            return;
+        }
+        this.stopping = new Promise((resolve) => {
+            const done = () => { clearTimeout(timer); resolve(); };
+            const timer = setTimeout(() => { child.kill('SIGKILL'); done(); }, 3000);
+            timer.unref?.();
+            child.once('exit', done);
+            child.kill('SIGTERM');
+        }).then(() => {
+            this.stopping = undefined;
+            this.update({ status: 'stopped', error: undefined, progress: undefined });
+        });
+        return this.stopping;
     }
-    async dispose() { this.disposed = true; this.enabled = false; await this.stop(); }
+    async dispose() { this.disposed = true; this.enabled = false; this.wanted = false; await this.stop(); }
 }

@@ -57,7 +57,7 @@ test('probing never races an in-flight preparation', async (t) => {
   const calls = []
   let finish
   const f = fixture(t, { resolve: (value) => { calls.push(value); return new Promise((resolve) => { finish = resolve }) } })
-  const preparing = f.manager.prepare({}, false)
+  const preparing = f.manager.prepare({})
   await flush()
   await f.manager.probe({})
   assert.equal(calls.length, 1, 'preparation already owns the resolution')
@@ -149,6 +149,69 @@ test('disabling both surfaces terminates the helper and cancels any restart', as
   await flush()
   assert.equal(f.manager.state.status, 'stopped', 'late readiness cannot resurrect a disabled helper')
   assert.equal(f.launches.length, 1)
+})
+
+const activeOnlyIsland = { ...disabled, islandEnabled: true, islandIdle: false }
+
+test('an activity-only island skips the idle boot, releases its helper, and wakes again', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const f = fixture(t)
+  await f.manager.configure({}, activeOnlyIsland)
+  assert.equal(f.manager.state.available, true)
+  assert.deepEqual(f.resolutions.map(({ download }) => download), [false])
+  assert.equal(f.launches.length, 0)
+
+  await f.manager.setActivity(activeOnlyIsland, true)
+  const [child] = f.children
+  child.stdout.emit('data', '{"type":"ready"}\n')
+  await f.manager.setActivity(activeOnlyIsland, false)
+  t.mock.timers.tick(29_999)
+  assert.deepEqual(child.signals, [])
+  await f.manager.setActivity(activeOnlyIsland, true)
+  t.mock.timers.tick(30_000)
+  assert.deepEqual(child.signals, [], 'returning activity cancels the shutdown')
+
+  await f.manager.setActivity(activeOnlyIsland, false)
+  t.mock.timers.tick(20_000)
+  await f.manager.setActivity(activeOnlyIsland, false)
+  t.mock.timers.tick(10_000)
+  await flush()
+  assert.deepEqual(child.signals, ['SIGTERM'])
+  assert.deepEqual(f.manager.state, { status: 'stopped', available: true, error: undefined, progress: undefined })
+  await f.manager.setActivity(activeOnlyIsland, true)
+  assert.equal(f.launches.length, 2)
+})
+
+test('new activity waits for a sleeping helper to finish exiting', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const f = fixture(t)
+  await f.manager.configure({}, activeOnlyIsland, true)
+  const [child] = f.children
+  child.stdout.emit('data', '{"type":"ready"}\n')
+  child.kill = (signal) => { child.signals.push(signal); return true }
+  await f.manager.setActivity(activeOnlyIsland, false)
+  t.mock.timers.tick(30_000)
+  const waking = f.manager.setActivity(activeOnlyIsland, true)
+  await flush()
+  assert.deepEqual(child.signals, ['SIGTERM'])
+  assert.equal(f.launches.length, 1)
+  child.emit('exit', 0)
+  await waking
+  assert.equal(f.launches.length, 2)
+  assert.equal(f.manager.state.status, 'starting')
+})
+
+test('persistent surfaces keep the helper when the session list is empty', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const f = fixture(t)
+  for (const settings of [{ ...activeOnlyIsland, petEnabled: true }, { ...activeOnlyIsland, islandIdle: true }]) {
+    await f.manager.configure({}, settings)
+    f.children[0].stdout.emit('data', '{"type":"ready"}\n')
+    await f.manager.setActivity(settings, false)
+    t.mock.timers.tick(60_000)
+    assert.equal(f.launches.length, 1)
+    assert.deepEqual(f.children[0].signals, [])
+  }
 })
 
 test('disabling during resolution prevents a late download result from launching a window', async (t) => {

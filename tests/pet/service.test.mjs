@@ -206,6 +206,39 @@ test('the host volatile references are read into live settings, including later 
   assert.equal(f.service.snapshot().settings.activePet, 'aoi-shark-maid')
 })
 
+test('the activity feed wakes a sleeping island and marking the result seen lets it exit', async (t) => {
+  const children = []
+  t.mock.method(childProcess, 'spawn', () => {
+    const child = new EventEmitter()
+    child.stdout = new EventEmitter()
+    child.stderr = new EventEmitter()
+    child.kill = () => { queueMicrotask(() => child.emit('exit', 0)); return true }
+    children.push(child)
+    return child
+  })
+  syncBuiltinESMExports()
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports() })
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const config = { electronPath: process.execPath, islandEnabled: true, islandIdle: false }
+  const f = await fixture(t, config)
+  f.setDescriptors([{ ns: 'dsh-toolkit-pet', value: config }])
+  await f.emit('settings/document-updated', 'dsh-toolkit-pet', 1)
+  assert.equal(f.service.snapshot().runtime.available, true)
+  assert.equal(children.length, 0)
+
+  await f.emit('api-session/activity', 'session-a', Date.now())
+  for (let i = 0; i < 100 && !children.length; i += 1) await new Promise(resolve => setImmediate(resolve))
+  assert.equal(children.length, 1)
+  children[0].stdout.emit('data', '{"type":"ready"}\n')
+  assert.equal(f.service.snapshot().runtime.status, 'running')
+  await f.service.action({ action: 'seen', sessionId: 'session-a' })
+  assert.deepEqual(f.service.snapshot().sessions, [])
+  t.mock.timers.tick(30_000)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(f.service.snapshot().runtime.status, 'stopped')
+  assert.equal(children.length, 1)
+})
+
 test('activity starts for either window and aborts a pending baseline when both close', async (t) => {
   const f = await fixture(t)
   const configure = async (value) => {

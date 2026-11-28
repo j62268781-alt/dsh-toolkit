@@ -32,6 +32,9 @@ export declare class HelperManager {
     pending: Promise<void> | undefined;
     config: any;
     restart: ReturnType<typeof setTimeout> | undefined;
+    private wanted;
+    private idleExit;
+    private stopping;
     constructor({ onChange, bridge, resolve, launch }: HelperManagerOptions);
     update(patch: Partial<HelperState>): void;
     /**
@@ -42,8 +45,9 @@ export declare class HelperManager {
      * 这里用 `download: false` 只做一次路径检查，不会因为误判又拉一遍 138MB。
      */
     probe(config: any): Promise<void>;
-    prepare(config: any, start?: boolean): Promise<void>;
-    configure(config: any, settings: PetSettings): Promise<void>;
+    prepare(config: any): Promise<void>;
+    configure(config: any, settings: PetSettings, hasActivity?: boolean): Promise<void>;
+    setActivity(settings: PetSettings, hasActivity: boolean): Promise<void>;
     start(binary: string | undefined): void;
     retry(config: any): Promise<void>;
     stop(): Promise<void>;
