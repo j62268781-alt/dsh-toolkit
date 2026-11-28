@@ -22,6 +22,10 @@ export function createUseH264Canvas(React, canvasRuntime) {
       let stallTimer = null;
       let bytesReceived = 0;
       let endedCleanly = false;
+      let endReason: "unknown" | "visibility-cancel" | "watchdog" | "eof" | "fetch-error" | "http-error" | "no-body" | "decoder-init-error" | "read-error" = "unknown";
+      let attemptStartedAt = 0;
+      let httpStatus: number | undefined;
+      let lastByteAt: number | undefined;
       let carry = new Uint8Array(0);
       let timestamp = 0;
       let configured = false;
@@ -45,10 +49,12 @@ export function createUseH264Canvas(React, canvasRuntime) {
       const setVisible = (visible) => {
         if (cancelled || visible === !paused) return;
         paused = !visible;
+        console.info(`[mobile-stream] ${new Date().toISOString()} ${paused ? "paused" : "resumed"}`);
         if (!paused) {
           releaseResumeWaiters();
           return;
         }
+        endReason = "visibility-cancel";
         needsKeyframe = true;
         // 掐断当前读流与还没回来的取流：解码循环会退出，重连循环改成等可见再取流。
         attemptController?.abort();
@@ -138,6 +144,10 @@ export function createUseH264Canvas(React, canvasRuntime) {
         reportedPlaying = false;
         report("connecting");
         endedCleanly = false;
+        endReason = "unknown";
+        attemptStartedAt = performance.now();
+        httpStatus = undefined;
+        lastByteAt = undefined;
         // 每次取流一条独立信号：暂停时只掐断这一次，不影响外层取消语义。
         const attempt = new AbortController();
         attemptController = attempt;
@@ -149,6 +159,7 @@ export function createUseH264Canvas(React, canvasRuntime) {
           response = await fetch(streamUrl, { cache: "no-store", signal: attempt.signal });
         } catch (error) {
           if (cancelled || paused || attempt.signal.aborted) return;
+          endReason = "fetch-error";
           report("error", `取流失败：${error?.message ?? error}`);
           return;
         } finally {
@@ -164,22 +175,30 @@ export function createUseH264Canvas(React, canvasRuntime) {
           return;
         }
         if (!response.ok) {
+          endReason = "http-error";
+          httpStatus = response.status;
           const detail = await response.text().catch(() => "");
           if (cancelled) return;
           report("error", `取流失败（HTTP ${response.status}）${detail ? `：${detail.slice(0, 160)}` : ""}`);
           return;
         }
         if (response.body === null) {
+          endReason = "no-body";
           report("error", "响应没有可读的流");
           return;
         }
         const activeReader = response.body.getReader();
         reader = activeReader;
         const STALL_TIMEOUT_MS = 3e3;
-        let lastByteAt = performance.now();
+        const readStartedAt = performance.now();
+        // reader.cancel() 也会结束 read()；不要把看门狗误记成对端 EOF。
+        const markReadEnd = (reason: "eof" | "read-error") => {
+          if (!paused && endReason !== "watchdog" && endReason !== "visibility-cancel") endReason = reason;
+        };
         stallTimer = setInterval(() => {
           if (cancelled || paused) return;
-          if (performance.now() - lastByteAt > STALL_TIMEOUT_MS) {
+          if (performance.now() - (lastByteAt ?? readStartedAt) > STALL_TIMEOUT_MS) {
+            endReason = "watchdog";
             report("connecting", "画面卡住了，正在重连…");
             void cancelReader(activeReader);
           }
@@ -191,6 +210,7 @@ export function createUseH264Canvas(React, canvasRuntime) {
             const { done, value } = await activeReader.read();
             if (done && !cancelled) {
               endedCleanly = true;
+              markReadEnd("eof");
             }
             if (cancelled || done || paused) break;
             lastByteAt = performance.now();
@@ -207,6 +227,7 @@ export function createUseH264Canvas(React, canvasRuntime) {
                   try {
                     buildDecoder(codec);
                   } catch (error) {
+                    endReason = "decoder-init-error";
                     report("error", `解码器初始化失败：${error?.message ?? error}`);
                     return;
                   }
@@ -249,7 +270,10 @@ export function createUseH264Canvas(React, canvasRuntime) {
             }
           }
         } catch (error) {
-          if (!cancelled && !paused && !attempt.signal.aborted) report("error", `读取流失败：${error?.message ?? error}`);
+          if (!cancelled && !paused && !attempt.signal.aborted) {
+            markReadEnd("read-error");
+            report("error", `读取流失败：${error?.message ?? error}`);
+          }
         } finally {
           if (stallTimer !== null) {
             clearInterval(stallTimer);
@@ -282,6 +306,16 @@ export function createUseH264Canvas(React, canvasRuntime) {
           if (healthy) reconnectDelay = RECONNECT_BASE_MS;
           // Host 重建流会正常结束旧响应；有过数据时走 150ms 快速重连。
           const waitMs = healthy && endedCleanly ? RECONNECT_FAST_MS : reconnectDelay;
+          const now = performance.now();
+          // 只记录诊断所需的数值，不输出流 URL、凭据或异常正文。
+          console.info(`[mobile-stream] ${new Date().toISOString()} reconnect ${JSON.stringify({
+            reason: endReason,
+            httpStatus,
+            attemptMs: Math.round(now - attemptStartedAt),
+            bytes: bytesReceived - before,
+            lastByteAgoMs: lastByteAt === undefined ? null : Math.round(now - lastByteAt),
+            waitMs
+          })}`);
           report("connecting", "画面中断，正在重连…");
           await new Promise<void>((resolve) => {
             finishReconnect = () => {

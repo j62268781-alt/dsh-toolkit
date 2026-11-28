@@ -380,6 +380,8 @@ export async function runMobileCacheTests(test) {
     const mounted = mountH264(async () => ({ ok: true, body: { getReader: () => reader } }));
     const descriptor = Object.getOwnPropertyDescriptor(performance, "now");
     const start = performance.now();
+    const messages = [];
+    const restoreConsole = globals({ console: { ...console, info: (message) => messages.push(message) } });
     try {
       await flush(); assert.equal(mounted.timers.intervals.size, 1);
       Object.defineProperty(performance, "now", { configurable: true, value: () => start + 4_000 });
@@ -388,8 +390,11 @@ export async function runMobileCacheTests(test) {
       assert.equal(mounted.timers.intervals.size, 0); assert.equal(mounted.timers.timeouts.size, 1);
       assert.equal([...mounted.timers.timeouts.values()][0].ms, 1_000);
       assert.ok(mounted.states.some(([state, detail]) => state === "connecting" && detail?.includes("画面卡住")));
+      assert.equal(messages.length, 1);
+      assert.match(messages[0], /"reason":"watchdog"/);
       mounted.stop(); await flush(); assert.equal(mounted.timers.timeouts.size, 0);
     } finally {
+      restoreConsole();
       if (descriptor) Object.defineProperty(performance, "now", descriptor);
       else delete performance.now;
       mounted.restore();
@@ -419,7 +424,11 @@ export async function runMobileCacheTests(test) {
       }) } }
     }, Decoder)
     let now = 100
-    const restoreTime = globals({ performance: { now: () => now } })
+    const messages = []
+    const restoreTime = globals({
+      performance: { now: () => now },
+      console: { ...console, info: (message) => messages.push(message) },
+    })
     const draw = () => {
       const entry = mounted.timers.frames.entries().next().value
       assert.ok(entry, 'expected a frame after receiving bytes')
@@ -432,6 +441,9 @@ export async function runMobileCacheTests(test) {
       assert.equal(mounted.states.at(-1)[0], 'playing')
       reads[0].resolve({ done: true })
       await flush()
+      assert.equal(messages.length, 1)
+      assert.match(messages[0], /"reason":"eof"/)
+      assert.match(messages[0], new RegExp(`"bytes":${packet.byteLength}[,}]`))
       assert.equal(mounted.states.at(-1)[0], 'connecting')
       mounted.timers.fireTimeout()
       await flush()

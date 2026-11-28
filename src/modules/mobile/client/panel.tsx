@@ -173,6 +173,7 @@ export function createMobilePanel(React, { primitives, api, CSS, canvasRuntime, 
         }
         regrantStreakRef.current = newRegrantStreak();
         lastRegrantAtRef.current = now;
+        console.info(`[mobile-stream] ${new Date().toISOString()} adaptive-regrant`, { needPx, framePx });
         void grant(activeId, { regrant: true });
       };
       const wake = () => {
