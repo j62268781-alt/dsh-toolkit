@@ -60,6 +60,7 @@ interface ActivityRow {
   values: Record<string, any>
   versions: Record<string, number | undefined>
   pending: Map<symbol, PendingRequest>
+  pendingInput?: PendingRequest
   verified?: boolean
   error?: string
   origin?: string
@@ -195,6 +196,10 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
           row.verified = true
           row.running = Boolean(state?.running)
           if (row.running) row.error = undefined
+          // 恢复监听前已经在等待的请求。已由事件监听的请求在事件结束时立即移除。
+          row.pendingInput = row.pending.size ? undefined : state?.pendingInput?.includes('approval')
+            ? { kind: 'permission', detail: 'Permission requested' }
+            : state?.pendingInput?.includes('question') ? { kind: 'question', detail: 'Answer requested' } : undefined
         } catch {}
       }
     } finally {
@@ -442,14 +447,15 @@ export function createActivityFeed(ctx: any, onChange: () => void = () => {}, op
     } finally {
       loading = false
       journal = []
-      publish()
-      // 插件往往比「当前会话恢复成活会话」更早启动：几次短延迟重算，别让真正在跑的会话
-      // 因为那一刻还不在 live 集合里而被当成结束态。
-      void refreshStates()
-      for (const delay of [1500, 5000, 15000]) {
-        const timer = setTimeout(publish, delay)
-        timer.unref?.()
-        boots.push(timer)
+      if (!disposed) {
+        publish()
+        // 插件往往比「当前会话恢复成活会话」更早启动，短延迟重算可恢复正在跑的会话。
+        void refreshStates()
+        for (const delay of [1500, 5000, 15000]) {
+          const timer = setTimeout(publish, delay)
+          timer.unref?.()
+          boots.push(timer)
+        }
       }
     }
   })()
@@ -525,7 +531,8 @@ function facts(row: ActivityRow, { liveIds = new Set<string>(), eventLive = new 
   const goalStarting = activeGoal && !exhausted && now - Math.max(row.updatedAt, time(goal?.updatedAt)) <= QUEUE_GRACE
   const stuckQueue = queued && !runningNow && !starting
   const pending: PendingRequest | undefined = [...row.pending.values()].sort((a, b) => (a.kind === 'permission' ? 0 : 1) - (b.kind === 'permission' ? 0 : 1))[0]
-    ?? (row.values.userQuestions?.active?.length ? { kind: 'question', detail: text(row.values.userQuestions.active[0].questions?.[0]?.question) || 'Answer requested' } : undefined)
+    ?? (row.pendingInput?.kind === 'permission' ? row.pendingInput : undefined)
+    ?? (row.values.userQuestions?.active?.length ? { kind: 'question', detail: text(row.values.userQuestions.active[0].questions?.[0]?.question) || 'Answer requested' } : row.pendingInput)
   const waiting = goal?.goal?.phase === 'paused' || goal?.goal?.phase === 'blocked' || exhausted && !row.running && !queued || stuckQueue
   // 等待的原因要一起带出去：徽标文案、图标、配色都靠它区分「要你批准」和「目标卡住了」。
   let waitReason: WaitReason | undefined

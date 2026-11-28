@@ -126,6 +126,23 @@ export async function createPetService(ctx: any, initialConfig: any = {}): Promi
     for (const send of listeners) send()
     bridge?.publish()
   }
+  const stopActivity = (): void => {
+    feed?.dispose()
+    feed = undefined
+  }
+  const updateActivity = (): Promise<void> | undefined => {
+    if (!settings.petEnabled && !settings.islandEnabled) {
+      stopActivity()
+      return
+    }
+    feed ??= createActivityFeed(ctx, publish, { seen, onSeen: persistSeen })
+    return feed.ready
+  }
+  const markSeen = (sessionId: string): void => {
+    if (!sessionId) return
+    if (feed) feed.markSeen(sessionId)
+    else persistSeen(sessionId, Date.now())
+  }
   // 安装/卸载后重扫目录：自定义形象与内置形象走同一条渲染链路，列表变了立刻广播。
   const reloadPets = async () => {
     const loaded = await loadPets()
@@ -242,7 +259,7 @@ export async function createPetService(ctx: any, initialConfig: any = {}): Promi
       // 主视图已经切到这个会话（通知点击、侧栏切换、或岛自己点开）：立刻当作已读，
       // 灵动岛的徽标与列表马上刷新，不必等下一次会话活动事件。不校验是否存在 ——
       // 用户刚看过的会话可能已被归档/移除，标记已读依然无害。
-      feed?.markSeen(sessionId)
+      markSeen(sessionId)
       publish()
       return { ok: true }
     }
@@ -251,7 +268,7 @@ export async function createPetService(ctx: any, initialConfig: any = {}): Promi
     if (input.action === 'open') {
       navigation = { seq: navigation.seq + 1, sessionId }
       // 点开即视为「看过了」：灵动岛上的「有新结果 / 需要你处理」立刻消失。
-      feed?.markSeen(sessionId)
+      markSeen(sessionId)
       publish()
       // The web client selects the session; Desktop's supported URI brings its main window forward.
       if (process.platform === 'darwin') {
@@ -269,23 +286,13 @@ export async function createPetService(ctx: any, initialConfig: any = {}): Promi
   }
   bridge = await createHelperBridge(() => snapshot(true), action)
   manager = new HelperManager({ onChange: publish, bridge })
-  try {
-    // 先落进局部常量再赋给外层：catch 里 feed 可能根本还没建出来，用 `?.` 才不会二次抛错。
-    const created = createActivityFeed(ctx, publish, { seen, onSeen: persistSeen })
-    feed = created
-    await created.ready
-  } catch (error: any) {
-    feed?.dispose()
-    await manager.dispose()
-    await bridge.dispose()
-    throw error
-  }
   const configure = async (next: any): Promise<void> => {
     config = next || {}
     settings = readSettings(config)
     if (!pets.some((pet) => pet.id === settings.activePet)) settings = { ...settings, activePet: pets[0].id }
+    const activityReady = updateActivity()
     publish()
-    await manager.configure(config, settings)
+    await Promise.all([activityReady, manager.configure(config, settings)])
   }
   const updateConfig = async (ns: string): Promise<void> => {
     if (disposed) return
@@ -297,8 +304,18 @@ export async function createPetService(ctx: any, initialConfig: any = {}): Promi
     const descriptor = descriptors.find((item: any) => item.ns === ns)
     if (descriptor) await configure(standalone ? descriptor.value : descriptor.value?.pet)
   }
-  const unlisten = ctx.on('settings/document-updated', updateConfig, { global: true })
-  void configure(config)
+  let unlisten: (() => void) | undefined
+  try {
+    unlisten = ctx.on('settings/document-updated', updateConfig, { global: true })
+    await updateActivity()
+    void manager.configure(config, settings)
+  } catch (error) {
+    unlisten?.()
+    stopActivity()
+    await manager.dispose()
+    await bridge.dispose()
+    throw error
+  }
   return {
     snapshot, action,
     attach(req: IncomingMessage, res: ServerResponse) {
@@ -324,7 +341,7 @@ export async function createPetService(ctx: any, initialConfig: any = {}): Promi
     async dispose(): Promise<void> {
       disposed = true
       if (typeof unlisten === 'function') unlisten()
-      feed?.dispose()
+      stopActivity()
       await manager.dispose()
       for (const res of publicResponses) res.end()
       listeners.clear()

@@ -16,7 +16,7 @@ function fixture(items = [], options = {}) {
       return () => entries.splice(entries.indexOf(entry), 1)
     },
     sessions: { get: (id) => live.get(id), list: () => [...live.values()] },
-    sessionController: { list(request, inputSignal) { calls++; signal = inputSignal; assert.deepEqual(request, {}); return options.baseline ?? Promise.resolve({ items }) }, ...(options.events ? { events: options.events } : {}) },
+    sessionController: { list(request, inputSignal) { calls++; signal = inputSignal; assert.deepEqual(request, {}); return options.baseline ?? Promise.resolve({ items }) }, state: options.state, ...(options.events ? { events: options.events } : {}) },
     sessionProjections: {
       onChanged(listener) { projections.add(listener); return () => projections.delete(listener) },
       snapshot(session, keys) { assert.deepEqual(keys, ['title', 'sessionListMetadata', 'inbox', 'goal', 'userQuestions', 'tokenUsage', 'conversationContinuation']); if (options.projectionError) throw new Error('projection unavailable'); return values.get(session.id) ?? { asOfSeq: 0, values: {} } },
@@ -58,6 +58,19 @@ test('permission and questions take precedence over running; observer preserves 
   f.project('a', 'userQuestions', { active: [] }, 3)
   assert.equal(f.feed.snapshot()[0].status, 'running')
   f.feed.dispose()
+})
+
+test('restores an already pending approval and clears it on the next state refresh', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] })
+  let pendingInput = ['approval']
+  const f = fixture([row('a')], { state: async () => ({ running: false, pendingInput }) })
+  t.after(() => f.feed.dispose())
+  await f.feed.ready
+  assert.equal(f.feed.snapshot()[0].waitReason, 'approval')
+  pendingInput = []
+  t.mock.timers.tick(60_000)
+  await Promise.resolve()
+  assert.equal(f.feed.snapshot()[0].status, 'completed')
 })
 
 test('question waterfall rejection is preserved and removes transient pending state', async () => {

@@ -14,7 +14,8 @@ import { createPetService } from '../../src/modules/pet/host/index.ts'
 process.env.DSH_HOME = mkdtempSync(join(tmpdir(), 'dsh-pet-seen-'))
 
 async function fixture(t, initial = {}) {
-  const handlers = new Map(), calls = [], descriptions = []
+  const handlers = new Map(), calls = [], descriptions = [], listSignals = []
+  let readList = async () => ({ items: listed })
   let descriptors = [], listed = [{ sessionId: 'session-a', blank: false, running: false, updatedAt: 1, projections: { kind: 'sequenced', asOfSeq: 0, values: { title: 'A session' } } }]
   const ctx = {
     on(event, handler) {
@@ -25,7 +26,7 @@ async function fixture(t, initial = {}) {
     sessions: { get() {}, list: () => [] },
     sessionProjections: { onChanged() { return () => {} }, snapshot: () => ({ asOfSeq: 0, values: {} }) },
     sessionController: {
-      async list() { return { items: listed } },
+      list(request, signal) { listSignals.push(signal); return readList(signal) },
       async cancel(request) { calls.push({ method: 'cancel', request }); return { accepted: true } },
       async prompt(request) { calls.push({ method: 'prompt', request }); return { accepted: true } },
     },
@@ -33,8 +34,9 @@ async function fixture(t, initial = {}) {
   }
   const service = await createPetService(ctx, initial)
   t.after(() => service.dispose())
-  return { service, calls, descriptions, handlers,
+  return { service, calls, descriptions, handlers, listSignals,
     setDescriptors(value) { descriptors = value }, setListed(value) { listed = value },
+    setReadList(read) { readList = read },
     async emit(event, ...args) { for (const handler of handlers.get(event) || []) await handler(...args) },
   }
 }
@@ -145,7 +147,10 @@ test('failed activity initialization closes the already-created private bridge',
   t.mock.method(http, 'createServer', (...args) => { server = createServer(...args); return server })
   syncBuiltinESMExports()
   t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports() })
-  await assert.rejects(createPetService({ on() { throw new Error('activity registration failed') } }), /activity registration failed/)
+  await assert.rejects(createPetService({ on(event) {
+    if (event === 'settings/document-updated') return () => {}
+    throw new Error('activity registration failed')
+  } }, { petEnabled: true }), /activity registration failed/)
   assert.ok(server, 'initialization reached the private bridge')
   assert.equal(server.listening, false, 'a failed setup must not leave a local server running')
 })
@@ -201,8 +206,47 @@ test('the host volatile references are read into live settings, including later 
   assert.equal(f.service.snapshot().settings.activePet, 'aoi-shark-maid')
 })
 
-test('a seen action clears an already-seen result without navigating or requiring a live Session', async (t) => {
+test('activity starts for either window and aborts a pending baseline when both close', async (t) => {
   const f = await fixture(t)
+  const configure = async (value) => {
+    f.setDescriptors([{ ns: 'dsh-toolkit-pet', value: { electronPath: '/nonexistent-test-electron', ...value } }])
+    await f.emit('settings/document-updated', 'dsh-toolkit-pet')
+  }
+  assert.deepEqual(f.listSignals, [])
+  assert.equal(f.handlers.get('api-session/activity'), undefined)
+
+  let finish
+  f.setReadList(() => new Promise((resolve) => { finish = resolve }))
+  const opening = configure({ petEnabled: true })
+  await Promise.resolve()
+  const [signal] = f.listSignals
+  assert.equal(signal?.aborted, false)
+  await configure({})
+  assert.equal(signal.aborted, true)
+  assert.equal(f.handlers.get('api-session/activity').size, 0)
+  assert.deepEqual(f.service.snapshot().sessions, [])
+
+  const updatedAt = Date.now()
+  await f.service.action({ action: 'seen', sessionId: 'session-a' })
+  f.setReadList(async () => ({ items: [{ sessionId: 'session-a', blank: false, running: false, updatedAt }] }))
+  await configure({ islandEnabled: true })
+  assert.equal(f.listSignals.length, 2)
+  assert.equal(f.handlers.get('api-session/activity').size, 1)
+  assert.deepEqual(f.service.snapshot().sessions, [], 'seen while closed survives re-enabling')
+  finish({ items: [{ sessionId: 'stale-baseline', blank: false, updatedAt }] })
+  await opening
+  assert.deepEqual(f.service.snapshot().sessions, [], 'a disposed feed cannot publish a late baseline')
+  await f.emit('api-session/activity', 'session-a', Date.now() + 1)
+  assert.equal(f.service.snapshot().sessions[0].id, 'session-a')
+  await configure({ petEnabled: true })
+  assert.equal(f.listSignals.length, 2, 'switching between enabled windows keeps the feed')
+  await configure({})
+  assert.equal(f.listSignals[1].aborted, true)
+  assert.deepEqual(f.service.snapshot().sessions, [])
+})
+
+test('a seen action clears an already-seen result without navigating or requiring a live Session', async (t) => {
+  const f = await fixture(t, { petEnabled: true, electronPath: '/nonexistent-test-electron' })
   // 让 feed 里出现一条「刚结束、有新结果」的会话（基线里 updatedAt=1 会被陈旧过滤掉）。
   await f.emit('api-session/activity', 'session-a', Date.now())
   assert.equal(f.service.snapshot().sessions.length, 1)
