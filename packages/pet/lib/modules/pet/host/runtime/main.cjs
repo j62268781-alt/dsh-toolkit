@@ -9,6 +9,8 @@ const { readEnvironment, publicState, islandGeometry, islandPlacement, islandOff
 const { notchForDisplay, queryNativeScreens } = require('./native.cjs')
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'pet-asset', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }])
+// 软件合成可以降低内存，但透明窗口的兼容性优先，默认保留硬件加速。
+if (process.platform === 'darwin' && process.env.DSH_TOOLKIT_PET_GPU === '0') app.disableHardwareAcceleration()
 let config
 try { config = readEnvironment(process.env) } catch { process.stderr.write('Invalid pet helper environment\n'); app.exit(1) }
 const abort = new AbortController()
