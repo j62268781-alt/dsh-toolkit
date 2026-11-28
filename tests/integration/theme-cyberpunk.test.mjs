@@ -182,15 +182,29 @@ test('HUD focus and action colors keep their contrast in both modes', () => {
   }
 })
 
-test('only checked host and toolkit switch tracks use the 2077 action yellow', () => {
-  const track = `${PALETTE_SCOPE} body button[role="switch"][aria-checked="true"]:is([class*="_switch_"], .boot-switch, .pet-switch, .ntf-switch, .smp-switch, .mbm-switch, .sk-git__switch)`
-  const thumb = `${track} > :is([class*="_thumb_"], .boot-switch-thumb, .pet-switch > span, .ntf-switchKnob, .smp-switchKnob, .mbm-switchKnob, .sk-git__switchThumb)`
-  const styles = (selector) => new Map(stylesheet.rules
-    .filter((rule) => ruleSelectors(rule).includes(selector))
+test('only checked host and toolkit switch tracks use the 2077 action yellow', (t) => {
+  const document = installDocument(t)
+  document.documentElement.dataset.skPalette = 'cyberpunk'
+  document.body.innerHTML = `
+    <button id="host" role="switch" aria-checked="true" class="_A1b2c3_switch"><span class="_A1b2c3_thumb"></span></button>
+    <button id="placed" role="switch" aria-checked="true" class="_Z9y8x7_switch layout"><span class="_Z9y8x7_thumb"></span></button>
+    <button id="pet" role="switch" aria-checked="true" class="pet-switch"><span></span></button>
+    <button id="off" role="switch" aria-checked="false" class="_A1b2c3_switch"><span class="_A1b2c3_thumb"></span></button>
+    <button id="other" role="switch" aria-checked="true" class="_A1b2c3_control"><span>Time</span></button>`
+  const styles = (target) => new Map(stylesheet.rules
+    .filter((rule) => ruleSelectors(rule).some((selector) => target.matches(selector)))
     .flatMap((rule) => [...declarations(rule.body)]))
-  assert.equal(styles(track).get('background-color'), 'var(--sk-cyberpunk-action)')
-  assert.equal(styles(thumb).get('background-color'), 'var(--sk-cyberpunk-action-ink)')
-  assert.ok(!styles(track).has('outline'), 'the host focus indicator stays independent')
+  for (const id of ['host', 'placed', 'pet']) {
+    const track = document.getElementById(id)
+    assert.equal(styles(track).get('background-color'), 'var(--sk-cyberpunk-action)')
+    assert.equal(styles(track.firstElementChild).get('background-color'), 'var(--sk-cyberpunk-action-ink)')
+    assert.ok(!styles(track).has('outline'), 'the host focus indicator stays independent')
+  }
+  for (const id of ['off', 'other']) {
+    const track = document.getElementById(id)
+    assert.ok(!styles(track).has('background-color'))
+    assert.ok(!styles(track.firstElementChild).has('background-color'))
+  }
 })
 
 /* ── the scene element contract ──────────────────────────────────────── */
