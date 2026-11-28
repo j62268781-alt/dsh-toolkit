@@ -3,14 +3,14 @@
  */
 
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { test } from 'node:test'
 
 import { INSTRUCTIONS_SOURCE, collectReply, createConversations, eventCount, eventsSince, sessionIdFor, sessionTitleFor } from '../../src/modules/remote/host/wechat/conversation.ts'
 import { INBOX_DIR, buildInboundContent, messageKey, safeFileName } from '../../src/modules/remote/host/wechat/inbound.ts'
-import { bridgeStatePath, createBridgeStore } from '../../src/modules/remote/host/wechat/store.ts'
+import { bridgeStatePath, createBridgeStore, migrateLegacyBridgeState } from '../../src/modules/remote/host/wechat/store.ts'
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01, 0x02])
 
@@ -30,9 +30,68 @@ test('bridgeStatePath 按 accountId 派生稳定文件路径', () => {
   assert.equal(first, second)
   assert.notEqual(first, other)
   // 用 join 拼期望值：Windows 上分隔符是 \，硬编码 '/' 会误判成回归。
-  assert.ok(first.startsWith(join(tmpdir(), 'home', 'remote')))
-  assert.ok(first.endsWith('.json'))
+  assert.match(basename(first), /^[a-f0-9]{16}\.json$/)
+  assert.equal(dirname(first), join(tmpdir(), 'home', 'toolkit', 'wechat-bridge'))
   assert.ok(!first.includes('ilink-bot-account'))
+})
+
+test('迁移微信桥状态：保留字节、释放旧目录、配对数据不动，可重复执行', async () => {
+  await withTempDir(async (homeDir) => {
+    const target = bridgeStatePath('account', { homeDir })
+    const legacy = join(homeDir, 'remote')
+    const pairing = join(homeDir, 'ds-harness-remote')
+    const snapshot = JSON.stringify({ version: 1, cursor: 'saved', contexts: { owner: 'token' }, seen: ['event'] })
+    await mkdir(legacy)
+    await mkdir(pairing)
+    await writeFile(join(legacy, basename(target)), snapshot, { mode: 0o600 })
+    await writeFile(join(pairing, 'pairing-sentinel'), 'pairing data')
+
+    migrateLegacyBridgeState(homeDir)
+    migrateLegacyBridgeState(homeDir)
+
+    await assert.rejects(readdir(legacy), { code: 'ENOENT' })
+    assert.equal(await readFile(target, 'utf8'), snapshot)
+    assert.equal(await readFile(join(pairing, 'pairing-sentinel'), 'utf8'), 'pairing data')
+    const store = createBridgeStore({ filePath: target })
+    await store.load()
+    assert.equal(store.getCursor(), 'saved')
+    assert.equal(store.getContextToken('owner'), 'token')
+  })
+})
+
+test('迁移微信桥状态：不覆盖新状态或碰未识别的旧数据', async () => {
+  await withTempDir(async (homeDir) => {
+    const target = bridgeStatePath('account', { homeDir })
+    const legacy = join(homeDir, 'remote')
+    const source = join(legacy, basename(target))
+    const unknown = join(legacy, '0123456789abcdef.json')
+    const snapshot = JSON.stringify({ version: 1, cursor: 'old', contexts: {}, seen: [] })
+    await mkdir(legacy)
+    await mkdir(join(homeDir, 'toolkit', 'wechat-bridge'), { recursive: true })
+    await writeFile(source, snapshot, { mode: 0o600 })
+    await writeFile(target, 'new state', { mode: 0o600 })
+    await writeFile(unknown, '{"version":1}', { mode: 0o600 })
+
+    migrateLegacyBridgeState(homeDir)
+
+    assert.equal(await readFile(source, 'utf8'), snapshot)
+    assert.equal(await readFile(target, 'utf8'), 'new state')
+    assert.equal(await readFile(unknown, 'utf8'), '{"version":1}')
+  })
+})
+
+test('迁移微信桥状态：保留仍被 Remote 固定的旧目录', async () => {
+  await withTempDir(async (homeDir) => {
+    const legacy = join(homeDir, 'remote')
+    const pinDirectory = join(homeDir, '.ds-harness-remote-migration')
+    await mkdir(legacy)
+    await mkdir(pinDirectory)
+    await writeFile(join(pinDirectory, 'legacy-root.json'), '{}')
+
+    migrateLegacyBridgeState(homeDir)
+
+    assert.deepEqual(await readdir(legacy), [])
+  })
 })
 
 test('桥状态：游标/context_token/去重表/开关/策略/白名单都能落盘并读回', async () => {

@@ -9,6 +9,7 @@
     ".": "./index.js",
     "./package.json": "./package.json",
     "./client": "./lib/client.js",
+    "./wechat-state-migration": "./lib/modules/remote/host/wechat/store.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },

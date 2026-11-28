@@ -9,8 +9,16 @@
 // keeps the pairing/Bridge host runtime (control route, settings binding,
 // device identity) while leaving the browser UI to this bundle alone.
 //
-// Keep this file dependency-free beyond the re-export: it runs inside the DSH
-// profile scope, where bare specifiers resolve through the toolkit bundle's
-// dependency closure.
+import { apply as applyRemote } from 'ds-harness-remote'
+import { migrateLegacyBridgeState } from 'dsh-toolkit-remote/wechat-state-migration'
 
-export { Config, apply, name } from 'ds-harness-remote'
+export { Config, name } from 'ds-harness-remote'
+
+export function apply(ctx, entry) {
+  try {
+    migrateLegacyBridgeState()
+  } catch (error) {
+    ctx.logger?.warn?.('Remote: 微信桥旧状态迁移失败，已保留未迁移的文件。', error)
+  }
+  return applyRemote(ctx, entry)
+}

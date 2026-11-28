@@ -29,6 +29,7 @@ import { createBridge } from './wechat/bridge.js';
 import { Config, DEFAULT_CREDENTIAL_REF, readConfig } from './wechat/config.js';
 import { createLoginManager } from './wechat/login.js';
 import { createMonitor } from './wechat/monitor.js';
+import { migrateLegacyBridgeState } from './wechat/store.js';
 import { maskId, normalizeBaseUrl } from './wechat/ilink.js';
 import { readTrustedPeers } from './mobile/peers.js';
 import { purgePairingState } from './mobile/local-state.js';
@@ -617,6 +618,13 @@ function installStartupResume(ctx) {
     });
 }
 export function apply(ctx, config) {
+    // 独立安装不会经过聚合包的 remote-host 入口。
+    try {
+        migrateLegacyBridgeState();
+    }
+    catch (error) {
+        ctx.logger?.warn?.('Remote: 微信桥旧状态迁移失败，已保留未迁移的文件。', error);
+    }
     // 先于 webServer 守卫：面板/HTTP 都不在时，已配对的手机也该能连上。
     installStartupResume(ctx);
     if (typeof ctx.webServer?.register !== 'function')

@@ -5,11 +5,13 @@
  *   · getupdates 是「消费型」接口，游标丢失会让重启后的第一轮把历史消息再收一遍；
  *   · context_token 只随入站消息下发，丢了就没法再主动回复该用户（必须等他再说一句）。
  *
- * 文件位于 `~/.dsh/remote/<sha256(accountId) 前 16 位>.json`，权限 0600；
+ * 文件位于 `~/.dsh/toolkit/wechat-bridge/<sha256(accountId) 前 16 位>.json`，权限 0600；
  * 里面只有标识符与令牌，不含任何消息正文。
  */
 /** 状态文件路径：按 accountId 分文件，换账号不会串味。 */
 export declare function bridgeStatePath(accountId: any, { homeDir }?: any): string;
+/** 必须先于 ds-harness-remote 启动：它把整个旧 remote 目录视为待迁移的配对数据。 */
+export declare function migrateLegacyBridgeState(homeDir?: string): void;
 /**
  * 创建一个状态仓库。
  * @param options.filePath 状态文件绝对路径（由 bridge 用 bridgeStatePath 算好）
